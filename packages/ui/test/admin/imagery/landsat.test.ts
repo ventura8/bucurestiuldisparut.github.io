@@ -36,15 +36,18 @@ describe('<hcm-imagery-page>: Landsat', () => {
 
         expect(chip.label).toBe('Landsat');
         expect(calls(area)).toEqual(['setFilters {"datasets":["landsat_tm_c2_l1","landsat_etm_c2_l1","landsat_ot_c2_l1"]}']);
-        expect([datasetText('en', 'landsat_tm_c2_l1'), datasetText('ro', 'landsat_etm_c2_l1'), datasetText('en', 'landsat_ot_c2_l1')]).toEqual([
-            'Landsat 4–5 TM',
-            'Landsat 7 ETM+',
-            'Landsat 8–9 OLI',
-        ]);
+        expect([
+            datasetText('en', 'landsat_tm_c2_l1'),
+            datasetText('ro', 'landsat_etm_c2_l1'),
+            datasetText('en', 'landsat_ot_c2_l1'),
+        ]).toEqual(['Landsat 4–5 TM', 'Landsat 7 ETM+', 'Landsat 8–9 OLI']);
     });
 
     it('badPath_theChosenLandsatChipTakesEveryLandsatDatasetOutAndKeepsTheOthers @S-A130-BAD-CLOUDY', async () => {
-        const filters = { ...imageryState().filters, datasets: ['corona2', 'landsat_tm_c2_l1', 'landsat_etm_c2_l1', 'landsat_ot_c2_l1'] as const };
+        const filters = {
+            ...imageryState().filters,
+            datasets: ['corona2', 'landsat_tm_c2_l1', 'landsat_etm_c2_l1', 'landsat_ot_c2_l1'] as const,
+        };
         const { element, area } = await imageryPage(imageryState({ filters }));
         const chip = nth(element, '.filters hcm-chip', LANDSAT_CHIP) as HTMLElement & { selected: boolean };
 

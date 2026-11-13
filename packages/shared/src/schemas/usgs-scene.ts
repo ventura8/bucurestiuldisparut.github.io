@@ -24,7 +24,20 @@ export const USGS_SCENE_STATUSES = ['candidate', 'ordered', 'available', 'import
  * and the KH-9 Hexagon mapping camera), `declassiii` (Declass 3: the KH-9 Hexagon panoramic camera); M25: `landsat_tm_c2_l1` (Landsat 4
  * and 5 TM, 30 m), `landsat_etm_c2_l1` (Landsat 7 ETM+, pan-sharpened to 15 m) and `landsat_ot_c2_l1` (Landsat 8 and 9 OLI, pan-sharpened to 15 m).
  */
-export const SENSORS = ['KH-4', 'KH-4A', 'KH-4B', 'KH-5', 'KH-7', 'KH-9-mapping', 'KH-9-pan', 'L4-TM', 'L5-TM', 'L7-ETM', 'L8-OLI', 'L9-OLI'] as const;
+export const SENSORS = [
+    'KH-4',
+    'KH-4A',
+    'KH-4B',
+    'KH-5',
+    'KH-7',
+    'KH-9-mapping',
+    'KH-9-pan',
+    'L4-TM',
+    'L5-TM',
+    'L7-ETM',
+    'L8-OLI',
+    'L9-OLI',
+] as const;
 
 export type Sensor = (typeof SENSORS)[number];
 

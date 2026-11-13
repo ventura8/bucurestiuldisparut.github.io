@@ -79,7 +79,11 @@ type PageRead = { readonly records: readonly SceneRecord[]; readonly next: numbe
 async function readPage(deps: PagesDeps, apiKey: string, search: PagesSearch, next: number): Promise<PageRead> {
     const timeoutMs = pageTimeout(search.budget, deps.clock.now().getTime());
     if (timeoutMs === undefined) {
-        deps.log.warn('usgs search out of time, kept what it found', { dataset: search.base.dataset, next, reasonCode: 'harvest.outOfTime' });
+        deps.log.warn('usgs search out of time, kept what it found', {
+            dataset: search.base.dataset,
+            next,
+            reasonCode: 'harvest.outOfTime',
+        });
         return { reason: 'outOfTime', next };
     }
     try {
@@ -87,7 +91,11 @@ async function readPage(deps: PagesDeps, apiKey: string, search: PagesSearch, ne
         return { records: page.records, next: page.records.length === 0 ? undefined : page.next };
     } catch (error) {
         const reason: StopReason = timedOut(error) ? 'requestTimedOut' : 'usgsFailed';
-        deps.log.warn('usgs page not read, kept what it found', { dataset: search.base.dataset, reasonCode: `harvest.${reason}`, timeoutMs });
+        deps.log.warn('usgs page not read, kept what it found', {
+            dataset: search.base.dataset,
+            reasonCode: `harvest.${reason}`,
+            timeoutMs,
+        });
         return { reason, next, error: codeOf(error) };
     }
 }
@@ -135,7 +143,12 @@ export async function searchDataset(
     planned: { readonly dataset: UsgsDataset; readonly from: number },
 ): Promise<DatasetSearch> {
     const { dataset } = planned;
-    const base = (within: SearchWindow): SearchRequest => ({ dataset, bounds: run.bounds, maxResults: PAGE_SIZE, ...searchOf(dataset, within) });
+    const base = (within: SearchWindow): SearchRequest => ({
+        dataset,
+        bounds: run.bounds,
+        maxResults: PAGE_SIZE,
+        ...searchOf(dataset, within),
+    });
     const first = await searchPages(deps, apiKey, { base: base(run.window), from: planned.from, budget: run.budget });
     const yearPages = async (within: SearchWindow): Promise<readonly SceneRecord[]> => {
         const pages = await searchPages(deps, apiKey, { base: base(within), from: 1, budget: run.budget });

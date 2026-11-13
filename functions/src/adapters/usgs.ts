@@ -261,7 +261,11 @@ function toDatasets(data: unknown): DatasetIds[] {
 export function createUsgsScenes(options: UsgsOptions): UsgsScenes {
     return {
         search: async (apiKey, request) => {
-            const data = await m2mCall(options, { endpoint: 'scene-search', body: sceneSearchBody(request), timeoutMs: request.timeoutMs }, apiKey);
+            const data = await m2mCall(
+                options,
+                { endpoint: 'scene-search', body: sceneSearchBody(request), timeoutMs: request.timeoutMs },
+                apiKey,
+            );
             const records = list(at(data, 'results')).flatMap(toSceneRecord);
             const totalHits = at(data, 'totalHits');
             const next = nextOf(data, records.length);
@@ -273,6 +277,7 @@ export function createUsgsScenes(options: UsgsOptions): UsgsScenes {
                 await m2mCall(options, { endpoint: 'download-options', body: { datasetName: dataset, entityIds: [...entityIds] } }, apiKey),
                 entityIds,
             ),
-        datasets: async (apiKey) => toDatasets(await m2mCall(options, { endpoint: 'dataset-search', body: { datasetName: 'declass' } }, apiKey)),
+        datasets: async (apiKey) =>
+            toDatasets(await m2mCall(options, { endpoint: 'dataset-search', body: { datasetName: 'declass' } }, apiKey)),
     };
 }

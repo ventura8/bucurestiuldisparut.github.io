@@ -12,15 +12,10 @@ import { datasetText } from './imagery-text.js';
 
 function partText(locale: Locale, part: SearchPartPort): string {
     const params = { dataset: datasetText(locale, part.dataset), found: String(part.found) };
-    if (part.state === 'searching') {
-        return contentText(locale, 'adminContent.imagery.part.searching', params);
-    }
     if (part.state === 'done') {
-        return contentText(locale, 'adminContent.imagery.part.done', params);
+        return `${params.dataset}: ${params.found}`;
     }
-    const slow = part.reason === 'outOfTime' || part.reason === 'requestTimedOut';
-    const key = slow ? 'adminContent.imagery.part.slow' : 'adminContent.imagery.part.refused';
-    return contentText(locale, key, params);
+    return contentText(locale, part.state === 'searching' ? 'adminContent.imagery.part.searching' : 'adminContent.imagery.part.stopped', params);
 }
 
 /** One line per searched dataset, or nothing before a search. */

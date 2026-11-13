@@ -93,7 +93,10 @@ describe('send', () => {
                         reject(new DOMException('aborted', 'AbortError'));
                     });
                 });
-            const failure = send(hanging, 'usgs', 'https://m2m.cr.usgs.gov/api/api/json/stable/scene-search', { method: 'POST', timeoutMs: 5000 });
+            const failure = send(hanging, 'usgs', 'https://m2m.cr.usgs.gov/api/api/json/stable/scene-search', {
+                method: 'POST',
+                timeoutMs: 5000,
+            });
             const caught = failure.catch((error: unknown) => error);
             await vi.advanceTimersByTimeAsync(5000);
 

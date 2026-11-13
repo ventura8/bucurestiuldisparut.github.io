@@ -133,7 +133,13 @@ async function importOne(deps: LandsatAutoDeps, tick: LandsatTick, scene: UsgsSc
         return false;
     }
     const { jobId, layerId } = await startImport(deps, { cityId, scene, createdBy: IMAGERY_WRITER, now, ...placement });
-    deps.log.info('landsat scene imported on its own', { cityId, entityId: scene.entityId, jobId, layerId, runOn: placement.runOn ?? 'cloud' });
+    deps.log.info('landsat scene imported on its own', {
+        cityId,
+        entityId: scene.entityId,
+        jobId,
+        layerId,
+        runOn: placement.runOn ?? 'cloud',
+    });
     return true;
 }
 

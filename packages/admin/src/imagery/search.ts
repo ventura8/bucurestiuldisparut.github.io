@@ -46,7 +46,12 @@ export function partsOf(datasets: HarvestDatasets | undefined): readonly SearchP
     const entries = Object.entries(datasets ?? {}) as [UsgsDataset, HarvestDataset][];
     return entries.length === 0
         ? undefined
-        : entries.map(([dataset, part]) => ({ dataset, state: part.state, found: part.found, ...(part.reason === undefined ? {} : { reason: part.reason }) }));
+        : entries.map(([dataset, part]) => ({
+              dataset,
+              state: part.state,
+              found: part.found,
+              ...(part.reason === undefined ? {} : { reason: part.reason }),
+          }));
 }
 
 export const IDLE_SEARCH: SearchState = { phase: 'idle', found: null, added: null, failedDatasets: [], error: null };
@@ -125,7 +130,13 @@ export class HarvestSearch {
         try {
             const answer = await callImagery(this.#services.callables, 'imagery.search', { cityId: this.#services.cityId }, SEARCH_OPTIONS);
             const datasets = partsOf(answer.datasets);
-            const done = { phase: 'done', found: answer.found, added: answer.added, failedDatasets: answer.failedDatasets, error: null } as const;
+            const done = {
+                phase: 'done',
+                found: answer.found,
+                added: answer.added,
+                failedDatasets: answer.failedDatasets,
+                error: null,
+            } as const;
             this.#set(datasets === undefined ? done : { ...done, datasets });
         } catch (error) {
             this.#set({ ...IDLE_SEARCH, phase: 'failed', error: searchRefusalOf(error, this.#services.clock.now() - started) });

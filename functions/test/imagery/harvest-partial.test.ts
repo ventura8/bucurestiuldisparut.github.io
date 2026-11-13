@@ -79,7 +79,9 @@ describe('imagery.search: Landsat 8 and 9 OLI', () => {
         expect(response.datasets?.landsat_ot_c2_l1).toEqual({ state: 'done', found: 2 });
         expect((await readScene(world, OLI_2016))?.sensor).toBe('L8-OLI');
         expect(await readScene(world, OLI_2023)).toMatchObject({ dataset: 'landsat_ot_c2_l1', sensor: 'L9-OLI', resolutionM: 15 });
-        const oli = world.scenes.recorder.argsOf('search').find(([, request]) => (request as { dataset: string }).dataset === 'landsat_ot_c2_l1');
+        const oli = world.scenes.recorder
+            .argsOf('search')
+            .find(([, request]) => (request as { dataset: string }).dataset === 'landsat_ot_c2_l1');
         expect(oli?.[1]).toMatchObject({ months: [5, 6, 7, 8, 9], maxCloud: 40, timeoutMs: PAGE_TIMEOUT_MS });
     });
 
@@ -116,7 +118,12 @@ describe('imagery.search: a partial harvest', () => {
         const response = await search(world);
 
         const resumed = world.scenes.recorder.argsOf('search').slice(before);
-        expect(resumed.map(([, request]) => [(request as { dataset: string }).dataset, (request as { startingNumber: number }).startingNumber])).toEqual([
+        expect(
+            resumed.map(([, request]) => [
+                (request as { dataset: string }).dataset,
+                (request as { startingNumber: number }).startingNumber,
+            ]),
+        ).toEqual([
             ['corona2', 101],
             ['corona2', 201],
         ]);
@@ -163,7 +170,9 @@ describe('imagery.search: a partial harvest', () => {
 
         const response = await search(world);
 
-        expect(world.scenes.recorder.argsOf('search').map(([, request]) => (request as { dataset: string }).dataset)).toEqual(['declassii']);
+        expect(world.scenes.recorder.argsOf('search').map(([, request]) => (request as { dataset: string }).dataset)).toEqual([
+            'declassii',
+        ]);
         expect(response.datasets).toMatchObject({ corona2: { state: 'done', found: 250 }, declassii: { state: 'done', found: 1 } });
         expect(await harvestState(world)).toMatchObject({ outcome: 'ok', failures: 0, attemptedAt: at(NOW) });
         const stoppedLog = world.deps.recording.records.find((record) => record.message === 'usgs harvest was stopped before it finished');
@@ -185,7 +194,11 @@ const TM = { dataset: 'landsat_tm_c2_l1', sensor: 'L5-TM', resolutionM: 30, cove
 
 async function seedYears(world: ImageryWorld, years: readonly number[]): Promise<void> {
     for (const year of years) {
-        const scene: Partial<UsgsSceneDoc> = { ...TM, acquisitionDate: `${String(year)}-07-12`, rank: { score: 70, reasons: [], version: 4 } };
+        const scene: Partial<UsgsSceneDoc> = {
+            ...TM,
+            acquisitionDate: `${String(year)}-07-12`,
+            rank: { score: 70, reasons: [], version: 4 },
+        };
         await seedScene(world, `LT5183029${String(year)}193MTI00`, scene);
     }
 }

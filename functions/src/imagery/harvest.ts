@@ -82,7 +82,11 @@ function resumes(request: ImagerySearchRequest, previous: HarvestStateDoc | unde
 }
 
 /** The parts of the attempt before this run when it resumes it; none otherwise. */
-function resumableParts(request: ImagerySearchRequest, previous: HarvestStateDoc | undefined, killed: boolean): [UsgsDataset, HarvestDataset][] {
+function resumableParts(
+    request: ImagerySearchRequest,
+    previous: HarvestStateDoc | undefined,
+    killed: boolean,
+): [UsgsDataset, HarvestDataset][] {
     return resumes(request, previous, killed) ? (Object.entries(previous?.datasets ?? {}) as [UsgsDataset, HarvestDataset][]) : [];
 }
 
@@ -231,7 +235,10 @@ async function previousOf(deps: HarvestDeps, cityId: string, now: Date) {
 
 /** Every planned dataset `searching` (from where it resumes), beside the parts an earlier run finished. */
 function startingParts(plan: Plan): HarvestDatasets {
-    const searching = plan.datasets.map(([dataset, from]) => [dataset, { state: 'searching', found: 0, ...(from > 1 ? { next: from } : {}) }]);
+    const searching = plan.datasets.map(([dataset, from]) => [
+        dataset,
+        { state: 'searching', found: 0, ...(from > 1 ? { next: from } : {}) },
+    ]);
     return { ...plan.carried, ...(Object.fromEntries(searching) as HarvestDatasets) };
 }
 

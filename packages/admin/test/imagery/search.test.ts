@@ -140,7 +140,13 @@ describe('each dataset’s part of the search (lesson 662)', () => {
         release();
         await running;
 
-        expect(live).toMatchObject({ phase: 'searching', datasets: [{ dataset: 'corona2', state: 'searching' }, { dataset: 'landsat_ot_c2_l1', state: 'done', found: 2 }] });
+        expect(live).toMatchObject({
+            phase: 'searching',
+            datasets: [
+                { dataset: 'corona2', state: 'searching' },
+                { dataset: 'landsat_ot_c2_l1', state: 'done', found: 2 },
+            ],
+        });
         expect(harvest.state.datasets).toEqual([
             { dataset: 'corona2', state: 'partial', found: 100, reason: 'requestTimedOut' },
             { dataset: 'landsat_ot_c2_l1', state: 'done', found: 2 },

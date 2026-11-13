@@ -48,7 +48,6 @@ export function wordedWait(reason: JobWaitReason | null): WordedWait | null {
     return reason === null || reason === 'worker' || reason === 'free-tier' ? null : reason;
 }
 
-
 export function versionStateText(locale: Locale, state: LayerVersionState): string {
     return contentText(locale, VERSION_STATES[state]);
 }
