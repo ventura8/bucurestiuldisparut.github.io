@@ -12,6 +12,7 @@ import { css, html, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
+import { visuallyHidden } from '../../components/styles.js';
 import { AreaPage } from '../editing/area-page.js';
 import { editingStyles } from '../editing/editing-styles.js';
 import { formatWhen, loadingTemplate } from '../editing/states.js';
@@ -91,7 +92,7 @@ const crashStyles = css`
 `;
 
 export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntentsPort> {
-    static override readonly styles = [...editingStyles, crashStyles, statisticsStyles];
+    static override readonly styles = [...editingStyles, crashStyles, statisticsStyles, visuallyHidden];
 
     protected readonly route: AdminRouteIdPort = 'crashes';
 

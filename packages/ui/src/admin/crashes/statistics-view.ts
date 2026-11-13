@@ -137,7 +137,7 @@ function liveSections(locale: Locale, context: StatisticsContext): TemplateResul
 
 /** How to explore more in Google Analytics: the funnel exploration's steps and every wizard's step codes, folded away. */
 function helpSection(locale: Locale): TemplateResult {
-    return html`<details class="help" data-statistics-help>
+    return html`<div class="card"><details class="help" data-statistics-help>
         <summary>${contentText(locale, 'adminContent.statistics.helpTitle')}</summary>
         <div class="help-body">
             <h3>${contentText(locale, 'adminContent.statistics.howTitle')}</h3>
@@ -149,7 +149,7 @@ function helpSection(locale: Locale): TemplateResult {
                 ${WIZARD_IDS.map((wizard) => wizardItem(locale, wizard))}
             </ul>
         </div>
-    </details>`;
+    </details></div>`;
 }
 
 /** The whole view: the title, the numbers and the errors, then the help, folded. */

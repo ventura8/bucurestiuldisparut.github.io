@@ -16,9 +16,9 @@ export const statisticsLiveStyles = css`
     }
 
     .statistics .section-head h3 {
-        font-size: var(--md-sys-typescale-title-large-size, 1.375rem);
-        line-height: var(--md-sys-typescale-title-large-line-height, 1.75rem);
-        font-weight: var(--md-sys-typescale-title-large-weight, 400);
+        font-size: var(--md-sys-typescale-title-large-size);
+        line-height: var(--md-sys-typescale-title-large-line-height);
+        font-weight: var(--md-sys-typescale-title-large-weight);
     }
 
     /* The period and its action on one row; the period's 48 px targets reach 4 px past its 40 px row. */
@@ -55,20 +55,20 @@ export const statisticsLiveStyles = css`
         flex-direction: column;
         gap: 4px;
         padding: 16px;
-        border-radius: var(--md-sys-shape-corner-large, 16px);
-        background: var(--md-sys-color-surface-container, Canvas);
+        border-radius: var(--md-sys-shape-corner-large);
+        background: var(--md-sys-color-surface-container);
     }
 
     .statistics .stat-label {
-        color: var(--md-sys-color-on-surface-variant, CanvasText);
-        font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
-        line-height: var(--md-sys-typescale-label-large-line-height, 1.25rem);
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: var(--md-sys-typescale-label-large-size);
+        line-height: var(--md-sys-typescale-label-large-line-height);
     }
 
     .statistics .stat-value {
-        color: var(--md-sys-color-on-surface, CanvasText);
-        font-size: var(--md-sys-typescale-display-small-size, 2.25rem);
-        line-height: var(--md-sys-typescale-display-small-line-height, 2.75rem);
+        color: var(--md-sys-color-on-surface);
+        font-size: var(--md-sys-typescale-display-small-size);
+        line-height: var(--md-sys-typescale-display-small-line-height);
         font-weight: 500;
         font-variant-numeric: tabular-nums;
     }
@@ -88,14 +88,14 @@ export const statisticsLiveStyles = css`
     .statistics th,
     .statistics td {
         padding: 12px 16px 12px 0;
-        border-block-end: 1px solid var(--md-sys-color-outline-variant, CanvasText);
+        border-block-end: 1px solid var(--md-sys-color-outline-variant);
         text-align: start;
         vertical-align: middle;
     }
 
     .statistics thead th {
-        color: var(--md-sys-color-on-surface-variant, CanvasText);
-        font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: var(--md-sys-typescale-label-large-size);
         font-weight: 500;
     }
 
@@ -113,7 +113,7 @@ export const statisticsLiveStyles = css`
 
     .statistics svg.daily {
         display: block;
-        color: var(--md-sys-color-primary, LinkText);
+        color: var(--md-sys-color-primary);
     }
 
     /* A ranked list's rows: the name and the numbers on one line, the bar under them. */
@@ -142,7 +142,7 @@ export const statisticsLiveStyles = css`
     }
 
     .statistics .bar-raw {
-        font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
+        font-size: var(--md-sys-typescale-body-small-size);
     }
 
     .statistics .bar-value {
@@ -150,7 +150,7 @@ export const statisticsLiveStyles = css`
     }
 
     .statistics .bar-share {
-        color: var(--md-sys-color-on-surface-variant, CanvasText);
+        color: var(--md-sys-color-on-surface-variant);
         text-align: end;
     }
 
@@ -158,8 +158,8 @@ export const statisticsLiveStyles = css`
         display: block;
         grid-column: 1 / -1;
         block-size: 8px;
-        border-radius: var(--md-sys-shape-corner-full, 9999px);
-        background: var(--md-sys-color-surface-container-highest, Canvas);
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-surface-container-highest);
         overflow: hidden;
     }
 
@@ -169,7 +169,7 @@ export const statisticsLiveStyles = css`
         min-inline-size: 4px;
         block-size: 100%;
         border-radius: inherit;
-        background: var(--md-sys-color-primary, LinkText);
+        background: var(--md-sys-color-primary);
     }
 
     .statistics details.more > .bars {
@@ -188,8 +188,8 @@ export const statisticsLiveStyles = css`
         flex-wrap: wrap;
         gap: 4px 16px;
         margin: 0;
-        color: var(--md-sys-color-on-surface-variant, CanvasText);
-        font-size: var(--md-sys-typescale-body-medium-size, 0.875rem);
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: var(--md-sys-typescale-body-medium-size);
     }
 
     .statistics .step-facts dt {
@@ -203,7 +203,7 @@ export const statisticsLiveStyles = css`
     .statistics .step-facts dd {
         display: inline;
         margin: 0;
-        color: var(--md-sys-color-on-surface, CanvasText);
+        color: var(--md-sys-color-on-surface);
         font-variant-numeric: tabular-nums;
     }
 
@@ -215,9 +215,9 @@ export const statisticsLiveStyles = css`
 
     .statistics .badge {
         padding-inline: 6px;
-        border-radius: var(--md-sys-shape-corner-full, 9999px);
-        background: var(--md-sys-color-error, CanvasText);
-        color: var(--md-sys-color-on-error, Canvas);
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-error);
+        color: var(--md-sys-color-on-error);
         font-variant-numeric: tabular-nums;
     }
 
@@ -246,18 +246,18 @@ export const statisticsLiveStyles = css`
     .statistics .error-title {
         flex: 1 1 240px;
         min-inline-size: 0;
-        font-size: var(--md-sys-typescale-title-small-size, 0.875rem);
-        line-height: var(--md-sys-typescale-title-small-line-height, 1.25rem);
+        font-size: var(--md-sys-typescale-title-small-size);
+        line-height: var(--md-sys-typescale-title-small-line-height);
         font-weight: 500;
     }
 
     .statistics pre.cause {
         margin: 0;
         padding: 12px;
-        border-radius: var(--md-sys-shape-corner-medium, 12px);
-        background: var(--md-sys-color-surface-container-highest, Canvas);
+        border-radius: var(--md-sys-shape-corner-medium);
+        background: var(--md-sys-color-surface-container-highest);
         font-family: var(--hcm-font-mono, ui-monospace, monospace);
-        font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
+        font-size: var(--md-sys-typescale-body-small-size);
         white-space: pre-wrap;
         overflow-wrap: anywhere;
     }
@@ -271,8 +271,8 @@ export const statisticsLiveStyles = css`
 
     .statistics .skeleton {
         display: block;
-        border-radius: var(--md-sys-shape-corner-large, 16px);
-        background: var(--md-sys-color-surface-container-high, Canvas);
+        border-radius: var(--md-sys-shape-corner-large);
+        background: var(--md-sys-color-surface-container-high);
         animation: hcm-skeleton 1.5s ease-in-out infinite alternate;
     }
 
@@ -291,19 +291,9 @@ export const statisticsLiveStyles = css`
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .skeleton,
-        details > summary::before {
+        .skeleton {
             animation: none;
-            transition: none;
         }
     }
 
-    .statistics .visually-hidden {
-        position: absolute;
-        inline-size: 1px;
-        block-size: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-        white-space: nowrap;
-    }
 `;

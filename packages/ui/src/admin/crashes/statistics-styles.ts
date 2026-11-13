@@ -29,16 +29,15 @@ export const statisticsStyles = css`
     .statistics code {
         font-family: var(--hcm-font-mono, ui-monospace, monospace);
         font-size: 0.8125em;
-        color: var(--md-sys-color-on-surface-variant, CanvasText);
         overflow-wrap: anywhere;
     }
 
     .statistics h4,
     .statistics h5 {
         margin: 0;
-        font-size: var(--md-sys-typescale-title-small-size, 0.875rem);
-        line-height: var(--md-sys-typescale-title-small-line-height, 1.25rem);
-        font-weight: var(--md-sys-typescale-title-small-weight, 500);
+        font-size: var(--md-sys-typescale-title-small-size);
+        line-height: var(--md-sys-typescale-title-small-line-height);
+        font-weight: var(--md-sys-typescale-title-small-weight);
     }
 
     .statistics .page-head,
@@ -52,9 +51,9 @@ export const statisticsStyles = css`
         display: flex;
         gap: 12px;
         padding: 16px;
-        border-radius: var(--md-sys-shape-corner-large, 16px);
-        background: var(--md-sys-color-secondary-container, Canvas);
-        color: var(--md-sys-color-on-secondary-container, CanvasText);
+        border-radius: var(--md-sys-shape-corner-large);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
     }
 
     .statistics .info a {
@@ -78,74 +77,29 @@ export const statisticsStyles = css`
         gap: 12px;
         min-inline-size: 0;
         padding: 16px;
-        border-radius: var(--md-sys-shape-corner-large, 16px);
-        background: var(--md-sys-color-surface-container-low, Canvas);
-        color: var(--md-sys-color-on-surface, CanvasText);
+        border-radius: var(--md-sys-shape-corner-large);
+        background: var(--md-sys-color-surface-container-low);
+        color: var(--md-sys-color-on-surface);
     }
 
-    /* Show all, the full text of an error and the help: a native disclosure with a 48 px summary. */
-    .statistics details > summary {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        min-block-size: 48px;
-        border-radius: var(--md-sys-shape-corner-full, 9999px);
-        color: var(--md-sys-color-primary, LinkText);
-        font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
+    /* Show all, the full text of an error and the help: a native disclosure, its summary 48 px high. */
+    .statistics summary {
+        padding-block: 12px;
+        line-height: 24px;
+        color: var(--md-sys-color-primary);
         font-weight: 500;
         cursor: pointer;
-        list-style: none;
     }
 
     .statistics .help > summary {
-        color: var(--md-sys-color-on-surface, CanvasText);
-        font-size: var(--md-sys-typescale-title-medium-size, 1rem);
-        min-block-size: 56px;
-    }
-
-    .statistics details > summary::-webkit-details-marker {
-        display: none;
-    }
-
-    .statistics details > summary::before {
-        content: '';
-        inline-size: 8px;
-        block-size: 8px;
-        margin-inline: 4px;
-        border-block-end: 2px solid currentcolor;
-        border-inline-end: 2px solid currentcolor;
-        transform: rotate(45deg);
-        transition: transform 150ms;
-    }
-
-    .statistics details[open] > summary::before {
-        transform: rotate(225deg);
-    }
-
-    .statistics details > summary:focus-visible {
-        outline: var(--md-sys-state-focus-indicator-thickness, 3px) solid var(--md-sys-color-secondary, Highlight);
-        outline-offset: 2px;
-    }
-
-    .statistics .help {
-        padding: 0 16px;
-        border-radius: var(--md-sys-shape-corner-large, 16px);
-        background: var(--md-sys-color-surface-container-low, Canvas);
+        color: inherit;
+        font-size: var(--md-sys-typescale-title-medium-size);
     }
 
     .statistics .help-body {
         display: flex;
         flex-direction: column;
         gap: 16px;
-        padding-block-end: 16px;
     }
 
-    .statistics .help-body ol {
-        margin: 0;
-        padding-inline-start: 24px;
-    }
-
-    .statistics .wizards .card {
-        background: var(--md-sys-color-surface-container, Canvas);
-    }
 `;
