@@ -3859,6 +3859,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: declassified records carry no cloud cover, so the rank scored every frame's clouds "unknown", and nothing let the owner set a scene aside: the client rule allowed `rejected`, but no screen wrote it and a client write would not rewrite the plan.
     - Fix and pin: the browse image's clouds over the city are measured (`cloud-estimate.ts`) and rank, card, page and Buy this scan say so; `imagery.markScene` sets a scene aside with why and writes the plan again (S-A152-*).
     - **When a choice the server makes for the owner can be wrong, give the owner a one-click way to overrule it, and make the server act on it at once.**
+
 657. **A second worker failed every archive series it took: the scanned maps were on another computer.**
     - Seen: live, 2026-11-13: after the NUC and the PC joined the laptop, five archive series failed at `gather` with "no record of
       ar-971b77774eee2871 on this computer", and an atlas used up its attempts on the same cause.
