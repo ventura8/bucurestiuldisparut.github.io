@@ -6936,7 +6936,7 @@ The owner: "make sure we have analytics through the app and especially in the wi
 - **200h Lines kept within the limits**: the shared index's field-events types became `export type *` (no runtime cost), the engine store's zoom and window size moved to `compass.ts` and `window-size.ts`, the admin's telemetry wiring to `telemetry-wiring.ts`.
 - **Verify**: S-A150-HAPPY-FUNNEL-ORDER, S-A150-BAD-NO-EVENTS-BEFORE-CONSENT, S-A150-BAD-STEP-ERROR-CODE-NOT-TEXT, S-A151-HAPPY-STATISTICS, S-A151-BAD-NO-ANALYTICS, S-V70-HAPPY-KEY-ACTIONS, S-V70-BAD-NO-EVENTS-BEFORE-CONSENT, S-V70-BAD-YEAR-DRAG-ONE-EVENT.
 
-## 207. Household computers: the list, one line for a computer without a screen, removal that cleans up first, the governor across computers (W5, the owner 2026-11-13, beta.1) — APPLIED (increment 1 of 3), one chunk added (worker-household, 9 KB)
+## 207. Household computers: the list, one line for a computer without a screen, removal that cleans up first, the governor across computers (W5, the owner 2026-11-13, beta.1) — APPLIED (increments 1 to 3), one chunk added (worker-household, 9 KB)
 
 The owner: "Make it easy for users to use not only their own computer but also the other computers in their household, with minimum input from them. What we did here today for us must be available to our users." Then: "install all dependencies automatically" and "clean up first, disconnect second, and the user never has to run a command." `docs/research/M7-local-worker.md` → *Household computers*; behaviour A143.
 
