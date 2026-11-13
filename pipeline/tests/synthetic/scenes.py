@@ -49,6 +49,8 @@ EXPECTED_RMSE_M: Final = 15.0
 JOIN_ENTITIES: Final = ("DS1035-1057DA023", "DS1035-1057DA024")
 JOIN_FRAME_PX: Final = (1000, 1100)
 JOIN_OFFSET_M: Final = 1500.0
+# The scanner's edge band of `scanner_edges`: its outer and its inner grey level.
+KH7_EDGE_VALUES: Final = (250.0, 205.0)
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,8 @@ class SceneSpec:
     entity_id: str = "DS1035-1057DA023"
     # Where the frame's centre lies from the world's (east, north, EPSG:3857 metres): several frames of one date over one world.
     centre_offset_m: tuple[float, float] = (0.0, 0.0)
+    # The film scanned right to left with the scanner's bright edges, as the 1966 KH-7 strip's delivery (lesson 645).
+    right_to_left: bool = False
 
 
 @dataclass(frozen=True)
@@ -234,6 +238,20 @@ def split_segments(frame: UInt8Array, count: int) -> list[UInt8Array]:
     return [frame[:, start : min(width, start + step) if index < count - 1 else width] for index, start in enumerate(starts)]
 
 
+def scanner_edges(frame: UInt8Array, width: int = 9) -> UInt8Array:
+    """`frame` with the scanner's bright edge band at both its outer ends (white fading to light grey inwards), as the 1966 KH-7
+    strip's scan holds them (lesson 645: the band runs about 240 px of 35 596)."""
+    ramp = numpy.linspace(KH7_EDGE_VALUES[0], KH7_EDGE_VALUES[1], width)
+    band = numpy.broadcast_to(ramp, (frame.shape[0], width))
+    return numpy.ascontiguousarray(numpy.hstack((band, frame, band[:, ::-1])).astype(numpy.uint8))
+
+
+def kh7_segments(frame: UInt8Array) -> list[UInt8Array]:
+    """The 1966 KH-7 strip's delivery (lesson 645): two overlapping halves lettered in the film's order, right to left: `_a` is
+    the right half, `_b` the left one."""
+    return [numpy.ascontiguousarray(part) for part in split_segments(frame, 2)[::-1]]
+
+
 def _tiff_bytes(path: Path, pixels: UInt8Array) -> bytes:
     """The pixels as a plain TIFF's bytes (the file is only a stepping stone into the archive)."""
     write_geotiff(path, GeoTiff([pixels]), ("COMPRESS=DEFLATE",))
@@ -289,7 +307,8 @@ def build_scene(folder: Path, spec: SceneSpec = DEFAULT_SPEC) -> Scene:
     world = render_world(spec.seed)
     truth = truth_for(spec)
     frame = render_frame(world, truth)
-    delivery = pack_delivery(split_segments(frame, spec.segments), spec.entity_id, folder)
+    parts = kh7_segments(scanner_edges(frame)) if spec.right_to_left else split_segments(frame, spec.segments)
+    delivery = pack_delivery(parts, spec.entity_id, folder)
     return Scene(
         folder,
         spec,

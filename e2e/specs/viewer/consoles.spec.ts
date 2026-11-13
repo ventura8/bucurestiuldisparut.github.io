@@ -149,14 +149,21 @@ test.describe('The 10-foot view (V66)', () => {
     test.describe('on a TV', () => {
         test.use(TV);
 
-        test('A ring twice as thick, read from across the room', { tag: '@S-V66-HAPPY-TV-RING' }, async ({ page, lang }) => {
-            await openViewer(page, { lang, hash: AT_1966 });
-            expect(await page.evaluate(() => matchMedia('(pointer: fine)').matches)).toBe(false);
-            await menuButton(page, lang).focus();
-            await page.keyboard.press('ArrowUp');
+        test(
+            'A ring twice as thick and 48 px buttons, read from across the room',
+            { tag: '@S-V66-HAPPY-TV-RING' },
+            async ({ page, lang }) => {
+                await openViewer(page, { lang, hash: AT_1966 });
+                expect(await page.evaluate(() => matchMedia('(pointer: fine)').matches)).toBe(false);
+                await menuButton(page, lang).focus();
+                await page.keyboard.press('ArrowUp');
 
-            await expect.poll(() => outlineWidth(page)).toBe(6);
-        });
+                await expect.poll(() => outlineWidth(page)).toBe(6);
+                // Its buttons are 48 px to the eye, and its text a quarter larger.
+                const zoomIn = await page.getByRole('button', { name: t(lang, 'viewer.zoomIn'), exact: true }).boundingBox();
+                expect(zoomIn?.height).toBe(48);
+            },
+        );
     });
 
     test.describe('with a mouse', () => {
@@ -168,6 +175,8 @@ test.describe('The 10-foot view (V66)', () => {
             await page.keyboard.press('ArrowUp');
 
             await expect.poll(() => outlineWidth(page)).toBe(3);
+            const zoomIn = await page.getByRole('button', { name: t(lang, 'viewer.zoomIn'), exact: true }).boundingBox();
+            expect(zoomIn?.height).toBe(40);
         });
     });
 });

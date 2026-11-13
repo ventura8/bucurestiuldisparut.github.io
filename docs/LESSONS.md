@@ -3787,6 +3787,20 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: both offsets follow `--hcm-focus-ring-width` (`viewer-styles.ts`), the full attribution's padding too.
     - **A ring width that changes must change every offset written for the old width; search the styles for the old number.**
 
+645. **A strip scanned right to left was joined left to right, and the layer ended at the seam: half the city.**
+    - Seen: 2026-11-13, live: the KH-7 GAMBIT frame DZB00403000026H017001 (12 July 1966) covers all of Bucharest, but its layer `kh-7-gambit-12-iulie-1966` covered 49 % (lat 44.437 to 44.55); the crop stopped at a white edge.
+    - Cause: USGS letters the strip's two segments in the film's order, right to left (`_b` lies left of `_a`), and `stitch` always put `_b` right of `_a`. Its match strip was the segment's first 160 px, the scanner's bright edge band, and it matched the other segment's band at 0.90, so the wrong join looked sure; `locate` then proved the city on `_a` alone.
+    - Found by: the rehearsal's own copies on the NUC (`frame.json` placed `_b` at x 36 046 of `_a`'s 36 346) and the preview, where the city lay at `_a`'s left edge and `_b`'s right one; the first pair matched both ways on every real multi-segment frame.
+    - Fix and pin: the matched strip starts `EDGE_SKIP_SHARE` in from the edge; the first pair is matched both ways and the better way holds for the frame; a pair under `MIN_PAIR_SCORE` either way is a segment of another frame and fails the step (S-P01-HAPPY-KH7-TWO-SEGMENTS, S-P01-BAD-SEGMENT-OTHER-FRAME; the generator's `kh7_segments`).
+    - **A delivery's file order is the film's, not the image's: find the order from the pixels, and never match on a scan's own edge.**
+
+646. **A search that outgrew its timeout told the owner only "Something went wrong on the server".**
+    - Seen: 2026-11-13, live: Search USGS again on the scene page failed; `imagery-search` logged Cloud Run's "maximum request timeout" while the harvest went on for over 7 minutes (five datasets, two at the 500 cap and searched again per target year, ten years).
+    - Cause: every dataset, target year and scene write ran one after another, with nothing to stop it before the 300 s timeout; the cut-off reached the browser without the callable's details, which reads as `apiError.internal`.
+    - Found by: the function's logs (`mcp__firebase__functions_get_logs`, read only).
+    - Fix and pin: datasets at once, target years two at a time, writes 25 at a time, no USGS page after `SEARCH_BUDGET_MS` (360 s), timeouts 540 s and 550 s; a search that failed with no reason after 5 minutes says it was cut off and what to do next (S-A11-BAD-SEARCH-CUT-OFF).
+    - **A long call needs a budget of its own inside its timeout, and a failure the browser cannot read must still be told from the call's own context.**
+
 661. **A WebGL context restore threw inside Mapbox and left a blank map; a browser's own script filled the crash list.**
     - Seen: 2026-11-08 and 11-11, the admin's Crashes page: "Cannot convert undefined or null to object" at `ModelManager.load ← reloadModels ← Map._contextRestored` (mapbox-gl 3.34.1), and two Firefox-for-iOS groups (`__firefox__`) whose only frame was the page's address at line 1.
     - Cause: Mapbox reloads every style fragment's 3D models with `Object.keys(this.modelUris[scope])`, and a fragment that never had a model has no entry; the reader-mode script of Firefox for iOS runs in every page and fails on ours.
