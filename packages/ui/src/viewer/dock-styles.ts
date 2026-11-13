@@ -254,7 +254,7 @@ export const dockStyles = css`
 
     /*
      * The keyboard's year chip shows while the slider has the focus: the photos chip is only transparent then, so it keeps
-     * its place in the Tab order (hidden, Tab from the slider skipped it: the tour's V68 journey, lesson 644).
+     * its place in the Tab order (hidden, Tab from the slider skipped it: the tour's V68 journey, lesson 646).
      */
     .frame:has(hcm-timeline[tipping='focus']) .dock.chip {
         visibility: visible;

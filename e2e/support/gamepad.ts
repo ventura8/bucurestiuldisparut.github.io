@@ -87,3 +87,28 @@ export async function setTabHidden(page: Page, hidden: boolean): Promise<void> {
         document.dispatchEvent(new Event('visibilitychange'));
     }, hidden);
 }
+
+/** Unplugs the pad: it leaves `getGamepads` and the page hears `gamepaddisconnected`, as the browser does. */
+export async function disconnectPad(page: Page): Promise<void> {
+    await page.evaluate(() => {
+        (window as unknown as PadWindow).__hcmPads.length = 0;
+        window.dispatchEvent(new Event('gamepaddisconnected'));
+    });
+}
+
+/** Counts the page's reads of the pads (`__hcmPadReads`): a loop that stopped reads no more. Install after the fake pads. */
+export async function countPadReads(page: Page): Promise<void> {
+    await page.addInitScript(() => {
+        const counted = window as unknown as { __hcmPadReads: number };
+        const read = navigator.getGamepads.bind(navigator);
+        counted.__hcmPadReads = 0;
+        navigator.getGamepads = () => {
+            counted.__hcmPadReads += 1;
+            return read();
+        };
+    });
+}
+
+export async function padReads(page: Page): Promise<number> {
+    return page.evaluate(() => (window as unknown as { __hcmPadReads: number }).__hcmPadReads);
+}

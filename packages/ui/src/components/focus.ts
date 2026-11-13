@@ -100,3 +100,12 @@ export function restoreFocus(element: Element | null): void {
         element.focus();
     }
 }
+
+/** Inert reaches into a shadow tree from any host above it, which `closest` alone does not cross. */
+export function isInert(element: Element): boolean {
+    if (element.closest('[inert]') !== null) {
+        return true;
+    }
+    const root = element.getRootNode();
+    return root instanceof ShadowRoot && isInert(root.host);
+}

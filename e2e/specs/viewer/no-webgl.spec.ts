@@ -90,3 +90,23 @@ test('Without a map a photo opened from the list has no Show on map', { tag: '@S
     await expect(viewer(page).getByRole('button', { name: t(lang, 'photo.openLightbox') })).toBeVisible();
     await expect(viewer(page).getByRole('button', { name: t(lang, 'photo.locate'), exact: true })).toHaveCount(0);
 });
+
+// A games console's browser without WebGL (V66, docs/research/viewer-input.md §6): the card says what the console lacks,
+// in plain words, and where the map works instead; the photo list stays.
+test.describe('On a games console', () => {
+    test.use({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; Xbox; Xbox Series X) AppleWebKit/537.36 Chrome/131.0 Edg/131.0' });
+
+    test(
+        "A console's browser without WebGL says what it lacks and where the map works",
+        { tag: '@S-V66-BAD-NO-WEBGL-CONSOLE' },
+        async ({ page, lang }) => {
+            await page.goto(sitePath('bucharest', { lang }));
+            await waitForEngineEvent(page, 'hcm-ready');
+
+            await expect(page.getByRole('alert')).toContainText(t(lang, 'error.webglConsole'));
+            await expect(page.getByRole('alert')).not.toContainText(/webgl/i);
+            const list = viewer(page).locator('.fallback hcm-photo-list');
+            await expect(list.getByRole('list', { name: t(lang, 'photos.list') }).getByRole('button')).toHaveCount(45);
+        },
+    );
+});

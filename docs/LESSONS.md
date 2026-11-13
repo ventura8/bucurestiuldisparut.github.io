@@ -3775,13 +3775,25 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: `.scroller` and `.track` inherit the card's touch-action (`timeline-styles.ts`); `hcm-timeline-tip.test.ts` reads it on the track, roomy and scrolling.
     - **Set touch-action inside the nearest scroll container of the element a finger lands on, and test a gesture with the browser's own touch events, never only with synthetic pointer events.**
 
-643. **A press meant to open the collapsed timeline also moved its year.**
+643. **Spatial navigation stepped from a button into the map: the canvas under every control was the nearest box "to the right".**
+    - Seen: 2026-11-13, track/consoles, `packages/ui/test/viewer/spatial-nav.test.ts`: ArrowRight from a top-left button focused the map's canvas, not the menu button.
+    - Cause: the canvas is tabbable and covers the whole viewer; its centre lies right of (and below) every control, with no gap ahead or across, so it always scored best.
+    - Fix and pin: a box that holds the middle of the focused control is around it, not beside it, and is never a step's target (`encloses` in `spatial-nav.ts`); a step from the map starts from the viewer's middle.
+    - **A geometric focus search must skip the containers under the focus (the map, a scrolling pane), or the biggest box wins every direction.**
+
+644. **A thicker focus ring for the TV was cut by Mapbox's box on the map and on its logo.**
+    - Seen: 2026-11-13, track/consoles, the tour's journey `tv` at 1920 × 1080: `[focus-ring]` on the canvas and on Mapbox's logo, cut by `div.map.mapboxgl-map`, which hides its overflow.
+    - Cause: the canvas's inner ring was `outline-offset: -3px` and the logo kept the kit's 2 px offset, both fitted to the 3 px ring; the 6 px one reached past the box.
+    - Fix and pin: both offsets follow `--hcm-focus-ring-width` (`viewer-styles.ts`), the full attribution's padding too.
+    - **A ring width that changes must change every offset written for the old width; search the styles for the old number.**
+
+645. **A press meant to open the collapsed timeline also moved its year.**
     - Seen: 2026-11-13, track/timeline-b, `timeline-dock.test.ts`: a press on the pill (V67) opened the card and called `setYear(null)`.
     - Cause: the dock's `@pointerdown` listened in the bubbling phase, after the timeline's own track listener inside its shadow root had already selected the stop under the press.
     - Fix and pin: the dock catches the press in the capture phase (`{ capture: true, handleEvent }`), stops it and opens the card; the test asserts no `setYear` call.
     - **A wrapper that must take a press away from the element it wraps listens in the capture phase; a bubbling listener runs after the element has acted.**
 
-644. **Tab from the timeline skipped the photos chip whenever the year had several dates.**
+646. **Tab from the timeline skipped the photos chip whenever the year had several dates.**
     - Seen: 2026-11-13, track/timeline-b, the tour's journey `timeline-dates` at c320, c360 and c915l: "Tab never reaches Fotografii din jurul anului 1980".
     - Cause: the keyboard's year chip shows while the slider has the focus on a year of several dates, and the photos chip under it stepped aside with `visibility: hidden`, which also takes it out of the Tab order; the next Tab went past it.
     - Fix and pin: under the keyboard's chip (`tipping="focus"`) it steps aside with `opacity: 0` and no pointer (`dock-styles.ts`), so it keeps its place in the Tab order and shows again as the focus reaches it; under a finger's or a mouse's chip it is still hidden; the collapsed pill shows no year chip at all.

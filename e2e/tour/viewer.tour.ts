@@ -113,6 +113,14 @@ test(
 );
 
 test(
+    'A TV or a games console: the D-pad, the timeline and Layers at 1920 × 1080 with a coarse pointer',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V66-HAPPY-TOUR'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('tv'));
+    },
+);
+
+test(
     "The timeline's pill on a phone and the menu of a year's dates",
     {
         tag: [

@@ -1,14 +1,15 @@
 /**
  * The gamepad's lazy chunk (docs/research/viewer-input.md §3; a fake pad in the tests, no real hardware was available):
  * one animation-frame loop while a pad of the standard mapping is connected and the tab is visible. The left stick pans,
- * the right stick and the triggers zoom, each button is a viewer command or a move of the focus. A pad of any other
- * mapping is refused once with a toast and never polled.
+ * the right stick turns (across) and zooms (up and down), so do the triggers, each button is a viewer command or a move of the focus (spatial,
+ * `../spatial-nav.ts`). A pad of any other mapping is refused once with a toast and never polled.
  */
 import type { Logger, MapView, MessageKey } from '@hcm/shared';
 
-import { deepActiveElement, tabbableElements } from '../../components/focus.js';
+import { deepActiveElement, isInert } from '../../components/focus.js';
 import type { MapPort } from '../../map/map-port.js';
-import { wrapped, type InputCommand } from '../input-commands.js';
+import type { InputCommand } from '../input-commands.js';
+import type { Direction } from '../spatial-nav.js';
 import { connectedPads, type PadWindow } from './pads.js';
 
 /** What the session needs from `<hcm-map-viewer>`. */
@@ -17,6 +18,10 @@ export interface GamepadSurface {
     runInput(command: InputCommand): void;
     mapCovered(): boolean;
     toast(key: MessageKey): void;
+    /** The D-pad: the focused control's arrow key, or the focus to the nearest control that way. */
+    navigate(direction: Direction): void;
+    /** A: click what has the focus, or Enter on the map. */
+    activate(): void;
 }
 
 export interface GamepadDeps {
@@ -39,14 +44,29 @@ export interface GamepadModule {
 const DEAD_ZONE = 0.15;
 const PAN_PX_PER_S = 500;
 const ZOOM_PER_S = 1.5;
+const TURN_DEG_PER_S = 90;
 const MAX_FRAME_MS = 100;
 const WORLD_PX = 512;
 const LEFT_TRIGGER = 6;
+const DPAD: readonly (readonly [number, Direction])[] = [
+    [12, 'up'],
+    [13, 'down'],
+    [14, 'left'],
+    [15, 'right'],
+];
 const RIGHT_TRIGGER = 7;
 
 /** A stick's two axes, or nothing inside the radial dead zone. */
 export function stick(x: number, y: number): readonly [number, number] {
     return Math.hypot(x, y) < DEAD_ZONE ? [0, 0] : [x, y];
+}
+
+/** Buttons the Xbox's key emulation already sends as `Gamepad…` keys (`../spatial-nav.ts`): A, B, Y, View, the D-pad. */
+const EMULATED = new Set([0, 1, 3, 8, 12, 13, 14, 15]);
+
+/** `view` turned clockwise by `degrees`, the bearing kept in `[0, 360)`. */
+export function turnedView(view: MapView, degrees: number): MapView {
+    return { ...view, bearing: (((view.bearing + degrees) % 360) + 360) % 360 };
 }
 
 /** `view` moved by screen pixels (x right, y down) and zoom levels; Mapbox applies the bounds and the zoom range. */
@@ -77,15 +97,6 @@ function buttonValue(pad: Gamepad, index: number): number {
 
 function held(pad: Gamepad): ReadonlySet<number> {
     return new Set(pad.buttons.flatMap((button, index) => (button.pressed ? [index] : [])));
-}
-
-/** Inert reaches into a shadow tree from any host above it, which `closest` alone does not cross. */
-function isInert(element: Element): boolean {
-    if (element.closest('[inert]') !== null) {
-        return true;
-    }
-    const root = element.getRootNode();
-    return root instanceof ShadowRoot && isInert(root.host);
 }
 
 /** One listener per element however many frames ask: the browser keeps a function only once. */
@@ -126,7 +137,7 @@ class Session implements GamepadSession {
             [
                 0,
                 () => {
-                    this.#activate();
+                    deps.surface.activate();
                 },
             ],
             [
@@ -145,20 +156,12 @@ class Session implements GamepadSession {
                     this.#openMenu();
                 },
             ],
-            [
-                12,
+            ...DPAD.map(([index, direction]): [number, () => void] => [
+                index,
                 () => {
-                    this.#moveFocus(-1);
+                    deps.surface.navigate(direction);
                 },
-            ],
-            [
-                13,
-                () => {
-                    this.#moveFocus(1);
-                },
-            ],
-            [14, command('year-previous')],
-            [15, command('year-next')],
+            ]),
         ]);
         deps.win.document.addEventListener('visibilitychange', this.#onVisibility);
     }
@@ -215,12 +218,18 @@ class Session implements GamepadSession {
 
     #press(pad: Gamepad): void {
         const now = held(pad);
-        for (const [index, action] of this.#buttons) {
+        for (const [index, action] of this.#live()) {
             if (now.has(index) && !this.#held.has(index)) {
                 this.#pressed = true;
                 action();
             }
         }
+    }
+
+    /** The buttons this loop acts on: under the Xbox's key emulation, not those that arrive as keys. */
+    #live(): Iterable<readonly [number, () => void]> {
+        const nav = this.#deps.win.navigator as Partial<Record<'gamepadInputEmulation', string>>;
+        return nav.gamepadInputEmulation === 'keyboard' ? [...this.#buttons].filter(([index]) => !EMULATED.has(index)) : this.#buttons;
     }
 
     /**
@@ -230,7 +239,7 @@ class Session implements GamepadSession {
     #ringFocus(): void {
         const active = this.#active();
         if (this.#pressed && isControl(active, this.#deps.win.document.body)) {
-            active.style.outline = '3px solid var(--md-sys-color-secondary)';
+            active.style.outline = 'var(--hcm-focus-ring-width, 3px) solid var(--md-sys-color-secondary)';
             active.addEventListener('blur', clearRing, { once: true });
         }
     }
@@ -238,13 +247,14 @@ class Session implements GamepadSession {
     #move(pad: Gamepad, seconds: number): void {
         const { surface, map } = this.#deps;
         const [panX, panY] = stick(axisValue(pad, 0), axisValue(pad, 1));
-        const [, zoomY] = stick(0, axisValue(pad, 3));
+        const [turn, zoomY] = stick(axisValue(pad, 2), axisValue(pad, 3));
         const zoom = buttonValue(pad, RIGHT_TRIGGER) - buttonValue(pad, LEFT_TRIGGER) - zoomY;
-        if (Math.hypot(panX, panY, zoom) === 0 || surface.mapCovered()) {
+        if (Math.hypot(panX, panY, zoom, turn) === 0 || surface.mapCovered()) {
             return;
         }
         const pixels = PAN_PX_PER_S * seconds;
-        map.flyTo(movedView(map.getView(), panX * pixels, panY * pixels, zoom * ZOOM_PER_S * seconds), { animate: false });
+        const moved = movedView(map.getView(), panX * pixels, panY * pixels, zoom * ZOOM_PER_S * seconds);
+        map.flyTo(turnedView(moved, turn * TURN_DEG_PER_S * seconds), { animate: false });
     }
 
     #fab(): HTMLElement | null {
@@ -267,42 +277,11 @@ class Session implements GamepadSession {
         return deepActiveElement(this.#deps.win.document);
     }
 
-    /** What has the focus, or what Enter does on the map: the photo or place at its centre (`map/pointer.ts`). */
-    #activate(): void {
-        const active = this.#active();
-        if (isControl(active, this.#deps.win.document.body) && active.localName !== 'canvas') {
-            active.click();
-        } else {
-            this.#enterOnMap();
-        }
-    }
-
-    #enterOnMap(): void {
-        const canvas = this.#deps.surface.renderRoot.querySelector('canvas');
-        if (canvas !== null && !this.#deps.surface.mapCovered()) {
-            canvas.focus();
-            canvas.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-        }
-    }
-
     #close(): void {
         if (this.#menuOpen()) {
             this.#fab()?.click();
         } else {
             this.#deps.surface.runInput('close');
-        }
-    }
-
-    /** Through the tabbable, non-inert controls; inside the open menu, its own arrow keys. */
-    #moveFocus(step: number): void {
-        // Nothing focused counts as the body: on no item of the menu, and first of no list.
-        const active = this.#active() ?? this.#deps.win.document.body;
-        // An item of the open menu: an action (`menuitem`) or a switch (`menuitemcheckbox`).
-        if (String(active.getAttribute('role')).startsWith('menuitem')) {
-            active.dispatchEvent(new KeyboardEvent('keydown', { key: step > 0 ? 'ArrowDown' : 'ArrowUp', bubbles: true, composed: true }));
-        } else {
-            const list = tabbableElements(this.#deps.surface.renderRoot as ShadowRoot).filter((element) => !isInert(element));
-            list[wrapped(list.indexOf(active as HTMLElement), step, list.length)]?.focus();
         }
     }
 

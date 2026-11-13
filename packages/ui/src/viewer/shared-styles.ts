@@ -14,7 +14,7 @@ export const baseStyles = css`
 
     /* The kit's ring (focusRing): secondary, or the colour a surface sets in --hcm-focus-ring-color. */
     :focus-visible {
-        outline: 3px solid var(--hcm-focus-ring-color, var(--md-sys-color-secondary));
+        outline: var(--hcm-focus-ring-width, 3px) solid var(--hcm-focus-ring-color, var(--md-sys-color-secondary));
         outline-offset: 2px;
     }
 

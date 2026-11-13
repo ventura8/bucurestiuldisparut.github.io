@@ -55,6 +55,8 @@ export interface ViewerView {
     readonly finePointer: boolean;
     /** The timeline's pill on a phone (V12) and its date picker (V13). */
     readonly dock: TimelineDock;
+    /** A games console's browser (`game-console.ts`): the no-WebGL message says what it lacks. */
+    readonly gameConsole?: boolean;
 }
 
 /** `hcm-photo-locate` of `<hcm-photo-sheet>`: the photo, and its place's offset from the map's centre (`locateOffset`). */
@@ -274,7 +276,10 @@ function consentAsked(state: ViewerState | null, manifest: Manifest): boolean {
 function noWebgl(view: ViewerView, manifest: Manifest, handlers: ViewerHandlers): TemplateResult {
     return html`<div class="status">
         <div class="fallback">
-            <hcm-error-card .error=${{ code: 'error.webgl', retryable: false }} .locale=${view.locale}></hcm-error-card>
+            <hcm-error-card
+                .error=${{ code: view.gameConsole ? 'error.webglConsole' : 'error.webgl', retryable: false }}
+                .locale=${view.locale}
+            ></hcm-error-card>
             ${consentAsked(view.state, manifest) ? renderConsentBanner(view.locale, handlers.onConsent, false) : nothing}
             <hcm-photo-list
                 .photos=${manifest.photos}
