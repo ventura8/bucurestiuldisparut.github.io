@@ -142,9 +142,23 @@ export class HcmLayerPanel extends LitElement {
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
-                padding-block-end: 4px;
+
+                /* Compare's 48 px ring reaches 4 px above its 40 px button: inside the strip, not cut by the scroller's edge. */
+                padding-block: 4px;
                 background: var(--md-sys-color-surface-container-low);
                 box-shadow: 0 1px 0 var(--md-sys-color-outline-variant);
+            }
+
+            /*
+             * Only a large window's tall pane has room for a pinned strip: at half height on a 360 x 800 phone it took 170
+             * of 310 px, and in a 1024 x 768 side sheet a switch the focus scrolled back to sat under it (the tour's
+             * focus-obscured and target-size checks, docs/LESSONS.md 618). Below 1200 x 700 the strip scrolls with the list.
+             */
+            @media (width < 1200px), (height < 700px) {
+                .pinned {
+                    position: static;
+                    box-shadow: none;
+                }
             }
 
             .empty {
@@ -186,7 +200,9 @@ export class HcmLayerPanel extends LitElement {
                 gap: 12px;
                 align-items: center;
                 justify-content: space-between;
-                min-block-size: 40px;
+
+                /* 48 px rows: each switch's 48 px touch target stays its own, none reaches over its neighbour (docs/LESSONS.md 618). */
+                min-block-size: 48px;
             }
 
             .labels p {

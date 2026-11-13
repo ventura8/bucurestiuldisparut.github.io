@@ -3440,6 +3440,17 @@
             "notes": "Owner 2026-11-10. Tests: e2e/specs/viewer/layers-pinned.spec.ts, packages/ui/test/viewer/hcm-layer-panel.test.ts."
         },
         {
+            "id": "S-V03-BAD-LAYERS-PINNED-PHONE",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On a phone, a tablet or a short window the pinned strip scrolls with the list",
+            "asserts": "Layers at 360 x 800 (half-height bottom sheet) -> scrolling the list to its end moves Compare up with it; the last focused switch is the element under its own centre (no strip over it)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "2026-11-13, the tour's focus-obscured and target-size findings at phone sizes. Tests: e2e/specs/viewer/layers-pinned.spec.ts."
+        },
+        {
             "id": "S-V32-HAPPY-OWN-TILES",
             "behaviour": "V32",
             "area": "viewer",
