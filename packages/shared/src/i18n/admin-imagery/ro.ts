@@ -28,20 +28,18 @@ export const ro = {
     'adminContent.imagery.reason.cloudCity': 'Nori peste oraș, după previzualizare: cam {percent} %',
     'adminContent.imagery.fact.cloudCity': 'Nori peste oraș (după previzualizare)',
     'adminContent.imagery.cloudy.tag': 'Probabil înnorat peste oraș: {percent} %',
-    'adminContent.imagery.cloudy.warning':
-        'Previzualizarea USGS arată nori peste o mare parte din oraș, așa că scanarea poate arăta puțin din străzi. Uită-te la previzualizare înainte s-o imporți sau s-o cumperi. Dacă nu-ți folosește, marcheaz-o mai jos Nefolositoare.',
-    'adminContent.imagery.cloudy.beforeBuying':
-        'Probabil înnorat peste oraș: {percent} %. Deschide-o și uită-te la previzualizare înainte s-o cumperi: o scanare înnorată arată puțin din oraș.',
     'adminContent.imagery.unusable.title': 'Nefolositoare?',
-    'adminContent.imagery.unusable.hint':
-        'Dacă scanarea nu poate fi folosită, spune de ce. Iese din planul pentru tot orașul și din „Cumpără această scanare”, iar lista o ascunde cu Ascunde nefolositoare. Poți anula aici.',
+    'adminContent.imagery.cloudy.warning': 'Previzualizarea arată nori peste mare parte din oraș: scanarea poate arăta puține străzi.',
+    'adminContent.imagery.cloudy.todo': 'Verifică previzualizarea înainte de import sau cumpărare; altfel marcheaz-o Nefolositoare.',
+    'adminContent.imagery.cloudy.beforeBuying': 'Probabil înnorat peste oraș: {percent} %. Verifică previzualizarea înainte s-o cumperi.',
+    'adminContent.imagery.unusable.hint': 'Dacă scanarea nu poate fi folosită, spune de ce: iese din planul orașului și din „Cumpără”.',
+    'adminContent.imagery.unusable.hidden': 'Lista o ascunde cât timp Ascunde nefolositoare e pornit. Poți anula aici.',
+    'adminContent.imagery.unusable.state': 'Ai marcat scanarea nefolositoare ({reason}): planul pentru tot orașul o lasă deoparte.',
     'adminContent.imagery.unusable.prefix': 'Nefolositoare:',
     'adminContent.imagery.unusable.clouds': 'Nori',
     'adminContent.imagery.unusable.haze': 'Ceață sau neclară',
     'adminContent.imagery.unusable.area': 'Altă zonă',
     'adminContent.imagery.unusable.other': 'Altceva',
-    'adminContent.imagery.unusable.state':
-        'Ai marcat scanarea nefolositoare ({reason}). Planul pentru tot orașul o lasă deoparte, iar lista o ascunde cât timp Ascunde nefolositoare e pornit.',
     'adminContent.imagery.unusable.undo': 'Totuși e folositoare',
     'adminContent.imagery.unusable.tag': 'Nefolositoare',
     'adminContent.imagery.unusable.marked': 'Marcată nefolositoare. Planul pentru tot orașul nu mai contează pe această scanare.',

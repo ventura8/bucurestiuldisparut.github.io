@@ -98,7 +98,7 @@ describe('estimateClouds', () => {
             UsgsSceneDoc['footprint'][number],
             UsgsSceneDoc['footprint'][number],
         ];
-        expect(frameQuad({ corners: { nw: se, ne: sw, se: nw, sw: ne }, footprint: OVER_THE_CITY.footprint })?.[0]).toEqual(se);
+        expect(frameQuad({ corners: { nw: se, ne: sw, se: nw, sw: ne }, footprint: OVER_THE_CITY.footprint })[0]).toEqual(se);
         const ring = [...OVER_THE_CITY.footprint, { lat: 44.45, lng: 25.8 }];
         expect(frameQuad({ footprint: ring })).toEqual([
             { lat: BOUNDS.north, lng: 25.8 },
@@ -111,7 +111,7 @@ describe('estimateClouds', () => {
     it('happyPath_aCounterClockwiseFootprintStartsFromItsNorthWesternCorner', () => {
         const reversed = { footprint: [...OVER_THE_CITY.footprint].reverse() };
 
-        expect(frameQuad(reversed)?.[0]).toEqual({ lat: BOUNDS.north, lng: BOUNDS.west });
+        expect(frameQuad(reversed)[0]).toEqual({ lat: BOUNDS.north, lng: BOUNDS.west });
         // The northern quarter (16 rows) is cloud, its last row an edge: 15 of 64.
         expect(
             estimateClouds(

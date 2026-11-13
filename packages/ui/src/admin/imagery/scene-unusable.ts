@@ -50,6 +50,7 @@ export function cloudyWarning(locale: Locale, scene: SceneItemPort): TemplateRes
               <div class="alert-body">
                   <p><strong>${contentText(locale, 'adminContent.imagery.cloudy.tag', { percent: percentText(locale, share) })}</strong></p>
                   <p>${contentText(locale, 'adminContent.imagery.cloudy.warning')}</p>
+                  <p>${contentText(locale, 'adminContent.imagery.cloudy.todo')}</p>
               </div>
           </div>`;
 }
@@ -63,6 +64,7 @@ function reasonButtons(context: ImageryContext, scene: SceneItemPort): TemplateR
     const { locale } = context;
     const off = context.view.ordering !== null || context.readOnly;
     return html`<p>${contentText(locale, 'adminContent.imagery.unusable.hint')}</p>
+        <p>${contentText(locale, 'adminContent.imagery.unusable.hidden')}</p>
         <div class="actions" role="group" aria-labelledby="scene-unusable">
             ${REASONS.map(
                 (reason) =>

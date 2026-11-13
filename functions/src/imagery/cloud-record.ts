@@ -27,7 +27,7 @@ async function record(deps: CloudDeps, cityId: string, measured: UsgsSceneDoc): 
     });
 }
 
-interface Measure {
+export interface Measure {
     readonly cityId: string;
     readonly scene: UsgsSceneDoc;
     /** Reads the browse image's bytes. */
@@ -51,14 +51,9 @@ async function measure(deps: CloudDeps, { cityId, scene, bytes, rewritePlan }: M
 }
 
 /** Measures and records the clouds over the city on the scene's browse image (`bytes` reads it); a failure is logged, never thrown. */
-export async function measureClouds(
-    deps: CloudDeps,
-    cityId: string,
-    scene: UsgsSceneDoc,
-    bytes: () => Promise<Uint8Array>,
-    rewritePlan = true,
-): Promise<void> {
-    await measure(deps, { cityId, scene, bytes, rewritePlan }).catch((error: unknown) => {
+export async function measureClouds(deps: CloudDeps, measured: Measure): Promise<void> {
+    const { cityId, scene } = measured;
+    await measure(deps, measured).catch((error: unknown) => {
         deps.log.warn('cloud estimate failed', {
             cityId,
             entityId: scene.entityId,

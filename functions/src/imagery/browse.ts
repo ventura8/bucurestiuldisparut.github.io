@@ -19,7 +19,7 @@ import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { UpstreamError } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
-import { measureClouds } from './cloud-record.js';
+import { measureClouds, type Measure } from './cloud-record.js';
 import { imageTypeOf } from './magic.js';
 import { IMAGERY_WRITER, stampOf } from './records.js';
 
@@ -99,6 +99,13 @@ async function fetchAndStore(deps: BrowseDeps, scene: UsgsSceneDoc, sourceUrl: s
     return fetched;
 }
 
+/** The clouds of a scene not measured yet by the current method (a copy made again is the same frame). */
+async function measureOnce(deps: BrowseDeps, measured: Measure): Promise<void> {
+    if (measured.scene.cloudEstimate?.version !== CLOUD_ESTIMATE_VERSION) {
+        await measureClouds(deps, measured);
+    }
+}
+
 /** A failure's code: our own refusal's, else USGS or the bucket not answering. */
 function browseErrorOf(error: unknown): BrowseError {
     return error instanceof ApiError
@@ -127,9 +134,7 @@ export async function copyBrowse(
         const fetched = await fetchAndStore(deps, scene, sourceUrl);
         const path = RASTER_PATHS.browse(scene.dataset, scene.entityId);
         await recordBrowse(deps, cityId, scene.entityId, { state: 'copied', sourceUrl, path, checkedAt });
-        if (scene.cloudEstimate?.version !== CLOUD_ESTIMATE_VERSION) {
-            await measureClouds(deps, cityId, scene, () => Promise.resolve(fetched.bytes), rewritePlan);
-        }
+        await measureOnce(deps, { cityId, scene, bytes: () => Promise.resolve(fetched.bytes), rewritePlan });
         return { path, contentType: fetched.type };
     } catch (error) {
         const code = browseErrorOf(error);
@@ -164,9 +169,7 @@ async function imageryBrowse(
     if (stored === undefined) {
         return copyBrowse(deps, request.cityId, scene);
     }
-    if (scene.cloudEstimate?.version !== CLOUD_ESTIMATE_VERSION) {
-        await measureClouds(deps, request.cityId, scene, () => deps.blobs.read('private', stored.path));
-    }
+    await measureOnce(deps, { cityId: request.cityId, scene, bytes: () => deps.blobs.read('private', stored.path), rewritePlan: true });
     return stored;
 }
 

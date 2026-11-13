@@ -50,7 +50,7 @@ describe('<hcm-imagery-page>: Not useful', () => {
         );
 
         const section = deep(element, '[data-scene-unusable]');
-        expect(deep(section, '[data-state="unusable-marked"]').textContent).toContain('You marked this scan not useful (Clouds).');
+        expect(deep(section, '[data-state="unusable-marked"]').textContent).toContain('You marked this scan not useful (Clouds):');
         click(deep(section, 'hcm-button'));
         await updated(element);
 

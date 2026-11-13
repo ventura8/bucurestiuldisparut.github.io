@@ -3813,13 +3813,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: under the keyboard's chip (`tipping="focus"`) it steps aside with `opacity: 0` and no pointer (`dock-styles.ts`), so it keeps its place in the Tab order and shows again as the focus reaches it; under a finger's or a mouse's chip it is still hidden; the collapsed pill shows no year chip at all.
     - **To move a control out of sight for a moment while the keyboard is nearby, never use `visibility: hidden` or `display: none`: they take it out of the Tab order.**
 
-661. **Every KH-9 panoramic preview failed with "cannot be fetched right now, try again", and Try again never helped.**
+649. **Every KH-9 panoramic preview failed with "cannot be fetched right now, try again", and Try again never helped.**
     - Seen: 2026-11-13, the live admin, D3C1207-300256A038 and D3C1212-300570A079; the logs read `UpstreamError: remote call failed: invalid`.
     - Cause: USGS's Declass 3 browse images are 7 to 13 MB (`curl -I` on `ims.cr.usgs.gov/browse/declass3/…`); `RemoteFiles` stops at `BROWSE_MAX_BYTES` (5 MB) and calls a longer file `invalid`, which the browse proxy turned into the retryable "unavailable".
     - Fix and pin: the fetch takes up to 30 MB in 30 s and stores a file over 5 MB shrunk to a 4,096 px JPEG; each failure records what failed (`browseNotImage`, `browseTooLarge`, `browseUnavailable`) and says what to do (`functions/test/imagery/browse.test.ts`, S-A12-HAPPY-LARGE-BROWSE, S-A12-BAD-BROWSE-SPECIFIC).
     - **Measure a real upstream file before choosing a size cap, and never word a failure that a retry cannot fix as "try again".**
 
-662. **The whole-city plan kept offering to buy a scan that is all cloud over the city.**
+650. **The whole-city plan kept offering to buy a scan that is all cloud over the city.**
     - Seen: 2026-11-13, the owner on DS09066A047MC019 (1964): "This scan is useless (too many clouds!!!)".
     - Cause: declassified records carry no cloud cover, so the rank scored every frame's clouds "unknown", and nothing let the owner set a scene aside: the client rule allowed `rejected`, but no screen wrote it and a client write would not rewrite the plan.
     - Fix and pin: the browse image's clouds over the city are measured (`cloud-estimate.ts`) and rank, card, page and Buy this scan say so; `imagery.markScene` sets a scene aside with why and writes the plan again (S-A152-*).

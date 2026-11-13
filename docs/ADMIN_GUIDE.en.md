@@ -373,8 +373,8 @@ The message shown, its cause and what to do, screen by screen.
 | "Mapbox refused the token: it is invalid or has been revoked." / "The token lacks these scopes: …" | the Mapbox secret token changed | **Open the Mapbox step of Setup** and paste a token with the named scopes |
 | "Does not fit this month's Mapbox budget: choose how to go on" | the publish costs more compute units than are left | the free Studio upload, next month, or pay |
 | "USGS did not answer when we asked for the preview. Try again in a few minutes." | USGS's preview server did not answer | **Try again** in a few minutes |
-| "USGS's preview of this frame is too large for us to copy (over 30 MB) …" | the preview is larger than the server copies | trying again will not help: open the frame in EarthExplorer to see it |
-| "USGS sent a web page instead of the preview picture …" | usually USGS's maintenance | **Try again** later; if it keeps happening, open the frame in EarthExplorer |
+| "The preview is over 30 MB, too big to copy; retrying will not help. See it in EarthExplorer." | the preview is larger than the server copies | open the frame in EarthExplorer to see it |
+| "USGS sent a web page, not the preview (often during maintenance). Try again later." | usually USGS's maintenance | **Try again** later; if it keeps happening, open the frame in EarthExplorer |
 | "The file is not a GeoTIFF. Upload a .tif file." | the chosen file is another kind of image | export it as a GeoTIFF first |
 | "The source has no tiles at this address." / "The address does not answer with an image." / "The tile server is not responding." | **Check** of a tile address in **Link a layer** | correct the address (it must hold `{z}`, `{x}`, `{y}`) or try again later |
 

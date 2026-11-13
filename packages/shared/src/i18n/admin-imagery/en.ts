@@ -26,20 +26,18 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.reason.cloudCity': 'Clouds over the city, judged from the preview: about {percent} %',
     'adminContent.imagery.fact.cloudCity': 'Clouds over the city (from the preview)',
     'adminContent.imagery.cloudy.tag': 'Probably cloudy over the city: {percent} %',
-    'adminContent.imagery.cloudy.warning':
-        'The USGS preview shows clouds over much of the city, so this scan may show little of its streets. Look at the preview before you import or buy it. If it is of no use, mark it Not useful below.',
-    'adminContent.imagery.cloudy.beforeBuying':
-        'Probably cloudy over the city: {percent} %. Open it and look at the preview before you buy: a cloudy scan shows little of the city.',
     'adminContent.imagery.unusable.title': 'Not useful?',
-    'adminContent.imagery.unusable.hint':
-        'If this scan cannot be used, say why. It leaves the whole-city plan and its Buy this scan, and the list hides it under Hide not useful. You can undo it here.',
+    'adminContent.imagery.cloudy.warning': 'The preview shows clouds over much of the city: this scan may show little of its streets.',
+    'adminContent.imagery.cloudy.todo': 'Look at the preview before you import or buy it. If it is of no use, mark it Not useful.',
+    'adminContent.imagery.cloudy.beforeBuying': 'Probably cloudy over the city: {percent} %. Look at its preview before you buy it.',
+    'adminContent.imagery.unusable.hint': 'If this scan cannot be used, say why: it leaves the whole-city plan and its Buy this scan.',
+    'adminContent.imagery.unusable.hidden': 'The list hides it while Hide not useful is on. You can undo it here.',
+    'adminContent.imagery.unusable.state': 'You marked this scan not useful ({reason}): the whole-city plan leaves it out.',
     'adminContent.imagery.unusable.prefix': 'Not useful:',
     'adminContent.imagery.unusable.clouds': 'Clouds',
     'adminContent.imagery.unusable.haze': 'Haze or blur',
     'adminContent.imagery.unusable.area': 'Wrong area',
     'adminContent.imagery.unusable.other': 'Other',
-    'adminContent.imagery.unusable.state':
-        'You marked this scan not useful ({reason}). The whole-city plan leaves it out, and the list hides it while Hide not useful is on.',
     'adminContent.imagery.unusable.undo': 'It is useful after all',
     'adminContent.imagery.unusable.tag': 'Not useful',
     'adminContent.imagery.unusable.marked': 'Marked not useful. The whole-city plan no longer counts on this scan.',

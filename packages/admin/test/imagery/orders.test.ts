@@ -213,7 +213,9 @@ describe('the Imagery area with orders', () => {
         // A frame scanned meanwhile loses its card with the order: the snackbar says why too (S-A13-BAD-SCANNED-WHILE-MARKING).
         expect(notices).toEqual([{ key: 'apiError.usgs.alreadyAvailable' }]);
     });
+});
 
+describe("Not useful (the owner's report of 2026-11-13)", () => {
     it('happyPath_notUsefulWithWhyThenTheSnackbarsUndo @S-A152-HAPPY-UNDO', async () => {
         const { services, callables, notices } = seeded();
         callables.answer('imagery.markScene', (request) => ({ status: request.unusable === null ? 'candidate' : 'rejected' }));

@@ -79,10 +79,8 @@ export const ro = {
     'apiError.imagery.alreadyImported': 'Scena este deja importată ca stratul „{layer}”.',
     'apiError.imagery.dailyLimit': 'Procesările de azi au atins limita zilnică ({limit}). Încearcă din nou mâine.',
     'apiError.imagery.browseUnavailable': 'USGS nu a răspuns când am cerut previzualizarea. Încearcă din nou peste câteva minute.',
-    'apiError.imagery.browseTooLarge':
-        'Previzualizarea USGS a acestui cadru e prea mare ca s-o copiem (peste 30 MB), așa că nu ajută să încerci din nou. Ca s-o vezi, deschide cadrul în EarthExplorer.',
-    'apiError.imagery.browseNotImage':
-        'USGS a trimis o pagină web în locul imaginii de previzualizare, de obicei în timpul mentenanței. Încearcă din nou mai târziu; dacă se repetă, deschide cadrul în EarthExplorer.',
+    'apiError.imagery.browseTooLarge': 'Previzualizarea depășește 30 MB și nu poate fi copiată; nu reîncerca. Vezi-o în EarthExplorer.',
+    'apiError.imagery.browseNotImage': 'USGS a trimis o pagină web, nu previzualizarea (des în mentenanță). Încearcă mai târziu.',
     'apiError.imagery.notTiff': 'Fișierul nu este un GeoTIFF. Încarcă un fișier .tif.',
     'apiError.imagery.unreadableRaster': 'Imaginea nu a putut fi citită. Verifică fișierul și încarcă-l din nou.',
     'apiError.imagery.processingFailed': 'Imaginea nu a putut fi procesată. Încearcă din nou; dacă eșuează iar, deschide jurnalul.',

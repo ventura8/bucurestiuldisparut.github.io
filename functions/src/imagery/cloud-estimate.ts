@@ -44,20 +44,25 @@ function northWestness(point: Point): number {
     return point.lat - point.lng * Math.cos((point.lat * Math.PI) / 180);
 }
 
+function isFour(points: readonly Point[]): points is readonly [Point, Point, Point, Point] {
+    return points.length === 4;
+}
+
 /** Four vertices in clockwise order, starting from the north-western one. */
-function clockwiseFromNorthWest(points: readonly Point[]): Quad | undefined {
+function clockwiseFromNorthWest(points: readonly [Point, Point, Point, Point]): Quad {
     const ring = signedArea(points) > 0 ? [...points].reverse() : [...points];
-    const start = ring.reduce((best, point, index) => (northWestness(point) > northWestness(ring[best] ?? point) ? index : best), 0);
-    const [a, b, c, d] = [0, 1, 2, 3].flatMap((step) => ring.slice((start + step) % ring.length).slice(0, 1));
-    return d === undefined ? undefined : [a ?? d, b ?? d, c ?? d, d];
+    const scores = ring.map(northWestness);
+    const start = scores.indexOf(Math.max(...scores));
+    const at = (step: number): Point => ring[(start + step) % ring.length] ?? points[0];
+    return [at(0), at(1), at(2), at(3)];
 }
 
 /** The frame's corners from its metadata, else its four-vertex footprint, else its footprint's box. */
-export function frameQuad(scene: Pick<UsgsSceneDoc, 'corners' | 'footprint'>): Quad | undefined {
+export function frameQuad(scene: Pick<UsgsSceneDoc, 'corners' | 'footprint'>): Quad {
     if (scene.corners !== undefined) {
         return [scene.corners.nw, scene.corners.ne, scene.corners.se, scene.corners.sw];
     }
-    if (scene.footprint.length === 4) {
+    if (isFour(scene.footprint)) {
         return clockwiseFromNorthWest(scene.footprint);
     }
     const lats = scene.footprint.map((point) => point.lat);
@@ -109,25 +114,28 @@ function spreadAt(image: GreyImage, x: number, y: number): number {
     return Math.max(...values) - Math.min(...values);
 }
 
-/** The city's samples of the image and how many of them look like cloud. */
-function countOver(image: GreyImage, quad: Quad, bounds: BoundsRecord): { readonly samples: number; readonly cloudy: number } {
-    const bright = Math.max(BRIGHT, Math.min(BRIGHTEST, medianOf(image.pixels) + ABOVE_MEDIAN));
-    let samples = 0;
-    let cloudy = 0;
-    for (let y = 0; y < image.height; y += 1) {
-        for (let x = 0; x < image.width; x += 1) {
-            if (inBounds(groundOf(quad, (x + 0.5) / image.width, (y + 0.5) / image.height), bounds)) {
-                samples += 1;
-                const value = image.pixels[y * image.width + x] ?? 0;
-                cloudy += Number(value >= bright && spreadAt(image, x, y) < FLAT);
-            }
+/** The pixels of the image whose ground lies inside the city's bounds, as `[x, y]`. */
+function cityPixels(image: GreyImage, quad: Quad, bounds: BoundsRecord): (readonly [number, number])[] {
+    const pixels: (readonly [number, number])[] = [];
+    for (let index = 0; index < image.width * image.height; index += 1) {
+        const [x, y] = [index % image.width, Math.floor(index / image.width)];
+        if (inBounds(groundOf(quad, (x + 0.5) / image.width, (y + 0.5) / image.height), bounds)) {
+            pixels.push([x, y]);
         }
     }
-    return { samples, cloudy };
+    return pixels;
+}
+
+/** The city's samples of the image and how many of them look like cloud (bright and flat). */
+function countOver(image: GreyImage, quad: Quad, bounds: BoundsRecord): { readonly samples: number; readonly cloudy: number } {
+    const bright = Math.max(BRIGHT, Math.min(BRIGHTEST, medianOf(image.pixels) + ABOVE_MEDIAN));
+    const pixels = cityPixels(image, quad, bounds);
+    const cloudy = pixels.filter(([x, y]) => (image.pixels[y * image.width + x] ?? 0) >= bright && spreadAt(image, x, y) < FLAT);
+    return { samples: pixels.length, cloudy: cloudy.length };
 }
 
 /**
- * The share of the city the browse image shows clouded, 0 to 100, or undefined when the frame has no corners to place it by or
+ * The share of the city the browse image shows clouded, 0 to 100, or undefined when the frame
  * reaches the city with too few pixels to say.
  */
 export function estimateClouds(
@@ -135,10 +143,6 @@ export function estimateClouds(
     scene: Pick<UsgsSceneDoc, 'corners' | 'footprint'>,
     bounds: BoundsRecord,
 ): CloudEstimate | undefined {
-    const quad = frameQuad(scene);
-    if (quad === undefined) {
-        return undefined;
-    }
-    const { samples, cloudy } = countOver(image, quad, bounds);
+    const { samples, cloudy } = countOver(image, frameQuad(scene), bounds);
     return samples < MIN_SAMPLES ? undefined : { percent: Math.round((cloudy / samples) * 100), version: CLOUD_ESTIMATE_VERSION };
 }
