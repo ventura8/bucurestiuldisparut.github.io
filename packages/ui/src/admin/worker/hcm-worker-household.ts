@@ -73,14 +73,12 @@ export class HcmWorkerHousehold extends LitElement {
 
             .check {
                 display: flex;
+                justify-content: space-between;
                 gap: 12px;
                 align-items: center;
                 min-block-size: 48px;
             }
 
-            .check {
-                justify-content: space-between;
-            }
         `,
     ];
 

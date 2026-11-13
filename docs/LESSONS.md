@@ -3921,18 +3921,18 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: one rewrite per city at a time in an instance; calls that come meanwhile share one more rewrite that starts after them, so the plan still shows their write (`functions/src/imagery/join-plan.ts`; `functions/test/imagery/join-plan-flight.test.ts` reads the city three times without it).
     - **A trigger with concurrency above one multiplies whatever one event reads: a read of a whole collection is coalesced per key, not repeated per event.**
 
-664. **A label fixed at the source stays wrong in every record written before the fix.**
+667. **A label fixed at the source stays wrong in every record written before the fix.**
     - Seen: 2026-11-13, track/coronacrop: the id rules that name KH-5 Argon frames landed on 2026-11-09, but the 249 `corona2` scenes harvested on 2026-10-25 kept the fallback KH-4A, and the import copied it: an Argon frame, 550 km square, was searched as a Corona strip and shown whole with the city a speck (`DS09065A073MC043`).
     - Fix: `trueSensor` reads a stored fallback camera again by the frame's id at import (`functions/src/imagery/scene-record.ts`, DECISIONS §209).
     - **When a rule that derives a stored field changes, correct the stored records too (or read them through the rule), not only new ones.**
 
-667. **The map pane's list pushed the map 80 px below the scan, and no check compared the two panes.**
+668. **The map pane's list pushed the map 80 px below the scan, and no check compared the two panes.**
     - Seen: 2026-11-13, the owner in full screen at about 2000 × 1125 (`#/georef/…`): "The right screen should be the same size and aligned with the left one, as it was before."
     - Cause: *The map shows* (§173, track/georefbase) went above the map inside the map pane's own flex column, so the map started under it while the scan started at the pane's top; the turn rows and notes followed at different heights. The tour's checkers look at each element (overlap, edges, targets), never at two elements that must line up, so every state stayed green.
     - Fix and pin: the panes share one grid's rows by subgrid (header, view, turn row, note, `georef-styles.ts`); on a compact window both panes sit in the same cell and the hidden one is `visibility: hidden`, so the switch keeps the view in place. `expectPanesAligned` (`e2e/admin/specs/imagery/georef.ts`) compares the views' top and height and the turn rows' top within 1 px, in the page and in full screen and on the map-shows state (`S-A122-BAD-GEOREF-PANES-MISALIGNED`).
     - **Two panes meant to be compared side by side share their rows in the layout itself (one grid, subgrid), and a test measures them as a pair; a control added to one pane goes in a row both have.**
     - Also found: the map-shows test chose from the list without showing the map pane, so at `admin-c360-ro` it waited for a hidden list until its 480 s ran out (on the base commit too); it now shows the map pane first.
-668. **A computer without a screen could only be paired by stopping the owner's own worker and tunnelling a port.**
+669. **A computer without a screen could only be paired by stopping the owner's own worker and tunnelling a port.**
     - Seen: 2026-11-13, pairing the NUC and the Windows PC by hand (`docs/research/M7-local-worker.md`, *Household computers*).
     - Cause: the admin's auto-pair posts the code from the browser to the browser's own loopback (`127.0.0.1:8765`); a headless
       computer has no browser, so its worker was reachable only through an SSH tunnel to the laptop, with the laptop's worker stopped.
