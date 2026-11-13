@@ -55,6 +55,8 @@ const PROVISIONED = {
     'org-policies': 'ok',
     'crash-alerts': 'ok',
     'api-key': 'ok',
+    // DECISIONS-for-review.md §210: the admin's own Hosting site and its Firebase Auth domains, the 17th item.
+    'admin-site': 'ok',
 };
 
 /** A Google default account's own IAM policy in the browser's world of the IAM fake (none: no policy). */

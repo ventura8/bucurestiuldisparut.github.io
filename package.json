@@ -19,6 +19,7 @@
         "build:admin": "npm run build --workspace @hcm/admin && node --import ./scripts/site/register-ts.mjs scripts/site/build-admin.ts",
         "build:hosting": "npm run build:admin && npm run build --workspace @hcm/engine && node --import ./scripts/site/register-ts.mjs scripts/site/build-hosting.ts",
         "build:install": "npm run build --workspace @hcm/functions && node --import ./scripts/site/register-ts.mjs scripts/site/build-install.ts",
+        "split:admin-site": "node --import ./scripts/site/register-ts.mjs scripts/site/split-admin-site.ts",
         "build:start": "node --import ./scripts/site/register-ts.mjs scripts/site/build-start.ts",
         "build:landing": "node --import ./scripts/site/register-ts.mjs scripts/site/build-landing.ts",
         "build:site": "node --import ./scripts/site/register-ts.mjs scripts/site/build-site.ts --pages dist/pages --pages-redirect dist/pages-redirect",

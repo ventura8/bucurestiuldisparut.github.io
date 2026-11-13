@@ -499,6 +499,15 @@ const EXPORTS = {
     m22: M22_EXPORTS,
     /** M25 (docs/research/M25-landsat.md): Landsat. */
     m25: M25_EXPORTS,
+    adminSite: [
+        'ADMIN_SITE_MAX_LENGTH',
+        'ADMIN_SITE_SUFFIX',
+        'SITE_ID_PATTERN',
+        'adminSiteId',
+        'adminSiteUrl',
+        'siteDomains',
+        'siteOrigins',
+    ],
     migration: MIGRATION_EXPORTS,
 };
 

@@ -176,6 +176,23 @@ describe('the fetch step', () => {
         expect(existsSync(join(work, 'bundle', 'manifest.json'))).toBe(true);
     });
 
+    it('happyPath_anAdminOnItsOwnSiteNamesItToTheFunctions_badPath_noneLeavesTheirEnvAlone', async () => {
+        const found = bundle();
+        served = found.files;
+
+        const named = await run(envOf(found, { HCM_ADMIN_SITE: 'demo-hcm-admin' }));
+
+        expect(named.code).toBe(0);
+        // §210: firebase-tools reads `.env` beside `.env.<project>`; the functions' links then open the admin's own site.
+        expect(readFileSync(join(work, 'server', 'functions', 'dist', '.env'), 'utf8')).toContain('\nHCM_ADMIN_SITE=demo-hcm-admin\n');
+        rmSync(join(work, 'server'), { recursive: true, force: true });
+
+        const unnamed = await run(envOf(found));
+
+        expect(unnamed.code).toBe(0);
+        expect(existsSync(join(work, 'server', 'functions', 'dist', '.env'))).toBe(false);
+    });
+
     it('happyPath_theSiteKeepsTheWholeBundleInItsTree', async () => {
         const found = bundle();
         served = found.files;

@@ -27,6 +27,8 @@ function fakeSdk() {
         ReCaptchaEnterpriseProvider: Provider,
         initializeAuth: record('initializeAuth', { auth: true }),
         browserSessionPersistence: 'session',
+        indexedDBLocalPersistence: 'indexedDB',
+        browserLocalPersistence: 'local',
         browserPopupRedirectResolver: 'popup',
         getFunctions: record('getFunctions', { functions: true }),
         getFirestore: record('getFirestore', { firestore: true }),
@@ -39,6 +41,9 @@ function fakeSdk() {
     return { sdk: sdk as unknown as FirebaseSdk, calls };
 }
 
+/** The admin's own site (§210). */
+const ADMIN_ORIGIN = 'https://demo-hcm-admin.web.app';
+
 /** Auth in the tab's sessionStorage (finding 1 of the M6 security review). */
 const AUTH = 'initializeAuth {"persistence":"session"}';
 
@@ -50,7 +55,7 @@ describe('initFirebase', () => {
             sdk,
             { ...E2E_WEB_CONFIG, measurementId: 'G-E2E0000000' },
             { release: 'r', appCheckSiteKey: '6Le2e-key-001' },
-            false,
+            { emulators: false, origin: ADMIN_ORIGIN },
         );
 
         expect(calls).toEqual([
@@ -68,7 +73,12 @@ describe('initFirebase', () => {
     it('happyPath_theE2eBuildUsesTheEmulatorsAndNoAppCheck', () => {
         const { sdk, calls } = fakeSdk();
 
-        const handles = initFirebase(sdk, E2E_WEB_CONFIG, { release: 'e2e', appCheckSiteKey: '6Le2e-key-001' }, true);
+        const handles = initFirebase(
+            sdk,
+            E2E_WEB_CONFIG,
+            { release: 'e2e', appCheckSiteKey: '6Le2e-key-001' },
+            { emulators: true, origin: ADMIN_ORIGIN },
+        );
         handles.firestore();
         handles.storage();
 
@@ -88,16 +98,39 @@ describe('initFirebase', () => {
     it('badPath_theSignInIsNeverKeptWhereTheWholeOriginReadsIt', () => {
         const { sdk, calls } = fakeSdk();
 
-        initFirebase(sdk, E2E_WEB_CONFIG, { release: 'r' }, false);
+        initFirebase(sdk, E2E_WEB_CONFIG, { release: 'r' }, { emulators: false, origin: ADMIN_ORIGIN });
 
         // Not getAuth: its default persistence is the origin's IndexedDB, which the public map's pages share since M6.
         expect(calls.filter((call) => call.startsWith('initializeAuth') || call.startsWith('getAuth'))).toEqual([AUTH]);
     });
 
+    it('happyPath_onTheAdminsOwnSiteTheSignInIsTheOriginsForEveryTab', () => {
+        const { sdk, calls } = fakeSdk();
+
+        initFirebase(sdk, E2E_WEB_CONFIG, { release: 'r', adminOrigin: ADMIN_ORIGIN }, { emulators: false, origin: ADMIN_ORIGIN });
+
+        // §210: no public map page shares this origin, so every tab finds the sign-in in its IndexedDB (localStorage without it).
+        expect(calls.filter((call) => call.startsWith('initializeAuth'))).toEqual(['initializeAuth {"persistence":["indexedDB","local"]}']);
+    });
+
+    it('badPath_aRuntimeNamingAnotherOriginKeepsTheSignInInTheTab', () => {
+        const { sdk, calls } = fakeSdk();
+
+        // The public map's `/admin/` (or a copy of the admin's files anywhere else) is not the admin's own site.
+        initFirebase(
+            sdk,
+            E2E_WEB_CONFIG,
+            { release: 'r', adminOrigin: ADMIN_ORIGIN },
+            { emulators: false, origin: 'https://demo-hcm.web.app' },
+        );
+
+        expect(calls.filter((call) => call.startsWith('initializeAuth'))).toEqual([AUTH]);
+    });
+
     it('badPath_withoutASiteKeyThereIsNoAppCheck', () => {
         const { sdk, calls } = fakeSdk();
 
-        initFirebase(sdk, E2E_WEB_CONFIG, { release: 'r' }, false);
+        initFirebase(sdk, E2E_WEB_CONFIG, { release: 'r' }, { emulators: false, origin: ADMIN_ORIGIN });
 
         expect(calls).not.toContain('initializeAppCheck');
     });

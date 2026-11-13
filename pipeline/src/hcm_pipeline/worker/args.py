@@ -7,7 +7,8 @@ the project's browser key accepts only its Hosting origins) and nothing else is 
 command's one-time code (finding 67 of 2026-11-02, `pairing.py`): 26 base32 characters. Finding 72 (the starter file, M7
 §1.5): `--supervised` (the starter's supervisor runs it: an outdated image exits with `ExitCode.OUTDATED`, so the
 supervisor pulls the installed one) and `--image sha256:<digest>` (the image it runs, which `worker.hello` compares with
-the installed one); the project's Hosting origins (`hosting_origins`) are where the admin's auto-pair comes from. Under
+the installed one); the project's Hosting origins (`hosting_origins`: the public map's site and, since §210, the admin's own
+`<project>-admin`) are where the admin's auto-pair comes from. Under
 `--emulators` (the e2e tier)
 the same code talks to this machine only, from the variables below, each a loopback `host:port`:
 
@@ -57,6 +58,18 @@ PROJECT_ID: Final = re.compile(r"[a-z][a-z0-9-]{4,28}[a-z0-9]")
 EMULATOR_HOST: Final = re.compile(r"(?:127\.0\.0\.1|localhost|\[::1\]):\d{1,5}")
 
 
+# The admin's own Hosting site (DECISIONS-for-review.md §210): `adminSiteId` of @hcm/shared, the same cases pinned by both.
+ADMIN_SITE_SUFFIX: Final = "-admin"
+ADMIN_SITE_MAX_LENGTH: Final = 30
+
+
+def admin_site_id(project: str) -> str:
+    """`<project>-admin`, or the project id's first 24 characters (trailing hyphens dropped) and the suffix."""
+    room = ADMIN_SITE_MAX_LENGTH - len(ADMIN_SITE_SUFFIX)
+    head = project[:room].rstrip("-") if len(project) > room else project
+    return f"{head}{ADMIN_SITE_SUFFIX}"
+
+
 @dataclass(frozen=True)
 class Endpoints:
     """Where the worker's calls go: the callables, Google's token refresh, the web configuration (and, under the
@@ -84,7 +97,10 @@ class Endpoints:
             init_json=f"https://{project}.web.app{INIT_JSON_PATH}",
             custom_token=f"https://{CUSTOM_SIGN_IN_PATH}",
             referer=f"https://{project}.web.app/",
-            hosting_origins=(f"https://{project}.web.app", f"https://{project}.firebaseapp.com"),
+            # §210: the admin runs on its own site (`<project>-admin`) once the project has it, else on the public map's.
+            hosting_origins=tuple(
+                f"https://{site}.{domain}" for site in (project, admin_site_id(project)) for domain in ("web.app", "firebaseapp.com")
+            ),
         )
 
     @classmethod

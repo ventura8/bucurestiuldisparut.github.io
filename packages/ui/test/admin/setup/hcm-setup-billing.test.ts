@@ -112,10 +112,10 @@ describe('<hcm-setup-provision>', () => {
     it('happyPath_theDoctorListsEveryItemAndOneClickPreparesTheProject', async () => {
         const { port, element } = await provision();
 
-        // M6 (CR-M6-2): the imagery pipeline's repository is the 16th item.
-        expect(element.renderRoot.querySelectorAll('.item')).toHaveLength(16);
+        // M6 (CR-M6-2): the imagery pipeline's repository is the 16th item; §210 the admin's own site the 17th.
+        expect(element.renderRoot.querySelectorAll('.item')).toHaveLength(17);
         expect(shadowPart(element, '[data-item="apis"]').textContent).toContain('Servicii Google activate');
-        expect(shadowPart(element, '.body > .note').textContent).toBe('0 din 16 elemente gata');
+        expect(shadowPart(element, '.body > .note').textContent).toBe('0 din 17 elemente gata');
         await page.getByRole('button', { name: 'Pregătește proiectul' }).click();
 
         expect(port.calls).toEqual([['provision']]);

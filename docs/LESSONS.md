@@ -3932,7 +3932,17 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: the panes share one grid's rows by subgrid (header, view, turn row, note, `georef-styles.ts`); on a compact window both panes sit in the same cell and the hidden one is `visibility: hidden`, so the switch keeps the view in place. `expectPanesAligned` (`e2e/admin/specs/imagery/georef.ts`) compares the views' top and height and the turn rows' top within 1 px, in the page and in full screen and on the map-shows state (`S-A122-BAD-GEOREF-PANES-MISALIGNED`).
     - **Two panes meant to be compared side by side share their rows in the layout itself (one grid, subgrid), and a test measures them as a pair; a control added to one pane goes in a row both have.**
     - Also found: the map-shows test chose from the list without showing the map pane, so at `admin-c360-ro` it waited for a hidden list until its 480 s ran out (on the base commit too); it now shows the map pane first.
-669. **A computer without a screen could only be paired by stopping the owner's own worker and tunnelling a port.**
+
+669. **Firebase Auth moves a sign-in out of `sessionStorage` into IndexedDB never.**
+    - Seen: 2026-11-13, track/adminsite: the admin's own site uses `[indexedDBLocalPersistence, …]`; a user found in `browserSessionPersistence` stays there, because only persistences with `_shouldAllowMigration` (IndexedDB, `localStorage`) are migrated (`PersistenceUserManager.create` of `@firebase/auth`).
+    - Fix: the own site's hierarchy is `[indexedDBLocalPersistence, browserLocalPersistence]`; the e2e puts the test's account into `localStorage` once on that origin, which Firebase moves into IndexedDB, so a second tab proves the shared sign-in (`e2e/admin/specs/shell/admin-site.spec.ts`).
+    - **Read the SDK's migration rule before you change a persistence; a test that seeds one store proves nothing about another.**
+
+670. **Hosting's redirects come before its files, and its regex is RE2.**
+    - Seen: 2026-11-13, track/adminsite: forwarding the public map's `/admin/**` to the admin's own site would also have forwarded `/admin/starter.json`, which Linux starters already installed fetch with `curl` and no `-L`; RE2 has no lookahead to leave it out.
+    - Fix: the forward's pattern lists every string but that name (`everyStringBut`, `scripts/site/src/hosting/admin-site.ts`) and the file stays in the public tree.
+    - **Before a redirect replaces a path, list every client already installed that reads it and whether it follows redirects.**
+671. **A computer without a screen could only be paired by stopping the owner's own worker and tunnelling a port.**
     - Seen: 2026-11-13, pairing the NUC and the Windows PC by hand (`docs/research/M7-local-worker.md`, *Household computers*).
     - Cause: the admin's auto-pair posts the code from the browser to the browser's own loopback (`127.0.0.1:8765`); a headless
       computer has no browser, so its worker was reachable only through an SSH tunnel to the laptop, with the laptop's worker stopped.
