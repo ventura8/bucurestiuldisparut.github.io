@@ -22,7 +22,7 @@ describe('the translated catalogues', () => {
     const files = Object.entries(TRANSLATED);
 
     it('happyPath_someAreThere', () => {
-        expect(files.length).toBeGreaterThan(0);
+        expect(files.filter(([path, module]) => Object.keys(module[partsOf(path)[1]] ?? {}).length > 0).length).toBeGreaterThan(0);
     });
 
     it.each(files)('happyPath_%s_holdsOnlyItsFamilysKeys', (path, module) => {
@@ -30,8 +30,9 @@ describe('the translated catalogues', () => {
         const source = SOURCES[`../../../shared/src/i18n/${folder}/ro.ts`]?.['ro'] ?? {};
         const texts = Object.entries(module[locale] ?? {});
 
+        // A language not translated yet is an empty literal (docs/I18N.md); one that has texts holds only its family's.
         expect(isUiLocale(locale) && !BUNDLED_LOCALES.includes(locale)).toBe(true);
-        expect(texts.length).toBeGreaterThan(0);
+        expect(module[locale]).toBeDefined();
         expect(texts.filter(([key, text]) => !Object.hasOwn(source, key) || text.trim() === '')).toEqual([]);
     });
 });

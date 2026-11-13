@@ -145,8 +145,8 @@ describe('the fallback to English', () => {
         expect(translateFamily('ar', 'a.city', { city: 'Bacău' })).toBe('Map of ⁨Bacău⁩');
         expect(translateFamily('fr', 'a.city', { city: 'Bacău' })).toBe('Map of Bacău');
         expect(fillPlaceholders('{a} {b}', { a: 'x' }, 'ur')).toBe('⁨x⁩ {b}');
-        expect(translateApiError('ur', 'apiError.city.notOwner', { cityId: 'bacau' })).toContain('⁨bacau⁩');
-        expect(translateApiError('en', 'apiError.city.notOwner', { cityId: 'bacau' })).not.toContain('⁨');
+        expect(translateApiError('ur', 'apiError.claim.notOwner', { projectId: 'bacau' })).toContain('⁨bacau⁩');
+        expect(translateApiError('en', 'apiError.claim.notOwner', { projectId: 'bacau' })).not.toContain('⁨');
     });
 
     it('happyPath_theLanguageATextShowsInIsTheLanguagesOwnOrEnglish', () => {
