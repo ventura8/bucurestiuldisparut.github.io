@@ -16,6 +16,7 @@ import {
     type RankReasonEntry,
     type Sensor,
     type UsgsDataset,
+    type UnusableReason,
     type UsgsSceneDoc,
 } from '@hcm/shared';
 
@@ -47,6 +48,10 @@ export interface SceneItem extends OrderFields {
     readonly corners: readonly [LngLat, LngLat, LngLat, LngLat] | null;
     readonly browse: { readonly state: UsgsSceneDoc['browse']['state']; readonly path: string | null; readonly error: ApiErrorCode | null };
     readonly layerId: string | null;
+    /** The owner's report of 2026-11-13: set aside as not useful, and why (null: not marked). */
+    readonly unusable: UnusableReason | null;
+    /** The share of the city the browse image shows clouded (null: not measured). */
+    readonly cloudCity: number | null;
 }
 
 /** The routed scene read by its id (a scene the filters hide or past the list's page): loading, then the scene, null or why not. */
@@ -89,6 +94,7 @@ export function sceneItemOf(doc: Stored<UsgsSceneDoc>): SceneItem {
         ...{ status: scene.status, free: scene.downloadAvailable, cloudCover: orNull(scene.cloudCover), resolutionM: scene.resolutionM },
         ...{ coverage: scene.coverage, score: scene.rank.score, reasons: scene.rank.reasons, footprint: scene.footprint.map(lngLat) },
         ...{ corners: cornersOf(scene), browse: browseOf(scene.browse), layerId: orNull(scene.layerId) },
+        ...{ unusable: orNull(scene.unusable?.reason), cloudCity: orNull(scene.cloudEstimate?.percent) },
         ...orderFieldsOf(scene),
     };
 }

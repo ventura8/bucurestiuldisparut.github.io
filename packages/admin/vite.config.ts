@@ -70,10 +70,9 @@ const IMAGERY_SHARED_MODULES = /packages[\\/]shared[\\/]src[\\/](?:schemas[\\/]i
 
 /**
  * M18 (DECISIONS-for-review.md §101f): the words of a scene's refusal, which the Imagery area and the order card share, in
- * the `editor-texts` chunk too, so `editor-shared` stays within its 13 KB; and the order list's styles (§202g: the `imagery`
- * chunk had reached 18.03 KB of its 18 after the merges of 2026-11-13).
+ * the `editor-texts` chunk too, so `editor-shared` stays within its 13 KB.
  */
-const IMAGERY_UI_SHARED_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]imagery[\\/](?:scene-refusal|orders[\\/]order-styles)\.ts$/;
+const IMAGERY_UI_SHARED_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]imagery[\\/]scene-refusal\.ts$/;
 
 /**
  * The tolerant reads of an older release's records (`packages/shared/src/schemas/legacy-reads.ts`), which Home, the Imagery

@@ -4,32 +4,25 @@
  * back** (`usgs.cancelOrder`). One action runs at a time; a refusal stays on the scene's card until the next action. A
  * frame USGS scanned meanwhile (`apiError.usgs.alreadyAvailable`) turns free and its card goes with it: that refusal is
  * also the snackbar's, so the admin reads why on the scene's page (the 2026-10-24 review). Everything after the mark is
- * the server's: the scene's live document shows each step.
+ * the server's: the scene's live document shows each step. The owner's report of 2026-11-13: **Not useful** with why, and its
+ * Undo (`imagery.markScene`), run the same way, one at a time, a refusal on the scene's page.
  */
-import type { CallableResponse } from '@hcm/shared';
+import type { CallableResponse, UnusableReason } from '@hcm/shared';
 
 import type { ContentServices } from '../../content/services.js';
 import type { NoticeInput } from '../../state/state.js';
 import { refusalOf } from '../api.js';
 
-export type OrderAction = 'mark' | 'check' | 'cancel';
+export type OrderAction = 'mark' | 'check' | 'cancel' | 'unusable';
 
 export interface OrderActionsState {
     /** The action running, for which scene. */
     readonly ordering: { readonly id: string; readonly action: OrderAction } | null;
     /** The last refusal, on its scene's card. */
-    readonly orderRefusal: { readonly id: string; readonly notice: NoticeInput } | null;
+    readonly orderRefusal: { readonly id: string; readonly notice: NoticeInput; readonly action?: 'unusable' } | null;
 }
 
 export const IDLE_ORDERS: OrderActionsState = { ordering: null, orderRefusal: null };
-
-type OrderCall = 'usgs.markOrdered' | 'usgs.checkOrder' | 'usgs.cancelOrder';
-
-const CALLS: Readonly<Record<OrderAction, OrderCall>> = {
-    mark: 'usgs.markOrdered',
-    check: 'usgs.checkOrder',
-    cancel: 'usgs.cancelOrder',
-};
 
 /** What "Check now" found, in words. */
 function checkedNotice(answer: CallableResponse<'usgs.checkOrder'>): NoticeInput {
@@ -51,7 +44,7 @@ export class OrderActions {
 
     /** "I ordered it": the order recorded; the snackbar's Undo takes the mark back. A frame scanned meanwhile: the snackbar says so. */
     async markOrdered(id: string): Promise<boolean> {
-        const answer = await this.#run(id, 'mark');
+        const answer = await this.#run(id, 'mark', () => this.#services.callables.call('usgs.markOrdered', this.#scene(id)));
         if (answer !== null) {
             this.#services.notify({
                 key: 'adminContent.orders.notice.marked',
@@ -65,7 +58,7 @@ export class OrderActions {
 
     /** "Check now": USGS asked at once; the answer in words. */
     async checkOrder(id: string): Promise<boolean> {
-        const answer = (await this.#run(id, 'check')) as CallableResponse<'usgs.checkOrder'> | null;
+        const answer = await this.#run(id, 'check', () => this.#services.callables.call('usgs.checkOrder', this.#scene(id)));
         if (answer !== null) {
             this.#services.notify(checkedNotice(answer));
         }
@@ -74,27 +67,55 @@ export class OrderActions {
 
     /** "Take the mark back" (or the snackbar's Undo). */
     async cancelOrder(id: string): Promise<boolean> {
-        const answer = await this.#run(id, 'cancel');
+        const answer = await this.#run(id, 'cancel', () => this.#services.callables.call('usgs.cancelOrder', this.#scene(id)));
         if (answer !== null) {
             this.#services.notify({ key: 'adminContent.orders.notice.takenBack' });
         }
         return answer !== null;
     }
 
+    /**
+     * **Not useful** with why, or its Undo (`reason` null): the server sets the scene aside and writes the whole-city plan again;
+     * the snackbar says so and offers Undo.
+     */
+    async markUnusable(id: string, reason: UnusableReason | null): Promise<boolean> {
+        const request = { cityId: this.#services.cityId, entityId: id, unusable: reason };
+        const answer = await this.#run(id, 'unusable', () => this.#services.callables.call('imagery.markScene', request));
+        if (answer !== null) {
+            this.#services.notify(
+                reason === null
+                    ? { key: 'adminContent.imagery.unusable.restored' }
+                    : {
+                          key: 'adminContent.imagery.unusable.marked',
+                          action: { key: 'adminContent.orders.undo', run: () => void this.markUnusable(id, null) },
+                      },
+            );
+        }
+        return answer !== null;
+    }
+
     /** Runs one action (none while another runs): its answer, or null when it was refused or not run. */
-    async #run(id: string, action: OrderAction): Promise<CallableResponse<OrderCall> | null> {
+    async #run<T>(id: string, action: OrderAction, call: () => Promise<T>): Promise<T | null> {
         if (this.#state.ordering !== null) {
             return null;
         }
         this.#set({ ordering: { id, action }, orderRefusal: null });
         try {
-            const answer = await this.#services.callables.call(CALLS[action], { cityId: this.#services.cityId, entityId: id });
+            const answer = await call();
             this.#set({ ordering: null, orderRefusal: null });
             return answer;
         } catch (error) {
-            this.#set({ ordering: null, orderRefusal: { id, notice: refusalOf(error) } });
+            this.#set({
+                ordering: null,
+                orderRefusal: { id, notice: refusalOf(error), ...(action === 'unusable' ? { action: 'unusable' as const } : {}) },
+            });
             return null;
         }
+    }
+
+    /** An order call's request: the scene of the city. */
+    #scene(id: string): { cityId: string; entityId: string } {
+        return { cityId: this.#services.cityId, entityId: id };
     }
 
     #set(state: OrderActionsState): void {
