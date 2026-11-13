@@ -66,3 +66,46 @@ test(
         await expect(viewer(page).locator('hcm-overlay-list')).toBeVisible();
     },
 );
+
+test(
+    "On a phone's bottom sheet the strip scrolls with the list, so nothing the focus reaches sits under it",
+    { tag: '@S-V03-BAD-LAYERS-PINNED-PHONE' },
+    async ({ page, lang }) => {
+        await page.setViewportSize({ width: 360, height: 800 });
+        await openViewer(page, { lang, hash: '15/44.42700/26.08530&layers=e2e-1966' });
+        await openLayers(page, lang);
+        const panel = viewer(page).locator('hcm-layer-panel');
+        const compare = panel.getByRole('button', { name: t(lang, 'compare.open'), exact: true });
+        await expect(compare).toBeVisible();
+        const before = await compare.boundingBox();
+
+        await panel.locator('hcm-sheet').evaluate((sheet) => {
+            const scroller = sheet.shadowRoot?.querySelector('.content');
+            if (scroller instanceof HTMLElement) {
+                scroller.scrollTop = scroller.scrollHeight;
+            }
+        });
+        await expect
+            .poll(async () => (await compare.boundingBox())?.y ?? -1, 'Compare scrolls away with the list')
+            .toBeLessThan((before?.y ?? 0) - 40);
+
+        const last = panel.getByRole('switch', { name: t(lang, 'layers.toggle', { name: t(lang, 'layers.photos') }), exact: true }).last();
+        await last.focus();
+        const box = await last.boundingBox();
+        const hit = await page.evaluate(
+            ({ x, y }) => {
+                let element = document.elementFromPoint(x, y);
+                while (element?.shadowRoot) {
+                    const inner = element.shadowRoot.elementFromPoint(x, y);
+                    if (inner === null || inner === element) {
+                        break;
+                    }
+                    element = inner;
+                }
+                return element?.getAttribute('role') ?? element?.tagName.toLowerCase() ?? '';
+            },
+            { x: (box?.x ?? 0) + (box?.width ?? 0) / 2, y: (box?.y ?? 0) + (box?.height ?? 0) / 2 },
+        );
+        expect(hit, 'the focused switch is the element under its own centre').toBe('switch');
+    },
+);

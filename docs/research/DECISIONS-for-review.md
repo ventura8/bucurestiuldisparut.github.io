@@ -6325,6 +6325,7 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **Why**: the owner, 2026-11-11 in chat: "u have my persimission to always deplay and update the map yourself".
 - **Still ask first**: pushes to `master` or a tag, merges, payments, credentials, relaxing a gate, and cloud changes outside that Update-the-map path.
 - **Layers row height (same day)**: overlay swatches back to 32 px (`--hcm-icon-size: 20px`); Compare / Street names / POIs and overlay rows `min-block-size` 40 px (switch keeps its own 48 px target).
+  Amended 2026-11-13 (the phone tour's findings, `docs/LESSONS.md` 618): the Street names / POIs rows are 48 px again, since two switches 40 px apart overlapped their 48 px targets; the pinned strip stays pinned only at 600 px wide and 700 px high or more, and scrolls with the list on a phone's bottom sheet or a short side sheet, where at half height it took 170 of 310 px and covered the switches the focus reached. The overlay rows stay at 40 px.
 
 ## 143. Georeferencer: map markers identical to the scan (2026-11-11) — APPLIED, the owner's explicit yes
 
@@ -6530,6 +6531,13 @@ the limits!!!". A relaxed gate, so it is the owner's decision, recorded here.
 - **168d** The admin's total 700 → 750 KB gzip (`ADMIN_TOTAL_KB`, the coordinator under this instruction, 2026-11-12): the merge of the
   georeferencer's beta.1 work measured 701.8 KB with its panes (`georef-panes`, 4.2 KB, loaded with the page) and the sharper scan's
   tiles (`scan-tiles`, 1.2 KB, loaded on zoom). The entry's 450 KB and every chunk's own budget stay.
+- **168e** The admin's `worker-local` chunk 5 → 10 KB gzip (`ADMIN_CHUNK_BUDGETS`, the coordinator under this instruction,
+  2026-11-13): the build of `cb7329fd` measured 8,729 bytes, over its 5 KB since the machine's profile and the starter's
+  self-update card (`d6934a07`, `hcm-worker-versions`, 1.0 KB). The source map splits it: the Romanian and English texts
+  3.9 KB, `<hcm-worker-local>` 2.1 KB, `local.ts` 1.6 KB, the versions card 1.0 KB, the machine's card 0.9 KB, the
+  machine's schema and reader 1.2 KB. Every part shows together on the computer's panel, the one place that fetches the
+  chunk, so a further split would add a round trip for the same bytes; the catalogues bundle both languages, as every
+  admin catalogue does. 8.7 KB plus about 15 %, rounded up. 168b's other chunks stay.
 - **168c** The rule stands: a budget moves only by a reviewed change with its reason; code that only some visitors need
   still goes to the on-demand parts first (`docs/ENGINE_API.md` → *Side-loaded parts*).
 

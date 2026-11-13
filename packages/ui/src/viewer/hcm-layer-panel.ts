@@ -147,6 +147,19 @@ export class HcmLayerPanel extends LitElement {
                 box-shadow: 0 1px 0 var(--md-sys-color-outline-variant);
             }
 
+            /*
+             * A phone's bottom sheet and a short window's side sheet have no room for a pinned strip: at half height on a
+             * 360 x 800 phone it took 170 of 310 px, and a switch or slider the focus scrolled to, or the visitor scrolled
+             * near its edge, sat under it (the tour's focus-obscured and target-size checks, docs/LESSONS.md 618). There the strip
+             * scrolls with the list.
+             */
+            @media (max-width: 599.98px), (max-height: 699.98px) {
+                .pinned {
+                    position: static;
+                    box-shadow: none;
+                }
+            }
+
             .empty {
                 display: flex;
                 align-items: center;
@@ -186,7 +199,9 @@ export class HcmLayerPanel extends LitElement {
                 gap: 12px;
                 align-items: center;
                 justify-content: space-between;
-                min-block-size: 40px;
+
+                /* 48 px rows: each switch's 48 px touch target stays its own, none reaches over its neighbour (docs/LESSONS.md 618). */
+                min-block-size: 48px;
             }
 
             .labels p {

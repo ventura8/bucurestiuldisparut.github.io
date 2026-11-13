@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 156 | 1594 | 659 | 935 | 1592 | 2 | 411 |
+| 156 | 1595 | 659 | 936 | 1593 | 2 | 411 |
 
 ## Viewer
 
@@ -45,6 +45,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V03-BAD-ATTRIBUTION-REPEATED` | V03 | bad | Two layers with the same USGS credit name their source once, in the visitor's language, in the panel and on the map | both fixture layers credited USGS_ATTRIBUTION and shown -> the map's attribution contains layers.attribution.usgs in the page's language; the Layers panel has exactly one 'Sursa: …' line, and the English credit appears only in English | e2e-viewer | exists | `e2e/specs/viewer/layers.spec.ts` |
 | `S-V03-BAD-LAYER-OF-ANOTHER-YEAR` | V03 | bad | A layer of another year than the timeline's still shows, and switching every layer off leaves the timeline | the timeline at 1966 with its layer, the 1980 layer switched on -> the timeline at 1980, the 1980 tiles draw over the 1966 ones, the hash names both; both switched off -> the basemap, the timeline stays at 1980 | e2e-viewer | exists | `e2e/specs/viewer/layer-year.spec.ts` |
 | `S-V03-BAD-LAYERS-NO-PINNED` | V03 | bad | Without Compare or map labels, Layers has no pinned strip | no historical layers and a custom basemap with no map-label kinds -> no Compare, no map-labels group, no .pinned; the overlay list still lists photos and places | e2e-viewer | exists | `e2e/specs/viewer/layers-pinned.spec.ts` |
+| `S-V03-BAD-LAYERS-PINNED-PHONE` | V03 | bad | On a phone or a short window the pinned strip scrolls with the list | Layers at 360 x 800 (half-height bottom sheet) -> scrolling the list to its end moves Compare up with it; the last focused switch is the element under its own centre (no strip over it) | e2e-viewer | exists | `e2e/specs/viewer/layers-pinned.spec.ts` |
 | `S-V03-BAD-MINIMIZE-KEEPS-VALUES` | V03 | bad | Minimizing the Layers pane loses nothing and touches neither the hash nor the photo beside it | a lowered opacity and a switched-on layer are the same after minimize and restore; the URL hash is unchanged; the photo open in the trailing pane stays open | e2e-viewer | exists | `e2e/specs/viewer/layers-minimize.spec.ts` |
 | `S-V03-BAD-MINIMIZE-SURVIVES-RESIZE` | V03 | bad | The minimized Layers pane stays minimized when the window leaves the extra-large layout and comes back | 1920 px, minimized; at 1280 px there is no leading pane; back at 1920 px the re-created pane is still the floating button (aria-expanded false, no leading column), its collapse button absent, the URL hash unchanged | e2e-viewer | exists | `e2e/specs/viewer/layers-minimize.spec.ts` |
 | `S-V03-BAD-STACK-SWITCHED-LAST` | V03 | bad | The older layer switched on last still draws below the newer one | 1980 switched on, then 1966 -> the timeline at 1966, the probe still reads the 1980 tiles on top | e2e-viewer | exists | `e2e/specs/viewer/layer-year.spec.ts` |

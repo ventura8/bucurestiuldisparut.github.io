@@ -3627,3 +3627,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: Mapbox GL loads `async` and the map adapter takes a promise of it (§178f); `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT`.
     - Then: with Mapbox's CDN two seconds slower the first paint still came at 2.9 s: `mapbox-gl.css` in the page's head was render-blocking, and unused (the viewer links it in its shadow root). The pages link none now.
     - **A third-party script or stylesheet the first paint does not need is `async` or absent, and the code that needs it waits for it, not the page; measure with the third party slow, not only cold.**
+
+618. **A sticky strip in a half-height sheet hid what the focus scrolled to, and 40 px rows overlapped their 48 px targets.**
+    - Seen: 2026-11-13, the viewer tour at 320, 360, 412 and 915 × 412 px: Layers' switches and sliders "hidden under other content" (WCAG 2.4.11) and "52x40 touch target" (M3's 48 x 48).
+    - Cause: the pinned Compare and map-label strip (`position: sticky`) took 170 of the half-height bottom sheet's 310 px, so a Tab scrolled each overlay's switch to the sheet's top, under the strip; and the map-label rows had shrunk to 40 px while each switch's touch ring is 48 px, so neighbours covered each other's rings. The commit that shrank them said "the switch keeps its own 48 px target", and no phone tour ran before the merge.
+    - Fix and pin: the strip is static at compact width or under 700 px of height, the map-label rows are 48 px (`packages/ui/src/viewer/hcm-layer-panel.ts`); `S-V03-BAD-LAYERS-PINNED-PHONE`, and the tour at the phone projects.
+    - **A sticky header belongs only where it leaves room to scroll; a row is at least as tall as the touch target it holds. Run the tour at a phone size before merging a layout change.**
