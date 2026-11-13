@@ -15,7 +15,8 @@
         "build-install.ts",
         "build-start.ts",
         "build-landing.ts",
-        "add-site.ts"
+        "add-site.ts",
+        "split-admin-site.ts"
     ],
     "references": [{ "path": "../../packages/shared" }]
 }

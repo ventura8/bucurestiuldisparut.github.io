@@ -8,11 +8,11 @@
  */
 import type { Locale } from '@hcm/shared';
 import { WIZARD_IDS, type WizardId } from '@hcm/shared/funnels';
-import { css, html, type TemplateResult } from 'lit';
+import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
-import type { CrashesIntentsPort, CrashesViewState } from './crashes-port.js';
+import type { CrashesIntentsPort, CrashesViewState, StatisticsNumbersPort } from './crashes-port.js';
 import type * as Live from './statistics-live.js';
 import { loadingTemplate } from '../editing/states.js';
 
@@ -28,6 +28,11 @@ export function loadStatisticsLive(): Promise<LiveModule> {
         return module;
     });
     return loading;
+}
+
+/** The live sections' styles once their chunk is there (the page adopts them), else null. */
+export function statisticsLiveSheet(): CSSStyleSheet | null {
+    return live?.liveStyles.styleSheet ?? null;
 }
 
 /** Whether the live sections' chunk is there (the page asks for it once, then renders again). */
@@ -55,72 +60,23 @@ type StepId = (typeof WIZARD_STEPS)[WizardId][number];
 
 const STEP_IDS: ReadonlySet<string> = new Set(Object.values(WIZARD_STEPS).flat());
 
-const HOW = ['how1', 'how2', 'how3', 'how4', 'how5', 'how6'] as const;
+const HOW = ['how1', 'how2', 'how3', 'how4', 'how5'] as const;
 
-export const statisticsStyles = css`
-    /* The crashes page fills the page area (its list and detail panes scroll): this view scrolls on its own. */
-    .statistics {
-        block-size: 100%;
-        overflow-y: auto;
-    }
+type CodesState = 'unknown' | 'ready' | 'notRegistered' | 'notReady' | 'noData';
 
-    /* M3's 48 px touch target for the links on their own lines (the tour's target-size check on a compact window). */
-    .statistics p > a,
-    a[data-statistics-link] {
-        display: inline-flex;
-        align-items: center;
-        min-block-size: 48px;
-    }
+/** Whether GA4 can show the codes, as the last read of the numbers found (unknown before one). */
+function codesState(view: CrashesViewState | null): CodesState {
+    const numbers = view?.statistics.numbers ?? null;
+    return numbers === null ? 'unknown' : codesOf(numbers);
+}
 
-    .statistics code {
-        font-family: var(--hcm-font-mono, ui-monospace, monospace);
-        font-size: 0.875em;
-        overflow-wrap: anywhere;
-    }
-
-    .statistics .wizards {
-        display: grid;
-        gap: 16px;
-        padding: 0;
-        list-style: none;
-    }
-
-    /* §203: the numbers' tables scroll sideways on a narrow window, never the page. */
-    .statistics .table-wrap {
-        max-inline-size: 100%;
-        overflow-x: auto;
-    }
-
-    .statistics table {
-        border-collapse: collapse;
-    }
-
-    .statistics th,
-    .statistics td {
-        padding: 8px 12px 8px 0;
-        text-align: start;
-        vertical-align: top;
-    }
-
-    .statistics td ul {
-        margin: 0;
-        padding-inline-start: 1em;
-    }
-
-    /* The period's 48 px touch targets reach 4 px past its 40 px row: room above and below, so nothing covers them. */
-    .statistics .numbers hcm-segmented-button {
-        display: block;
-        margin-block: 8px;
-    }
-
-    .statistics svg.daily {
-        color: var(--md-sys-color-primary, LinkText);
-    }
-`;
+function codesOf(numbers: StatisticsNumbersPort): CodesState {
+    return numbers.pending?.reason ?? 'ready';
+}
 
 function stepItem(locale: Locale, step: StepId): TemplateResult {
     const name = contentText(locale, `adminContent.statistics.step.${step}`);
-    return html`<li>${name} (<code>${step}</code>)</li>`;
+    return html`<li>${name} <code>${step}</code></li>`;
 }
 
 function howItem(locale: Locale, key: (typeof HOW)[number]): TemplateResult {
@@ -143,8 +99,8 @@ function wizardName(locale: Locale, wizard: WizardId): string {
 }
 
 function wizardItem(locale: Locale, wizard: WizardId): TemplateResult {
-    return html`<li data-wizard=${wizard}>
-        <h3>${wizardName(locale, wizard)} (<code>${wizard}</code>)</h3>
+    return html`<li class="card" data-wizard=${wizard}>
+        <h4>${wizardName(locale, wizard)} <code>${wizard}</code></h4>
         ${stepsOf(locale, wizard)}
     </li>`;
 }
@@ -186,25 +142,42 @@ function liveSections(locale: Locale, context: StatisticsContext): TemplateResul
     });
 }
 
-/** The whole view. */
+/** How to explore more in Google Analytics: the funnel exploration's steps and every wizard's step codes, folded away. */
+function helpSection(locale: Locale, view: CrashesViewState | null): TemplateResult {
+    return html`<div class="card">
+        <details class="help" data-statistics-help>
+            <summary>${contentText(locale, 'adminContent.statistics.helpTitle')}</summary>
+            <div class="help-body">
+                <h3>${contentText(locale, 'adminContent.statistics.howTitle')}</h3>
+                <ol>
+                    ${HOW.map((key) => howItem(locale, key))}
+                    <li data-statistics-codes=${codesState(view)}>
+                        ${contentText(locale, `adminContent.statistics.codes.${codesState(view)}`)}
+                    </li>
+                </ol>
+                <h3>${contentText(locale, 'adminContent.statistics.wizardsTitle')}</h3>
+                <ul class="wizards">
+                    ${WIZARD_IDS.map((wizard) => wizardItem(locale, wizard))}
+                </ul>
+            </div>
+        </details>
+    </div>`;
+}
+
+/** The whole view: the title, the numbers and the errors, then the help, folded. */
 export function statisticsView(locale: Locale, context: StatisticsContext): TemplateResult {
     return html`<div class="pane statistics">
         <p><a href="#/crashes">${contentText(locale, 'adminContent.statistics.back')}</a></p>
-        <h2 tabindex="-1" data-detail-heading>${contentText(locale, 'adminContent.statistics.title')}</h2>
-        <p>${contentText(locale, 'adminContent.statistics.intro')}</p>
-        <p>${contentText(locale, 'adminContent.statistics.intro2')}</p>
-        ${offNote(locale, context.analytics)} ${liveSections(locale, context)}
-        <p>
-            <a class="external" href=${GA_HOME_URL} target="_blank" rel="noopener noreferrer"
-                >${contentText(locale, 'adminContent.statistics.open')}<hcm-icon name="open_in_new"></hcm-icon
-            ></a>
-        </p>
-        <h3>${contentText(locale, 'adminContent.statistics.howTitle')}</h3>
-        <ol>
-            ${HOW.map((key) => howItem(locale, key))}
-        </ol>
-        <ul class="wizards">
-            ${WIZARD_IDS.map((wizard) => wizardItem(locale, wizard))}
-        </ul>
+        <div class="page-head">
+            <h2 tabindex="-1" data-detail-heading>${contentText(locale, 'adminContent.statistics.title')}</h2>
+            <p>${contentText(locale, 'adminContent.statistics.intro')}</p>
+            <p class="note">${contentText(locale, 'adminContent.statistics.intro2')}</p>
+            <p>
+                <a class="external" href=${GA_HOME_URL} target="_blank" rel="noopener noreferrer"
+                    >${contentText(locale, 'adminContent.statistics.open')}<hcm-icon name="open_in_new"></hcm-icon
+                ></a>
+            </p>
+        </div>
+        ${offNote(locale, context.analytics)} ${liveSections(locale, context)} ${helpSection(locale, context.view)}
     </div>`;
 }

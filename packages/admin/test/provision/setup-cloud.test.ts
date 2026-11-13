@@ -106,8 +106,8 @@ describe('createSetupCloud', () => {
             { id: 'secrets', state: 'ok' },
         ]);
         expect(heard).toEqual(['apis', 'secrets']);
-        // M6 (CR-M6-2): the pipeline's repository is the 16th item.
-        expect(doctor).toHaveLength(16);
+        // M6 (CR-M6-2): the pipeline's repository is the 16th item; §210 the admin's own site the 17th.
+        expect(doctor).toHaveLength(17);
     });
 
     it('happyPath_theDeploymentIsCountedAgainstTheRegistry', async () => {

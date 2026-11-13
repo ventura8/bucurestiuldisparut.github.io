@@ -43,12 +43,18 @@ interface MatcherWorld {
 
 const NEW_AI_IMAGE = `pytorch/pytorch:2.16.0@sha256:${'d'.repeat(64)}`;
 
+/** The worker's whole `/state` around its `ai` record: its own `image` and the starter's come after it, as the worker writes them. */
+function stateWith(ai: string): string {
+    const own = `"image": "sha256:${'e'.repeat(64)}", "starter": {"version": "aaaaaaaaaaaa", "wanted": "aaaaaaaaaaaa", "update": "current"}`;
+    return `{"workerId": "w-1", "state": "busy", "ai": ${ai}, "machine": null, ${own}}`;
+}
+
 function wantedOf(image: string): string {
-    return `{"ai": {"state": "preparing", "wanted": true, "image": "${image}", "files": true}}`;
+    return stateWith(`{"state": "preparing", "wanted": true, "image": "${image}", "files": true}`);
 }
 
 const WANTED = wantedOf(AI_IMAGE);
-const IDLE = `{"ai": {"state": "ready", "wanted": false, "image": "${AI_IMAGE}", "files": true}}`;
+const IDLE = stateWith(`{"state": "ready", "wanted": false, "image": "${AI_IMAGE}", "files": true}`);
 
 /** `sh hcm-worker.sh matcher` over stand-ins of `curl`, `docker` and `sleep`, until its second pass. Every docker call goes to the log. */
 async function matcherLoop(

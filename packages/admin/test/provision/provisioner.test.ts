@@ -69,7 +69,7 @@ describe('applyProvision', () => {
         expect(snapshot).toContain('"pubsubTopic":"projects/demo-hcm/topics/budget"');
         expect(snapshot).toContain('billing-budget-alert@system.gserviceaccount.com');
         expect(snapshot).toContain(
-            '"allowedReferrers":["https://demo-hcm.web.app/*","https://demo-hcm.firebaseapp.com/*","https://ventura8.github.io/*"]',
+            '"allowedReferrers":["https://demo-hcm.web.app/*","https://demo-hcm.firebaseapp.com/*","https://demo-hcm-admin.web.app/*","https://demo-hcm-admin.firebaseapp.com/*","https://ventura8.github.io/*"]',
         );
         expect(snapshot).toContain('"tokenTtl":"3600s"');
         expect(budget).toMatch(/^billingAccounts\/0E2E00-0E2E00-0E2E01\/budgets\//);

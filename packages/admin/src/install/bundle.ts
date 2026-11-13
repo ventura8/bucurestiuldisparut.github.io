@@ -12,6 +12,8 @@ import {
     installManifestSchema,
     installReleaseSlug,
     RELEASE_PATTERN,
+    adminSiteId,
+    siteOrigins,
     type ApiErrorCode,
     type InstallManifest,
 } from '@hcm/shared';
@@ -62,9 +64,12 @@ export interface BundleDeps {
     readonly digest: (bytes: ArrayBuffer) => Promise<string>;
 }
 
-/** `https://<project>.web.app` and `https://<project>.firebaseapp.com`: where the admin is served (§1.3). */
+/**
+ * Where the admin is served (§1.3): `https://<project>.web.app`, `https://<project>.firebaseapp.com`, and the admin's own
+ * site's two (`<project>-admin`, §210).
+ */
 export function hostingOrigins(projectId: string): readonly string[] {
-    return [`https://${projectId}.web.app`, `https://${projectId}.firebaseapp.com`];
+    return [`https://${projectId}.web.app`, `https://${projectId}.firebaseapp.com`, ...siteOrigins(adminSiteId(projectId))];
 }
 
 /** The bundle folder's address below the admin's base URL. */

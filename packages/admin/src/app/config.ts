@@ -64,6 +64,14 @@ const adminRuntimeSchema = z.object({
     releaseTime: releaseTimeSchema.optional(),
     /** The Hosting-only deploy of a new map: its server is not installed yet, so the admin does not probe it at start. */
     startUp: z.boolean().optional(),
+    /**
+     * §210: the admin's own Hosting site's origin, written by the site build into the copy it deploys there; the admin
+     * keeps the owner's sign-in in the origin's IndexedDB only when the page runs on exactly this origin (`admin-site.ts`).
+     */
+    adminOrigin: z
+        .string()
+        .regex(/^https?:\/\/[a-z0-9.-]{1,253}(?::\d{1,5})?$/)
+        .optional(),
     /** The reCAPTCHA Enterprise site key of App Check; without it the admin runs without App Check. */
     appCheckSiteKey: z
         .string()

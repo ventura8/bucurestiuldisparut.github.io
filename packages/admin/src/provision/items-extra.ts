@@ -1,3 +1,5 @@
+import { adminSiteId, siteDomains } from '@hcm/shared';
+
 import type { RecaptchaKey } from '../google/app-check.js';
 import type { Budget } from '../google/billing.js';
 import type { GoogleClients } from '../google/clients.js';
@@ -73,8 +75,9 @@ const budgetAlerts: ProvisionItemSpec = {
 const RECAPTCHA_KEY_NAME = 'historic-city-map admin';
 const TOKEN_TTL = '3600s';
 
+/** The key's domains: the public map's site and, since §210, the admin's own (`<project>-admin`). */
 function keyDomains({ project }: ProvisionContext): string[] {
-    return [`${project.projectId}.web.app`, `${project.projectId}.firebaseapp.com`];
+    return [`${project.projectId}.web.app`, `${project.projectId}.firebaseapp.com`, ...siteDomains(adminSiteId(project.projectId))];
 }
 
 async function adminKey(context: ProvisionContext): Promise<RecaptchaKey | undefined> {
