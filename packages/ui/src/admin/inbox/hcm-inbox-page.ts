@@ -6,7 +6,7 @@
  * refusal leaves the inbox working and says so), a switch per kind for this account's devices, and **Send a test
  * notification**. Text only: nothing of a notification is rendered as HTML.
  */
-import { NOTIFICATION_KINDS, paramsIn, type Locale, type NotificationKind, type NotificationSeverity } from '@hcm/shared';
+import { contentLocale, NOTIFICATION_KINDS, paramsIn, type UiLocale, type NotificationKind, type NotificationSeverity } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { visuallyHidden } from '../../components/styles.js';
@@ -24,8 +24,8 @@ export const HCM_INBOX_PAGE_TAG = 'hcm-inbox-page';
 const SEVERITY_ICONS: Readonly<Record<NotificationSeverity, string>> = { info: 'info', warning: 'warning', error: 'error' };
 
 /** A notification's message in `locale`, its parameters filled as text (`paramsIn`: the English ones in English). */
-export function notificationMessage(locale: Locale, row: Pick<InboxRowPort, 'kind' | 'params'>): string {
-    return contentText(locale, `adminContent.notify.event.${row.kind}`, paramsIn(locale, row.params));
+export function notificationMessage(locale: UiLocale, row: Pick<InboxRowPort, 'kind' | 'params'>): string {
+    return contentText(locale, `adminContent.notify.event.${row.kind}`, paramsIn(contentLocale(locale), row.params));
 }
 
 const inboxStyles = css`
@@ -115,7 +115,7 @@ class HcmInboxPage extends AreaPage<InboxViewState, InboxIntentsPort> {
         return (this.state?.unread ?? 0) > 0;
     }
 
-    #list(locale: Locale, view: InboxViewState): TemplateResult {
+    #list(locale: UiLocale, view: InboxViewState): TemplateResult {
         const unread = view.list.items.some((row) => !row.read) || this.#unreadPastThePage;
         const markAll = (): void => {
             void this.intents?.markAllRead();
@@ -140,7 +140,7 @@ class HcmInboxPage extends AreaPage<InboxViewState, InboxIntentsPort> {
         </section>`;
     }
 
-    #row(locale: Locale, row: InboxRowPort): TemplateResult {
+    #row(locale: UiLocale, row: InboxRowPort): TemplateResult {
         const open = (): void => {
             this.intents?.markRead(row.id);
         };
@@ -160,7 +160,7 @@ class HcmInboxPage extends AreaPage<InboxViewState, InboxIntentsPort> {
         </li>`;
     }
 
-    #settings(locale: Locale, view: InboxViewState): TemplateResult {
+    #settings(locale: UiLocale, view: InboxViewState): TemplateResult {
         return html`<section aria-labelledby="inbox-settings" data-settings>
             <h2 id="inbox-settings">${contentText(locale, 'adminContent.notify.settings.title')}</h2>
             <p class="note">${contentText(locale, 'adminContent.notify.settings.intro')}</p>
@@ -168,7 +168,7 @@ class HcmInboxPage extends AreaPage<InboxViewState, InboxIntentsPort> {
         </section>`;
     }
 
-    #device(locale: Locale, view: InboxViewState): TemplateResult {
+    #device(locale: UiLocale, view: InboxViewState): TemplateResult {
         const { push } = view;
         if (push.device === 'unsupported') {
             return html`<p class="note" data-push=${push.device}>${contentText(locale, 'adminContent.notify.push.unsupported')}</p>`;
@@ -189,7 +189,7 @@ class HcmInboxPage extends AreaPage<InboxViewState, InboxIntentsPort> {
             ${this.#deviceState(locale, view)}`;
     }
 
-    #deviceState(locale: Locale, view: InboxViewState): TemplateResult {
+    #deviceState(locale: UiLocale, view: InboxViewState): TemplateResult {
         const { push } = view;
         if (push.device === 'denied') {
             return html`<p class="alert" role="alert">
@@ -209,16 +209,16 @@ class HcmInboxPage extends AreaPage<InboxViewState, InboxIntentsPort> {
     }
 
     /** The failure's reason with its code (finding 46 of 2026-11-01), when it has one. */
-    #reasonLine(locale: Locale, view: InboxViewState): TemplateResult | typeof nothing {
+    #reasonLine(locale: UiLocale, view: InboxViewState): TemplateResult | typeof nothing {
         const { reason } = view.push;
         return reason === null ? nothing : html`<p class="note reason">${noticeOf(locale, reason)}</p>`;
     }
 
-    #working(locale: Locale, view: InboxViewState): string {
+    #working(locale: UiLocale, view: InboxViewState): string {
         return view.push.device === 'working' ? contentText(locale, 'adminContent.notify.push.working') : '';
     }
 
-    #test(locale: Locale, view: InboxViewState): TemplateResult {
+    #test(locale: UiLocale, view: InboxViewState): TemplateResult {
         const test = (): void => {
             void this.intents?.sendTest();
         };
@@ -230,14 +230,14 @@ class HcmInboxPage extends AreaPage<InboxViewState, InboxIntentsPort> {
             </div>`;
     }
 
-    #kinds(locale: Locale, settings: InboxSettingsPort): TemplateResult {
+    #kinds(locale: UiLocale, settings: InboxSettingsPort): TemplateResult {
         return html`<h3 id="inbox-kinds">${contentText(locale, 'adminContent.notify.settings.kinds')}</h3>
             <ul class="kinds" aria-labelledby="inbox-kinds">
                 ${NOTIFICATION_KINDS.map((kind) => this.#kind(locale, settings, kind))}
             </ul>`;
     }
 
-    #kind(locale: Locale, settings: InboxSettingsPort, kind: NotificationKind): TemplateResult {
+    #kind(locale: UiLocale, settings: InboxSettingsPort, kind: NotificationKind): TemplateResult {
         const label = contentText(locale, `adminContent.notify.kind.${kind}`);
         const change = (event: CustomEvent<{ readonly checked: boolean }>): void => {
             void this.intents?.setKind(kind, event.detail.checked);

@@ -1,10 +1,11 @@
-export { DEFAULT_LOCALE, LOCALES, resolveLocale, translate, type Locale, type MessageKey, type Messages } from './i18n/index.js';
+// The viewer's and the interface's languages, their catalogues' registry and the fallback to English (docs/I18N.md).
+export * from './i18n/index.js';
 export { pluralOf } from './i18n/plural.js';
+export * from './i18n/locales.js';
 export type { Translator } from './i18n/catalogue.js';
 // The admin's own texts (docs/research/M2b-interfaces.md §1.6): separate catalogues the viewer never imports.
-export { translateAdminShell } from './i18n/admin-shell/index.js';
+export { translateAdminShell, type AdminShellKey, type AdminShellMessages } from './i18n/admin-shell/index.js';
 export { translateStart, type StartKey } from './i18n/start/index.js';
-export type { AdminShellKey, AdminShellMessages } from './i18n/admin-shell/index.js';
 export { translateAdminSetup, type AdminSetupKey, type AdminSetupMessages } from './i18n/admin-setup/index.js';
 export { translateAdminContent, type AdminContentKey, type AdminContentMessages } from './i18n/admin-content/index.js';
 export { REDACTED, consoleSink, createLogger, redact } from './log.js';
@@ -127,7 +128,6 @@ export {
     FINISHED_JOB_STATUSES,
     GUARD_REASONS,
     GUARD_STATES,
-    HARVEST_OUTCOMES,
     JOB_LOG_LEVELS,
     JOB_MACHINES,
     JOB_STATUSES,
@@ -150,7 +150,6 @@ export {
     WORKER_ID_PATTERN,
     adminDocSchema,
     provisionDue,
-    harvestStateDocSchema,
     inviteDocSchema,
     jobDocSchema,
     jobLogDocSchema,
@@ -163,10 +162,17 @@ export {
     usageDocSchema,
     usgsSceneDocSchema,
 } from './schemas/firestore-ops.js';
+export {
+    HARVEST_DATASET_STATES,
+    HARVEST_OUTCOMES,
+    HARVEST_STOP_REASONS,
+    harvestDatasetSchema,
+    harvestStateDocSchema,
+} from './schemas/harvest-state.js';
+export type { HarvestDataset, HarvestDatasets, HarvestStateDoc } from './schemas/harvest-state.js';
 export type {
     AdminDoc,
     AdminRole,
-    HarvestStateDoc,
     InviteDoc,
     JobDoc,
     JobLogDoc,
@@ -199,7 +205,7 @@ export { AUTO_MIN_MEASURED_PCT, CITY_MIN_COVERAGE_PCT, DEFAULT_RMSE_THRESHOLD_M,
 export { MAX_TARGET_YEARS, RMSE_THRESHOLD_RANGE, cityImagerySchema, imagerySettingsOf } from './schemas/imagery-settings.js';
 // M25 (docs/research/M25-landsat.md): named, never `export *` (a star re-export costs the engine bytes: docs/LESSONS.md 532).
 export { DECLASS_DATASETS, DEFAULT_LANDSAT_YEARS, ETM_SLC_OFF_DATE, LANDSAT_ATTRIBUTION } from './schemas/landsat.js';
-export { LANDSAT_AUTO_MAX_CLOUD, LANDSAT_AUTO_PER_TICK, LANDSAT_DATASETS } from './schemas/landsat.js';
+export { LANDSAT_AUTO_MAX_CLOUD, LANDSAT_AUTO_MAX_PER_TICK, LANDSAT_AUTO_PER_TICK, LANDSAT_DATASETS } from './schemas/landsat.js';
 export { LANDSAT_MAX_CITY_CLOUD_PCT, LANDSAT_MAX_OFFSET_PX, landsatClear } from './schemas/landsat-verdict.js';
 export { LANDSAT_MONTHS, LANDSAT_SEARCH_MAX_CLOUD, LEAF_ON_MONTHS, USGS_DATASETS } from './schemas/landsat.js';
 export { isLandsatDataset, landsatReportSchema, landsatYearsOf } from './schemas/landsat.js';

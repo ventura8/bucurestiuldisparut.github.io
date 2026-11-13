@@ -15,7 +15,7 @@
  * a menu opened by selecting the year is never replaced by one. A mouse's peek closes `PEEK_LEAVE_MS` after the mouse left
  * both the year and the menu; Esc or a press elsewhere closes it at once.
  */
-import { translate, type Layer, type Locale } from '@hcm/shared';
+import { translate, type Layer, type ViewerLocale } from '@hcm/shared';
 import { html, type ReactiveController, type ReactiveControllerHost, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
@@ -223,7 +223,7 @@ export class TimelineDock implements ReactiveController {
 export interface DockView {
     readonly stops: readonly TimelineStop[];
     readonly year: number | null;
-    readonly locale: Locale;
+    readonly locale: ViewerLocale;
     readonly orientation: TimelineOrientation;
     readonly layers: readonly Layer[];
     readonly collapsed: boolean;

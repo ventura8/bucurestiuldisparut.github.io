@@ -36,7 +36,7 @@ describe('the Imagery area reads', () => {
             mapAutoPublish: true,
             landsatAuto: true,
             landsatFrom: 1984,
-            landsatTo: 2000,
+            landsatTo: undefined,
         });
         expect(last('frame')?.bounds).toEqual([
             [25.9, 44.3],

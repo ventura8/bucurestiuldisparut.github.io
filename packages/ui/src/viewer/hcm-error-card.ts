@@ -7,7 +7,7 @@
  * Material 3: an error container (`error-container` with `on-error-container` text and icon) and Retry as a filled
  * tonal button with the refresh icon (the M1 UX review: a filled primary button shouted over the message).
  */
-import { DEFAULT_LOCALE, isValidationCode, translate, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, isValidationCode, translate, type ViewerLocale } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
@@ -21,7 +21,7 @@ function paramsOf(error: ViewerError): Readonly<Record<string, string>> {
 }
 
 /** `path: message` of the first validation issue an error carries (an invalid manifest), or `''`. */
-function issueText(error: ViewerError, locale: Locale): string {
+function issueText(error: ViewerError, locale: ViewerLocale): string {
     const params = paramsOf(error);
     const code = params['issueCode'] ?? '';
     if (!isValidationCode(code)) {
@@ -80,7 +80,7 @@ export class HcmErrorCard extends LitElement {
     ];
 
     declare error: ViewerError | null;
-    declare locale: Locale;
+    declare locale: ViewerLocale;
 
     constructor() {
         super();

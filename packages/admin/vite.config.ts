@@ -4,7 +4,9 @@ import { defineConfig } from 'vite';
 
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
+import { uiCataloguesPlugin } from '../../scripts/site/src/ui-catalogues.js';
 import { zodStandInsPlugin } from '../../scripts/site/src/zod-stand-ins.js';
+import { BUNDLED_LOCALES, UI_LOCALES } from '../shared/src/i18n/locales.js';
 import { FONT_FILES } from '../ui/src/fonts/font-files.js';
 
 /**
@@ -126,6 +128,10 @@ const ZOD_STAND_INS = {
     messages: fileURLToPath(new URL('src/vendor/zod-locale-none.ts', import.meta.url)),
 };
 
+/** The catalogues' folder, and the languages every page fetches rather than bundles (docs/I18N.md → Loading). */
+const SHARED_I18N = fileURLToPath(new URL('../shared/src/i18n', import.meta.url));
+const FETCHED_LOCALES = UI_LOCALES.filter((locale) => !BUNDLED_LOCALES.includes(locale));
+
 export default defineConfig({
     // M6 (docs/research/M6-interfaces.md §2.3): Hosting serves the admin under /admin/ (the public map is at the root);
     // `import.meta.env.BASE_URL` names it for the files the admin fetches by absolute path (src/app/config.ts).
@@ -134,6 +140,8 @@ export default defineConfig({
     plugins: [
         zodStandInsPlugin(ZOD_STAND_INS),
         cssLiteralsPlugin(),
+        // The languages beyond Romanian and English: `dist/i18n/<locale>.json`, fetched when chosen (docs/I18N.md → Loading).
+        uiCataloguesPlugin({ root: SHARED_I18N, locales: FETCHED_LOCALES }),
         thirdPartyNoticesPlugin({
             product: 'the Historic City Map Maker admin (admin.mjs, its chunks and fonts)',
             assets: FONT_FILES.map((font) => ({ package: font.source.package, file: `fonts/${font.file}` })),

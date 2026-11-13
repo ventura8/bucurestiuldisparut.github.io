@@ -42,9 +42,10 @@ export const startStyles = css`
         font-weight: 600;
     }
 
-    nav {
+    .language {
         display: flex;
-        gap: 4px;
+        align-items: center;
+        gap: 8px;
     }
 
     main {
@@ -125,17 +126,6 @@ export const startStyles = css`
         color: var(--muted);
     }
 
-    button.text {
-        background: transparent;
-        color: var(--primary);
-        padding-inline: 8px;
-    }
-
-    button.text[aria-pressed='true'] {
-        background: var(--panel);
-        text-decoration: underline;
-    }
-
     .panel {
         margin-block: 24px;
         padding: 16px;
@@ -184,6 +174,10 @@ export const startStyles = css`
         background: var(--surface);
         color: var(--on-surface);
         font: inherit;
+    }
+
+    .language select {
+        inline-size: auto;
     }
 
     button:focus-visible,

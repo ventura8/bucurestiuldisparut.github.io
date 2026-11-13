@@ -2,7 +2,7 @@
  * One history entry in the detail pane (`docs/research/M2c-interfaces.md` §9.2): who changed what and when, each changed
  * field before and after as text, and **Revert** (**Restore** for a deletion); a creation has nothing to restore.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
 import { fieldName } from '../editing/field-names.js';
@@ -81,7 +81,7 @@ export const historyStyles = css`
 `;
 
 export interface EntryContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly entry: HistoryItemPort;
     readonly changes: HistoryViewState['changes'];
     readonly heading: string;
@@ -92,7 +92,7 @@ export interface EntryContext {
     readonly ask: () => void;
 }
 
-function changesTemplate(locale: Locale, changes: HistoryViewState['changes']): TemplateResult {
+function changesTemplate(locale: UiLocale, changes: HistoryViewState['changes']): TemplateResult {
     if (changes.length === 0) {
         return html`<p class="note">${contentText(locale, 'adminContent.history.noFields')}</p>`;
     }

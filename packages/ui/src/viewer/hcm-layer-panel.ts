@@ -20,7 +20,7 @@
  * re-created when the window comes back to extra-large is still minimized. The switches and sliders are the store's, so
  * minimizing loses none of them. The focus follows: to the rail's button, then back to the panel's close button.
  */
-import { DEFAULT_LOCALE, translate, type Locale, type Manifest, type Overlay } from '@hcm/shared';
+import { DEFAULT_LOCALE, translate, type ViewerLocale, type Manifest, type Overlay } from '@hcm/shared';
 import { translateMapLabels, type MapLabelKind, type MapLabels, type MapLabelsKey } from '@hcm/shared/map-labels';
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
@@ -180,7 +180,7 @@ export class HcmLayerPanel extends LitElement {
 
     declare overlays: readonly Overlay[];
     declare manifest: Manifest | null;
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare mode: SheetMode;
     declare open: boolean;
     /** The pane is always docked (extra-large): its close button minimizes it to one floating button. */
@@ -301,7 +301,7 @@ export class HcmLayerPanel extends LitElement {
     }
 
     /** M27: the pinned categories, below Compare and Map labels; nothing when the manifest pins none. */
-    #pinnedList(manifest: Manifest, locale: Locale): TemplateResult {
+    #pinnedList(manifest: Manifest, locale: ViewerLocale): TemplateResult {
         const pinned = splitPinned(this.overlays, manifest, true);
         if (pinned.length === 0) {
             return EMPTY;
@@ -311,7 +311,7 @@ export class HcmLayerPanel extends LitElement {
         </div>`;
     }
 
-    #mapLabels(manifest: Manifest, locale: Locale): TemplateResult {
+    #mapLabels(manifest: Manifest, locale: ViewerLocale): TemplateResult {
         const kinds = this.labels?.available ?? [];
         if (kinds.length === 0) {
             return EMPTY;
@@ -325,7 +325,7 @@ export class HcmLayerPanel extends LitElement {
         </div>`;
     }
 
-    #mapLabel(kind: MapLabelKind, locale: Locale): TemplateResult {
+    #mapLabel(kind: MapLabelKind, locale: ViewerLocale): TemplateResult {
         const name = translateMapLabels(locale, LABEL_NAMES[kind]);
         const onChange = (event: CustomEvent<{ readonly checked: boolean }>): void => {
             event.stopPropagation();
@@ -338,7 +338,7 @@ export class HcmLayerPanel extends LitElement {
         </li>`;
     }
 
-    #compareButton(locale: Locale): TemplateResult {
+    #compareButton(locale: ViewerLocale): TemplateResult {
         if (!this.canCompare) {
             return EMPTY;
         }

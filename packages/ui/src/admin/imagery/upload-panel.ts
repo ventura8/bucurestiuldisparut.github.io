@@ -10,7 +10,7 @@ import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type { ChosenFilePort, UploadStatePort } from './imagery-port.js';
 import { when, withValue } from './when.js';
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 
 export interface UploadHandlers {
     readonly choose: (file: ChosenFilePort) => void;
@@ -51,7 +51,7 @@ function openPicker(event: Event): void {
     drop?.querySelector<HTMLInputElement>('input[type="file"]')?.click();
 }
 
-function chooser(locale: Locale, handlers: UploadHandlers): TemplateResult {
+function chooser(locale: UiLocale, handlers: UploadHandlers): TemplateResult {
     const leave = (event: Event): void => {
         (event.currentTarget as HTMLElement).removeAttribute('data-over');
     };
@@ -78,7 +78,7 @@ function chooser(locale: Locale, handlers: UploadHandlers): TemplateResult {
     </div>`;
 }
 
-function yearForm(locale: Locale, state: UploadStatePort, handlers: UploadHandlers, id: string): TemplateResult {
+function yearForm(locale: UiLocale, state: UploadStatePort, handlers: UploadHandlers, id: string): TemplateResult {
     return html`<div class="field">
             <label for=${`${id}-year`}>${contentText(locale, 'adminContent.imagery.upload.year')}</label>
             <input
@@ -104,7 +104,7 @@ function yearForm(locale: Locale, state: UploadStatePort, handlers: UploadHandle
         </div>`;
 }
 
-function progress(locale: Locale, state: UploadStatePort, handlers: UploadHandlers): TemplateResult {
+function progress(locale: UiLocale, state: UploadStatePort, handlers: UploadHandlers): TemplateResult {
     const percent = String(Math.round(state.progress * 100));
     return html`<hcm-progress
             .value=${state.progress}
@@ -123,7 +123,7 @@ function progress(locale: Locale, state: UploadStatePort, handlers: UploadHandle
         </div>`;
 }
 
-function retryButton(locale: Locale, handlers: UploadHandlers): TemplateResult {
+function retryButton(locale: UiLocale, handlers: UploadHandlers): TemplateResult {
     return html`<hcm-button
         variant="tonal"
         icon="refresh"
@@ -135,7 +135,7 @@ function retryButton(locale: Locale, handlers: UploadHandlers): TemplateResult {
 }
 
 /** A refused or failed upload says why; a failed one tries again, either starts over with no file. */
-function refusal(locale: Locale, state: UploadStatePort, handlers: UploadHandlers): TemplateResult {
+function refusal(locale: UiLocale, state: UploadStatePort, handlers: UploadHandlers): TemplateResult {
     return html`<p class="alert" role="alert"><hcm-icon name="error"></hcm-icon><span>${noticeOf(locale, state.refusal)}</span></p>
         <div class="actions">
             ${when(state.phase === 'failed', () => retryButton(locale, handlers))}
@@ -150,11 +150,11 @@ function refusal(locale: Locale, state: UploadStatePort, handlers: UploadHandler
         </div>`;
 }
 
-function checking(locale: Locale): TemplateResult {
+function checking(locale: UiLocale): TemplateResult {
     return html`<p class="note" role="status">${contentText(locale, 'adminContent.imagery.upload.checking')}</p>`;
 }
 
-type PhaseView = (locale: Locale, state: UploadStatePort, handlers: UploadHandlers, id: string) => TemplateResult;
+type PhaseView = (locale: UiLocale, state: UploadStatePort, handlers: UploadHandlers, id: string) => TemplateResult;
 
 /** The body of each phase. */
 const PHASES: Readonly<Record<UploadStatePort['phase'], PhaseView>> = {
@@ -167,11 +167,11 @@ const PHASES: Readonly<Record<UploadStatePort['phase'], PhaseView>> = {
     done: checking,
 };
 
-function fileLine(locale: Locale, state: UploadStatePort): TemplateResult {
+function fileLine(locale: UiLocale, state: UploadStatePort): TemplateResult {
     return withValue(state.fileName, (name) => html`<p data-file>${contentText(locale, 'adminContent.imagery.upload.file', { name })}</p>`);
 }
 
-export function uploadPanel(locale: Locale, state: UploadStatePort, handlers: UploadHandlers, id = 'imagery-upload'): TemplateResult {
+export function uploadPanel(locale: UiLocale, state: UploadStatePort, handlers: UploadHandlers, id = 'imagery-upload'): TemplateResult {
     const busy = state.phase === 'uploading' || state.phase === 'checking';
     const title = state.layerId === null ? 'adminContent.imagery.upload.title' : 'adminContent.imagery.upload.replaceTitle';
     return html`<div class="pane" data-view="upload" data-phase=${state.phase}>

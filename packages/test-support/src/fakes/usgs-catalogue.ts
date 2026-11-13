@@ -18,9 +18,13 @@ const DATASET_FIXTURES: Readonly<Record<string, FixtureName>> = {
 
 /**
  * M25 (`docs/research/M25-landsat.md` §8): Landsat 5 TM's scenes over the city, which a search answers only once a spec asks for them
- * (`usgs.landsatScenes`: every other spec's harvest stays the declassified one); Landsat 7 has none.
+ * (`usgs.landsatScenes`: every other spec's harvest stays the declassified one), and Landsat 8 and 9 OLI's (a 2016 and a 2023 scene);
+ * Landsat 7 has none.
  */
-const LANDSAT_FIXTURES: Readonly<Record<string, FixtureName>> = { landsat_tm_c2_l1: 'usgs/scene-search.landsat' };
+const LANDSAT_FIXTURES: Readonly<Record<string, FixtureName>> = {
+    landsat_tm_c2_l1: 'usgs/scene-search.landsat',
+    landsat_ot_c2_l1: 'usgs/scene-search.landsat-ot',
+};
 
 /** One `scene-search` result as M2M sends it (the fields the fake reads; the rest pass through). */
 export interface SceneResult {

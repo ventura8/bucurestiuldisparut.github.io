@@ -6,7 +6,7 @@
  * region. The sheets left out are listed under the grid with Put back. On a phone the grid pans in its own frame: a touch never
  * starts a drag, so a swipe on the cells scrolls.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { css, html, LitElement, type PropertyValues, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../../components/css-properties.js';
@@ -75,7 +75,7 @@ function outKey(sheet: TileSheetPort): `adminTiles.out.${NonNullable<TileSheetPo
 }
 
 /** A cell's name: the sheet in it, or empty with its row and column (counted from 1). */
-function cellLabel(locale: Locale, sheet: TileSheetPort | undefined, row: number, col: number): string {
+function cellLabel(locale: UiLocale, sheet: TileSheetPort | undefined, row: number, col: number): string {
     return sheet === undefined
         ? t(locale, 'adminTiles.cellEmpty', { row: String(row + 1), col: String(col + 1) })
         : sheetLabel(locale, sheet);
@@ -161,7 +161,7 @@ class HcmTileGrid extends LitElement {
 
     declare view: TilesViewState | null;
     declare intents: TilesIntentsPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** Move was pressed: the next cell tapped takes the chosen sheet. */
     declare moving: boolean;
     /** The live region's text: what the last change did. */

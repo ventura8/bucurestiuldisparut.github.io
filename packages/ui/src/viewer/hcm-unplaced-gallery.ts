@@ -3,7 +3,7 @@
  * place yet. Each one links to the Contribute page on that photo, a page of its own that signs in; the map itself signs nothing
  * in, so a visitor who only looks sends nothing anywhere. No link without `contributeUrl` (a static export).
  */
-import { DEFAULT_LOCALE, translate, type Locale, type UnplacedPhoto } from '@hcm/shared';
+import { DEFAULT_LOCALE, translate, type ViewerLocale, type UnplacedPhoto } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
@@ -72,7 +72,7 @@ export class HcmUnplacedGallery extends LitElement {
     ];
 
     declare photos: readonly UnplacedPhoto[];
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare manifestUrl: string;
     declare contributeUrl: string | null;
 

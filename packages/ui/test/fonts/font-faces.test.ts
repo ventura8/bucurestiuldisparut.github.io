@@ -52,7 +52,9 @@ describe('installFonts', () => {
         const faces = installFonts(document, FONT_BASE);
         const text = faces.filter((face) => face.family.includes(TEXT_FONT_FAMILY));
 
-        expect(text).toHaveLength(2);
+        // Latin, Latin extended (ă, ș, ț; Polish, Turkish) and Cyrillic (Russian, Ukrainian): each fetched only when drawn.
+        expect(text).toHaveLength(3);
+        expect(text.some((face) => /U\+0*400-0*45F/i.test(face.unicodeRange))).toBe(true);
         expect(text.every((face) => face.unicodeRange.startsWith('U+'))).toBe(true);
         expect(faces.find((face) => face.family.includes(ICON_FONT_FAMILY))?.display).toBe('block');
         expect(TEXT_FONT_STACK.startsWith(`'${TEXT_FONT_FAMILY}'`)).toBe(true);

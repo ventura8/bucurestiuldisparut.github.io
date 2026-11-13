@@ -4,7 +4,7 @@
  * **Link a layer**; the open layer's editor beside the list from 840 px, in its place below. Every slider previews live
  * on the page's map once one is attached (`attachPreview`); nothing is written before Save.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
 import { MAPBOX_GL_CSS_URL } from '../../map/mapbox-loader.js';
@@ -89,7 +89,7 @@ export class HcmLayersPage extends AreaPage<LayersViewState, LayersIntentsPort> 
     }
 
     /** M18 item 6: the head points to the place categories, which are the viewer's Places group (edited in Settings). */
-    #list(locale: Locale, view: LayersViewState): TemplateResult {
+    #list(locale: UiLocale, view: LayersViewState): TemplateResult {
         const intents = this.intents;
         return html`<div class="list-head">
                 <h2>${contentText(locale, 'adminContent.layers.title')}</h2>
@@ -117,7 +117,7 @@ export class HcmLayersPage extends AreaPage<LayersViewState, LayersIntentsPort> 
             )}`;
     }
 
-    #rows(locale: Locale, view: LayersViewState, items: readonly LayerItemPort[]): TemplateResult {
+    #rows(locale: UiLocale, view: LayersViewState, items: readonly LayerItemPort[]): TemplateResult {
         const topFirst = items.toSorted((a, b) => b.order - a.order || b.year - a.year || a.id.localeCompare(b.id));
         const rows = topFirst.map((layer) => ({
             id: layer.id,
@@ -140,14 +140,14 @@ export class HcmLayersPage extends AreaPage<LayersViewState, LayersIntentsPort> 
         return reorderList(rows, labels, handlers, this.#drag);
     }
 
-    #detailOf(locale: Locale, layer: LayerItemPort): string {
+    #detailOf(locale: UiLocale, layer: LayerItemPort): string {
         const status = contentText(locale, `adminContent.layers.status.${layer.status}`);
         const published = contentText(locale, layer.published ? 'adminContent.layers.published' : 'adminContent.layers.unpublished');
         const linked = layer.linked ? ` · ${contentText(locale, 'adminContent.layers.linkedTag')}` : '';
         return `${contentText(locale, 'adminContent.layers.rowDetail', { year: String(layer.year), status })} · ${published}${linked}`;
     }
 
-    #detail(locale: Locale, view: LayersViewState): TemplateResult {
+    #detail(locale: UiLocale, view: LayersViewState): TemplateResult {
         const editor = view.editor;
         if (editor === null) {
             return html`<hcm-empty-state icon="layers" .text=${contentText(locale, 'adminContent.layers.choose')}></hcm-empty-state>`;

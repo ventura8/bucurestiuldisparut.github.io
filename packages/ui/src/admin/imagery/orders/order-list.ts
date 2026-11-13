@@ -4,7 +4,7 @@
  * order never delivered, until it is ordered again or its mark taken back); every open order counts in Work's tab
  * (finding 54 of 2026-11-01). A reminder to pay is no longer the admin's to clear once it was sent: it waits like any order.
  */
-import type { AdminContentKey, Locale, OrderState } from '@hcm/shared';
+import type { AdminContentKey, UiLocale, OrderState } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { current } from '../../editing/states.js';
@@ -36,7 +36,7 @@ function openState(scene: SceneItemPort): ShownState | null {
 }
 
 /** The short chip of a scene's open order (the scene's page says it in full); none without one. */
-export function orderTag(locale: Locale, scene: SceneItemPort): TemplateResult {
+export function orderTag(locale: UiLocale, scene: SceneItemPort): TemplateResult {
     const state = openState(scene);
     if (state === null) {
         return EMPTY;

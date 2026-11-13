@@ -146,6 +146,11 @@ export class HcmSheet extends LitElement {
                 :host([variant='side']) .sheet {
                     transform: translateX(100%);
                 }
+
+                /* Right to left the side sheet sits at the left edge (inset-inline-end) and enters from there. */
+                :host([variant='side']:dir(rtl)) .sheet {
+                    transform: translateX(-100%);
+                }
             }
 
             .sheet.dragging {

@@ -8,7 +8,7 @@
  * slotted at the top left. Without a map (no token, no WebGL, a failure) the box says why, with the way to Mapbox's
  * setup when the token is missing; every field and the vertex list still work.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
 import { defineHcmIconButton } from '../../components/icon-button.js';
@@ -159,7 +159,7 @@ export class HcmAdminMap extends LitElement {
     ];
 
     declare status: AdminMapStatus;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** mapbox-gl.css of the pinned release; empty in tests (no network). */
     declare cssUrl: string;
     /** The map has the keyboard focus: the crosshair shows. */

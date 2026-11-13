@@ -8,7 +8,7 @@
  * change is a draft the page's map previews; Save writes it. With `readOnly` (a revoked admin, `DECISIONS-for-review.md`
  * §42d) nothing on it writes: Save and the actions are off, the fields read-only; History still opens.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
 import { emit } from '../../components/internal.js';
@@ -44,7 +44,7 @@ export function canSave(editor: PhotoEditorPort): boolean {
     return !clean && editor.conflict === null && !editor.saving && editor.status === 'ready';
 }
 
-function saveState(locale: Locale, editor: PhotoEditorPort, readOnly: boolean): string {
+function saveState(locale: UiLocale, editor: PhotoEditorPort, readOnly: boolean): string {
     if (readOnly) {
         return photoText(locale, 'adminContent.common.readOnly');
     }
@@ -74,7 +74,7 @@ export class HcmAdminPhotoEditor extends LitElement {
 
     declare editor: PhotoEditorPort | null;
     declare intents: PhotosIntentsPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     declare mapReady: boolean;
     /** The admin's access was removed: nothing on the editor writes (§42d). */
     declare readOnly: boolean;
@@ -135,14 +135,14 @@ export class HcmAdminPhotoEditor extends LitElement {
         return editor.value === null ? this.#notFound(locale, editor) : this.#form(locale, editor, editor.value);
     }
 
-    #notFound(locale: Locale, editor: PhotoEditorPort): TemplateResult {
+    #notFound(locale: UiLocale, editor: PhotoEditorPort): TemplateResult {
         return html`<div class="pane">
             <h2 tabindex="-1" data-detail-heading>${photoText(locale, 'adminContent.photos.editor.notFound')}</h2>
             <p><a href=${historyHref(editor.id)}>${photoText(locale, 'adminContent.photos.editor.seeHistory')}</a></p>
         </div>`;
     }
 
-    #form(locale: Locale, editor: PhotoEditorPort, value: PhotoValuePort): TemplateResult {
+    #form(locale: UiLocale, editor: PhotoEditorPort, value: PhotoValuePort): TemplateResult {
         const left = this.#left.forItem(editor.id);
         const input: SectionInput = {
             locale,
@@ -169,7 +169,7 @@ export class HcmAdminPhotoEditor extends LitElement {
         </div>`;
     }
 
-    #head(locale: Locale, editor: PhotoEditorPort, value: PhotoValuePort): TemplateResult {
+    #head(locale: UiLocale, editor: PhotoEditorPort, value: PhotoValuePort): TemplateResult {
         const why = editor.issues.length === 0 ? null : cannotSaveText(locale, editor.issues);
         const save = async (): Promise<void> => {
             await this.intents?.save();
@@ -192,7 +192,7 @@ export class HcmAdminPhotoEditor extends LitElement {
     }
 
     /** History, Discard (once something changed) and Delete: text buttons of one style; only History while read only. */
-    #actions(locale: Locale, editor: PhotoEditorPort): TemplateResult {
+    #actions(locale: UiLocale, editor: PhotoEditorPort): TemplateResult {
         const discard = html`<hcm-button variant="text" icon="undo" ?disabled=${this.readOnly} @click=${() => this.intents?.discard()}
             >${photoText(locale, 'adminContent.photos.editor.discard')}</hcm-button
         >`;
@@ -217,7 +217,7 @@ export class HcmAdminPhotoEditor extends LitElement {
         </div>`;
     }
 
-    #banners(locale: Locale, editor: PhotoEditorPort): TemplateResult {
+    #banners(locale: UiLocale, editor: PhotoEditorPort): TemplateResult {
         if (editor.status === 'gone') {
             return html`<p class="alert" role="alert">${photoText(locale, 'adminContent.photos.editor.gone')}</p>`;
         }

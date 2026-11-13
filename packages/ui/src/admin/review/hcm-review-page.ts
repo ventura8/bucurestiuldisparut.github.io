@@ -3,7 +3,7 @@
  * public's suggestions with the photo as it is and as proposed side by side on one map, and for the city's owners the requests
  * for a role. Text only: what strangers typed is shown through Lit's text bindings, and a source link must be https.
  */
-import { pluralOf, type Locale, type SuggestionProposal } from '@hcm/shared';
+import { pluralOf, type UiLocale, type SuggestionProposal } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
@@ -94,7 +94,7 @@ function factsOf(proposal: SuggestionProposal | null, none: string): string {
     return parts.length === 0 ? none : parts.join(' · ');
 }
 
-function nameIn(locale: Locale, title: { readonly ro: string; readonly en?: string | undefined }): string {
+function nameIn(locale: UiLocale, title: { readonly ro: string; readonly en?: string | undefined }): string {
     return locale === 'en' ? (title.en ?? title.ro) : title.ro;
 }
 
@@ -132,7 +132,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
     }
 
     #section<Item>(
-        locale: Locale,
+        locale: UiLocale,
         title: Parameters<typeof contentText>[1],
         items: readonly Item[],
         row: (item: Item) => TemplateResult,
@@ -149,11 +149,11 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         </section>`;
     }
 
-    #requests(locale: Locale, list: ListStatePort<ReviewRequestPort>): TemplateResult {
+    #requests(locale: UiLocale, list: ListStatePort<ReviewRequestPort>): TemplateResult {
         return this.#section(locale, 'adminContent.review.requests', list.items, (row) => this.#request(locale, row));
     }
 
-    #note(id: string, locale: Locale): TemplateResult {
+    #note(id: string, locale: UiLocale): TemplateResult {
         const field = `note-${id}`;
         return html`<div class="field">
             <label for=${field}>${contentText(locale, 'adminContent.review.note')}</label>
@@ -172,7 +172,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         >`;
     }
 
-    #item(locale: Locale, view: ReviewViewState, item: ReviewItemPort): TemplateResult {
+    #item(locale: UiLocale, view: ReviewViewState, item: ReviewItemPort): TemplateResult {
         const title = nameIn(locale, item.title);
         const key = `${item.entity}-${item.id}`;
         return html`<li class="card">
@@ -187,14 +187,14 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         </li>`;
     }
 
-    #picture(locale: Locale, view: ReviewViewState, item: ReviewItemPort): TemplateResult | typeof nothing {
+    #picture(locale: UiLocale, view: ReviewViewState, item: ReviewItemPort): TemplateResult | typeof nothing {
         const picture = item.thumbPath === null ? undefined : view.pictures[item.thumbPath];
         const alt = contentText(locale, 'adminContent.review.picture', { title: nameIn(locale, item.title) });
         return picture === undefined ? nothing : html`<img src=${picture} alt=${alt} />`;
     }
 
     /** What an approval publishes besides the title and the picture: an approval is of what was read here. */
-    #published(locale: Locale, item: ReviewItemPort): TemplateResult {
+    #published(locale: UiLocale, item: ReviewItemPort): TemplateResult {
         const credit =
             item.credit === null ? nothing : html`<span>${contentText(locale, 'adminContent.review.credit', { name: item.credit })}</span>`;
         const description = item.description === null ? nothing : html`<p>${nameIn(locale, item.description)}</p>`;
@@ -204,7 +204,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         return html`${credit} ${description} ${links}`;
     }
 
-    #voice(locale: Locale, view: ReviewViewState, voice: ReviewSuggestionPort['voices'][number]): TemplateResult {
+    #voice(locale: UiLocale, view: ReviewViewState, voice: ReviewSuggestionPort['voices'][number]): TemplateResult {
         return html`<div>
             ${voice.reason === null ? nothing : html`<p>${voice.reason}</p>`}
             ${voice.sourceUrl === null ? nothing : html`<p><a href=${voice.sourceUrl} target="_blank" rel="noopener noreferrer nofollow ugc">${contentText(locale, 'adminContent.review.source')}</a></p>`}
@@ -213,7 +213,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         </div>`;
     }
 
-    #suggestion(locale: Locale, view: ReviewViewState, row: ReviewSuggestionPort): TemplateResult {
+    #suggestion(locale: UiLocale, view: ReviewViewState, row: ReviewSuggestionPort): TemplateResult {
         const shown = view.selected === row.id;
         const count = contentText(locale, `adminContent.review.count.${pluralOf(locale, row.count)}`, { count: String(row.count) });
         return html`<li class="card">
@@ -228,20 +228,20 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         </li>`;
     }
 
-    #proposed(locale: Locale, proposal: SuggestionProposal): TemplateResult {
+    #proposed(locale: UiLocale, proposal: SuggestionProposal): TemplateResult {
         const none = contentText(locale, 'adminContent.review.noPlace');
         return html`<span>${contentText(locale, 'adminContent.review.proposed', { value: factsOf(proposal, none) })}</span>`;
     }
 
     /** The one on the map: as it is now, as proposed or as the reviewer has it, and the values by hand while adjusting. */
-    #selected(locale: Locale, view: ReviewViewState, row: ReviewSuggestionPort): TemplateResult {
+    #selected(locale: UiLocale, view: ReviewViewState, row: ReviewSuggestionPort): TemplateResult {
         const none = contentText(locale, 'adminContent.review.noPlace');
         return html`<span>${contentText(locale, 'adminContent.review.current', { value: factsOf(view.current, none) })}</span>
             ${this.#proposed(locale, view.adjusted ?? row.proposal)}
             ${view.adjusted === null ? nothing : this.#adjustFields(locale, view.adjusted)}`;
     }
 
-    #blockOrLetBack(locale: Locale, view: ReviewViewState, voice: ReviewSuggestionPort['voices'][number]): TemplateResult {
+    #blockOrLetBack(locale: UiLocale, view: ReviewViewState, voice: ReviewSuggestionPort['voices'][number]): TemplateResult {
         const ask = (): void => {
             this.intents?.askBlock(voice.uid, voice.reason);
         };
@@ -251,7 +251,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
     }
 
     /** Every value by hand: what the pin cannot say (a direction, a date), and the keyboard's way to the place. */
-    #adjustFields(locale: Locale, adjusted: SuggestionProposal): TemplateResult {
+    #adjustFields(locale: UiLocale, adjusted: SuggestionProposal): TemplateResult {
         const edit = (patch: SuggestionProposal): void => {
             this.intents?.editAdjusted(patch);
         };
@@ -259,12 +259,12 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         ${bearingField(locale, adjusted.bearing, edit)} ${dateFields(locale, adjusted, edit)}`;
     }
 
-    #unblock(locale: Locale, uid: string): TemplateResult {
+    #unblock(locale: UiLocale, uid: string): TemplateResult {
         return html`<span>${contentText(locale, 'adminContent.review.isBlocked')}</span>
             ${this.#button(contentText(locale, 'adminContent.review.unblock'), 'undo', () => void this.intents?.unblock(uid))}`;
     }
 
-    #blocked(locale: Locale, row: ReviewBlockedPort): TemplateResult {
+    #blocked(locale: UiLocale, row: ReviewBlockedPort): TemplateResult {
         return html`<li class="card">
             <strong>${contentText(locale, 'adminContent.review.account', { uid: row.uid })}</strong>
             ${row.about === null ? nothing : html`<p>${row.about}</p>`} ${this.#unblock(locale, row.uid)}
@@ -272,7 +272,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
     }
 
     /** Blocking is a lasting decision about a person, one row from the words that prompted it: it asks first. */
-    #blockQuestion(locale: Locale, view: ReviewViewState): TemplateResult {
+    #blockQuestion(locale: UiLocale, view: ReviewViewState): TemplateResult {
         return html`<hcm-confirm-dialog
             ?open=${view.confirmBlock !== null}
             destructive
@@ -286,7 +286,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         ></hcm-confirm-dialog>`;
     }
 
-    #decisions(locale: Locale, view: ReviewViewState, row: ReviewSuggestionPort): TemplateResult {
+    #decisions(locale: UiLocale, view: ReviewViewState, row: ReviewSuggestionPort): TemplateResult {
         const decide = (decision: 'approve' | 'adjust' | 'reject') => () =>
             void this.intents?.decideSuggestion(row.id, decision, this.#noteOf(row.id));
         return html`${this.#button(contentText(locale, 'adminContent.review.approve'), 'check', decide('approve'))}
@@ -298,7 +298,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         ${this.#button(contentText(locale, 'adminContent.review.reject'), 'close', decide('reject'))}`;
     }
 
-    #decided(locale: Locale, row: ReviewSuggestionPort): TemplateResult {
+    #decided(locale: UiLocale, row: ReviewSuggestionPort): TemplateResult {
         return html`<li class="card">
             <strong>${nameIn(locale, row.title)}</strong>
             <span>${factsOf(row.proposal, '')}</span>
@@ -308,7 +308,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         </li>`;
     }
 
-    #request(locale: Locale, row: ReviewRequestPort): TemplateResult {
+    #request(locale: UiLocale, row: ReviewRequestPort): TemplateResult {
         const role = shellText(locale, `adminShell.city.role.${row.role}`);
         const decide = (decision: 'approve' | 'refuse') => () => void this.intents?.decideRequest(row.uid, decision, this.#noteOf(row.uid));
         return html`<li class="card">
@@ -324,7 +324,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         </li>`;
     }
 
-    #map(locale: Locale, view: ReviewViewState): TemplateResult {
+    #map(locale: UiLocale, view: ReviewViewState): TemplateResult {
         if (view.selected === null) {
             return EMPTY;
         }

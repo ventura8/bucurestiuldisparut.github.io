@@ -6,7 +6,7 @@
  * project's caps alone hold it and shows its fields empty: a field left empty saves at its maximum, so the one an owner
  * types is the only limit set (the M5 UX review; `docs/LESSONS.md` 256).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { errorTemplate, loadingTemplate } from '../editing/states.js';
@@ -31,13 +31,13 @@ const LABELS = {
 } as const;
 
 export interface BudgetCardContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly view: BudgetSectionPort;
     readonly intents: BudgetIntentsPort | null;
     readonly readOnly: boolean;
 }
 
-function heading(locale: Locale): TemplateResult {
+function heading(locale: UiLocale): TemplateResult {
     return html`<h2 tabindex="-1" data-detail-heading>${contentText(locale, 'adminContent.budgets.title')}</h2>`;
 }
 
@@ -55,7 +55,7 @@ function usedId(name: LimitFieldPort): string {
 }
 
 /** What the city used of the limit, where it is counted (nothing for jobs and exports, counted by their records). */
-function usedNote(locale: Locale, name: LimitFieldPort, used: number | undefined, saved: number | undefined): TemplateResult {
+function usedNote(locale: UiLocale, name: LimitFieldPort, used: number | undefined, saved: number | undefined): TemplateResult {
     if (used === undefined) {
         return EMPTY;
     }
@@ -112,7 +112,7 @@ function actions(context: BudgetCardContext): TemplateResult {
 }
 
 /** Why the limits were not saved, beside them. */
-function errorNote(locale: Locale, view: BudgetSectionPort): TemplateResult {
+function errorNote(locale: UiLocale, view: BudgetSectionPort): TemplateResult {
     return view.error === null ? EMPTY : html`<p class="alert" role="alert">${noticeOf(locale, view.error)}</p>`;
 }
 

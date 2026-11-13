@@ -8,7 +8,7 @@
  * processing, asked first (CR-M3-47, `../imagery/guard-banner.ts`). Pause (2026-11-13): Pause all and Resume all over the list, a paused
  * job's row reads Paused, and the open job has Pause or Resume (`<hcm-job-pause>`, the lazy `worker` chunk).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
@@ -132,7 +132,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
     }
 
     /** Resume processing, asked first (it lets the raster work spend again this month). */
-    #resumeQuestion(locale: Locale): TemplateResult {
+    #resumeQuestion(locale: UiLocale): TemplateResult {
         const close = (): void => {
             this.resumeAsked = false;
         };
@@ -151,7 +151,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         ></hcm-confirm-dialog>`;
     }
 
-    #list(locale: Locale, view: JobsViewState): TemplateResult {
+    #list(locale: UiLocale, view: JobsViewState): TemplateResult {
         const intents = this.intents;
         return html`<div class="list-head">
                 <div class="chips" role="group" aria-label=${contentText(locale, 'adminContent.jobs.filterLabel')}>
@@ -185,7 +185,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
      * M7: the local worker's panel (docs/research/M7-local-worker.md §7), its elements the lazy `worker` chunk's; batch 4: in a card above the
      * list and the job that the admin can collapse.
      */
-    #computer(locale: Locale): TemplateResult {
+    #computer(locale: UiLocale): TemplateResult {
         if (!this.#workerLoaded && this.app !== null) {
             this.#workerLoaded = true;
             loadWorkerElements(this.app);
@@ -204,7 +204,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         </details>`;
     }
 
-    #chip(locale: Locale, selected: JobFilterPort, filter: JobFilterPort): TemplateResult {
+    #chip(locale: UiLocale, selected: JobFilterPort, filter: JobFilterPort): TemplateResult {
         const choose = (event: Event): void => {
             // One filter at a time: pressing the pressed chip keeps it pressed.
             (event.currentTarget as HTMLElement & { selected: boolean }).selected = true;
@@ -217,7 +217,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         ></hcm-chip>`;
     }
 
-    #row(locale: Locale, job: JobItemPort, selected: boolean): TemplateResult {
+    #row(locale: UiLocale, job: JobItemPort, selected: boolean): TemplateResult {
         const percent = percentOf(job);
         const status = job.paused ? contentText(locale, 'adminContent.jobs.status.paused') : jobStatusText(locale, job.status);
         const detail =
@@ -232,7 +232,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         </li>`;
     }
 
-    #detail(locale: Locale, view: JobsViewState): TemplateResult {
+    #detail(locale: UiLocale, view: JobsViewState): TemplateResult {
         const detail = view.detail;
         if (detail === null) {
             return html`<hcm-empty-state
@@ -250,14 +250,14 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         return this.#job(locale, view, job.doc.data, detail.logs);
     }
 
-    #notFound(locale: Locale): TemplateResult {
+    #notFound(locale: UiLocale): TemplateResult {
         return html`<div class="pane">
             <h2 tabindex="-1" data-detail-heading>${contentText(locale, 'adminContent.jobs.notFound')}</h2>
             <p><a href=${this.href([])}>${contentText(locale, 'adminContent.jobs.backToList')}</a></p>
         </div>`;
     }
 
-    #job(locale: Locale, view: JobsViewState, job: JobItemPort, logs: NonNullable<JobsViewState['detail']>['logs']): TemplateResult {
+    #job(locale: UiLocale, view: JobsViewState, job: JobItemPort, logs: NonNullable<JobsViewState['detail']>['logs']): TemplateResult {
         const started = contentText(locale, 'adminContent.jobs.started', {
             who: whoText(locale, job.createdBy, this.#self()),
             date: formatWhen(locale, job.createdAt),
@@ -277,7 +277,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         </div>`;
     }
 
-    #raster(locale: Locale, view: JobsViewState, job: JobItemPort): TemplateResult {
+    #raster(locale: UiLocale, view: JobsViewState, job: JobItemPort): TemplateResult {
         const retry = (): void => {
             void this.intents?.retryJob();
         };
@@ -288,7 +288,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
      * M7: where an unfinished job runs and its switch (`<hcm-run-place>` shows itself only for a pipeline job holding no run); Pause and
      * Resume (2026-11-13, `<hcm-job-pause>`: a pipeline job queued, running or paused).
      */
-    #place(locale: Locale, job: JobItemPort): TemplateResult {
+    #place(locale: UiLocale, job: JobItemPort): TemplateResult {
         return job.finished
             ? EMPTY
             : html`<hcm-job-pause .app=${this.app} .locale=${locale} job=${job.id} self=${this.#selfId()}></hcm-job-pause>
@@ -304,13 +304,13 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         return this.#self() ?? '';
     }
 
-    #waiting(locale: Locale, job: JobItemPort): TemplateResult {
+    #waiting(locale: UiLocale, job: JobItemPort): TemplateResult {
         return job.dispatchAt === null || job.finished
             ? EMPTY
             : html`<p>${contentText(locale, 'adminContent.jobs.waiting', { date: formatWhen(locale, job.dispatchAt) })}</p>`;
     }
 
-    #progress(locale: Locale, job: JobItemPort): TemplateResult {
+    #progress(locale: UiLocale, job: JobItemPort): TemplateResult {
         const percent = percentOf(job);
         if (percent === null || job.finished) {
             return EMPTY;
@@ -321,7 +321,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         ></hcm-progress>`;
     }
 
-    #error(locale: Locale, job: JobItemPort): TemplateResult {
+    #error(locale: UiLocale, job: JobItemPort): TemplateResult {
         return job.error === null
             ? EMPTY
             : html`<p class="alert">
@@ -330,7 +330,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
               </p>`;
     }
 
-    #logs(locale: Locale, lines: readonly JobLogLinePort[]): TemplateResult {
+    #logs(locale: UiLocale, lines: readonly JobLogLinePort[]): TemplateResult {
         if (lines.length === 0) {
             return html`<p class="note">${contentText(locale, 'adminContent.jobs.noLog')}</p>`;
         }
@@ -346,7 +346,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         </ol>`;
     }
 
-    #cancel(locale: Locale, view: JobsViewState, job: JobItemPort): TemplateResult {
+    #cancel(locale: UiLocale, view: JobsViewState, job: JobItemPort): TemplateResult {
         if (job.finished) {
             return EMPTY;
         }

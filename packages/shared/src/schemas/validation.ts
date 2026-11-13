@@ -5,7 +5,6 @@
  */
 import type { z } from 'zod';
 
-import { ro } from '../i18n/ro.js';
 import { manifestSchema, type Manifest } from './manifest.js';
 import type { ValidationCode } from './primitives.js';
 
@@ -23,7 +22,20 @@ export type ValidationResult<T> =
 
 type Issue = z.core.$ZodIssue;
 
-const CODES = new Set<string>(Object.keys(ro).filter((key) => key.startsWith('validation.')));
+/**
+ * Every `validation.*` code, the catalogues' keys of that family by name (`validation.test.ts` checks they are the same):
+ * not read from `ro.ts`, which the engine's build leaves empty (its texts are fetched, DECISIONS-for-review.md §218).
+ */
+const CODES = new Set<string>(
+    [
+        'required type tooSmall tooBig format value unknownKey httpsOnly assetUrl bounds zoomRange centerOutside duplicateId',
+        'outsideCity yearRange datePart dateImpossible dateRange markdownLink cssValue tileTemplate manifestSource json ringClosed',
+        'reference invalid',
+    ]
+        .join(' ')
+        .split(' ')
+        .map((name) => `validation.${name}`),
+);
 
 /** True for every `validation.*` key of the catalogues. */
 export function isValidationCode(value: string): value is ValidationCode {

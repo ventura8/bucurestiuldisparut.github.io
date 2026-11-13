@@ -4,7 +4,7 @@
  * visitors and visits per app and role with a line per day, and each wizard's steps (people, who left before the step,
  * the average time, the most frequent errors). Every failure says what happened and the fix, with a link to it.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import type { WizardId } from '@hcm/shared/funnels';
 import { html, type TemplateResult } from 'lit';
 
@@ -28,7 +28,7 @@ const GA_HOME = 'https://analytics.google.com/analytics/web/';
 const DAYS: readonly StatisticsDaysPort[] = [7, 28, 90];
 
 export interface NumbersContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly projectId: string;
     readonly authDomain: string;
     readonly state: StatisticsViewState;
@@ -71,7 +71,7 @@ const FIXES: Readonly<Record<StatisticsProblemPort, (projectId: string) => reado
     server: () => [],
 };
 
-function fixLink(locale: Locale, link: FixLink): TemplateResult {
+function fixLink(locale: UiLocale, link: FixLink): TemplateResult {
     const text = contentText(locale, link.key);
     return link.external
         ? html`<p>
@@ -83,7 +83,7 @@ function fixLink(locale: Locale, link: FixLink): TemplateResult {
 }
 
 /** What happened and what to do, in words (the server's own refusal is its message alone). */
-function problemWords(locale: Locale, state: StatisticsViewState, problem: StatisticsProblemPort): readonly string[] {
+function problemWords(locale: UiLocale, state: StatisticsViewState, problem: StatisticsProblemPort): readonly string[] {
     if (problem === 'server') {
         return [noticeOf(locale, state.notice)];
     }
@@ -154,7 +154,7 @@ function controls(context: NumbersContext): TemplateResult {
         ${ready ? EMPTY : consentNote(context)}`;
 }
 
-function appRow(locale: Locale, surface: SurfaceNumbersPort): TemplateResult {
+function appRow(locale: UiLocale, surface: SurfaceNumbersPort): TemplateResult {
     const name = surfaceName(locale, surface.surface);
     const max = formatCount(locale, Math.max(0, ...surface.daily.map((day) => day.visitors)));
     return html`<tr>
@@ -165,7 +165,7 @@ function appRow(locale: Locale, surface: SurfaceNumbersPort): TemplateResult {
     </tr>`;
 }
 
-function appsCard(locale: Locale, numbers: StatisticsNumbersPort): TemplateResult {
+function appsCard(locale: UiLocale, numbers: StatisticsNumbersPort): TemplateResult {
     const title = contentText(locale, 'adminContent.statistics.numbers.apps');
     return html`<section class="card">
         <h4>${title}</h4>
@@ -192,7 +192,7 @@ function appsCard(locale: Locale, numbers: StatisticsNumbersPort): TemplateResul
 }
 
 /** The key numbers: visitors, visits, visits per visitor and the map's key actions in all. */
-function overview(locale: Locale, numbers: StatisticsNumbersPort): TemplateResult {
+function overview(locale: UiLocale, numbers: StatisticsNumbersPort): TemplateResult {
     const text = (key: 'visitors' | 'sessions' | 'perVisitor' | 'keyActions'): string =>
         contentText(locale, `adminContent.statistics.numbers.${key}`);
     const perVisitor = numbers.visitors === 0 ? 0 : numbers.sessions / numbers.visitors;
@@ -209,7 +209,7 @@ function overview(locale: Locale, numbers: StatisticsNumbersPort): TemplateResul
  * Why the apps, the admin screens and the wizards' steps are incomplete, with the fix: Setup's step g for a name GA4 does
  * not know, else when to look again.
  */
-function pendingTemplate(locale: Locale, pending: StatisticsPendingPort | null): TemplateResult {
+function pendingTemplate(locale: UiLocale, pending: StatisticsPendingPort | null): TemplateResult {
     if (pending === null) {
         return EMPTY;
     }
@@ -243,7 +243,7 @@ function numbersTemplate(context: NumbersContext, numbers: StatisticsNumbersPort
 }
 
 /** The numbers' placeholder while Google answers: the cards' shapes, and the words for a screen reader. */
-function skeleton(locale: Locale): TemplateResult {
+function skeleton(locale: UiLocale): TemplateResult {
     const text = contentText(locale, 'adminContent.common.loading');
     const blocks = (count: number, kind: string): TemplateResult[] =>
         Array.from({ length: count }, () => html`<span class="skeleton ${kind}"></span>`);

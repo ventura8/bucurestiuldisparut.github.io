@@ -11,7 +11,10 @@
  * the padding: the track fits it unless the years are closer than 14 px (`density`, `timeline-model.ts`), and only then
  * scrolls, under a finger too, behind a mask that fades the edge with more years beyond (`--hcm-fade-start`, `-end`).
  * A year with several dates has a badge on its point (V13); on a phone, idle, the card collapses to its pill (V12).
- * The year chip (`.tip`) is an M3 plain tooltip outside the scroller, so the card's mask never clips it.
+ * The year chip (`.tip`) is a chip outside the scroller, so the card's mask never clips it. Every chip (the year chip, the
+ * pill, the badge) takes theme roles that are light in the light theme and dark in the dark one: a container role on its
+ * own role's text, never `primary`, `error` or the inverse surface, whose dark-theme tones are light (lesson 'chips in the
+ * dark'); nothing relies on the browser's darkening of the page.
  */
 import { css } from 'lit';
 
@@ -225,9 +228,10 @@ export const timelineStyles = [
             min-inline-size: 64px;
             block-size: 40px;
             padding-inline: 12px;
+            border: 2px solid var(--md-sys-color-primary, Highlight);
             border-radius: var(--md-sys-shape-corner-full, 9999px);
-            background: var(--md-sys-color-primary, Highlight);
-            color: var(--md-sys-color-on-primary, HighlightText);
+            background: var(--md-sys-color-primary-container, Canvas);
+            color: var(--md-sys-color-on-primary-container, CanvasText);
             font-weight: 600;
             cursor: grab;
             transition: 350ms var(--hcm-timeline-spring);
@@ -268,8 +272,8 @@ export const timelineStyles = [
             block-size: 16px;
             padding-inline: 4px;
             border-radius: 8px;
-            background: var(--md-sys-color-error, Mark);
-            color: var(--md-sys-color-on-error, MarkText);
+            background: var(--md-sys-color-error-container, Mark);
+            color: var(--md-sys-color-on-error-container, MarkText);
             font-size: 11px;
             font-weight: 600;
             line-height: 1;
@@ -280,9 +284,10 @@ export const timelineStyles = [
             z-index: 1;
         }
 
+        /* Past the pill's 2 px edge, as far out as before it had one. */
         .thumb .badge {
-            inset-block-start: -6px;
-            inset-inline-end: -6px;
+            inset-block-start: -8px;
+            inset-inline-end: -8px;
         }
 
         .stop .badge {
@@ -339,9 +344,11 @@ export const timelineStyles = [
         }
 
         /*
-         * The year chip: an M3 plain tooltip (inverse surface, the small corner), placed by placeTip over the card lying and
-         * beside it standing; it never takes the pointer. The owner (2026-11-13) asked for it bigger everywhere, to read
-         * easily above a finger: the year in M3 title medium, 40 px tall, 16 px either side.
+         * The year chip: a chip of the small corner, placed by placeTip over the card lying and beside it standing; it never
+         * takes the pointer. The owner (2026-11-13) asked for it bigger everywhere, to read easily above a finger: the year in
+         * M3 title medium, 40 px tall, 16 px either side. It follows the theme (the owner's Android in dark, 2026-11-13: the
+         * chips were light): the highest surface container with its outline and the level-2 shadow, never the inverse surface,
+         * which M3 makes light in the dark theme.
          */
         .tip {
             position: absolute;
@@ -349,9 +356,11 @@ export const timelineStyles = [
             box-sizing: border-box;
             min-block-size: 40px;
             padding: 8px 16px;
+            border: 1px solid var(--md-sys-color-outline-variant, CanvasText);
             border-radius: var(--md-sys-shape-corner-small, 8px);
-            background: var(--md-sys-color-inverse-surface, CanvasText);
-            color: var(--md-sys-color-inverse-on-surface, Canvas);
+            background: var(--md-sys-color-surface-container-highest, Canvas);
+            color: var(--md-sys-color-on-surface, CanvasText);
+            box-shadow: var(--md-sys-elevation-level2, none);
             font-size: var(--md-sys-typescale-title-medium-size, 1rem);
             font-weight: 600;
             line-height: 24px;
@@ -366,10 +375,20 @@ export const timelineStyles = [
             }
         }
 
+        /* Forced colours (Windows contrast themes): the system's own pair, a chip's edge in its text colour. */
         @media (forced-colors: active) {
             .thumb,
             .tip {
                 border: 2px solid ButtonText;
+                background: ButtonFace;
+                color: ButtonText;
+            }
+
+            .badge {
+                outline: 1px solid CanvasText;
+                background: Mark;
+                color: MarkText;
+                forced-color-adjust: none;
             }
         }
     `,

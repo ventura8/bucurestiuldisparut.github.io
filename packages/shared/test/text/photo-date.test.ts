@@ -22,3 +22,17 @@ describe('monthNames', () => {
         expect(monthNames('ro')[6]).toBe('Iulie');
     });
 });
+
+describe('formatPhotoDate in the viewer languages', () => {
+    it('happyPath_arabicKeepsLatinDigits', () => {
+        expect(formatPhotoDate({ year: 1936, month: 7, day: 12 }, 'ar')).toMatch(/12.*1936/u);
+    });
+
+    it('happyPath_turkishCapitalisesWithItsOwnRules', () => {
+        expect(formatPhotoDate({ year: 1936, month: 7 }, 'tr')).toBe('Temmuz 1936');
+    });
+
+    it('happyPath_japaneseWritesItsOwnOrder', () => {
+        expect(formatPhotoDate({ year: 1936, month: 7, day: 12 }, 'ja')).toBe('1936年7月12日');
+    });
+});

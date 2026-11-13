@@ -4,7 +4,7 @@
  * Sentinel-2 or one of the city's published layers, and its credit), side by side from medium windows, one at a
  * time under a Scan | Map switch on compact ones.
  */
-import type { Locale } from '@hcm/shared';
+import { contentLocale, type UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { when, withValue } from '../imagery/when.js';
@@ -148,8 +148,8 @@ function referencesOf(view: GeorefViewState): readonly ReferenceKindPort[] {
 }
 
 /** A published layer's name in the page's language (Romanian when it has no other): kept here so the panes' chunk imports no other area's texts. */
-function layerName(layer: GeorefViewState['baseLayers'][number], locale: Locale): string {
-    return locale === 'en' ? (layer.label.en ?? layer.label.ro) : layer.label.ro;
+function layerName(layer: GeorefViewState['baseLayers'][number], locale: UiLocale): string {
+    return contentLocale(locale) === 'en' ? (layer.label.en ?? layer.label.ro) : layer.label.ro;
 }
 
 /** One thing the map pane can show: a reference of the version, or a published layer of the city. */
@@ -216,7 +216,7 @@ function s2Year(view: GeorefViewState): string {
 }
 
 /** The credit of what the map shows: the published layer's name and year, else the reference's. */
-function attribution(locale: Locale, view: GeorefViewState): string {
+function attribution(locale: UiLocale, view: GeorefViewState): string {
     const layer = view.baseLayers.find((item) => item.id === view.base);
     if (layer !== undefined) {
         return contentText(locale, 'adminContent.georef.shows.layerNote', {

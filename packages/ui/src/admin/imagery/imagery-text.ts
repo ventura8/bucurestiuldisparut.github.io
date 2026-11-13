@@ -3,7 +3,7 @@
  * version's state, why an unfinished job waits, a dataset's name, and the numbers the screens show (metres, percents,
  * compute units, dollars) in the admin's language.
  */
-import type { JobWaitReason, LayerVersionState, Locale, RankReasonEntry, UsgsDataset } from '@hcm/shared';
+import type { JobWaitReason, LayerVersionState, UiLocale, RankReasonEntry, UsgsDataset } from '@hcm/shared';
 
 import { contentText } from '../shell/text.js';
 import type { JobProgressPort, VersionItemPort } from './imagery-port.js';
@@ -50,45 +50,38 @@ export function wordedWait(reason: JobWaitReason | null): WordedWait | null {
     return reason === null || reason === 'worker' || reason === 'free-tier' ? null : reason;
 }
 
-const DATASETS = {
-    corona2: 'adminContent.imagery.dataset.corona2',
-    declassii: 'adminContent.imagery.dataset.declassii',
-    declassiii: 'adminContent.imagery.dataset.declassiii',
-    landsat_tm_c2_l1: 'adminContent.imagery.dataset.landsat_tm_c2_l1',
-    landsat_etm_c2_l1: 'adminContent.imagery.dataset.landsat_etm_c2_l1',
-} as const satisfies Readonly<Record<UsgsDataset, string>>;
-
-export function versionStateText(locale: Locale, state: LayerVersionState): string {
+export function versionStateText(locale: UiLocale, state: LayerVersionState): string {
     return contentText(locale, VERSION_STATES[state]);
 }
 
-export function datasetText(locale: Locale, dataset: UsgsDataset): string {
-    return contentText(locale, DATASETS[dataset]);
+export function datasetText(locale: UiLocale, dataset: UsgsDataset): string {
+    // Every dataset has its key (`adminContent.imagery.dataset.<dataset>`; the type checks each one exists in the catalogue).
+    return contentText(locale, `adminContent.imagery.dataset.${dataset}`);
 }
 
 /** A day in the admin's language. */
-export function dayText(locale: Locale, iso: string): string {
+export function dayText(locale: UiLocale, iso: string): string {
     return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(iso));
 }
 
 /** A number in the admin's language with at most `digits` decimals. */
-export function numberText(locale: Locale, value: number, digits = 1): string {
+export function numberText(locale: UiLocale, value: number, digits = 1): string {
     return new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(value);
 }
 
 /** Why a job waits, in words (the deferral and the retries with their date). */
-export function waitText(locale: Locale, reason: WordedWait, at: string | null): string {
+export function waitText(locale: UiLocale, reason: WordedWait, at: string | null): string {
     return contentText(locale, WAITS[reason], { date: at === null ? '' : dayText(locale, at) });
 }
 
 /** The plural form the catalogues spell out for `count` (`one`, `few`: Romanian's 2–19; `other`). */
-export function pluralOf(locale: Locale, count: number): 'one' | 'few' | 'other' {
+export function pluralOf(locale: UiLocale, count: number): 'one' | 'few' | 'other' {
     const rule = new Intl.PluralRules(locale).select(count);
     return rule === 'one' || rule === 'few' ? rule : 'other';
 }
 
 /** A reason's catalogue key: the years to the nearest layer take their plural form ("1 year", "2 ani", "20 de ani"). */
-function reasonKey(locale: Locale, reason: RankReasonEntry) {
+function reasonKey(locale: UiLocale, reason: RankReasonEntry) {
     if (reason.code !== 'newYear') {
         return `adminContent.imagery.reason.${reason.code}` as const;
     }
@@ -96,7 +89,7 @@ function reasonKey(locale: Locale, reason: RankReasonEntry) {
 }
 
 /** A ranking reason in plain words; its numbers in the admin's language. */
-export function reasonText(locale: Locale, reason: RankReasonEntry): string {
+export function reasonText(locale: UiLocale, reason: RankReasonEntry): string {
     const params = Object.fromEntries(
         Object.entries(reason.params ?? {}).map(([name, value]) => {
             const number = Number(value);
@@ -107,12 +100,12 @@ export function reasonText(locale: Locale, reason: RankReasonEntry): string {
 }
 
 /** The label in the admin's language (English falls back to Romanian). */
-export function labelText(label: { readonly ro: string; readonly en?: string | undefined }, locale: Locale): string {
+export function labelText(label: { readonly ro: string; readonly en?: string | undefined }, locale: UiLocale): string {
     return locale === 'en' ? (label.en ?? label.ro) : label.ro;
 }
 
 /** A version row's second line: its state, and its job's progress or wait. */
-export function versionDetail(locale: Locale, version: VersionItemPort, job: JobProgressPort | undefined): string {
+export function versionDetail(locale: UiLocale, version: VersionItemPort, job: JobProgressPort | undefined): string {
     const state = versionStateText(locale, version.state);
     if (job === undefined) {
         return state;

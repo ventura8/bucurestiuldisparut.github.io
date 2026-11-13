@@ -8,7 +8,7 @@
  * CR-M2c-22); without it (no factory, no token, no WebGL) the box says why and every field still works. The delete
  * confirmation, the skipped photos of a bulk action and Author, source and licence are this page's dialogs.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { WindowClassController } from '../../layout/window-class.js';
@@ -112,7 +112,7 @@ export class HcmPhotosPage extends AreaPage<PhotosViewState, PhotosIntentsPort> 
             ${this.#dialogs(locale, view)}`;
     }
 
-    #map(locale: Locale, status: MapStatusPort): TemplateResult {
+    #map(locale: UiLocale, status: MapStatusPort): TemplateResult {
         // The detail pane is the region named after the map (`hcm-list-detail`'s detailLabel): the box itself is not another.
         return html`<hcm-admin-map
             class="map"
@@ -126,7 +126,7 @@ export class HcmPhotosPage extends AreaPage<PhotosViewState, PhotosIntentsPort> 
         ></hcm-admin-map>`;
     }
 
-    #detail(locale: Locale, view: PhotosViewState, open: string): TemplateResult {
+    #detail(locale: UiLocale, view: PhotosViewState, open: string): TemplateResult {
         if (open === '' || view.editor === null) {
             return html`<hcm-empty-state
                 icon="photo_library"
@@ -157,7 +157,7 @@ export class HcmPhotosPage extends AreaPage<PhotosViewState, PhotosIntentsPort> 
         }
     }
 
-    #dialogs(locale: Locale, view: PhotosViewState): TemplateResult {
+    #dialogs(locale: UiLocale, view: PhotosViewState): TemplateResult {
         const intents = this.intents;
         const apply = (fields: StickyPort): void => {
             this.settingFields = null;

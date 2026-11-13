@@ -1013,7 +1013,7 @@
         {
             "id": "P30",
             "area": "pipeline",
-            "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
+            "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+ and OLI, and checked against Sentinel-2 instead of georeferenced",
             "milestone": "M25",
             "source": "the owner, 2026-11-09: import Landsat for 1984-2000, added to the sources and automated like USGS; docs/research/M25-landsat.md"
         },
@@ -1135,6 +1135,13 @@
             "name": "The pipeline and the worker on somebody's own computer stay within a memory and processor budget, and an idle worker asks rarely",
             "milestone": "M7",
             "source": "the owner, 2026-11-12: reports/resource-audit.md (the machines are short of memory); docs/research/M7-local-worker.md, Addendum of 2026-11-12"
+        },
+        {
+            "id": "A95",
+            "area": "admin",
+            "name": "The interface in 25 languages: the admin's language picker, right to left, the fallback to English",
+            "milestone": "M26",
+            "source": "docs/I18N.md (the owner, 2026-11-12: every UI text in 25 languages)"
         },
         {
             "id": "A150",
@@ -2202,8 +2209,8 @@
             "behaviour": "V11",
             "area": "viewer",
             "path": "happy",
-            "title": "Romanian by default; English chosen in the menu's Settings persists after reload",
-            "asserts": "RO by default; English chosen in Settings (Setări) persists after reload; html lang; localized dates",
+            "title": "Romanian by default; English chosen from the language list in the menu's Settings persists after reload",
+            "asserts": "RO by default; the menu's Settings (Setări) lists the sixteen languages, English chosen there persists after reload; html lang and dir; localized dates",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1. The owner, 2026-11-08 (track/settings): the language is chosen in the menu's Settings, no longer by a one-tap menu item or in About."
@@ -2213,8 +2220,8 @@
             "behaviour": "V11",
             "area": "viewer",
             "path": "bad",
-            "title": "An unsupported language falls back to Romanian",
-            "asserts": "?lang=fr -> RO",
+            "title": "A language the viewer does not have falls back to Romanian",
+            "asserts": "?lang=sv and #…&lang=xx -> RO (sv and xx are no viewer language; fr, de and the other 13 are)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -2225,7 +2232,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "A missing English key falls back to Romanian",
-            "asserts": "English viewer: a photo title without its English text shows the Romanian one; no raw message key appears on the page (a missing catalogue key is a compile error and an i18n gate failure)",
+            "asserts": "English viewer: a photo title without its English text shows the Romanian one, and a note names its language ('Text language: Română (not translated yet)'); no raw message key appears on the page (a missing catalogue key is a compile error and an i18n gate failure)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -2236,10 +2243,131 @@
             "area": "viewer",
             "path": "bad",
             "title": "A language switch in Settings also relabels the map's own controls, and the menu has no language item",
-            "asserts": "English viewer switched to Romanian in Settings: the map canvas, the Mapbox logo link and the attribution toggle carry their Romanian names; the menu has no one-tap language item; no English-only text is left on the page",
+            "asserts": "English viewer switched to Romanian from Settings' language list: the map canvas, the Mapbox logo link and the attribution toggle carry their Romanian names; the menu has no one-tap language item; no text of another language is left on the page",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Since 2026-10-17. The tour's i18n check found Mapbox's own labels ('Map', 'Mapbox homepage', the toggle) in the first language after a switch (docs/research/layout-a11y-findings.md): Mapbox sets them once, so the engine rewrites them through MapPort.setLocale (docs/research/M1-interfaces.md CR-22)."
+        },
+        {
+            "id": "S-V11-HAPPY-ALL-LANGS",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Any of the sixteen languages from the list or the address",
+            "asserts": "Settings' list shows the 16 languages by their own names, each with its lang, the current one checked; German, Arabic and Japanese chosen in turn relabel the whole viewer with no text of another language, the hash keeps lang=<code> and a reload keeps the last; each language's file is fetched once; every other language boots from ?lang=",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts."
+        },
+        {
+            "id": "S-V11-HAPPY-RTL",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Arabic reads right to left, the map does not",
+            "asserts": "?lang=ar: html and the viewer dir=rtl, the map container left to right, the timeline's today on the left, no text of another language",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts, packages/ui/test/viewer/languages.test.ts, packages/ui/test/components/rtl.test.ts."
+        },
+        {
+            "id": "S-V11-HAPPY-FALLBACK-TEXT",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A city's text the language lacks shows the one the city has, named by its language",
+            "asserts": "German viewer, a photo whose title is only in Romanian: the Romanian title and the note 'Sprache des Textes: Română (noch nicht übersetzt)'; a text with English shows the English one with lang=en (unit: languages.test.ts)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts."
+        },
+        {
+            "id": "S-V11-HAPPY-TRANSLATING-FALLS-BACK",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The list offers all 25 languages; Persian, still being translated, reads right to left in English",
+            "asserts": "the Settings list names the 25 languages (LANGUAGE_NAMES); Persian chosen: html and the viewer dir=rtl, fa.json and en.json fetched (the file says fallback: en), the menu and the timeline named in English, no text of a third language",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback, DECISIONS-for-review.md §219). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts, packages/shared/test/i18n-viewer.test.ts."
+        },
+        {
+            "id": "S-V11-BAD-MISSING-KEY-FALLS-BACK",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A text a language's file lacks shows in English",
+            "asserts": "de.json served without timeline.label (fallback: en): html lang de, the timeline's slider named in English, the rest in German",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback). Test: e2e/specs/viewer/languages.spec.ts, scripts/site/test/i18n-catalogues.test.ts."
+        },
+        {
+            "id": "S-V11-HAPPY-RTL-TOUR",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Arabic passes the tour at every per-push viewport",
+            "asserts": "tour: a photo, home and the language list in Arabic, right to left, through the layout, accessibility and i18n checkers at the phone, the phone held landscape, the laptop and the 4K screen",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
+        },
+        {
+            "id": "S-V11-HAPPY-CJK-TOUR",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Japanese passes the tour at every per-push viewport",
+            "asserts": "tour: home and the Layers panel in Japanese, in the system's Japanese font, through the layout, accessibility and i18n checkers at the per-push viewports",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
+        },
+        {
+            "id": "S-V11-BAD-CATALOGUE-404",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A language whose file cannot be fetched keeps the page as it was",
+            "asserts": "i18n/ko.json answers 404: Korean chosen from the list leaves the page in its language, the list's selection back on it, the hash without lang=ko, and the snackbar says the language could not be loaded",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/store-language.test.ts."
+        },
+        {
+            "id": "S-V11-BAD-CATALOGUE-STALE",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A language file of another engine is refused",
+            "asserts": "i18n/fr.json names engine 0.0.1: French is refused like a missing file, with the same message",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts."
+        },
+        {
+            "id": "S-V11-BAD-BOOT-CATALOGUE",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A boot language that cannot load leaves Romanian, else the engine's own card",
+            "asserts": "?lang=hi with i18n/hi.json refused: the viewer boots in Romanian and says the language could not be loaded; every file refused: the engine's one bilingual card (Romanian and English lines, each with its lang) and a Retry that reloads",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
+        },
+        {
+            "id": "S-V11-BAD-UNKNOWN-HASH-LANG",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An unknown language in the hash is ignored",
+            "asserts": "#…&lang=xx -> Romanian, the hash's view still applied; setLang('xx') is ignored too",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
         },
         {
             "id": "S-V12-HAPPY",
@@ -2273,6 +2401,28 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The Pixel 9 Pro review, 2026-11-12 (P2). Tests: e2e/specs/viewer/dark-theme-for-sites.spec.ts (its own Chromium with --blink-settings=forceDarkModeEnabled=true); the tour's rendered contrast (e2e/support/rendered-contrast.ts) at the dark tours, state other-theme-menu; packages/ui/test/theme/apply.test.ts."
+        },
+        {
+            "id": "S-V12-HAPPY-CHIPS-FOLLOW-THEME",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The timeline's chips follow the theme: light in the light theme and dark in the dark one, painted with its roles",
+            "asserts": "at the project's window (a phone's pill or a desktop's card), light then dark: the year's pill takes primary-container and on-primary-container, its dates' badge error-container and on-error-container, the date menu surface-container and on-surface, the year chip over an unlabelled year surface-container-highest and on-surface; each fill dark only in the dark theme, its text at 4.5:1 or more",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's Android in dark, 2026-11-13: the year chips were light (M3's inverse surface, primary and error are light tones in the dark theme). Tests: e2e/specs/viewer/timeline-chip-theme.spec.ts (fn-c360-ro, fn-c360-dark, fn-l1440-ro and the other functional projects); packages/ui/test/viewer/hcm-timeline-theme.test.ts."
+        },
+        {
+            "id": "S-V12-BAD-DARK-CHIPS-NOT-LIGHT",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Under Chrome's dark theme for sites the timeline's chips stay the viewer's own dark, never light",
+            "asserts": "a 360 x 800 phone, a dark system with Chrome's dark theme for sites: the collapsed pill and its badge have dark fills and the pill is painted with its contrast; the year chip over an unlabelled year has a dark fill and is painted with its contrast",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's Android in dark, 2026-11-13. Tests: e2e/specs/viewer/dark-theme-for-sites.spec.ts (its own Chromium with --blink-settings=forceDarkModeEnabled=true); packages/ui/test/viewer/hcm-timeline-theme.test.ts."
         },
         {
             "id": "S-V12-BAD-ABOUT-NO-PREFERENCES",
@@ -3270,7 +3420,7 @@
             "area": "starter-kit",
             "path": "bad",
             "title": "An export opened by double-click says the map could not load",
-            "asserts": "index.html opened from file:// -> the engine runs but city.json cannot be fetched -> error.manifest.network with Retry; the README's first step says to serve the folder",
+            "asserts": "index.html opened from file:// -> the engine runs but can fetch neither city.json nor its language's texts (engine/i18n/) -> its own card in Romanian and English with Retry, hcm-error error.manifest.network; the README's first step says to serve the folder",
             "tier": "e2e-starter-kit",
             "status": "exists",
             "notes": "Milestone M5 (docs/research/M5-interfaces.md §5.7; owner: export). Test: e2e/specs/starter-kit/export.spec.ts."
@@ -4183,7 +4333,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A setup.status the admin cannot read says Update the server to check, never To do",
-            "asserts": "setup.status answers in a shape the admin does not know -> the page says the server is older than the admin (update it in step d); sign-in, server and claim are Done (it answered this admin); Mapbox and USGS read Update the server to check, never To do",
+            "asserts": "setup.status answers in a shape the admin does not know -> the page says the server is older than the admin (update it in step d); sign-in, server and claim are Done (it answered this admin); Mapbox and USGS read Update the server to check, never To do; step d stays open with its update even while (b) and (c) cannot be checked (2026-11-13: it waited for them, and the owner could never update)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Live test of 2026-10-31, finding 27 of docs/research/manual-test-2026-10-25.md. Tests: e2e/admin/steps/older-server.spec.ts, packages/admin/test/setup/controller.test.ts; tour state setup.older-server-status."
@@ -5386,6 +5536,50 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Lesson 646 (live 2026-11-13: the harvest ran over 7 minutes, past the 300 s timeout, and the admin read 'Something went wrong on the server'). Tests: functions/test/imagery/search.test.ts, packages/admin/test/imagery/search.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-REQUEST-TIMED-OUT",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A USGS request that takes too long is recorded, and what its dataset found is stored",
+            "asserts": "corona2's page from record 101 is aborted at its own timeout -> corona2 is recorded partial (found 100, next 101, reason requestTimedOut), its first 100 scenes are stored, the run is recorded partial and due again in 15 minutes; the admin's line says what it kept and that the rest comes by itself",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: functions/test/imagery/harvest-partial.test.ts, functions/test/adapters/upstream-http.test.ts, packages/ui/test/admin/imagery/search-parts.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-HARVEST-PARTIAL-STORED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A harvest out of time stores every dataset it finished and records the rest partial",
+            "asserts": "corona2's first page uses up the search's time -> declassii is stored and done, corona2 partial with next 101 and reason outOfTime, ops/harvest-{city} partial; the admin's Search shows each dataset's part live, then the answer's",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: functions/test/imagery/harvest-partial.test.ts, packages/admin/test/imagery/search.test.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-HARVEST-RESUME",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "The next harvest resumes only the unfinished dataset, where it stopped",
+            "asserts": "after a partial run (corona2 stopped at 101) -> the next run asks corona2 from 101 and 201 only, stores the rest and records ok",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-HARVEST-KILLED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A harvest the server stopped is found, logged and resumed",
+            "asserts": "ops/harvest-{city} still running 10 minutes after it started -> the next run logs harvest.killed as an error, searches only the dataset that was not done, keeps the done one's part and records ok",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
         },
         {
             "id": "S-A11-BAD-BROWSE-HOST-REFUSED",
@@ -18241,7 +18435,7 @@
             "area": "admin",
             "path": "happy",
             "title": "Landsat scenes are listed beside the declassified ones and Import publishes one credited to NASA and USGS",
-            "asserts": "usgs.landsatScenes -> the page's own search lists nine free scenes; the Landsat chip leaves the three Landsat 5 TM scenes, each Free; Import (free) on the clear 1989 scene -> the stand-in skips stitch, locate and georef, warp writes the landsat report within a pixel -> the policy publishes it; the layer is satellite, Landsat 5 TM, credited 'Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey'",
+            "asserts": "usgs.landsatScenes -> the page's own search lists eleven free scenes; the Landsat chip leaves the three Landsat 5 TM scenes and the two Landsat 8 and 9 OLI ones, each Free; Import (free) on the clear 1989 scene -> the stand-in skips stitch, locate and georef, warp writes the landsat report within a pixel -> the policy publishes it; the layer is satellite, Landsat 5 TM, credited 'Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey'",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
@@ -18252,10 +18446,54 @@
             "area": "admin",
             "path": "happy",
             "title": "The tick imports the clearest scene of a wanted year on its own",
-            "asserts": "Landsat harvested, the city's default 1984-2000 and its switch on -> imagery.tick imports the clear 1989 scene (the oldest wanted year), one a tick, as an ordinary usgs-import the daily cap counts",
+            "asserts": "Landsat harvested, the city's default 1984 to the current year and its switch on -> imagery.tick imports the clear 1989 scene (the oldest wanted year), one a tick, as an ordinary usgs-import the daily cap counts",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
+        },
+        {
+            "id": "S-A130-HAPPY-OLI",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "happy",
+            "title": "Landsat 8 and 9 OLI scenes are harvested and listed beside TM",
+            "asserts": "the fake USGS answers landsat_ot_c2_l1 -> two scenes stored as L8-OLI and L9-OLI at 15 m, searched in summer months under the cloud cap with a per-request timeout; the Landsat chip lists them, each Free",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/harvest-partial.test.ts, packages/ui/test/admin/imagery/search-parts.test.ts."
+        },
+        {
+            "id": "S-A130-BAD-OLI-UNKNOWN",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "bad",
+            "title": "An OLI record whose satellite is not named is Landsat 8",
+            "asserts": "entity ids LX8… and LO9… -> L8-OLI and L9-OLI",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+        },
+        {
+            "id": "S-A130-HAPPY-WORKERS-PACE",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "happy",
+            "title": "While the city's computers run the worker, the tick imports one Landsat scene per online worker, on the computer",
+            "asserts": "two workers seen 10 s ago -> imagery.tick's Landsat part starts the 1989 and 1990 imports, both runOn local (never counted by the daily cap)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+        },
+        {
+            "id": "S-A130-BAD-NO-WORKER-PACE",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "bad",
+            "title": "With no worker online the tick keeps one cloud Landsat import a run",
+            "asserts": "the workers were last seen an hour ago -> one import, placed in the cloud (the daily cap counts it)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
         },
         {
             "id": "S-A130-BAD-CLOUDY",
@@ -18322,6 +18560,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-HAPPY-OLI",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A Landsat 8 or 9 OLI scene takes B4, B3, B2 and is pan-sharpened to 15 m at z14",
+            "asserts": "an OLI bundle (B1 to B4, B8, QA_PIXEL) -> red, green and blue from B4, B3, B2, Brovey with B8, output maxzoom 14, report pansharpened and resolution 15",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-BAD-OLI-MISSING-BAND",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An OLI bundle without its red band B4 fails naming it",
+            "asserts": "an OLI bundle without B4 -> the job fails apiError.imagery.missingBand with band B4",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: pipeline/tests/integration/test_landsat_job.py (pipeline-pytest)."
         },
         {
             "id": "S-P30-BAD-MISSING-BAND",
@@ -19928,6 +20188,61 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/integration/test_memory_budgets.py, pipeline/tests/unit/test_compose_canvas.py."
+        },
+        {
+            "id": "S-A95-HAPPY-LANGUAGE-PICKER",
+            "behaviour": "A95",
+            "area": "admin",
+            "path": "happy",
+            "title": "The account menu lists the 25 languages; French is fetched, shown and kept after a reload; Arabic turns the page right to left",
+            "asserts": "25 radios by their own names; /admin/i18n/fr.json fetched, the photos page's empty text in French, html lang fr, again after a reload; Arabic: html dir rtl, the page's area marked lang en (no Arabic admin file yet), the tour's layout, axe and i18n checks read as Arabic (admin.shell.language-rtl); the latest choice wins over a file still loading (packages/admin/test/app/language.test.ts)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A95-BAD-MISSING-KEY-FALLS-BACK",
+            "behaviour": "A95",
+            "area": "admin",
+            "path": "bad",
+            "title": "A key the chosen language's file lacks shows in English",
+            "asserts": "fr.json served without adminContent.photos.empty: html lang fr, the empty text in English",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A95-BAD-CATALOGUE-UNAVAILABLE",
+            "behaviour": "A95",
+            "area": "admin",
+            "path": "bad",
+            "title": "A language whose file cannot be fetched keeps the page's language and says so",
+            "asserts": "de.json 404: the snackbar names Deutsch, html lang and the page's texts unchanged",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A76-HAPPY-LANGUAGE-PICKER",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "The start page lists the 25 languages; Urdu is fetched, shown right to left and kept after a reload",
+            "asserts": "25 options; Urdu chosen: html lang ur, dir rtl, kept after a reload (localStorage); main marked lang en (no Urdu file yet); the tour's layout, axe and i18n checks read as Urdu (admin.start.language-rtl); the latest choice wins (packages/admin/test/start/controller.test.ts)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A76-BAD-LANGUAGE-UNAVAILABLE",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "A language whose file cannot be fetched keeps the start page's language and says so",
+            "asserts": "de.json 404: start.languageUnavailable in an alert, html lang and the list unchanged",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
         },
         {
             "id": "S-A-HAPPY-TILE-WIZARD-ORDER",

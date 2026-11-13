@@ -46,10 +46,11 @@ export const DEFAULT_MAP_THRESHOLD_MAX_M = 60;
 export const MAP_THRESHOLD_MAX_RANGE = { min: 15, max: 200 } as const;
 
 /**
- * M25 (`docs/research/M25-landsat.md` §4): the years the tick imports a Landsat scene of on its own by default, the owner's 1984 to 2000
- * (2026-11-09). Here because this module is a leaf.
+ * M25 (`docs/research/M25-landsat.md` §4): the years the tick imports a Landsat scene of on its own by default: from 1984 to the current
+ * year (the owner, 2026-11-13; 1984 to 2000 before, when only TM and early ETM+ were searched). `to` absent is "up to this year": a city
+ * that set no end gets each new year by itself. Here because this module is a leaf.
  */
-export const DEFAULT_LANDSAT_YEARS = { from: 1984, to: 2000 } as const;
+export const DEFAULT_LANDSAT_YEARS: { readonly from: number; readonly to?: number } = { from: 1984 };
 
 /**
  * `cities/{city}.imagery`. Every field is optional in the document: an absent field takes its default
@@ -92,7 +93,8 @@ export interface ImagerySettings {
     readonly mapAutoPublish: boolean;
     readonly landsatAuto: boolean;
     readonly landsatFrom: number;
-    readonly landsatTo: number;
+    /** M25: the last year, or undefined for up to the current year (the default). */
+    readonly landsatTo: number | undefined;
 }
 
 /** What a city that set nothing gets: auto-publish, the default threshold, no target years, tiles from its own bucket. */
@@ -127,8 +129,9 @@ export function imagerySettingsOf(imagery: CityImagery | undefined): ImagerySett
     };
 }
 
-/** M25: the years the tick imports Landsat of, oldest first (none when the range is reversed). */
-export function landsatYearsOf(settings: Pick<ImagerySettings, 'landsatFrom' | 'landsatTo'>): number[] {
-    const count = Math.max(0, settings.landsatTo - settings.landsatFrom + 1);
+/** M25: the years the tick imports Landsat of, oldest first, never past `thisYear` (none when the range is reversed). */
+export function landsatYearsOf(settings: Pick<ImagerySettings, 'landsatFrom' | 'landsatTo'>, thisYear: number): number[] {
+    const last = Math.min(settings.landsatTo ?? thisYear, thisYear);
+    const count = Math.max(0, last - settings.landsatFrom + 1);
     return Array.from({ length: count }, (_, index) => settings.landsatFrom + index);
 }
