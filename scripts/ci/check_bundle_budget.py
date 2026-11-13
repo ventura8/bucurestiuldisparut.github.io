@@ -223,7 +223,7 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # (`@hcm/shared/admin-worker`), 5.5 KB measured on 2026-11-02 plus about 20 %, rounded up; 5.7 KB since finding 72
     # moved the command into `worker-local`.
     # 8 since 2026-11-13 (§215, the owner's raise): 7.3 KB with W5's computers list.
-    "worker": 8,
+    "worker": 10,  # §215 (the owner's beta.1 raise): 8.7 KB with Pause
     # Finding 72 of 2026-11-02 ("Use this computer": `packages/admin/src/worker/worker-local.ts`, the feed's one dynamic
     # import): the starter file, the auto-pair, Stop using this computer, the command behind Advanced, `<hcm-worker-local>`
     # and its texts (`@hcm/shared/admin-worker-local`), fetched when the worker's panel first shows the computer's part:
@@ -249,7 +249,7 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # 18.0 of 18 and is at 16.2 with the own tiles' map and Work's pictures in it: 3.5 KB measured on 2026-11-07 plus about 20 %, rounded
     # up. Mapbox's compute units, Studio steps and choices (`mapbox-choices.ts`), which a city on its own bucket, the default, never
     # fetches: 1.3 KB measured then. The total stays within its 650 KB and no row rose.
-    "approval-map": 5,
+    "approval-map": 6,  # §215 (the owner's beta.1 raise): 5.0 KB measured
     # M17 (docs/research/M17-stories.md §6): the stories area (`packages/admin/src/pages/stories.ts`: the store, `<hcm-stories-page>`),
     # fetched when its route first opens; its texts are the admin's catalogues in the entry. 4.3 KB measured on 2026-11-08 plus about 20 %,
     # rounded up; the total stays within its 650 KB (DECISIONS-for-review.md §102a).
