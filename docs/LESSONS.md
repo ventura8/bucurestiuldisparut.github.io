@@ -3663,3 +3663,14 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: code review; the unit test faked a case the real build cannot produce (an empty registry after `load`), and no Playwright spec loaded the analytics or gamepad extras through the IIFE.
     - Fix and pin: each extra ends with a ready mark (`<entry>.ready.<global>`, the build's `footer`), the loader uses only a marked extra, drops the half-filled entry and retries; the host has one entry per release (`__hcmEngineHost.v1_0_0`). Pinned by `packages/engine/test/extras/loader.test.ts` (`badPath_aScriptThatThrowsWhileItRunsFailsAndIsRetriedWhole`), `host.test.ts`, `scripts/site/test/engine-extras.test.ts` (the footer is the script's last statement) and S-V63-HAPPY-EXTRAS-CONSENT-AND-PAD.
     - **A loader's success test must check something only the end of the loaded code writes; a test's fake must do what the real artefact does, and a global shared across builds is keyed by the build.**
+
+624. **Update the map put the new pipeline image in front of the old server, and one Hosting timeout failed the whole update.**
+    - Seen: 2026-11-09, a live Update the map: the server's build failed at `fetch` on a 10 s connect timeout to Hosting; the pipeline's build, submitted beside it, finished, so `worker.image` named the new image and the local worker's claims were refused by the old server until it was updated.
+    - Cause: `packages/admin/src/setup/install.ts` submitted the server and the pipeline at once (only the site waited for the server), and `fetch-script.ts` downloaded each file once.
+    - Fix and pin: the pipeline waits for the server like the site, and a stopped server releases neither (S-A56-HAPPY-UPDATE-AFTER-SERVER, S-A56-BAD-UPDATE-SERVER-STOPPED); every download of `fetch` tries four times, 5, 15 and 30 s apart, on a network error, 408, 429 or 5xx (`fetch-script.test.ts`). DECISIONS-for-review.md §182.
+    - **When two deploys must agree on a protocol, order them: the side that answers first, the side that asks after it; never "in parallel" because they are independent builds.**
+
+625. **A whole-city date with two paid frames linked only the first.**
+    - Seen: 2026-11-12, Find's Whole-city dates: "2 more would need ordering" was one link to the first paid frame's page; the second could be bought only by finding it in the list.
+    - Fix and pin: each paid frame has its own Buy this scan: {frame}, or Your order: {frame} with its chip while the order is open, Order it again: {frame} once it expired (`paidFrameList` in `packages/ui/src/admin/imagery/orders/order-list.ts`, rendered by `join-card.ts`; `packages/ui/test/admin/imagery/join-paid.test.ts`; S-A66-HAPPY-BUY-EVERY-PAID, S-A66-BAD-PAID-ORDERED).
+    - **A count that stands for several things is not a link to one of them: list each with its own action.**

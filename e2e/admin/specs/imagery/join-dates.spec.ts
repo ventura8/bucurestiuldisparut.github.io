@@ -44,9 +44,53 @@ test(
         await expect(dateRow(page, paid).locator('.row-detail')).toHaveText(
             imageryText(lang, 'adminContent.imagery.join.rowCoverageOne', { percent: '54' }),
         );
-        await expect(order).toHaveAttribute('href', /\/imagery\/scene\/D3C1205-200122F022$/);
+        const buy = dateRow(page, paid).locator('[data-state="join-buy"]');
+        await expect(buy).toHaveText(imageryText(lang, 'adminContent.imagery.join.buyFrame', { frame: 'F022' }));
+        await expect(buy).toHaveAttribute('href', /\/imagery\/scene\/D3C1205-200122F022$/);
         await expect(joinButton(dateRow(page, paid), lang)).toBeHidden();
         await expectStateSound(page, adminVisit('imagery.date-rows', lang));
+    },
+);
+
+test(
+    "Every paid frame of a date has its own Buy this scan, which opens that frame's order card; one ordered already says so",
+    { tag: ['@S-A66-HAPPY-BUY-EVERY-PAID', '@S-A66-BAD-PAID-ORDERED'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        // 2026-11-12: a row listed two frames to order but linked only the first, so the second could not be bought from it.
+        const fixtures = { emulators: adminWorld.emulators, api: mockApiRequest, upstream };
+        const imagery = await readyImagery(fixtures, adminWorld.accounts.owner.uid);
+        const date = '1974-06-01';
+        const [south, north] = ['D3C1205-200122F022', 'D3C1205-200122F023'];
+        await seedFrame(imagery, { entityId: 'D3C1205-200122F021', bounds: WEST, date });
+        await seedFrame(imagery, { entityId: south, bounds: { ...EAST, north: 44.45 }, date, free: false });
+        await seedFrame(imagery, { entityId: north, bounds: { ...EAST, south: 44.45 }, date, free: false });
+        await openDates(page, lang, date);
+
+        const row = dateRow(page, date);
+        await expect(row.locator('[data-state="join-paid"]')).toHaveText(
+            imageryText(lang, 'adminContent.imagery.join.paidFrame', { count: '2' }),
+        );
+        const buyNorth = row.getByRole('link', { name: imageryText(lang, 'adminContent.imagery.join.buyFrame', { frame: 'F023' }) });
+        const buySouth = row.getByRole('link', { name: imageryText(lang, 'adminContent.imagery.join.buyFrame', { frame: 'F022' }) });
+        await expect(buySouth).toBeVisible();
+        await expect(buyNorth).toBeVisible();
+
+        // The frame that is not first in the row opens its own page, whose order card buys it (M4).
+        await buyNorth.click();
+        await expect(page).toHaveURL(new RegExp(`/imagery/scene/${north}$`));
+        await expect(detail(page).getByText(imageryText(lang, 'adminContent.orders.heading'), { exact: true })).toBeVisible();
+
+        // A frame ordered already is no second purchase: the row says it is the owner's order, with its chip.
+        await imagery.cityWorld.emulators.updateFields(`cities/${imagery.city}/usgsScenes/${south}`, { order: ORDERED }, ['order']);
+        await page.goto(adminPath(lang, 'imagery'));
+        const yours = dateRow(page, date).locator(`[data-paid="${south}"]`);
+        await expect(yours.getByRole('link')).toHaveText(imageryText(lang, 'adminContent.imagery.join.orderedFrame', { frame: 'F022' }), {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(yours.locator('.tag')).toHaveText(imageryText(lang, 'adminContent.orders.tag.ordered'));
+        await expect(dateRow(page, date).locator(`[data-paid="${north}"]`).getByRole('link')).toHaveText(
+            imageryText(lang, 'adminContent.imagery.join.buyFrame', { frame: 'F023' }),
+        );
     },
 );
 
@@ -93,6 +137,17 @@ test(
         await expect(detail(page).locator('[data-join-offer]')).toBeHidden();
     },
 );
+
+/** An order as the watch leaves it the day after I ordered it (timestamps as Firestore stores them). */
+const ORDERED = {
+    state: 'ordered',
+    orderedAt: new Date('2026-11-01T08:00:00.000Z'),
+    orderedBy: 'system:e2e',
+    checks: 1,
+    lastCheckedAt: new Date('2026-11-02T08:00:00.000Z'),
+    nextCheckAt: new Date('2027-11-01T08:00:00.000Z'),
+    remindersSent: [],
+};
 
 /** The open scene's Import. */
 function cardImportOnScene(page: Page, lang: 'ro' | 'en') {

@@ -1,7 +1,7 @@
 import { execFile, execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { createServer, type Server } from 'node:http';
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -31,6 +31,10 @@ let work: string;
 let server: Server;
 let origin: string;
 let served: Map<string, Buffer>;
+/** How many more requests of a name fail before it is served, and how: a 503, or the connection dropped. */
+let failing: Map<string, { count: number; how: 'drop' | 503 }>;
+/** Every request the bundle's host received, by name. */
+let asked: string[];
 
 const sha = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
 
@@ -66,14 +70,21 @@ function bundle(release = RELEASE): Bundle {
     return { files: served, manifestSha: sha(manifest), serverSha: sha(server) };
 }
 
-function run(env: Readonly<Record<string, string>>): Promise<{ readonly code: number; readonly stderr: string }> {
+interface Run {
+    readonly code: number;
+    readonly stderr: string;
+    readonly stdout: string;
+}
+
+function run(env: Readonly<Record<string, string>>): Promise<Run> {
     return new Promise((resolve) => {
         execFile(
             process.execPath,
             ['--input-type=module', '--eval', FETCH_BUNDLE_SCRIPT],
-            { env: { PATH: FIXED_PATH, HCM_WORKSPACE: work, ...env } },
-            (error, _stdout, stderr) => {
-                resolve({ code: error === null ? 0 : Number(error.code ?? 1), stderr });
+            // No waits between attempts here: the build's own are 5, 15 and 30 s.
+            { env: { PATH: FIXED_PATH, HCM_WORKSPACE: work, HCM_FETCH_WAITS: '0,0,0', ...env } },
+            (error, stdout, stderr) => {
+                resolve({ code: error === null ? 0 : Number(error.code ?? 1), stderr, stdout });
             },
         );
     });
@@ -110,11 +121,30 @@ function genericSite(): { readonly bytes: Buffer } {
     return { bytes: readFileSync(out) };
 }
 
+/** A request that fails as `how` says: the connection dropped (a network error to `fetch`) or a 503. */
+function failHow(how: 'drop' | 503, request: IncomingMessage, response: ServerResponse): void {
+    if (how === 'drop') {
+        request.socket.destroy();
+        return;
+    }
+    response.writeHead(how);
+    response.end();
+}
+
 beforeEach(async () => {
     work = mkdtempSync(join(tmpdir(), 'hcm-fetch-'));
     served = new Map();
+    failing = new Map();
+    asked = [];
     server = createServer((request, response) => {
         const name = (request.url ?? '').split('/').pop() ?? '';
+        asked.push(name);
+        const failure = failing.get(name);
+        if (failure !== undefined && failure.count > 0) {
+            failure.count -= 1;
+            failHow(failure.how, request, response);
+            return;
+        }
         const body = served.get(name);
         response.writeHead(body === undefined ? 404 : 200);
         response.end(body);
@@ -141,7 +171,7 @@ describe('the fetch step', () => {
 
         const result = await run(envOf(found));
 
-        expect(result).toEqual({ code: 0, stderr: '' });
+        expect(result).toMatchObject({ code: 0, stderr: '' });
         expect(readFileSync(join(work, 'server', 'server.txt'), 'utf8')).toBe('the server');
         expect(existsSync(join(work, 'bundle', 'manifest.json'))).toBe(true);
     });
@@ -237,6 +267,55 @@ describe('the fetch step', () => {
 
         expect(result.code).toBe(1);
         expect(result.stderr).toContain('manifest.json: HTTP 404');
+        // A 404 is an answer: it is not asked again.
+        expect(asked).toEqual(['manifest.json']);
+    });
+});
+
+describe('the fetch step retries a download Hosting did not answer (2026-11-12)', () => {
+    it('happyPath_twoFailuresThenTheFileIsUnpacked_eachWaitALineOfTheLog', async () => {
+        const found = bundle();
+        served = found.files;
+        failing.set('manifest.json', { count: 2, how: 'drop' });
+        failing.set('server.tgz', { count: 1, how: 503 });
+
+        const result = await run(envOf(found, { HCM_FETCH_WAITS: '0,0.01,0' }));
+
+        expect(result).toMatchObject({ code: 0, stderr: '' });
+        expect(readFileSync(join(work, 'server', 'server.txt'), 'utf8')).toBe('the server');
+        expect(asked).toEqual(['manifest.json', 'manifest.json', 'manifest.json', 'server.tgz', 'server.tgz']);
+        const lines = result.stdout.split('\n').filter((line) => line.includes('trying again'));
+        expect(lines).toEqual([
+            expect.stringMatching(/^fetch: manifest\.json: attempt 1 of 4 failed \(.+\), trying again in 0 s$/),
+            expect.stringMatching(/^fetch: manifest\.json: attempt 2 of 4 failed \(.+\), trying again in 0\.01 s$/),
+            'fetch: server.tgz: attempt 1 of 4 failed (HTTP 503), trying again in 0 s',
+        ]);
+    });
+
+    it('badPath_everyAttemptFailsAndTheStepSaysSoClearly', async () => {
+        const found = bundle();
+        served = found.files;
+        failing.set('server.tgz', { count: 4, how: 503 });
+
+        const result = await run(envOf(found));
+
+        expect(result.code).toBe(1);
+        expect(result.stderr).toContain('fetch: server.tgz: no answer after 4 attempts (HTTP 503)');
+        expect(asked.filter((name) => name === 'server.tgz')).toHaveLength(4);
+        expect(existsSync(join(work, 'server', 'server.txt'))).toBe(false);
+    });
+
+    it('badPath_aDroppedConnectionEveryTimeNamesTheNetworksError', async () => {
+        const found = bundle();
+        served = found.files;
+        failing.set('manifest.json', { count: 4, how: 'drop' });
+
+        const result = await run(envOf(found));
+
+        expect(result.code).toBe(1);
+        expect(result.stderr).toContain('fetch: manifest.json: no answer after 4 attempts (');
+        expect(result.stderr).not.toContain('attempts ()');
+        expect(result.stdout.match(/trying again/g)).toHaveLength(3);
     });
 });
 

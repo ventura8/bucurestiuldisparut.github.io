@@ -3,8 +3,9 @@
  * imagery pipeline (d3, started by the same click) and Publish the map (i), each over one install flow
  * (`../install/install-flow.ts`). Each flow's view lands in the state's `install` slice; the pipeline's and the site's
  * steps take their chip from it (the server's step is the deployment's, `deploy.ts`, which also claims). Update the map
- * submits every target that is behind with one click (one consent without a live token): the server and the pipeline
- * at once, the site once the server is installed. Finding 65 of 2026-11-02: the same click and consent also apply the
+ * submits every target that is behind with one click (one consent without a live token): the server first, then the
+ * pipeline and the site once the server is installed (2026-11-12: a pipeline image that went in before its server made
+ * the local worker's claims refused until the server caught up). Finding 65 of 2026-11-02: the same click and consent also apply the
  * Provision items whose definition changed since the project was last prepared (`provisionDue` on the slice; the
  * pipeline's public pull and the 7-day raw delivery of M7, for one), beside the builds.
  */
@@ -110,8 +111,12 @@ class Cards implements InstallCards {
     readonly #ctx: SetupContext;
     readonly #provisionUpdate: ProvisionUpdate;
     readonly #flows: Readonly<Record<InstallTarget, InstallFlow>>;
-    /** Update the map waits for the server before it republishes the site. */
-    #siteAfterServer = false;
+    /**
+     * The targets Update the map submits once the server it installs is in: the site (its pages call the new functions)
+     * and the pipeline (2026-11-12: the job's image is what `worker.image` hands the local worker, whose claims an older
+     * server refuses).
+     */
+    #afterServerTargets: readonly InstallTarget[] = [];
     /** The state (and image) last recorded of each target (`setup.recordCloud`, an admin session only). */
     readonly #recorded = new Map<InstallTarget, string>();
     /** The records under way, one after another: concurrent ones contend for `setup/status` and may land out of order. */
@@ -173,14 +178,15 @@ class Cards implements InstallCards {
     }
 
     /**
-     * The targets behind built (the site after the server) beside Provision's changed items, with the click's token.
+     * The targets behind built (the pipeline and the site after the server) beside Provision's changed items, with the
+     * click's token.
      * Finding 71 of 2026-11-02: Provision's record (`setup.recordCloud` with the item set's version) waits until the server
      * this update installs has settled: the server before it refuses a record naming the set's version (its request schema
      * is strict), so the version reached was never recorded and the card kept offering the update.
      */
     async #update(behind: readonly InstallTarget[], provisionDue: boolean, access: GoogleAccess): Promise<void> {
-        this.#siteAfterServer = behind.includes('site') && behind.includes('server');
-        const now = behind.filter((target) => target !== 'site' || !this.#siteAfterServer);
+        this.#afterServerTargets = behind.includes('server') ? behind.filter((target) => target !== 'server') : [];
+        const now = behind.filter((target) => !this.#afterServerTargets.includes(target));
         const recordAfter = now.includes('server') ? this.#serverSettles() : Promise.resolve();
         const provision = provisionDue ? [this.#provisionUpdate(access, recordAfter)] : [];
         await Promise.all([...provision, ...now.map((target) => this.#flows[target].installWith({ token: access.token }))]);
@@ -341,8 +347,8 @@ class Cards implements InstallCards {
     }
 
     /** Update the map waits for the server, whose build has settled. */
-    #siteDue(view: InstallTargetView): boolean {
-        return this.#siteAfterServer && settled(view);
+    #afterServerDue(view: InstallTargetView): boolean {
+        return this.#afterServerTargets.length > 0 && settled(view);
     }
 
     /** Finding 71: the server's build, which Provision's record waits for, has settled (see `settled`). */
@@ -353,16 +359,25 @@ class Cards implements InstallCards {
         }
     }
 
-    /** Update the map's site, once the server it waited for is installed (with the live token; else the card offers it). */
+    /**
+     * Update the map's pipeline and site, once the server they waited for is installed (with the live token; else each
+     * card offers it again). A server that stopped submits neither: a pipeline image ahead of its server would make the
+     * local worker's claims refused.
+     */
     #afterServer(view: InstallTargetView): void {
-        if (!this.#siteDue(view)) {
+        if (!this.#afterServerDue(view)) {
             return;
         }
-        this.#siteAfterServer = false;
+        const targets = this.#afterServerTargets;
+        this.#afterServerTargets = [];
         const access = view.state === 'installed' ? this.#live() : null;
-        if (access !== null) {
-            void this.#flows.site.installWith(access);
+        if (access === null) {
+            this.#ctx.deps.log.info('update waits for a click', { targets: targets.join(','), server: view.state });
+            return;
         }
+        targets.forEach((target) => {
+            void this.#flows[target].installWith(access);
+        });
     }
 }
 

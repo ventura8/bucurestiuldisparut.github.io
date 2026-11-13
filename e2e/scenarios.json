@@ -10509,6 +10509,28 @@
             "notes": "Finding 47 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §81a). Test: e2e/admin/steps/install/pipeline.spec.ts (state setup.pipeline-quota); the step in scripts/site/test/install-run-jobs-refusals.test.ts."
         },
         {
+            "id": "S-A56-HAPPY-UPDATE-AFTER-SERVER",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "happy",
+            "title": "Update the map installs the server first and the pipeline once the server is in",
+            "asserts": "server and pipeline recorded behind -> one Update the map click and one consent submit the server's build only; once it is installed the pipeline's build is submitted with the same token and the pipeline card says Installed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-12: the pipeline's build finished first and the local worker's claims on the new image were refused until the server caught up (DECISIONS-for-review.md, the last section). Test: e2e/admin/steps/install/update-order.spec.ts; packages/admin/test/setup/install.test.ts."
+        },
+        {
+            "id": "S-A56-BAD-UPDATE-SERVER-STOPPED",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "bad",
+            "title": "A server update that stopped never lets the pipeline go",
+            "asserts": "server and pipeline behind, the server's build stops at functions -> no pipeline build is submitted; the pipeline card still says an update is available and offers Update the map",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-12. Test: e2e/admin/steps/install/update-order.spec.ts; packages/admin/test/setup/install.test.ts."
+        },
+        {
             "id": "S-A57-HAPPY",
             "behaviour": "A57",
             "area": "admin",
@@ -12417,7 +12439,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A frame that must be ordered is named, never joined",
-            "asserts": "a date whose other frame is paid -> the row links that frame's page (1 more would need ordering) and has no Join frames",
+            "asserts": "a date whose other frame is paid -> the row says 1 more would need ordering, links that frame's page with Buy this scan: F022 and has no Join frames",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-dates.spec.ts, functions/test/imagery/join*.test.ts."
@@ -13257,6 +13279,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "M9 (docs/research/M9-calibration.md §5). Tests: packages/shared/test/imagery/join.test.ts, functions/test/imagery/join-plan.test.ts."
+        },
+        {
+            "id": "S-A66-HAPPY-BUY-EVERY-PAID",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every paid frame of a date has its own Buy this scan",
+            "asserts": "a date with one free and two paid frames -> the row says 2 more would need ordering and lists Buy this scan: F022 and Buy this scan: F023; the second opens its own scene page, where the order card's heading shows",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-12 (only the first paid frame was linked). Test: e2e/admin/specs/imagery/join-dates.spec.ts; packages/ui/test/admin/imagery/join-paid.test.ts."
+        },
+        {
+            "id": "S-A66-BAD-PAID-ORDERED",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "bad",
+            "title": "A paid frame ordered already is not offered for buying again",
+            "asserts": "one of the row's paid frames has an open order -> its line reads Your order: F022 with the Ordered chip, while the other still reads Buy this scan: F023",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-12. An expired order reads Order it again: F022 instead (unit test). Test: e2e/admin/specs/imagery/join-dates.spec.ts; packages/ui/test/admin/imagery/join-paid.test.ts."
         },
         {
             "id": "S-P07-HAPPY-GPU",
