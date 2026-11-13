@@ -29,6 +29,8 @@ export const UPSTREAM_SERVICES = [
     'monitoring',
     'api-keys',
     'analytics-admin',
+    /** §203: the GA4 Data API the Statistics view reads. */
+    'analytics-data',
     'mapbox',
     'usgs',
     'usgs-browse',

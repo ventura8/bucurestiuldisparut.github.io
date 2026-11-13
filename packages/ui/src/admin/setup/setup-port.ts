@@ -27,7 +27,7 @@ export type SetupStepId =
 
 type SetupMode = 'bootstrap' | 'normal';
 
-export type GoogleScopeName = 'cloudReadOnly' | 'cloudBilling' | 'cloudPlatform' | 'analyticsEdit';
+export type GoogleScopeName = 'cloudReadOnly' | 'cloudBilling' | 'cloudPlatform' | 'analyticsEdit' | 'analyticsRead';
 
 export type SetupLinkId =
     | 'gcp.firebaseConsole'

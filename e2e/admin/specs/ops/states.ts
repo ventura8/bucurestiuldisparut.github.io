@@ -52,4 +52,12 @@ export const OPS_STATES = {
         title: "Statistics: each wizard's steps and the way to its funnel in Google Analytics (statistics off: the way to Setup)",
         visit: 'specs/ops/ops.spec.ts, statistics',
     },
+    'crashes.statistics-numbers': {
+        title: "Statistics: Google Analytics' numbers after the read-only consent (overview, apps, funnels) and Error Reporting's groups",
+        visit: 'specs/ops/statistics.spec.ts, the numbers',
+    },
+    'crashes.statistics-problem': {
+        title: 'Statistics: the Data API off, said with Setup and the console as the fix',
+        visit: 'specs/ops/statistics.spec.ts, the Data API off',
+    },
 } as const;

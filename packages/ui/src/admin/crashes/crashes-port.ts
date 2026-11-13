@@ -11,6 +11,69 @@ export type CrashPeriodPort = 24 | 168 | 720;
 
 export type CrashGroupPort = ListGroupsResponse['groups'][number];
 
+/** §203: the Statistics view's periods, in days. */
+export type StatisticsDaysPort = 7 | 28 | 90;
+
+/** §203: why the numbers could not be shown (`packages/admin/src/crashes/statistics.ts`). */
+export type StatisticsProblemPort =
+    | 'consent'
+    | 'popupBlocked'
+    | 'wrongAccount'
+    | 'apiDisabled'
+    | 'noProperty'
+    | 'noAccess'
+    | 'noReports'
+    | 'notSetUp'
+    | 'unavailable'
+    | 'blocked'
+    | 'server';
+
+export interface NamedCountPort {
+    readonly name: string;
+    readonly count: number;
+}
+
+export interface StepNumbersPort {
+    readonly wizard: string;
+    readonly step: string;
+    readonly visitors: number;
+    readonly averageMs: number | null;
+    readonly errors: readonly NamedCountPort[];
+}
+
+export interface DayNumbersPort {
+    readonly date: string;
+    readonly visitors: number;
+    readonly sessions: number;
+}
+
+export interface SurfaceNumbersPort {
+    readonly surface: string;
+    readonly visitors: number;
+    readonly sessions: number;
+    readonly daily: readonly DayNumbersPort[];
+}
+
+export interface StatisticsNumbersPort {
+    readonly visitors: number;
+    readonly sessions: number;
+    readonly pages: readonly NamedCountPort[];
+    readonly screens: readonly NamedCountPort[];
+    readonly events: readonly NamedCountPort[];
+    readonly devices: readonly NamedCountPort[];
+    readonly countries: readonly NamedCountPort[];
+    readonly surfaces: readonly SurfaceNumbersPort[];
+    readonly steps: readonly StepNumbersPort[];
+}
+
+export interface StatisticsViewState {
+    readonly days: StatisticsDaysPort;
+    readonly status: 'idle' | 'loading' | 'ready' | 'error';
+    readonly problem: StatisticsProblemPort | null;
+    readonly notice: AdminNoticeInputPort | null;
+    readonly numbers: StatisticsNumbersPort | null;
+}
+
 export interface CrashesViewState {
     readonly period: CrashPeriodPort;
     readonly status: LoadStatusPort;
@@ -20,6 +83,7 @@ export interface CrashesViewState {
     readonly failure: AdminNoticeInputPort | null;
     readonly apiDisabled: boolean;
     readonly selected: string | null;
+    readonly statistics: StatisticsViewState;
 }
 
 export interface CrashesIntentsPort {
@@ -27,4 +91,7 @@ export interface CrashesIntentsPort {
     more(): Promise<void>;
     retry(): void;
     select(groupId: string | null): void;
+    showNumbers(): void;
+    setStatisticsDays(days: StatisticsDaysPort): void;
+    refreshStatistics(): void;
 }

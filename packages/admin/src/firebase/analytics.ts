@@ -9,7 +9,7 @@
  * and the event guard of `@hcm/shared`) loads with the SDK; every event is checked by that guard before GA4 sees it (its
  * schema, GA4's limits, no PII, the page's budget), and the Core Web Vitals observers start.
  */
-import type { FieldChunk, FieldEventName, FieldGuard, GaParams, Logger } from '@hcm/shared';
+import type { AppSurface, CityRole, FieldChunk, FieldEventName, FieldGuard, GaParams, Logger } from '@hcm/shared';
 
 /** The parts of `firebase/analytics` the admin uses (`analytics-sdk.ts` provides the real ones). */
 export interface AnalyticsSdk<App = unknown, Analytics = unknown> {
@@ -53,6 +53,8 @@ export interface AnalyticsDeps<App, Analytics> {
     readonly loadField: () => Promise<FieldChunk>;
     /** What every field measurement carries: `app`, `window_class`, `release`. */
     readonly fieldContext: () => GaParams;
+    /** §203: the app and the role every event carries (`admin_owner` …; `admin` before a role is known). */
+    readonly surface: () => AppSurface;
 }
 
 interface Loaded<App, Analytics> {
@@ -105,12 +107,17 @@ function sendChecked<App, Analytics>(
     name: string,
     params: EventParams,
 ): void {
-    const checked = guard.check(name, { ...params, page_location: deps.pageLocation() });
+    const checked = guard.check(name, { ...params, app_surface: deps.surface(), page_location: deps.pageLocation() });
     if (checked.ok) {
         sdk.logEvent(analytics, name, checked.params);
     } else if (checked.first) {
         deps.log.warn('analytics event dropped', { name, reason: checked.reason });
     }
+}
+
+/** §203: the admin's `app_surface` for the open city's role (`admin` before one is known). */
+export function surfaceOf(role: CityRole | null): AppSurface {
+    return role === null ? 'admin' : `admin_${role}`;
 }
 
 /** The consent-gated GA4 of the admin. */

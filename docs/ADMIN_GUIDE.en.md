@@ -217,6 +217,18 @@ The errors visitors and admins ran into, grouped, over 24 hours, 7 days or 30 da
 
 To see it: **Open Google Analytics**, then **Explore → Funnel exploration**; add one step per line of the wizard's list (the event `step_view`, with `wizard_id` and `step_id` set to the codes shown), turn on **Show elapsed time** for the time per step, and make a free-form table of `step_error` by `step_id` and `error_code` for the most frequent errors; `wizard_abandon` gives the last step of those who gave up. The codes appear in Google Analytics once Setup's step g ran **Create the measurement reports**. Google Analytics shows averages; the exact median per step needs the BigQuery export of the property. When Google Analytics is not set up, the page says so and links step g.
 
+**Show the numbers here** puts the numbers on this page, so you need not build the funnel yourself. The first click opens Google's window once: it asks only to read your map's visitor statistics, nothing else, and you can remove it any time at `myaccount.google.com/permissions`. The permission stays in this tab for at most an hour and is never saved. Choose **7 days**, **28 days** or **90 days**; a period you saw is kept until you leave the page, and **Refresh** reads it again. You see the visitors and visits, then the visitors and visits of each app (the public map, and the admin by role: the owner, administrators, moderators, contributors using Contribute) with a small line per day, the most viewed pages and admin screens, the map's key actions (a year changed, the compass turned back, a layer shown, a photo opened), devices and countries; then each wizard's steps with the people who saw each, how many left before it, the average time and its most frequent errors in words. The start page of a new map is not measured. Below, the errors Cloud Error Reporting received in the same period (at most its last 30 days), each with how often, first and last seen, the release and a link to it in the Google Cloud console.
+
+| What the page says | Why | What to do |
+| --- | --- | --- |
+| Google did not give the permission | the window closed or the box was not ticked | press **Show the numbers here** again and tick "See your Google Analytics data" |
+| The browser blocked the Google window | pop-ups are blocked for this page | allow pop-ups for it, then the button again |
+| The Google Analytics Data API is off | the project has not turned it on yet | **Open Setup** and run **Update the map** (it turns the API on), or the console link; then **Refresh** |
+| No Google Analytics property … receives this map's statistics | the account sees no property with the map's measurement id | check step g of Setup |
+| Your Google account has no access | the property belongs to another account | sign in with that account, or ask its owner to add you as a Viewer |
+| Google Analytics does not know the map's measurement names yet | step g's **Create the measurement reports** never ran | run it, then come back |
+| Google Analytics is not set up | step g is not done | set it up in step g |
+
 ### From your Save to the visitors' map
 
 Every Save of something published asks the server to rebuild the public map's data (the manifest), at most once a minute; visitors see the change on their next visit.
