@@ -75,6 +75,8 @@ export const workerClaimRequestSchema = z.strictObject({
         .max(20)
         .optional(),
     archives: z.array(z.string().regex(ARCHIVE_ID_PATTERN)).max(WORKER_ARCHIVES_MAX).optional(),
+    /** 2026-11-13: the jobs whose stitched film is on this computer: a job waiting for its film (`film-copy`) is given to it. */
+    films: z.array(idSchema).max(WORKER_ARCHIVES_MAX).optional(),
 });
 export const workerClaimResponseSchema = z.strictObject({
     job: z.strictObject({ jobId: idSchema }).nullable(),

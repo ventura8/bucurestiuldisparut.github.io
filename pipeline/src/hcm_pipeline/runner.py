@@ -212,10 +212,11 @@ class JobRunner:
         """M20 (2026-11-13): an archive series' sheets on this computer first (or their copy); without them the job goes back."""
         try:
             ensure_series(ctx)
+            return self._walk(ctx, only)
         except ArchiveElsewhereError as elsewhere:
+            # Also a stitched film on another computer (`FilmElsewhereError`, 2026-11-13), raised from inside a step.
             self._log.warn(f"{elsewhere}; the job goes back for the computer that has the files", None)
             return RunOutcome.RETURNED
-        return self._walk(ctx, only)
 
     def _context(self, job: Job, flags: RunFlags, scratch: Path) -> JobContext:
         params_of(job)

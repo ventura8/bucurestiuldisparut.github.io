@@ -29,6 +29,7 @@ from hcm_pipeline.worker.app import PageActions
 from hcm_pipeline.worker.args import WorkerArgs
 from hcm_pipeline.worker.copying import copier
 from hcm_pipeline.worker.imports import ImportRoutes
+from hcm_pipeline.worker.local_store import held_films
 from hcm_pipeline.worker.loop import WorkerLoop
 from hcm_pipeline.worker.page import PageSettings, content_security_policy
 from hcm_pipeline.worker.pairing import Connector, Pairing, SessionFile, Signer
@@ -120,6 +121,7 @@ class Worker:
         loop.sweep = runtime.sweep
         archives = ArchiveStore(args.work)
         loop.archives = archives.held
+        loop.films = lambda: held_films(args.work, args.city)
         loop.copier = copier(api, args.city, worker_id, archives, signed_client(args.emulators))
         loop.supervised = args.supervised
         return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector, governor, threading.Event())

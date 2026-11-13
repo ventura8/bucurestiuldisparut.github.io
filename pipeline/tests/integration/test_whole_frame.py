@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path
 from typing import Final
 
@@ -10,7 +11,8 @@ import pytest
 from hcm_pipeline.calibrate import strip
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.geo import to_lnglat
-from hcm_pipeline.runner import RunOutcome
+from hcm_pipeline.runner import JobRunner, RunOutcome, RunSettings
+from hcm_pipeline.services import default_steps
 from hcm_pipeline.steps import whole
 from hcm_pipeline.steps.recrop import FILM_GONE
 from hcm_pipeline.steps.whole import POINTS_NEXT, WholeFrame, marked
@@ -160,3 +162,19 @@ def test_bad_path_points_on_a_strip_whose_film_is_no_longer_stored_ask_for_the_i
     assert any(FILM_GONE in line for line in parked.log_lines())
     assert "import the frame again" in FILM_GONE
     assert marked_still(parked)
+
+
+def test_bad_path_on_a_worker_a_film_not_stored_here_hands_the_job_back(parked: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P20-BAD-FILM-GONE"""
+    # 2026-11-13: the film may be on the computer that stitched it; the job goes back unspent.
+    for name in parked.gcs.names(WORK):
+        if name.endswith("frame.json"):
+            del parked.gcs.objects[name]
+    _save_points(parked, _points(parked))
+    services = replace(parked.services(), archive_root=tmp_path)
+
+    outcome = JobRunner(parked.config, services, default_steps(), RunSettings(heartbeat_seconds=3600)).run()
+
+    assert outcome is RunOutcome.RETURNED
+    assert dig(parked.job(), "status") != "failed"
+    assert any("goes back for the computer that has the files" in line for line in parked.log_lines())

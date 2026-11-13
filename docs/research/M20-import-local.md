@@ -857,3 +857,24 @@ scenarios `S-A120-HAPPY-ARCHIVE-COPY`, `S-A120-BAD-ARCHIVE-COPY`, `S-P20-HAPPY-A
 endpoint (off unless the city has more than one paired worker; a short-lived read-only token minted by a callable for the city's
 paired workers; archive files only, no path outside the archive), advertised in the worker's document; the bucket stays the fallback.
 While idle, the holder pre-seeds the other computers under the governor's limits.
+
+## 21. A stitched film on another computer (live report of 2026-11-13; DECISIONS §217)
+
+**What happened.** The 1968 Corona F026 was stitched on one worker; after the owner's rough points it was queued again, another
+worker claimed it, and `georef` (`steps/recrop.py`) failed "the frame's film is no longer stored": the segments `stitch` made stay
+under `work/{city}/{job}/` on the computer that made them.
+
+| Part | What it does |
+| --- | --- |
+| The films a worker holds (`worker/local_store.py` `held_films`) | Every claim names the jobs whose `work/{city}/{job}/frame.json` is in its work folder (`films`, newest first, at most 200); `worker.claim` keeps them on the worker's document. |
+| The hand-back (`steps/recrop.py`, `runner.py`) | On a worker (`archive_root` set) a film not stored here raises `FilmElsewhereError` (an `ArchiveElsewhereError`): the run ends `RETURNED` without a write. In Cloud Run the step still fails with "use Locate again". |
+| The wait (`functions/src/worker/film-host.ts`, `end.ts`) | A returned job that is not an archive series goes back `queued`, its attempt given back, `waitReason: 'film-copy'`, when another worker of the city (not disconnected, seen in the last 14 days, the segments' life) names its film; only a claim naming the job in `films` takes it. With no such worker it fails `apiError.imagery.filmMissing`: "The film of this frame is no longer on any computer: choose Locate again, or import the frame again." |
+| What the owner reads | `adminContent.imagery.wait.filmCopy`: "Waiting for the computer that cut this frame from its film: turn it on, it goes on by itself." |
+
+**Why no copy through the bucket.** Only the holder could send the film, and the worker runs one thing at a time: a busy holder
+cannot send it, an idle one runs the job itself, and a film is 13 GB of segments where an archive series is a few sheets. The
+preference is the whole fix; the LAN copy of step 2 could carry films later.
+
+Tests: `functions/test/worker/film-host.test.ts`, `pipeline/tests/unit/test_film_host.py`, `test_worker_loop.py`,
+`pipeline/tests/integration/test_whole_frame.py`; scenarios `S-A120-HAPPY-FILM-HOST`, `S-A120-BAD-FILM-GONE`, `S-P20-HAPPY-FILM-HOST`,
+`S-P20-BAD-FILM-GONE`.

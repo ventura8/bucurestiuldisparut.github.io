@@ -317,10 +317,13 @@ def test_happy_path_a_claim_names_the_archives_held_and_a_copy_is_sent_before_an
     loop, _state, _session = loop_with(server, runtime)
     loop.archives = lambda: ["ar-0123456789abcdef"]
     loop.copier = sent.append
+    loop.films = lambda: ["job-film"]
 
     assert loop.run_once() is Pass.RAN
     assert (sent, runtime.jobs) == ([COPY_DUTY], [])
     assert server.calls[0][1]["archives"] == ["ar-0123456789abcdef"]
+    # 2026-11-13: the films this computer holds go with every claim. Scenarios: S-P20-HAPPY-FILM-HOST
+    assert server.calls[0][1]["films"] == ["job-film"]
 
 
 def test_bad_path_a_run_without_the_sheets_is_reported_returned() -> None:

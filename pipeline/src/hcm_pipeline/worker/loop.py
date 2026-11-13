@@ -134,6 +134,8 @@ class WorkerLoop:
         self.sweep: Callable[[str | None], None] = lambda _claimed: None
         # M20 (2026-11-13): the local archives this computer holds whole (`ArchiveStore.held`): it sends their series' copies.
         self.archives: Callable[[], list[str]] = list
+        # 2026-11-13: the jobs whose stitched film is in this work folder (`held_films`): a job waiting for its film comes here.
+        self.films: Callable[[], list[str]] = list
         # M20: the copy of a series another worker waits for, sent before any job (`CopySender.send`).
         self.copier: Callable[[Mapping[str, object]], None] = lambda _duty: None
         # Finding 72: under the starter's supervisor an outdated image ends the loop (the supervisor updates it).
@@ -219,6 +221,7 @@ class WorkerLoop:
         try:
             # Only the types this image runs: a newer type stays queued for an updated worker, never failed here.
             claim = {**self._ids, "types": list(RUN_JOB_TYPES), "archives": self.archives()[:CLAIM_ARCHIVES_MAX]}
+            claim["films"] = self.films()[:CLAIM_ARCHIVES_MAX]
             answer = self._api.call(CLAIM, claim)
         except CALL_ERRORS as error:
             LOG.warning("worker.claim failed: %s", error)
