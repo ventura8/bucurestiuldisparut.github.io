@@ -5,17 +5,18 @@ import { HCM_TIMELINE_TAG, defineHcmTimeline, type HcmTimeline } from '../../src
 import { mountElement, recordEvents, shadowQuery, shadowQueryAll } from './doubles.js';
 
 /**
- * The year chip on `<hcm-timeline>` (the owner, 2026-11-13): a mouse over a stop without its own label, the keyboard on a
- * year of several dates, a finger anywhere on the track (scrubbing, selecting on lift, locked to the track's axis).
+ * The year chip on `<hcm-timeline>` (the owner, 2026-11-13): a mouse over a stop without its own label, a finger anywhere
+ * on the track (scrubbing, selecting on lift, locked to the track's axis); never a year of several dates, whose date menu
+ * names them; in title medium, 40 px tall.
  */
 
 /** Twenty-two stops, 1964 to 1984 and today: dense in a 420 px card, every other year unlabelled. */
 const MANY = [...Array.from({ length: 21 }, (_, at) => 1964 + at), null];
-const LAYERS = [
-    { year: 1964, date: '1964-05-01' },
-    { year: 1964, date: '1964-06-02' },
-    ...Array.from({ length: 20 }, (_, at) => ({ year: 1965 + at })),
-];
+/** 1964 has two dates (and 1967 two layers): their stops carry a badge and never a chip. */
+const COUNTS = new Map([
+    [1964, 2],
+    [1967, 2],
+]);
 
 function frame(): Promise<void> {
     return new Promise((resolve) => {
@@ -27,7 +28,7 @@ function frame(): Promise<void> {
 
 async function timeline(properties: Partial<HcmTimeline> = {}): Promise<HcmTimeline> {
     defineHcmTimeline();
-    const element = await mountElement<HcmTimeline>(HCM_TIMELINE_TAG, { stops: MANY, layers: LAYERS, value: 1974, ...properties });
+    const element = await mountElement<HcmTimeline>(HCM_TIMELINE_TAG, { stops: MANY, dateCounts: COUNTS, value: 1974, ...properties });
     element.style.inlineSize = '420px';
     element.style.blockSize = properties.orientation === 'vertical' ? '420px' : '';
     element.style.marginBlockStart = '120px';
@@ -68,6 +69,12 @@ describe('<hcm-timeline> year chip', () => {
 
         expect(tip(element)?.textContent).toBe('1965');
         expect(tip(element)?.getAttribute('aria-hidden')).toBe('true');
+        const style = getComputedStyle(tip(element) ?? element);
+        expect([style.fontSize, style.minHeight, style.paddingInlineStart], 'M3 title medium, 40 px, 16 px in').toEqual([
+            '16px',
+            '40px',
+            '16px',
+        ]);
         expect(element.hasAttribute('tipping')).toBe(true);
         const card = element.getBoundingClientRect();
         const chip = tip(element)?.getBoundingClientRect() ?? new DOMRect();
@@ -88,28 +95,39 @@ describe('<hcm-timeline> year chip', () => {
         expect(element.hasAttribute('tipping')).toBe(false);
     });
 
-    it('happyPath_aYearOfSeveralDatesNamesThemAndTheChipStaysOverTheCardsEnd', async () => {
+    it('happyPath_theChipNearTheFirstYearStaysOverTheCardsEnd', async () => {
         const element = await timeline({ locale: 'en' });
 
-        fire(shadowQuery(element, '.track'), 'pointermove', at(element, 0));
+        fire(shadowQuery(element, '.track'), 'pointermove', at(element, 1));
         await element.updateComplete;
 
-        expect(tip(element)?.textContent).toBe('1964 · May 1, Jun 2');
+        expect(tip(element)?.textContent).toBe('1965');
         const chip = tip(element)?.getBoundingClientRect() ?? new DOMRect();
         expect(chip.left).toBeGreaterThanOrEqual(element.getBoundingClientRect().left);
     });
 
-    it('happyPath_theKeyboardOnAYearOfSeveralDatesShowsThem', async () => {
-        const element = await timeline({ value: 1965, locale: 'en' });
+    it('badPath_aMultiDateYearShowsNoChipUnderAMouseTheKeyboardOrAFinger', async () => {
+        const element = await timeline({ value: 1965 });
+        const track = shadowQuery(element, '.track');
+
+        fire(track, 'pointermove', at(element, 0));
+        await element.updateComplete;
+        expect(tip(element), 'a mouse').toBeNull();
         element.focus();
         await userEvent.keyboard('{ArrowLeft}');
         await element.updateComplete;
-
         expect(element.value).toBe(1964);
-        expect(tip(element)?.textContent).toBe('1964 · May 1, Jun 2');
-        shadowQuery(element, '.thumb').blur();
+        expect(tip(element), 'the keyboard').toBeNull();
+        fire(track, 'pointerdown', at(element, 2), 'touch');
         await element.updateComplete;
-        expect(tip(element)).toBeNull();
+        expect(tip(element)?.textContent, 'a finger on 1966').toBe('1966');
+        fire(window, 'pointermove', at(element, 3), 'touch');
+        await element.updateComplete;
+        expect(tip(element), 'a finger scrubbing over 1967 (two layers)').toBeNull();
+        fire(window, 'pointermove', at(element, 4), 'touch');
+        await element.updateComplete;
+        expect(tip(element)?.textContent).toBe('1968');
+        fire(window, 'pointercancel', at(element, 4), 'touch');
     });
 
     it('happyPath_standingTheChipIsBesideTheCard', async () => {
@@ -139,7 +157,7 @@ describe('<hcm-timeline> under a finger', () => {
     });
 
     it('badPath_aScrollingCardStillLetsAFingerScrollItAlongTheTrack', async () => {
-        const element = await timeline({ stops: [...Array.from({ length: 61 }, (_, at) => 1924 + at), null], layers: [] });
+        const element = await timeline({ stops: [...Array.from({ length: 61 }, (_, at) => 1924 + at), null], dateCounts: new Map() });
 
         expect(element.getAttribute('density')).toBe('scroll');
         expect(getComputedStyle(shadowQuery(element, '.track')).touchAction).toBe('pan-x');
@@ -156,6 +174,7 @@ describe('<hcm-timeline> under a finger', () => {
         fire(window, 'pointermove', at(element, 3), 'touch');
         await element.updateComplete;
         expect(element.value).toBe(1967);
+        expect(tip(element), '1967 has two layers: no chip, its date menu names them').toBeNull();
         expect(events.map((event) => event.detail)).toEqual([{ year: 1967 }]);
         await frame();
         fire(window, 'pointermove', at(element, 4), 'touch');
