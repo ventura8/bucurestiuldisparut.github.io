@@ -206,9 +206,14 @@ def read_catalogue(path: Path, rel: str, locale: str) -> Catalogue:
     for number, line in literal_lines(path.read_text(encoding="utf-8"), locale):
         if is_entry_candidate(line):
             read_entry(catalogue, f"{rel}:{number}", line)
-    if not catalogue.messages and not catalogue.problems and not is_empty_translation(path, locale):
+    if lacks_literal(catalogue, path, locale):
         catalogue.problems.append(f"{rel}: no `export const {locale} = {{ ... }}` catalogue")
     return catalogue
+
+
+def lacks_literal(catalogue: Catalogue, path: Path, locale: str) -> bool:
+    """Nothing read, nothing wrong, and not a language's deliberately empty literal: the file holds no catalogue."""
+    return not catalogue.messages and not catalogue.problems and not is_empty_translation(path, locale)
 
 
 def message_problems(rel: str, source: dict[str, str], other: dict[str, str]) -> list[str]:
@@ -377,9 +382,21 @@ def check_folder(root: Path, folder: Path, strict: bool = False) -> tuple[list[s
     required = UI_LOCALES if strict else locales_of(root, folder)
     files = {locale: folder / f"{locale}.ts" for locale in required}
     absent = absent_catalogues(root, files)
-    present = {locale: path for locale, path in files.items() if path.is_file()}
+    present = files_present(files)
     if SOURCE_LOCALE not in present:
         return absent, 0
+    return folder_problems(root, folder, present, required, absent)
+
+
+def files_present(files: dict[str, Path]) -> dict[str, Path]:
+    """The catalogue files that are there."""
+    return {locale: path for locale, path in files.items() if path.is_file()}
+
+
+def folder_problems(
+    root: Path, folder: Path, present: dict[str, Path], required: tuple[str, ...], absent: list[str]
+) -> tuple[list[str], int]:
+    """`check_folder` once the source catalogue is there: the comparison, then every translation's shape."""
     problems, keys = compare(root, present, viewer=is_viewer_folder(root, folder))
     return list(dict.fromkeys(absent + problems + translations_problems(root, folder, required))), keys
 

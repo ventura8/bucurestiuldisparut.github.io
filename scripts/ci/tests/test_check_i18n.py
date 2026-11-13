@@ -6,6 +6,7 @@ from pathlib import Path
 
 import check_i18n as i18n
 import pytest
+from cirepo import ROOT
 from treeutil import write
 
 SCRIPT = Path(i18n.__file__)
@@ -238,7 +239,7 @@ export const fr: Readonly<Partial<Record<Key, string>>> = {
 
 
 def test_happy_path_ui_locales_are_the_ones_of_locales_ts() -> None:
-    text = (i18n.ROOT / "packages/shared/src/i18n/locales.ts").read_text(encoding="utf-8")
+    text = (ROOT / "packages/shared/src/i18n/locales.ts").read_text(encoding="utf-8")
     listed = text.split("export const UI_LOCALES = [", 1)[1].split("]", 1)[0]
 
     assert tuple(code.strip().strip("',") for code in listed.split() if code.strip()) == i18n.UI_LOCALES

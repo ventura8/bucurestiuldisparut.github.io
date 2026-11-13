@@ -195,15 +195,29 @@ def import_file(root: Path, file: Path, target: tuple[Path, str], outcome: Outco
     source = i18n.read_catalogue(folder / "ro.ts", rel, "ro").messages
     existing = existing_texts(path, locale, rel, source, outcome)
     new = accepted(rel, qa_passed(rel, translated_texts(file, locale, rel, outcome), report, outcome), source, outcome)
+    write_merged(root, target, (source, existing, new), outcome, dry_run)
+
+
+def count_merged(rel: str, existing: dict[str, str], new: dict[str, str], outcome: Outcome) -> None:
+    """The outcome counts the texts kept and replaced, and names the file written."""
+    outcome.kept += len({**existing, **new}) - len(existing)
+    outcome.replaced += sum(1 for key, text in new.items() if key in existing and existing[key] != text)
+    outcome.written.append(rel)
+
+
+def write_merged(
+    root: Path, target: tuple[Path, str], texts: tuple[dict[str, str], dict[str, str], dict[str, str]], outcome: Outcome, dry_run: bool
+) -> None:
+    """Writes the catalogue's kept texts with the accepted new ones (`texts`: the source's, the existing, the new), counted."""
+    folder, locale = target
+    source, existing, new = texts
     merged = {**existing, **new}
     key_name = key_type(folder)
     if key_name is None or not merged:
         return
-    outcome.kept += len(merged) - len(existing)
-    outcome.replaced += sum(1 for key, text in new.items() if key in existing and existing[key] != text)
-    outcome.written.append(rel)
+    count_merged(i18n.relative(root, folder / f"{locale}.ts"), existing, new, outcome)
     if not dry_run:
-        path.write_text(render(i18n.relative(root, folder), locale, key_name, merged, list(source)), encoding="utf-8")
+        (folder / f"{locale}.ts").write_text(render(i18n.relative(root, folder), locale, key_name, merged, list(source)), encoding="utf-8")
 
 
 def translated_files(source_dir: Path, locales: Sequence[str]) -> list[Path]:
