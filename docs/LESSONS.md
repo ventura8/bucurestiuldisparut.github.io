@@ -3756,3 +3756,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the renumbering matched `lesson N` and `§N` only, not `` `docs/LESSONS.md` N ``.
     - Fix and pin: every reference a merged track added is renumbered by the lines that track added, in each of the forms `lesson N`, `lessons N, M`, `` LESSONS.md` N ``, `§N` and `DECISIONS §N`; the merge note under each renumbered decision says the old and new numbers.
     - **When a merge renumbers a lesson or a decision, search the track's own added lines for every way the repository cites one, not only the common one.**
+
+640. **Two merged fixes each passed their own tour and failed each other's: an app shell cut a 320 px viewer, and a reworded note broke the test that read the old one.**
+    - Seen: 2026-11-13, the merge queue's viewer tour at c360, m768 and l1440: `viewer.menu-shortest-landscape` (568 × 270, from `feat/engine-rewrite`) found the map cut off by the body (`[edge]`, `[focus-ring]`), and `kit.loading-note` looked for "README.md" in the starter kit's late note.
+    - Cause: track/layout made the city pages app shells (`overflow: hidden` on the root) while the viewer kept `min-block-size: 320px`, taller than the window; track/stale-text reworded the kit's late note to "Reload the page." but `e2e/tour/kit-states.ts` still read the old sentence.
+    - Fix and pin: the viewer's least height is 240 px (`viewer-styles.ts`), so a 270 px window shows it whole; the kit state reads the new advice in both languages; cdn/engine rebuilt.
+    - **After merging tracks, run the tour on the merged tree before calling it green: a track's own green tour never saw the other track's states or copy.**

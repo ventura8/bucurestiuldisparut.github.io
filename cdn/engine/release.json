@@ -37,12 +37,12 @@
         {
             "path": "engine.iife.js",
             "bytes": 344577,
-            "integrity": "sha384-noxdlHozpClJR0aHYgRQHoFOoSYJhRQE/TIHmJwZjcgsfB7MV8Tu5FgBX6u/c/O9"
+            "integrity": "sha384-oB2eZ0PbW8e3+VDygsQmFisbES5eU6HAO7/EhS+d8IRHe9ZSETDoUYmkFpc6om0x"
         },
         {
             "path": "engine.mjs",
             "bytes": 343085,
-            "integrity": "sha384-zbOdttXEkrCbzYl3/AWl+wFN0UiXu5y1qAM4/am71n1qeFLqMSu9EUlYTOb4UdYY"
+            "integrity": "sha384-LH9f1BlWAZy1+K16yfItn4HGEtR/jF3hWOHIMViUmyVFPQArTqgajUb2Ld/hVe6F"
         },
         {
             "path": "extra-compare-HT4-4whJ.js",
