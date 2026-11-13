@@ -24,8 +24,8 @@ export type UrlsDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'blobs' | 'si
 
 type Request = CallableRequest<'worker.urls'>;
 type Response = CallableResponse<'worker.urls'>;
-type ObjectRequest = Extract<Request['request'], { kind: 'objects' }>['objects'][number];
-type SignedAnswer = NonNullable<Response['objects']>[number];
+export type ObjectRequest = Extract<Request['request'], { kind: 'objects' }>['objects'][number];
+export type SignedAnswer = NonNullable<Response['objects']>[number];
 
 /** A generation as the answer carries it (Cloud Storage's are decimal numbers). */
 const GENERATION = /^\d{1,30}$/;
@@ -49,7 +49,7 @@ async function objectScope(deps: UrlsDeps, cityId: string, jobId: string, job: J
     if (version === undefined) {
         throw new ApiError('apiError.notFound');
     }
-    return { cityId, layerId: version.layerId, versionId, job, inputScans: await inputScans(deps, cityId, job) };
+    return { cityId, jobId, layerId: version.layerId, versionId, job, inputScans: await inputScans(deps, cityId, job) };
 }
 
 /** True when the run may have `object` signed: a read of its files or inputs, a typed write of one of its version's files. */
@@ -67,7 +67,7 @@ function metadataOf(metadata: BlobMetadata | undefined): Pick<SignedAnswer, 'siz
     return { size: metadata.size, ...generation, ...md5 };
 }
 
-async function signOne(deps: UrlsDeps, object: ObjectRequest, expiresAt: Date): Promise<SignedAnswer> {
+export async function signOne(deps: Pick<UrlsDeps, 'blobs' | 'signer'>, object: ObjectRequest, expiresAt: Date): Promise<SignedAnswer> {
     const typed = object.contentType === undefined ? {} : { contentType: object.contentType };
     const [metadata, signed] = await Promise.all([
         deps.blobs.stat('private', object.path),

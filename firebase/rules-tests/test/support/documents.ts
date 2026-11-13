@@ -311,6 +311,9 @@ export function jobDoc(creator: string, status = 'running'): Data {
         // M20 (docs/research/M20-import-local.md §1.1, §1.3): an archive series' originals on the computer, and the day it counted.
         localOnly: true,
         countedAt: past(),
+        // Live report of 2026-11-13: the copy of an archive series' sheets another computer sent, and the hand-backs before it.
+        archiveCopy: { by: 'w-fedcba9876543210', at: past(), bytes: 4096 },
+        archiveReturns: 1,
         ...systemStamp('pipeline'),
     };
 }

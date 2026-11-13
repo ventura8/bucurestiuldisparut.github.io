@@ -3888,3 +3888,11 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: GDAL's threads allocate from glibc's per-thread malloc arenas, which keep freed pages; about 115 MB of the layout's reads stayed resident while the canvas read its own.
     - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
     - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**
+
+662. **A second worker failed every archive series it took: the scanned maps were on another computer.**
+    - Seen: live, 2026-11-13: after the NUC and the PC joined the laptop, five archive series failed at `gather` with "no record of
+      ar-971b77774eee2871 on this computer", and an atlas used up its attempts on the same cause.
+    - Found by: the owner's Jobs page; every test ran one worker, which always held the archive it imported.
+    - Fix and pin: a worker without the sheets hands the job back unspent and the computer with the archive sends a copy through the
+      bucket (M20 §20; `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/test_archive_copy.py`).
+    - **Data that lives on one machine needs a test with two workers: one that has it and one that does not.**
