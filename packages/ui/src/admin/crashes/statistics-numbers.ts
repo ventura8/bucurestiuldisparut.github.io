@@ -42,7 +42,7 @@ export interface NumbersContext {
 }
 
 /** The Data API's page in the Google Cloud console, where it is turned on. */
-export function dataApiUrl(projectId: string): string {
+function dataApiUrl(projectId: string): string {
     return `https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com?project=${encodeURIComponent(projectId)}`;
 }
 

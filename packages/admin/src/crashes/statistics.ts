@@ -11,10 +11,10 @@ import { GoogleApiError } from '../google/failure.js';
 import { StatisticsProblem, type StatisticsDays, type StatisticsNumbers } from '../google/analytics-data.js';
 import { CallableFailure } from '../firebase/ports.js';
 
-export type { StatisticsDays, StatisticsNumbers } from '../google/analytics-data.js';
+export type { StatisticsDays } from '../google/analytics-data.js';
 
 /** What went wrong, as the page explains it (each with its own words, fix and link). */
-export type StatisticsProblemKind =
+type StatisticsProblemKind =
     | 'consent'
     | 'popupBlocked'
     | 'wrongAccount'
