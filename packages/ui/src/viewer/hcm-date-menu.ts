@@ -6,7 +6,11 @@
  * closes it, the viewer makes the frame under it inert and gives the focus back to the slider. The arrow keys, Home and End
  * move between the dates, Tab walks them as any button, Esc closes, Enter or a press picks one.
  *
- * Events (viewer-internal): `hcm-date-pick` (`{layerId}`), `hcm-close`.
+ * A peek (`peek`: a mouse or a scrubbing finger resting on the year, `timeline-peek.ts`) is not modal: no scrim, the focus
+ * stays where it was, the frame stays live. The mouse entering or leaving it says so (`hcm-date-menu-pointer`), so the dock
+ * keeps it open on the way from the year; a finger sliding over it marks the date under it (`touchAt`) and lifting picks it.
+ *
+ * Events (viewer-internal): `hcm-date-pick` (`{layerId}`), `hcm-close`, `hcm-date-menu-pointer` (`{inside}`).
  */
 import { LitElement, css, html, type PropertyValues, type TemplateResult } from 'lit';
 
@@ -42,6 +46,11 @@ export function dateMenuOrigin(
     return { x: within(wanted.x, menu.width, room.width - EDGE), y: within(wanted.y, menu.height, room.height - LEGAL_STRIP) };
 }
 
+/** Whether the point (`x`, `y`) is in `rect`, its edges included. */
+function contains(rect: DOMRect, x: number, y: number): boolean {
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
 const NEXT: Readonly<Record<string, (index: number, count: number) => number>> = {
     ArrowDown: (index, count) => (index + 1) % count,
     ArrowUp: (index, count) => (index - 1 + count) % count,
@@ -56,6 +65,7 @@ export class HcmDateMenu extends LitElement {
         label: { type: String },
         anchor: { attribute: false },
         vertical: { type: Boolean },
+        peek: { type: Boolean },
     };
 
     static override readonly styles = [
@@ -108,7 +118,8 @@ export class HcmDateMenu extends LitElement {
             }
 
             .item:hover,
-            .item:focus-visible {
+            .item:focus-visible,
+            .item[data-armed] {
                 background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
                 outline: 2px solid var(--md-sys-color-secondary);
                 outline-offset: -2px;
@@ -147,6 +158,8 @@ export class HcmDateMenu extends LitElement {
     declare anchor: Box | null;
     /** The timeline stands (a phone held upright): the menu opens on its trailing side, else above it. */
     declare vertical: boolean;
+    /** Shown by a resting pointer, not by selecting the year: not modal. */
+    declare peek: boolean;
 
     constructor() {
         super();
@@ -155,16 +168,30 @@ export class HcmDateMenu extends LitElement {
         this.label = '';
         this.anchor = null;
         this.vertical = false;
+        this.peek = false;
     }
 
     override render(): TemplateResult {
         if (this.anchor === null) {
             return EMPTY;
         }
-        return html`<div class="scrim" @pointerdown=${this.#close}></div>
-            <div class="menu" role="menu" aria-label=${this.label} data-layout-check="date-menu" @keydown=${this.#onKey}>
+        return html`${this.#scrim()}
+            <div
+                class="menu"
+                role="menu"
+                aria-label=${this.label}
+                data-layout-check="date-menu"
+                @keydown=${this.#onKey}
+                @pointerenter=${this.#onPointer}
+                @pointerleave=${this.#onPointer}
+            >
                 ${this.items.map((item) => this.#item(item))}
             </div>`;
+    }
+
+    /** The modal menu's scrim, which takes a press anywhere else and closes it; a peek has none. */
+    #scrim(): TemplateResult {
+        return this.peek ? EMPTY : html`<div class="scrim" @pointerdown=${this.#close}></div>`;
     }
 
     protected override updated(changed: PropertyValues<this>): void {
@@ -181,6 +208,9 @@ export class HcmDateMenu extends LitElement {
         const origin = dateMenuOrigin(anchor, { width: menu.offsetWidth, height: menu.offsetHeight }, host, this.#side());
         menu.style.setProperty('left', `${String(origin.x)}px`);
         menu.style.setProperty('top', `${String(origin.y)}px`);
+        if (this.peek) {
+            return;
+        }
         (this.#items().find((item) => item.getAttribute('aria-checked') === 'true') ?? this.#items()[0])?.focus();
     }
 
@@ -207,6 +237,30 @@ export class HcmDateMenu extends LitElement {
             <span class="text"><span class="date">${item.date}</span><span class="label">${item.label}</span></span>
         </button>`;
     }
+
+    /**
+     * A finger at (`x`, `y`) client px: over the menu it marks the date under it, and picks it when `lifted`; false when the
+     * finger is not over the menu (no date marked then).
+     */
+    touchAt(x: number, y: number, lifted: boolean): boolean {
+        const inside = (box: Element | null): boolean => box !== null && contains(box.getBoundingClientRect(), x, y);
+        const over = inside(this.renderRoot.querySelector('.menu'));
+        const item = over ? this.#items().find(inside) : undefined;
+        for (const each of this.#items()) {
+            each.toggleAttribute('data-armed', each === item);
+        }
+        if (lifted && item !== undefined) {
+            item.click();
+        }
+        return over;
+    }
+
+    readonly #onPointer = (event: PointerEvent): void => {
+        if (event.pointerType !== 'touch') {
+            const detail = { inside: event.type === 'pointerenter' };
+            this.dispatchEvent(new CustomEvent('hcm-date-menu-pointer', { bubbles: true, composed: false, detail }));
+        }
+    };
 
     #items(): HTMLElement[] {
         return [...this.renderRoot.querySelectorAll<HTMLElement>('.item')];

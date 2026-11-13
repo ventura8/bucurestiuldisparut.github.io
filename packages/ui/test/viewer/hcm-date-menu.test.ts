@@ -119,3 +119,60 @@ describe('<hcm-date-menu>', () => {
         expect(customElements.get(HCM_DATE_MENU_TAG)).toBe(HcmDateMenu);
     });
 });
+
+describe('<hcm-date-menu> as a peek (a pointer resting on the year)', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    function centre(element: Element): { readonly x: number; readonly y: number } {
+        const box = element.getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    }
+
+    it('happyPath_noScrimAndTheFocusStaysWhereItWas', async () => {
+        const element = await menu({ peek: true });
+
+        expect(element.shadowRoot?.querySelector('.scrim')).toBeNull();
+        expect(focusedItem(element)).toBeUndefined();
+        await expect.element(page.getByRole('menu', { name: 'Datele din 1966' })).toBeVisible();
+    });
+
+    it('happyPath_aFingerSlidingOverItMarksTheDateAndLiftingPicksIt', async () => {
+        const element = await menu({ peek: true });
+        const events = recordEvents(element, 'hcm-date-pick');
+        const item = shadowQuery(element, '[data-item="c"]');
+        const at = centre(item);
+
+        expect(element.touchAt(at.x, at.y, false)).toBe(true);
+        expect(item.hasAttribute('data-armed')).toBe(true);
+        expect(element.touchAt(at.x, at.y, true)).toBe(true);
+
+        expect(events).toEqual([{ type: 'hcm-date-pick', detail: { layerId: 'c' } }]);
+    });
+
+    it('badPath_aFingerOffTheMenuMarksNothingAndPicksNothing', async () => {
+        const element = await menu({ peek: true });
+        const events = recordEvents(element, 'hcm-date-pick');
+        const at = centre(shadowQuery(element, '[data-item="a"]'));
+        element.touchAt(at.x, at.y, false);
+
+        expect(element.touchAt(1, 1, true)).toBe(false);
+        expect(shadowQueryAll(element, '[data-armed]')).toHaveLength(0);
+        expect(events).toEqual([]);
+        const closed = await menu({ anchor: null });
+        expect(closed.touchAt(1, 1, true)).toBe(false);
+    });
+
+    it('happyPath_theMouseEnteringAndLeavingSaysSoAFingerDoesNot', async () => {
+        const element = await menu({ peek: true });
+        const events = recordEvents(element, 'hcm-date-menu-pointer');
+        const box = shadowQuery(element, '.menu');
+
+        box.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+        box.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+        box.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch' }));
+
+        expect(events.map((event) => event.detail)).toEqual([{ inside: true }, { inside: false }]);
+    });
+});
