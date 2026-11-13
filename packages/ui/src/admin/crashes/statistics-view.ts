@@ -109,13 +109,8 @@ function wizardItem(locale: Locale, wizard: WizardId): TemplateResult {
 function offNote(locale: Locale, analytics: boolean): TemplateResult {
     return analytics
         ? EMPTY
-        : html`<div class="info">
-              <hcm-icon name="info"></hcm-icon>
-              <div>
-                  <p data-statistics-off>${contentText(locale, 'adminContent.statistics.off')}</p>
-                  <p><a href="#/setup/analytics">${contentText(locale, 'adminContent.statistics.openSetup')}</a></p>
-              </div>
-          </div>`;
+        : html`<p class="note" data-statistics-off>${contentText(locale, 'adminContent.statistics.off')}</p>
+              <p><a href="#/setup/analytics">${contentText(locale, 'adminContent.statistics.openSetup')}</a></p>`;
 }
 
 /** What the view shows besides the language: the page's state and intents, the project for its links. */

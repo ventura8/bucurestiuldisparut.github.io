@@ -7,6 +7,27 @@
 import { css } from 'lit';
 
 export const statisticsLiveStyles = css`
+    .statistics h4,
+    .statistics h5 {
+        margin: 0;
+        font-size: var(--md-sys-typescale-title-small-size);
+        line-height: var(--md-sys-typescale-title-small-line-height);
+        font-weight: var(--md-sys-typescale-title-small-weight);
+    }
+
+    .statistics .info {
+        display: flex;
+        gap: 12px;
+        padding: 16px;
+        border-radius: var(--md-sys-shape-corner-large);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+    }
+
+    .statistics .info a {
+        color: inherit;
+    }
+
     .statistics .numbers,
     .statistics .crash-groups,
     .statistics .block {

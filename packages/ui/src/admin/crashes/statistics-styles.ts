@@ -22,22 +22,13 @@ export const statisticsStyles = css`
     a[data-statistics-link] {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
         min-block-size: 48px;
     }
 
     .statistics code {
         font-family: var(--hcm-font-mono, ui-monospace, monospace);
-        font-size: 0.8125em;
+        font-size: 0.875em;
         overflow-wrap: anywhere;
-    }
-
-    .statistics h4,
-    .statistics h5 {
-        margin: 0;
-        font-size: var(--md-sys-typescale-title-small-size);
-        line-height: var(--md-sys-typescale-title-small-line-height);
-        font-weight: var(--md-sys-typescale-title-small-weight);
     }
 
     .statistics .page-head,
@@ -45,19 +36,6 @@ export const statisticsStyles = css`
         display: flex;
         flex-direction: column;
         gap: 4px;
-    }
-
-    .statistics .info {
-        display: flex;
-        gap: 12px;
-        padding: 16px;
-        border-radius: var(--md-sys-shape-corner-large);
-        background: var(--md-sys-color-secondary-container);
-        color: var(--md-sys-color-on-secondary-container);
-    }
-
-    .statistics .info a {
-        color: inherit;
     }
 
     /* The adaptive grid: one column on a phone, two or three as the window widens. */
