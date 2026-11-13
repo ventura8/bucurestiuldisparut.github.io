@@ -4,19 +4,23 @@
  * the first deploys), and in the `e2e` build Auth, Firestore, Storage and Functions on the emulators. Firestore and
  * Storage are created on first use, so start-up mode touches neither.
  *
- * Auth keeps the signed-in owner in the tab's `sessionStorage` only (M6, finding 1 of the security review): since M6
- * the public map and the admin share one origin (`https://<project>.web.app/` and `/admin/`), and IndexedDB or
- * `localStorage` are the whole origin's, so a script on any viewer page could read the owner's refresh token there.
- * `sessionStorage` belongs to the one tab (a link opened with `noopener` gets none), so only the admin's own tab holds
- * it; the price is one sign-in per tab (`DECISIONS-for-review.md` §73a, for the user).
+ * Where Auth keeps the signed-in owner depends on the origin (`DECISIONS-for-review.md` §73a, §210):
+ * - on the admin's own site (`https://<project>-admin.web.app/admin/`, `runtime.json`'s `adminOrigin` naming the page's
+ *   origin: `../app/admin-site.ts`), no public map page shares the origin, so the sign-in lives in its IndexedDB: one
+ *   sign-in for every tab, kept when the browser closes (`localStorage` where IndexedDB is not available; a sign-in found
+ *   there moves to IndexedDB);
+ * - under the public map's `/admin/` (a project without that site), the tab's `sessionStorage` only (M6, finding 1 of
+ *   the security review): IndexedDB and `localStorage` are the whole origin's, so a script on any viewer page could read
+ *   the owner's refresh token there; `sessionStorage` belongs to the one tab, at the price of one sign-in per tab.
  */
 import type { FieldChunk } from '@hcm/shared';
 import type { FirebaseApp, FirebaseOptions } from 'firebase/app';
-import type { Auth } from 'firebase/auth';
+import type { Auth, Persistence } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { Functions } from 'firebase/functions';
 import type { FirebaseStorage } from 'firebase/storage';
 
+import { onOwnSite } from '../app/admin-site.js';
 import type { AdminRuntime, FirebaseWebConfig } from '../app/config.js';
 import type { AnalyticsSdk } from './analytics.js';
 import type { FirebaseSdk } from './sdk.js';
@@ -54,15 +58,27 @@ export function firebaseOptions(config: FirebaseWebConfig): FirebaseOptions {
     };
 }
 
-/** The app and its services; `emulators` is the `e2e` build mode. */
-export function initFirebase(sdk: FirebaseSdk, config: FirebaseWebConfig, runtime: AdminRuntime, emulators: boolean): FirebaseHandles {
+/** Where Auth keeps the owner: the origin's IndexedDB (or `localStorage`) on the admin's own site, else the tab's `sessionStorage` (§210). */
+function persistenceFor(sdk: FirebaseSdk, runtime: AdminRuntime, origin: string): Persistence | Persistence[] {
+    return onOwnSite(runtime, origin) ? [sdk.indexedDBLocalPersistence, sdk.browserLocalPersistence] : sdk.browserSessionPersistence;
+}
+
+/** Where the app runs: `emulators` is the `e2e` build mode, `origin` the page's. */
+export interface FirebasePage {
+    readonly emulators: boolean;
+    readonly origin: string;
+}
+
+/** The app and its services. */
+export function initFirebase(sdk: FirebaseSdk, config: FirebaseWebConfig, runtime: AdminRuntime, page: FirebasePage): FirebaseHandles {
+    const { emulators, origin } = page;
     const app = sdk.initializeApp(firebaseOptions(config));
     const siteKey = runtime.appCheckSiteKey;
     if (siteKey !== undefined && !emulators) {
         sdk.initializeAppCheck(app, { provider: new sdk.ReCaptchaEnterpriseProvider(siteKey), isTokenAutoRefreshEnabled: true });
     }
     // The popup's resolver goes with each popup (`adapters.ts` `firebasePopup`).
-    const auth = sdk.initializeAuth(app, { persistence: sdk.browserSessionPersistence });
+    const auth = sdk.initializeAuth(app, { persistence: persistenceFor(sdk, runtime, origin) });
     const functions = sdk.getFunctions(app, FUNCTIONS_REGION);
     if (emulators) {
         sdk.connectAuthEmulator(auth, `http://${EMULATOR_HOST}:${String(EMULATOR_PORTS.auth)}`, { disableWarnings: true });

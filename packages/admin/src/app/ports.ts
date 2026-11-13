@@ -45,5 +45,7 @@ export interface HashLocation {
     search(): string;
     /** `location.origin + location.pathname`: what analytics and crash reports may know of the page. */
     page(): string;
+    /** The public map's root (`https://<project>.web.app/`; the page's own origin unless the admin runs on its own site, §210). */
+    publicMap?(): string;
     reload(): void;
 }

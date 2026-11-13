@@ -46,7 +46,12 @@ describe('projectNames', () => {
         const names = projectNames(PROJECT);
 
         expect([names.privateBucket, names.publicBucket]).toEqual(['demo-hcm.firebasestorage.app', 'demo-hcm-public']);
-        expect(names.adminOrigins).toEqual(['https://demo-hcm.web.app', 'https://demo-hcm.firebaseapp.com']);
+        expect(names.adminOrigins).toEqual([
+            'https://demo-hcm.web.app',
+            'https://demo-hcm.firebaseapp.com',
+            'https://demo-hcm-admin.web.app',
+            'https://demo-hcm-admin.firebaseapp.com',
+        ]);
         expect(names.member('gh-deployer')).toBe('serviceAccount:gh-deployer@demo-hcm.iam.gserviceaccount.com');
         expect(SERVICE_ACCOUNT_IDS).toEqual(['fn-admin', 'fn-events', 'fn-crash', 'job-raster', 'gh-deployer', 'hcm-installer']);
     });

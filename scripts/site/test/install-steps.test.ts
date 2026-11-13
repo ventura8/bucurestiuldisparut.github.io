@@ -311,7 +311,7 @@ describe('the steps by name and their real world', () => {
         await expect(runStep('deploy-with-retry', ['--project', 'p'], world.deps)).resolves.toBe(0);
         await expect(runStep('hosting-config', [], world.deps)).resolves.toBe(1);
         expect(world.lines.at(-1)).toMatch(/^hosting-config: Error: usage: hosting-config/);
-        expect(Object.keys(STEPS)).toEqual(['deploy-with-retry', 'verify-server', 'run-jobs', 'hosting-config']);
+        expect(Object.keys(STEPS)).toEqual(['deploy-with-retry', 'verify-server', 'run-jobs', 'hosting-config', 'deploy-hosting']);
     });
 
     it('happyPath_aRealCommandsOutputIsShownAndKept_badPath_aMissingCommandIsStatusOne', async () => {

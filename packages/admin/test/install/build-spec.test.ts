@@ -108,6 +108,16 @@ describe('buildDefinition', () => {
         expect(trimmed[0]?.env?.some((line) => line.startsWith('HCM_UNPACK') || line.includes('legacy'))).toBe(false);
     });
 
+    it('happyPath_anAdminOnItsOwnSiteNamesItToTheServersFunctions_badPath_noOtherTargetAndNoOtherAdminDoes', () => {
+        // §210: only an admin served from its own site proves the site is the project's; its functions then link there.
+        const server = buildDefinition('server', { ...PARAMS, adminSite: 'demo-hcm-admin' })['steps'] as { env?: string[] }[];
+        const site = buildDefinition('site', { ...PARAMS, adminSite: 'demo-hcm-admin' })['steps'] as { env?: string[] }[];
+        const plain = buildDefinition('server', PARAMS)['steps'] as { env?: string[] }[];
+
+        expect(server[0]?.env).toContain('HCM_ADMIN_SITE=demo-hcm-admin');
+        expect([...(site[0]?.env ?? []), ...(plain[0]?.env ?? [])].some((line) => line.startsWith('HCM_ADMIN_SITE'))).toBe(false);
+    });
+
     it('happyPath_theServerInstallsTheFunctionsPackagesBeforeItDeploysThem_badPath_noOtherTargetDoes', () => {
         // Finding 30 of 2026-10-31: firebase-tools loads the functions' source to discover them, so their packages must be
         // in that folder (the tarball carries none); the laptop found them in the repository's node_modules above it.

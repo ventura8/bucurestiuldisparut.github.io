@@ -128,6 +128,14 @@ function fakeWindow() {
 }
 
 describe('windowLocation', () => {
+    it('happyPath_thePublicMapsRootIsTheOneTheBootNamed_badPath_elseThePagesOwnOrigin', () => {
+        const { win } = fakeWindow();
+        const named = Object.assign(win, { document: { documentElement: { dataset: { hcmPublicMap: 'https://demo-hcm.web.app/' } } } });
+
+        expect(windowLocation(named).publicMap?.()).toBe('https://demo-hcm.web.app/');
+        expect(windowLocation(fakeWindow().win).publicMap?.()).toBe(`${fakeWindow().win.location.origin}/`);
+    });
+
     it('happyPath_aNavigationPushesAnEntryAndIsAnnounced', () => {
         const { win, history } = fakeWindow();
         const location = windowLocation(win);

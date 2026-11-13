@@ -1,5 +1,6 @@
 import { authenticated, googleError, googleFailure, type GoogleApi, type GoogleProjects } from './google-common.js';
 import { jsonResponse, route, type Route } from './routes.js';
+import { adminSiteRoutes, createSite, userSitesOf } from './google-admin-site.js';
 import { sequence, type ServiceFake } from './service.js';
 import type { FirebaseState } from './google-firebase.js';
 
@@ -39,6 +40,12 @@ export interface StartWorldState {
     readonly live: Map<string, string>;
     /** Hashes refused at upload: their content was not their name. */
     readonly badUploads: string[];
+    /** §210: each project's other sites (the admin's own, `<project>-admin`), site id → project id. */
+    readonly userSites: Map<string, string>;
+    /** §210: the admin's site id is another project's: `sites.create` answers it exists. */
+    adminSiteTaken: boolean;
+    /** Firebase Auth's authorised domains by project (Identity Toolkit's config); a project never read starts with the defaults. */
+    readonly authorizedDomains: Map<string, string[]>;
 }
 
 export function defaultStartWorldState(): StartWorldState {
@@ -54,6 +61,9 @@ export function defaultStartWorldState(): StartWorldState {
         hashes: new Set(),
         live: new Map(),
         badUploads: [],
+        userSites: new Map(),
+        adminSiteTaken: false,
+        authorizedDomains: new Map(),
     };
 }
 
@@ -250,24 +260,15 @@ function hostingRoutes(state: StartWorldState): Route[] {
             `${HOSTING}/projects/{project}/sites`,
             'start.hosting.sites.list',
             authenticated(HOSTING_API, (_request, params) => {
-                const site = state.sites.get(String(params['project']));
-                return jsonResponse(
-                    site === undefined
-                        ? {}
-                        : { sites: [{ name: `projects/${String(params['project'])}/sites/${site}`, type: 'DEFAULT_SITE' }] },
-                );
+                const project = String(params['project']);
+                const site = state.sites.get(project);
+                const own = site === undefined ? [] : [{ name: `projects/${project}/sites/${site}`, type: 'DEFAULT_SITE' }];
+                const users = userSitesOf(state, project).map((id) => ({ name: `projects/${project}/sites/${id}`, type: 'USER_SITE' }));
+                return jsonResponse(own.length + users.length === 0 ? {} : { sites: [...own, ...users] });
             }),
         ),
-        route(
-            'POST',
-            `${HOSTING}/projects/{project}/sites`,
-            'start.hosting.sites.create',
-            authenticated(HOSTING_API, (request, params) => {
-                const siteId = request.url.searchParams.get('siteId') ?? '';
-                state.sites.set(String(params['project']), siteId);
-                return jsonResponse({ name: `projects/${String(params['project'])}/sites/${siteId}`, type: 'USER_SITE' });
-            }),
-        ),
+        route('POST', `${HOSTING}/projects/{project}/sites`, 'start.hosting.sites.create', authenticated(HOSTING_API, createSite(state))),
+        ...adminSiteRoutes(state),
     ];
 }
 
@@ -301,6 +302,10 @@ export function createStartWorldFake(state: StartWorldState, firebase: FirebaseS
             idFree: () => {
                 state.idTaken = false;
             },
+            /** §210: the admin's site id is another project's. */
+            adminSiteTaken: () => {
+                state.adminSiteTaken = true;
+            },
             projectRefused: () => {
                 state.projectRefused = true;
             },
@@ -322,6 +327,8 @@ export function createStartWorldFake(state: StartWorldState, firebase: FirebaseS
             live: Object.fromEntries(state.live),
             hashes: [...state.hashes],
             badUploads: state.badUploads,
+            userSites: Object.fromEntries(state.userSites),
+            authorizedDomains: Object.fromEntries(state.authorizedDomains),
         }),
     };
 }

@@ -20,7 +20,7 @@ export interface ContributorWelcome {
     readonly mapUrl: string;
 }
 
-type WelcomeLocation = Pick<HashLocation, 'hash' | 'search' | 'page'>;
+type WelcomeLocation = Pick<HashLocation, 'hash' | 'search' | 'page' | 'publicMap'>;
 
 /** A name longer than this is cut: it comes from a link anyone may write. */
 const NAME_MAX = 80;
@@ -30,9 +30,12 @@ function nameOf(value: string | null): string | null {
     return name === '' ? null : name.slice(0, NAME_MAX);
 }
 
-/** The city's public map on the admin's Hosting: the root for the project's first city (or none named), else `/<city>/`. */
-function mapUrlOf(cityId: string | null, firstCity: string | null, page: string): string {
-    const root = `${new URL(page).origin}/`;
+/**
+ * The city's public map on the project's Hosting: the root for the project's first city (or none named), else `/<city>/`;
+ * the public map's root as the boot named it (the admin on its own site, §210), else the page's origin.
+ */
+function mapUrlOf(cityId: string | null, firstCity: string | null, location: WelcomeLocation): string {
+    const root = location.publicMap?.() ?? `${new URL(location.page()).origin}/`;
     return cityId === null || cityId === firstCity ? root : `${root}${cityId}/`;
 }
 
@@ -44,7 +47,7 @@ export function contributorWelcome(location: WelcomeLocation, firstCity: string 
     }
     const cityId = route.params[0] ?? null;
     const cityName = nameOf(new URLSearchParams(location.search()).get('name'));
-    return { cityId, cityName, mapUrl: mapUrlOf(cityId, firstCity, location.page()) };
+    return { cityId, cityName, mapUrl: mapUrlOf(cityId, firstCity, location) };
 }
 
 /** Keeps `welcome` on the address (`cities`: the project's, the first at the Hosting root): another link may open in the tab. */

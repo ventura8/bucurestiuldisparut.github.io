@@ -46,7 +46,12 @@ describe('runtimeConfig', () => {
             region: 'us-central1',
             buckets: { private: 'demo-hcm.firebasestorage.app', public: 'demo-hcm-public' },
             viewerOrigins: ['https://demo-hcm.web.app', 'https://demo-hcm.firebaseapp.com'],
-            adminOrigins: ['https://demo-hcm.web.app', 'https://demo-hcm.firebaseapp.com'],
+            adminOrigins: [
+                'https://demo-hcm.web.app',
+                'https://demo-hcm.firebaseapp.com',
+                'https://demo-hcm-admin.web.app',
+                'https://demo-hcm-admin.firebaseapp.com',
+            ],
             adminUrl: 'https://demo-hcm.web.app/admin/',
             oauthClientIds: [],
             errorEndpoint: 'https://us-central1-demo-hcm.cloudfunctions.net/telemetry-reportError',
@@ -67,6 +72,24 @@ describe('runtimeConfig', () => {
             oauthClientIds: ['client-one.apps.example', 'client-two.apps.example'],
             appCheck: 'enforce',
         });
+    });
+
+    it('happyPath_theAdminsOwnSiteNamedByTheInstallerIsWhereLinksGo', () => {
+        const config = runtimeConfig({ ...PROJECT, HCM_ADMIN_SITE: 'demo-hcm-admin' });
+
+        expect(config.adminUrl).toBe('https://demo-hcm-admin.web.app/admin/');
+        expect(config.adminOrigins).toContain('https://demo-hcm-admin.web.app');
+    });
+
+    it('happyPath_aProjectWithoutAnAdminSiteKeepsThePublicMapsOrigins', () => {
+        const config = runtimeConfig({ ...PROJECT, HCM_ADMIN_SITE: 'none' });
+
+        expect(config.adminOrigins).toEqual(['https://demo-hcm.web.app', 'https://demo-hcm.firebaseapp.com']);
+        expect(config.adminUrl).toBe('https://demo-hcm.web.app/admin/');
+    });
+
+    it('badPath_anAdminSiteThatIsNoSiteIdFailsFast', () => {
+        expect(() => runtimeConfig({ ...PROJECT, HCM_ADMIN_SITE: 'https://elsewhere.example' })).toThrow('HCM_ADMIN_SITE');
     });
 
     it('badPath_withoutAProjectIdFailsFast', () => {

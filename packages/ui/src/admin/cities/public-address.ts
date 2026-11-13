@@ -3,7 +3,8 @@
  * admin is served under `/admin/` of that same site, so the address is the admin's own origin with the city id as its
  * path, `https://<project>.web.app/<id>/` (Hosting answers any city id with the generic city page; the project's first
  * city is also at the root). No repository step is needed any more: New city's done screen and Settings → Publishing
- * show it as a link.
+ * show it as a link. Since §210 the admin may run on its own site (`https://<project>-admin.web.app/admin/`): its boot then
+ * names the public map's root on the page (`<html data-hcm-public-map>`), which the address takes instead of the admin's.
  */
 import { css, html, type TemplateResult } from 'lit';
 
@@ -16,8 +17,13 @@ export function publicCityAddress(cityId: string, base: string): string {
     return new URL(`/${cityId}/`, base).href;
 }
 
+/** The public map's root as the admin's boot named it (§210), else the page's own base (the map and the admin share it). */
+export function publicMapBase(doc: Document = document): string {
+    return doc.documentElement.dataset['hcmPublicMap'] ?? doc.baseURI;
+}
+
 /** The city's public address as a link that opens a new tab (the address is its text). */
-export function publicAddressLink(locale: Locale, cityId: string, base: string = document.baseURI): TemplateResult {
+export function publicAddressLink(locale: Locale, cityId: string, base: string = publicMapBase()): TemplateResult {
     const address = publicCityAddress(cityId, base);
     return html`<a class="public-address" data-public-address href=${address} target="_blank" rel="noopener noreferrer"
         >${address}<span class="visually-hidden"> ${contentText(locale, 'adminContent.cities.newTab')}</span></a

@@ -13,6 +13,9 @@
  * every file the tarball's `templates.json` lists, the city page's policy among them, and takes `admin/project.json` from the live
  * site (`HCM_ADOPT_FROM`). Every other file stays byte for byte: the admin's script holds the token as this very text.
  *
+ * §210: a server build whose admin runs on its own Hosting site (`HCM_ADMIN_SITE`) adds that site to the functions' `.env`
+ * (`functions/dist/.env`, which `firebase-tools` reads beside `.env.<project>`), so their links open it directly.
+ *
  * Every download is tried up to four times (2026-11-12: one 10 s connect timeout to Hosting failed a whole Update the map):
  * a network error, a 408, a 429 or a 5xx waits `HCM_FETCH_WAITS` (seconds, comma-separated; 5, 15 and 30 by default) and
  * tries again, each wait one line of the step's log; any other answer (a 404, a digest that differs) fails at once.
@@ -22,7 +25,7 @@
 export const FETCH_BUNDLE_SCRIPT = [
     "import { createHash } from 'node:crypto';",
     "import { execFileSync } from 'node:child_process';",
-    "import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
+    "import { appendFileSync, copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
     "import { join } from 'node:path';",
     'const env = process.env;',
     "const fail = (message) => { process.stderr.write('fetch: ' + message + '\\n'); process.exit(1); };",
@@ -94,6 +97,11 @@ export const FETCH_BUNDLE_SCRIPT = [
     "    const live = await download(env.HCM_ADOPT_FROM, 'project.json');",
     "    mkdirSync(join(env.HCM_OUT, 'public/admin'), { recursive: true });",
     "    writeFileSync(join(env.HCM_OUT, 'public/admin/project.json'), live);",
+    '}',
+    'if (env.HCM_ADMIN_SITE) {',
+    "    mkdirSync(join(env.HCM_OUT, 'functions/dist'), { recursive: true });",
+    "    appendFileSync(join(env.HCM_OUT, 'functions/dist/.env'), '\\nHCM_ADMIN_SITE=' + env.HCM_ADMIN_SITE + '\\n');",
+    "    process.stdout.write('fetch: the functions open the admin at ' + env.HCM_ADMIN_SITE + '.web.app\\n');",
     '}',
     "process.stdout.write('fetch: ' + main.name + ' checked and unpacked\\n');",
 ].join('\n');

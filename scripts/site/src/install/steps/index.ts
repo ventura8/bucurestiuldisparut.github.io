@@ -3,6 +3,7 @@
  * module into `steps/steps.mjs` and writes one small entry per step (`steps/<name>.mjs`) that runs it with the real world
  * (`nodeStepDeps`). A step that throws (a bad argument, a refused call) exits 1 with its message.
  */
+import { deployHosting } from './deploy-hosting.js';
 import { deployWithRetry } from './deploy-with-retry.js';
 import { hostingConfig } from './hosting-config.js';
 import { runJobs } from './run-jobs.js';
@@ -14,6 +15,7 @@ export const STEPS = {
     'verify-server': verifyServer,
     'run-jobs': runJobs,
     'hosting-config': hostingConfig,
+    'deploy-hosting': deployHosting,
 } as const satisfies Readonly<Record<string, (argv: readonly string[], deps: StepDeps) => Promise<number>>>;
 
 export type StepName = keyof typeof STEPS;

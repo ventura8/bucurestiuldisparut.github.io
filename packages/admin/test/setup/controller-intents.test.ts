@@ -216,7 +216,15 @@ describe('follow-ups of a change', () => {
             ] as const) {
                 onItem({ id, state: 'ok' });
             }
-            for (const id of ['workload-identity', 'app-check', 'budget-alerts', 'org-policies', 'crash-alerts', 'api-key'] as const) {
+            for (const id of [
+                'workload-identity',
+                'app-check',
+                'budget-alerts',
+                'org-policies',
+                'crash-alerts',
+                'api-key',
+                'admin-site',
+            ] as const) {
                 onItem({ id, state: 'ok' });
             }
             onItem({ id: 'scheduler', state: 'pending' });

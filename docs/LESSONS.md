@@ -3870,3 +3870,14 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-13, track/gadata: `runFunnelReport` exists in `v1alpha` only; `v1beta` has `runReport` and `batchRunReports`.
     - Fix: the Statistics view computes the funnel (who left before each step) from `runReport` rows of `step_view` in the page's step order (`packages/admin/src/google/analytics-data.ts`).
     - **Check an API method's version before you design on it; build on the stable one and compute what it lacks.**
+
+659. **Firebase Auth moves a sign-in out of `sessionStorage` into IndexedDB never.**
+    - Seen: 2026-11-13, track/adminsite: the admin's own site uses `[indexedDBLocalPersistence, …]`; a user found in `browserSessionPersistence` stays there, because only persistences with `_shouldAllowMigration` (IndexedDB, `localStorage`) are migrated (`PersistenceUserManager.create` of `@firebase/auth`).
+    - Fix: the own site's hierarchy is `[indexedDBLocalPersistence, browserLocalPersistence]`; the e2e puts the test's account into `localStorage` once on that origin, which Firebase moves into IndexedDB, so a second tab proves the shared sign-in (`e2e/admin/specs/shell/admin-site.spec.ts`).
+    - **Read the SDK's migration rule before you change a persistence; a test that seeds one store proves nothing about another.**
+
+660. **Hosting's redirects come before its files, and its regex is RE2.**
+    - Seen: 2026-11-13, track/adminsite: forwarding the public map's `/admin/**` to the admin's own site would also have forwarded `/admin/starter.json`, which Linux starters already installed fetch with `curl` and no `-L`; RE2 has no lookahead to leave it out.
+    - Fix: the forward's pattern lists every string but that name (`everyStringBut`, `scripts/site/src/hosting/admin-site.ts`) and the file stays in the public tree.
+    - **Before a redirect replaces a path, list every client already installed that reads it and whether it follows redirects.**
+

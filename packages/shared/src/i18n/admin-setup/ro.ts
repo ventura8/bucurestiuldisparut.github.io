@@ -98,6 +98,7 @@ export const ro = {
     'adminSetup.provision.item.org-policies': 'Politicile organizației',
     'adminSetup.provision.item.crash-alerts': 'E-mail la erori noi',
     'adminSetup.provision.item.api-key': 'Restricția cheii de browser',
+    'adminSetup.provision.item.admin-site': 'Adresa proprie a administrării',
     'adminSetup.deploy.progress': '{ready} din {total} funcții instalate',
     'adminSetup.deploy.failed': 'Funcția {name} nu s-a instalat. Reia instalarea.',
     'adminSetup.deploy.notStarted': 'Încă nu este instalat nimic.',
@@ -198,6 +199,8 @@ export const ro = {
     'adminSetup.provision.installerPermission': 'Instalatorul mai are nevoie de o permisiune: „Reia ce nu a reușit” i-o dă.',
     'adminSetup.provision.appEngineEditor': 'O permisiune a proiectului trebuie ajustată: „Reia ce nu a reușit” o rezolvă.',
     'adminSetup.provision.computeBuildAccount': 'Un cont al proiectului trebuie pregătit: „Reia ce nu a reușit” o face.',
+    'adminSetup.provision.adminSiteTaken':
+        'Adresa administrării {site}.web.app aparține altui proiect Firebase, așa că nu a putut fi creată. Administrarea funcționează în continuare la /admin/ pe harta publică; ca s-o muți, șterge acel site din consola Firebase a celuilalt proiect (Hosting), apoi apasă „Reia ce nu a reușit”.',
     'adminSetup.provision.lastChecked': 'Ultima verificare: {time}; conectează-te la Google Cloud ca să verifici din nou.',
     'adminSetup.usgs.later': 'Fă asta mai târziu',
     'adminSetup.usgs.laterWhy': 'USGS aduce doar imaginile istorice; harta merge și fără el, iar pasul poate fi făcut oricând.',
