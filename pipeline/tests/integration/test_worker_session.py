@@ -96,7 +96,7 @@ def test_happy_path_the_page_signs_the_owner_in_and_the_worker_starts_claiming(p
     hello = page.api.calls[-1]
     assert (hello.name, hello.token) == ("worker-hello", id_token)
     ai = {"state": "unavailable", "why": "old-starter"}
-    assert hello.data == {"cityId": CITY, "workerId": page.worker.worker_id, "version": __version__, "ai": ai}
+    assert hello.data == {"cityId": CITY, "workerId": page.worker.worker_id, "version": __version__, "ai": ai, "host": {}}
     state = page.state()
     assert (state["signedIn"], state["email"], state["state"], state["city"]) == (True, OWNER_EMAIL, "idle", CITY)
     assert "Token" not in json.dumps(state)
