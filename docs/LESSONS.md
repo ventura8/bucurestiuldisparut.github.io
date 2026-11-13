@@ -3663,3 +3663,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: each branch ran its targeted tests; nothing ran the whole `tests` stage on the merged tree.
     - Fix and pin: the import test asks the version whether a sharper scan was written; the fixture names the exports (`exports-m7.ts`); `controller-intents.test.ts` drives the install cards' intents. The same run found the colour library's inline option missing in all but one project (§180h).
     - **After merging branches that each passed alone, run the full `tests` stage on the merge before pushing it.**
+
+594. **The tile wizard and the pipeline agreed on every field name and still disagreed on what the fields meant.**
+    - Seen: 2026-11-13, an adversarial review of track/tilewizard against track/autostitch: the wizard showed only `weak` seams while the pipeline ranked `missing` ones lowest; the answer left out `no-seam` sheets, which the pipeline then marked `not-part` for good; a seam answer survived a turn of its sheet. The grid's `touch-action: none` also kept a phone from panning it.
+    - Found by: reading both sides' code paths for the same document; every contract test was green, because they compare enums and shapes against a hand-written sample, and Playwright's mouse never pans.
+    - Fix and pin: M20 §19.12; `S-A-HAPPY-TILE-WIZARD-{MOVE,SEAM-KEYS}`, `S-A-BAD-TILE-WIZARD-{SEAM-RESET,POINTS-FIRST}`, `happyPath_aSheetLeftOutForNoSeamIsTriedAgainAtItsFreeCell`.
+    - **A cross-track contract test pins behaviour, not only names: for each enum value, write down what each side does with it, and test the reader against a file the writer produced.**

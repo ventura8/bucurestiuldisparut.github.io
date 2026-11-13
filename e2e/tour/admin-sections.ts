@@ -11,6 +11,7 @@ import { SETTINGS_ICON_STATES, SETTINGS_STARTER_STATES } from '../admin/specs/se
 import { SETUP_UX_STATES } from '../admin/specs/shell/setup-ux-states.js';
 import { START_STATES } from '../admin/specs/start/states.js';
 import { STORIES_STATES } from '../admin/specs/stories/states.js';
+import { TILES_STATES } from '../admin/specs/imagery/tiles-states.js';
 import { WORKER_STATES } from '../admin/specs/imagery/worker-states.js';
 
 /**
@@ -70,4 +71,8 @@ export const ADMIN_SECTION_STATES = {
     // [section archive] owner: archive (M20)
     ...ARCHIVE_STATES,
     // [end archive]
+    // The tile-import wizard (docs/research/M20-import-local.md §19.11), ids 'tiles.<state>'.
+    // [section tiles] owner: tilewizard
+    ...TILES_STATES,
+    // [end tiles]
 } as const;

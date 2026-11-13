@@ -6759,3 +6759,33 @@ leftovers of §164. Every figure is the container's cgroup `memory.peak` (page c
 - **180f Left**: the Functions emulator's workers (180c, 180i) are the largest consumer of the e2e tier and the dev stack;
   the e2e stage reaches a 12 GB cap with them (measured after 180d and 180i), and the dev stack's 8 GB default holds only
   a manual session's fewer workers.
+
+## 169. The tile layout's contract and the tile-import wizard (track/tilewizard, 2026-11-12)
+
+The design of automatic tile stitching and the tile-import wizard (docs/research/M20-import-local.md §19), contract and admin half.
+
+- **169a** The contract is as designed, with these precisions for the pipeline track: the enums' types (`LeftOutReason`,
+  `SeamState`, `SheetSource`, `SheetTurn`, `StitchVerdict`) and `SEAM_SIDES` (`right`, `below`); `layout.json` carries each sheet's
+  oriented `width` and `height`, the canvas size, and each seam's `overlapPx` and, for a weak seam, its `strip` (its row of
+  `seams.jpg` and the two rectangles); `thumbs.jpg` is `min(n, 32)` cells of 128 px wide; `seams.jpg` is 512 px wide, one 256 px row
+  per weak seam with a strip.
+- **169b** The answer holds every sheet in the grid and every sheet the owner took out (`not-part`), so `owner_layout.py` fixes the
+  whole layout the owner saw; `imagery.acceptLayout` keeps the earlier answer and marks it `accepted`.
+- **169c** A new route `help` (`#/help/<versionId>/tiles`), not in the navigation, and its own lazy chunk with its own catalogue
+  `@hcm/shared/admin-tiles` (as `@hcm/shared/admin-archive`), so no other page carries the wizard's texts.
+- **169d** `helpItemsOf` lives in `schemas/imagery-tiles.ts` and `@hcm/shared`'s index exports it directly: a first draft routed
+  the exports through a `help/index.ts` barrel, which lesson 591 forbids; the index gained its lines back by an inline `type` export.
+- **169e** The Help calibrate queue page of M22 §1.1 is not built: the queue's `layoutCheck` item is computed (`helpItemsOf`) and
+  shown on the series' page as **Arrange the tiles**; the meter is the wizard's own (`role="meter"` per figure of `placing/quality.py`).
+- **169f** (the review of 2026-11-13, M20 §19.12) The wizard asks `missing` seams beside `weak` ones, and a missing seam with no
+  guess is answered by two picked points; `seams.jpg`'s height counts every seam with a strip.
+- **169g** The answer names a sheet left out for `no-seam` or `no-join` whose cell is still free, without `out`, so the pipeline
+  tries it again instead of reading it as `not-part`; a blank page, a sheet with no frame or one whose cell another sheet took is
+  not named.
+- **169h** A seam whose sheet the owner moves, turns, mirrors or takes out leaves the draft (answered or not): its strips and points
+  belong to the orientation the pipeline wrote.
+- **169i** A series waiting with `layout-check` takes no points: no georeferencer link, and `imagery.saveGcps` refuses it with the new
+  `apiError.imagery.layoutWaits` (`failed-precondition`).
+- **169j** One pointer and no drag (WCAG 2.5.7): **Move** then a tap on the cell; a touch never starts a drag, so the grid pans. A
+  live region says each change; the seam's strips take a keyboard cross (WCAG 2.1.1). A stale refusal still drops the owner's
+  unsent edits, and its alert already says so; re-applying them to the newer revision is left for later.

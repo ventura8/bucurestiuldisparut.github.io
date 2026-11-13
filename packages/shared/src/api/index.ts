@@ -22,6 +22,7 @@ export {
     workerArchiveReportResponseSchema,
 } from './archive.js';
 export type { ImageryArchiveImportRequest, WorkerArchiveReportRequest } from './archive.js';
+export { imageryAcceptLayoutRequestSchema, imageryLayoutResponseSchema, imagerySaveLayoutRequestSchema } from './imagery-tiles.js';
 export { emptyRequestSchema, googleAccessTokenSchema, healthViewFields, isoTimeSchema } from './common.js';
 export {
     CLAIM_OAUTH_SCOPE,

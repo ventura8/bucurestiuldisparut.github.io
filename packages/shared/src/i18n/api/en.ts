@@ -104,6 +104,8 @@ export const en: ApiMessages = {
     'apiError.imagery.outOfMemory': 'The frame did not fit in the processing memory, not even on the large machine.',
     'apiError.imagery.attemptsExhausted': 'The processing stopped after {attempts} attempts.',
     'apiError.imagery.locateInputsGone': 'The working files and USGS delivery expired. Add points, or cancel and import again.',
+    'apiError.imagery.layoutStale': 'The app laid the tiles out again meanwhile. Your changes were not saved: look at the new layout.',
+    'apiError.imagery.layoutWaits': "Arrange this series' tiles first, then add points to the joined picture.",
     'apiError.imagery.locateFilesElsewhere': 'The working files stayed where this frame ran. Move it back, or add points.',
     'apiError.imagery.mapboxFinishing': 'Mapbox is already processing the layer: it can no longer be cancelled.',
     'apiError.imagery.workerLost': 'Your computer stopped working on this job; it picks it up again when it is back.',

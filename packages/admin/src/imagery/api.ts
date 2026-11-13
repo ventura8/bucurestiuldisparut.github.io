@@ -14,6 +14,7 @@ import {
     imageryDeleteVersionResponseSchema,
     imageryImportResponseSchema,
     imageryJoinResponseSchema,
+    imageryLayoutResponseSchema,
     imageryPreviewUrlResponseSchema,
     imageryProbeResponseSchema,
     imageryRecalibrateResponseSchema,
@@ -32,6 +33,8 @@ import type {
     imageryCropRequestSchema,
     imageryImportRequestSchema,
     imageryJoinRequestSchema,
+    imageryAcceptLayoutRequestSchema,
+    imagerySaveLayoutRequestSchema,
     imageryProbeRequestSchema,
     imageryRecalibrateRequestSchema,
     imageryResumeGuardRequestSchema,
@@ -65,6 +68,9 @@ const IMAGERY_RESPONSES = {
     'imagery.previewUrl': imageryPreviewUrlResponseSchema,
     'imagery.probeTiles': imageryProbeResponseSchema,
     'imagery.resumeGuard': imageryResumeGuardResponseSchema,
+    // The tile-import wizard (docs/research/M20-import-local.md §19.11).
+    'imagery.saveLayout': imageryLayoutResponseSchema,
+    'imagery.acceptLayout': imageryLayoutResponseSchema,
 } as const;
 
 /**
@@ -90,6 +96,8 @@ interface ImageryRequests {
     'imagery.previewUrl': typeof imageryVersionRequestSchema;
     'imagery.probeTiles': typeof imageryProbeRequestSchema;
     'imagery.resumeGuard': typeof imageryResumeGuardRequestSchema;
+    'imagery.saveLayout': typeof imagerySaveLayoutRequestSchema;
+    'imagery.acceptLayout': typeof imageryAcceptLayoutRequestSchema;
 }
 
 export type ImageryCallName = keyof typeof IMAGERY_RESPONSES;

@@ -16,6 +16,7 @@ import { DEFAULT_MAP_THRESHOLD_MAX_M } from './imagery-settings.js';
 
 export { DEFAULT_MAP_THRESHOLD_MAX_M, MAP_THRESHOLD_MAX_RANGE } from './imagery-settings.js';
 import { stitchedSchema } from './imagery-help.js';
+import { layoutAnswerSchema } from './imagery-tiles.js';
 import { coded, httpsUrlSchema, idSchema, plainText } from './primitives.js';
 
 /** At most this many series in one archive's report (the document stays far below Firestore's 1 MiB). */
@@ -95,9 +96,10 @@ export const RIGHTS_STATES = ['clear', 'needs-confirmation', 'do-not-publish'] a
 
 /**
  * Why an item waits for a person (the owner's standing rule of 2026-11-09: every importer falls back to one guided
- * "Help calibrate" queue). A small record the queue's own design adopts: what is missing, in one line.
+ * "Help calibrate" queue). A small record the queue's own design adopts: what is missing, in one line. `layout-check`: the tile layout's
+ * verdict is `check` or `poor` (`imagery-tiles.ts`), so the series waits for the tile-import wizard instead of a doubtful mosaic.
  */
-export const HELP_REASONS = ['no-path', 'low-confidence', 'frame-not-found', 'no-scale', 'archive-missing'] as const;
+export const HELP_REASONS = ['no-path', 'low-confidence', 'frame-not-found', 'no-scale', 'archive-missing', 'layout-check'] as const;
 
 const archiveYearSchema = z.number().int().min(ARCHIVE_MIN_YEAR).max(2100);
 
@@ -262,6 +264,8 @@ export const helpItemSchema = z.strictObject({
     at: timestampSchema,
     /** M22 (§4.1): the series joined into one picture, which the Help calibrate wizard places. */
     stitched: stitchedSchema.optional(),
+    /** The owner's tile layout from the tile-import wizard (`imagery.saveLayout`), which the series' `place` fixes. */
+    layoutAnswer: layoutAnswerSchema.optional(),
 });
 
 export type HelpItem = z.infer<typeof helpItemSchema>;

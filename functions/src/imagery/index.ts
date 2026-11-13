@@ -25,6 +25,8 @@ import { recalibrateFunction } from './recalibrate.js';
 import { retryFunction } from './retry.js';
 import { runOnFunction } from './run-on.js';
 import { saveGcpsFunction } from './save-gcps.js';
+import { saveLayoutFunction } from './save-layout.js';
+import { acceptLayoutFunction } from './accept-layout.js';
 import { searchFunction } from './search.js';
 import { chooseFunction, studioDoneFunction } from './studio.js';
 import { tickFunction, type TickDeps } from './tick.js';
@@ -48,6 +50,8 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         join: joinFunction(getDeps),
         retry: retryFunction(getDeps),
         locateAgain: locateAgainFunction(getDeps),
+        saveLayout: saveLayoutFunction(getDeps),
+        acceptLayout: acceptLayoutFunction(getDeps),
         previewUrl: previewUrlFunction(getDeps),
         recalibrate: recalibrateFunction(getDeps),
         runOn: runOnFunction(getDeps),

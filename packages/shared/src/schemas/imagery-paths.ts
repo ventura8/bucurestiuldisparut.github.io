@@ -42,6 +42,10 @@ export const VERSION_FILES = [
     'stitched.jpg',
     /** The scan at up to `SCAN_DETAIL_MAX_PX` long as JPEG tiles in one file: the georeferencer's sharper scan (2026-11-12). */
     'scan-tiles.bin',
+    /** The tile layout of an archive series (`imagery-tiles.ts`): every sheet and seam, the sheets' thumbnails, the weak seams' strips. */
+    'layout.json',
+    'thumbs.jpg',
+    'seams.jpg',
 ] as const;
 
 export type VersionFile = (typeof VERSION_FILES)[number];

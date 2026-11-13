@@ -90,12 +90,24 @@ interface Resume {
     readonly now: Date;
 }
 
-/** The version waiting for points and its job waiting with it, else `apiError.imagery.versionState`. */
+/**
+ * The version waiting for points and its job waiting with it, else `apiError.imagery.versionState`. An archive series whose tiles
+ * wait (`layout-check`, `docs/research/M20-import-local.md` §19.11) takes no points: its scan is the doubtful low-resolution preview,
+ * and points on it would place a mosaic nobody checked (`apiError.imagery.layoutWaits`; the tile-import wizard answers it first).
+ */
 function requireWaiting(version: LayerVersionDoc | undefined, job: JobDoc | undefined): readonly [LayerVersionDoc, JobDoc] {
     if (version?.state !== 'needs_gcps' || job?.status !== 'awaiting_gcps') {
         throw new ApiError('apiError.imagery.versionState');
     }
+    refuseWaitingTiles(version);
     return [version, job];
+}
+
+/** `apiError.imagery.layoutWaits` for a series whose tiles wait for the owner (`help.reason` `layout-check`). */
+function refuseWaitingTiles(version: LayerVersionDoc): void {
+    if (version.help?.reason === 'layout-check') {
+        throw new ApiError('apiError.imagery.layoutWaits');
+    }
 }
 
 /** The attempts the job goes on with: the dispatcher starts one more, for the admin's points, whatever the runs before them used. */
