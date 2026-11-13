@@ -5,7 +5,7 @@
  * tablet on its side is as wide as a laptop). No year (today) or no photo near it: nothing. Its dock is `.dock.chip` of
  * `dock-styles.ts`.
  */
-import { translate, type Locale, type Photo } from '@hcm/shared';
+import { translate, type ViewerLocale, type Photo } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
@@ -21,7 +21,7 @@ export function textChip(windowClass: WindowClass, compactHeight: boolean): bool
 }
 
 export function nearYearChip(
-    view: { readonly locale: Locale; readonly wide: boolean },
+    view: { readonly locale: ViewerLocale; readonly wide: boolean },
     year: number | null,
     photos: readonly Photo[],
     onNearYear: () => void,

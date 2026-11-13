@@ -1,8 +1,9 @@
 /** The review queue's rows from its documents (M13, `docs/research/M13-roles.md` §8), pure. */
 import {
+    contentLocale,
     timestampToDate,
     type ContributorDoc,
-    type Locale,
+    type UiLocale,
     type PhotoDoc,
     type PoiDoc,
     type RoleRequestDoc,
@@ -128,8 +129,8 @@ function filled(value: unknown): boolean {
 }
 
 /** The reviewer's values with one more edit: an emptied field is absent, and a date text says the language it was typed in. */
-export function adjustedWith(adjusted: SuggestionProposal, patch: SuggestionProposal, locale: Locale): SuggestionProposal {
-    const typed = patch.dateText === undefined ? {} : { dateLocale: locale };
+export function adjustedWith(adjusted: SuggestionProposal, patch: SuggestionProposal, locale: UiLocale): SuggestionProposal {
+    const typed = patch.dateText === undefined ? {} : { dateLocale: contentLocale(locale) };
     const merged: SuggestionProposal = { ...adjusted, ...patch, ...typed };
     const hasText = filled(merged.dateText);
     return Object.fromEntries(Object.entries(merged).filter(([key, value]) => filled(value) && (key !== 'dateLocale' || hasText)));

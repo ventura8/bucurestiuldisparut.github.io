@@ -79,6 +79,11 @@ export class HcmProgress extends LitElement {
                 animation: slide 1.6s var(--md-sys-motion-easing-standard) infinite;
             }
 
+            /* Right to left (Arabic, Persian, Urdu) the bar starts at the right edge (inline start) and runs leftwards. */
+            :host([indeterminate]:dir(rtl)) .indicator {
+                animation-name: slide-rtl;
+            }
+
             :host([indeterminate]) .track,
             :host([indeterminate]) .stop {
                 display: none;
@@ -117,6 +122,16 @@ export class HcmProgress extends LitElement {
 
                 to {
                     transform: translateX(250%);
+                }
+            }
+
+            @keyframes slide-rtl {
+                from {
+                    transform: translateX(100%);
+                }
+
+                to {
+                    transform: translateX(-250%);
                 }
             }
 

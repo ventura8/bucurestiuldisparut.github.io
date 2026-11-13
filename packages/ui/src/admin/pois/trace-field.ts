@@ -4,7 +4,7 @@
  * with today's streets. A place naming a map that no longer exists (deleted, or replaced by its date's join) says so in plain
  * words and lets the admin choose another map or None. Native controls, styled by the editing kit.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -23,7 +23,7 @@ function valueOf(event: Event): string {
     return (event.target as HTMLInputElement | HTMLSelectElement).value;
 }
 
-function layerOption(locale: Locale, layer: TraceLayerPort, chosen: string | undefined): TemplateResult {
+function layerOption(locale: UiLocale, layer: TraceLayerPort, chosen: string | undefined): TemplateResult {
     const text = poiText(locale, 'adminContent.pois.trace.layerOption', {
         year: String(layer.year),
         label: localized(locale, layer.label),
@@ -32,11 +32,11 @@ function layerOption(locale: Locale, layer: TraceLayerPort, chosen: string | und
 }
 
 /** The option of a map the place names but the city no longer has. */
-function goneOption(locale: Locale, chosen: string): TemplateResult {
+function goneOption(locale: UiLocale, chosen: string): TemplateResult {
     return html`<option value=${chosen} selected>${poiText(locale, 'adminContent.pois.trace.gone')}</option>`;
 }
 
-function opacityField(locale: Locale, choice: TraceChoice, readOnly: boolean): TemplateResult {
+function opacityField(locale: UiLocale, choice: TraceChoice, readOnly: boolean): TemplateResult {
     return html`<div class="field">
         <label for="trace-opacity">${poiText(locale, 'adminContent.pois.field.traceOpacity')}</label>
         <input
@@ -58,7 +58,7 @@ function opacityField(locale: Locale, choice: TraceChoice, readOnly: boolean): T
 }
 
 /** Under the select: why a gone map shows nothing and what to do, else what the field is for. */
-function traceHint(locale: Locale, gone: boolean): TemplateResult {
+function traceHint(locale: UiLocale, gone: boolean): TemplateResult {
     return gone
         ? html`<p class="error" id="trace-gone">${poiText(locale, 'adminContent.pois.trace.goneHint')}</p>`
         : html`<p class="note" id="trace-hint">${poiText(locale, 'adminContent.pois.trace.hint')}</p>`;

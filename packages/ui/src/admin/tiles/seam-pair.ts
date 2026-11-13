@@ -5,7 +5,7 @@
  * matching point on each strip: a click, or the strip focused, a cross moved with the arrows (Shift: farther) and Space or Enter.
  * The cross and each pick are said in a live region. N goes to the next seam.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { css, html, LitElement, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../../components/css-properties.js';
@@ -93,7 +93,7 @@ function dot(point: TilePointPort | null, sheet: TileRectPort, classes: string):
 }
 
 /** A missing seam's note that the app has no guess (a seam with a guess: nothing). */
-function noGuessNote(locale: Locale, seam: TileSeamPort): TemplateResult | string {
+function noGuessNote(locale: UiLocale, seam: TileSeamPort): TemplateResult | string {
     return seam.suggestion === null ? html`<p class="note">${t(locale, 'adminTiles.noGuess')}</p>` : '';
 }
 
@@ -192,7 +192,7 @@ class HcmSeamPair extends LitElement {
 
     declare view: TilesViewState | null;
     declare intents: TilesIntentsPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** The keyboard's cross on each strip (null: not moved yet). */
     declare cross: { readonly a: TilePointPort | null; readonly b: TilePointPort | null };
     /** The live region's text: where the cross is, or the point picked. */

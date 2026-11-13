@@ -4,7 +4,7 @@
  * publishing (Published, with why it cannot be switched on yet, and Rights to check). Each change is a patch of the
  * draft; nothing is written until Save.
  */
-import type { FirestoreLicense, Locale, ValidationIssue } from '@hcm/shared';
+import type { FirestoreLicense, UiLocale, ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import type { AssistActionsPort, AssistViewPort } from '../assist/assist-port.js';
@@ -20,7 +20,7 @@ import type { LocalizedPort, PhotoEditorPort, PhotoPatchPort, PhotoValuePort } f
 const MAX_PHOTO_LINKS = 5;
 
 export interface SectionInput {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly value: PhotoValuePort;
     readonly issues: readonly ValidationIssue[];
     readonly edit: (patch: PhotoPatchPort) => void;

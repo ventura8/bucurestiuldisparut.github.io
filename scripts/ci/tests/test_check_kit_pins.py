@@ -95,6 +95,10 @@ def test_happy_path_the_page_pins_exactly_the_release(tmp_path: Path, log: pytes
             kit_page(csp=f"default-src 'none'; script-src {base_of('1.0.0')}; style-src {base_of('1.0.0')}"),
             "the CSP's font-src does not name",
         ),
+        (
+            kit_page(csp=f"default-src 'none'; script-src {base_of('1.0.0')}; style-src {base_of('1.0.0')}; font-src {base_of('1.0.0')}"),
+            "the CSP's connect-src does not name",
+        ),
         (kit_page().replace('http-equiv="Content-Security-Policy"', 'name="csp"'), "no meta Content-Security-Policy"),
     ],
 )

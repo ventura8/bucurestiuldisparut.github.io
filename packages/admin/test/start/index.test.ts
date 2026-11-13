@@ -25,6 +25,7 @@ function fakeWindow(): Parameters<typeof browserDeps>[0] & { replaced: string[];
         navigator: { languages: ['ro'] },
         crypto: { randomUUID: () => 'uuid', subtle: { digest: () => Promise.resolve(new Uint8Array([171]).buffer) } },
         sessionStorage: { getItem: () => null, setItem: () => undefined, removeItem: () => undefined, length: 0, key: () => null },
+        localStorage: { getItem: () => null, setItem: () => undefined, removeItem: () => undefined, length: 0, key: () => null },
         fetch: () => Promise.resolve(new Response('{}')),
         setTimeout: () => 0,
         clearTimeout: () => undefined,

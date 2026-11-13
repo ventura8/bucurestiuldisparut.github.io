@@ -1,4 +1,4 @@
-import { translate, translateAdminShell } from '@hcm/shared';
+import { LANGUAGE_NAMES, translateAdminShell } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../../support/content-test.js';
@@ -43,7 +43,7 @@ test.describe('an English browser', () => {
                 .getByRole('button', { name: translateAdminShell('en', 'adminShell.account.label') })
                 .filter({ visible: true })
                 .click();
-            await page.getByRole('radio', { name: translate('en', 'language.ro') }).click();
+            await page.getByRole('radio', { name: LANGUAGE_NAMES.ro }).click();
             await page.keyboard.press('Escape');
             await expect(page).toHaveTitle(translateAdminShell('ro', 'adminShell.appName'));
             await expect(page.locator('html')).toHaveAttribute('lang', 'ro');

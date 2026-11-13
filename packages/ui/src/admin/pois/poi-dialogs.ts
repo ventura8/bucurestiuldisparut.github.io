@@ -5,7 +5,7 @@
  * the import (the file's preview: new, updated, unchanged and refused with the reasons, the category for features
  * without a known one, Import; then its progress and outcome).
  */
-import { MAX_POI_PHOTOS, MAX_POIS, type Locale } from '@hcm/shared';
+import { MAX_POI_PHOTOS, MAX_POIS, type UiLocale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import type { ListStatePort } from '../area-port.js';
@@ -32,7 +32,7 @@ interface ConfirmText {
 }
 
 /** The words of each question (a closed dialog keeps the last ones while it fades). */
-const CONFIRM_TEXTS: { readonly [K in PageDialog['kind']]: (locale: Locale, dialog: Extract<PageDialog, { kind: K }>) => ConfirmText } = {
+const CONFIRM_TEXTS: { readonly [K in PageDialog['kind']]: (locale: UiLocale, dialog: Extract<PageDialog, { kind: K }>) => ConfirmText } = {
     delete: (locale, dialog) => ({
         headline: poiText(locale, 'adminContent.pois.deleteTitle', { title: dialog.title }),
         body: poiText(locale, 'adminContent.pois.deleteBody'),
@@ -52,11 +52,11 @@ const CONFIRM_TEXTS: { readonly [K in PageDialog['kind']]: (locale: Locale, dial
     photos: () => ({ headline: '', body: '', action: '' }),
 };
 
-function confirmText(locale: Locale, dialog: PageDialog | null): ConfirmText {
+function confirmText(locale: UiLocale, dialog: PageDialog | null): ConfirmText {
     if (dialog === null) {
         return { headline: '', body: '', action: '' };
     }
-    return (CONFIRM_TEXTS[dialog.kind] as (locale: Locale, dialog: PageDialog) => ConfirmText)(locale, dialog);
+    return (CONFIRM_TEXTS[dialog.kind] as (locale: UiLocale, dialog: PageDialog) => ConfirmText)(locale, dialog);
 }
 
 /** The questions the confirmation dialog asks (the others have dialogs of their own). */
@@ -69,7 +69,7 @@ export function isConfirmed(dialog: PageDialog | null): dialog is ConfirmedDialo
 }
 
 /** The question before a delete or a redraw. */
-export function confirmDialog(locale: Locale, dialog: PageDialog | null, handlers: DialogHandlers): TemplateResult {
+export function confirmDialog(locale: UiLocale, dialog: PageDialog | null, handlers: DialogHandlers): TemplateResult {
     const open = isConfirmed(dialog);
     const text = confirmText(locale, dialog);
     return html`<hcm-confirm-dialog
@@ -86,7 +86,7 @@ export function confirmDialog(locale: Locale, dialog: PageDialog | null, handler
 
 /** Moving the selection: the category to move to. */
 export function moveDialog(
-    locale: Locale,
+    locale: UiLocale,
     dialog: PageDialog | null,
     categories: readonly CategoryItemPort[],
     handlers: { readonly move: (category: string) => void; readonly close: () => void },
@@ -124,7 +124,7 @@ export function moveDialog(
     </hcm-dialog>`;
 }
 
-function photoOption(locale: Locale, photo: PhotoChoicePort, chosen: readonly string[], toggle: (id: string) => void): TemplateResult {
+function photoOption(locale: UiLocale, photo: PhotoChoicePort, chosen: readonly string[], toggle: (id: string) => void): TemplateResult {
     const checked = chosen.includes(photo.id);
     const full = chosen.length >= MAX_POI_PHOTOS && !checked;
     const year = photo.year === null ? poiText(locale, 'adminContent.pois.photoPicker.undated') : String(photo.year);
@@ -157,7 +157,7 @@ const NOT_READ: ListStatePort<PhotoChoicePort> = { status: 'loading', items: [],
 
 /** What the read gave so far: the words when the city has none, and Show more while there are others. */
 function pickerList(
-    locale: Locale,
+    locale: UiLocale,
     photos: ListStatePort<PhotoChoicePort>,
     chosen: readonly string[],
     handlers: PickerHandlers,
@@ -181,7 +181,7 @@ function pickerList(
 
 /** The photo picker: the city's photos, newest first, a page at a time, at most `MAX_POI_PHOTOS` chosen. */
 export function photoPicker(
-    locale: Locale,
+    locale: UiLocale,
     open: boolean,
     picker: { readonly photos: ListStatePort<PhotoChoicePort> | null; readonly chosen: readonly string[] },
     handlers: PickerHandlers,
@@ -208,7 +208,7 @@ export function photoPicker(
     </hcm-dialog>`;
 }
 
-function importCounts(locale: Locale, state: ImportStatePort): TemplateResult {
+function importCounts(locale: UiLocale, state: ImportStatePort): TemplateResult {
     const plan = state.plan;
     if (plan === null) {
         return html``;
@@ -225,7 +225,7 @@ function importCounts(locale: Locale, state: ImportStatePort): TemplateResult {
 }
 
 /** The refused features, each with its reason (after the category choice: the list can be long). */
-function importRefusals(locale: Locale, state: ImportStatePort): TemplateResult {
+function importRefusals(locale: UiLocale, state: ImportStatePort): TemplateResult {
     const plan = state.plan;
     if (plan === null) {
         return html``;
@@ -253,7 +253,7 @@ function missingCategories(plan: ImportStatePort['plan']): number {
 }
 
 function importCategory(
-    locale: Locale,
+    locale: UiLocale,
     state: ImportStatePort,
     categories: readonly CategoryItemPort[],
     choose: (category: string) => void,
@@ -297,7 +297,7 @@ const IMPORT_STATUS: Readonly<Record<ImportStatePort['status'], Parameters<typeo
     failed: 'adminContent.pois.import.failed',
 };
 
-function importStatus(locale: Locale, state: ImportStatePort): string {
+function importStatus(locale: UiLocale, state: ImportStatePort): string {
     const key = IMPORT_STATUS[state.status];
     if (key !== null) {
         return poiText(locale, key, { written: String(state.written), total: String(writes(state.plan)) });
@@ -314,7 +314,7 @@ function limitParams(limit: ImportStatePort['limit']): Readonly<Record<string, s
 
 /** The body of an open import dialog. */
 function importBody(
-    locale: Locale,
+    locale: UiLocale,
     state: ImportStatePort,
     categories: readonly CategoryItemPort[],
     choose: (category: string) => void,
@@ -324,7 +324,7 @@ function importBody(
         ${importCounts(locale, state)} ${importCategory(locale, state, categories, choose)} ${importRefusals(locale, state)}`;
 }
 
-function importGo(locale: Locale, state: ImportStatePort | null, commit: () => void): TemplateResult {
+function importGo(locale: UiLocale, state: ImportStatePort | null, commit: () => void): TemplateResult {
     const writable = state?.status === 'preview' && writes(state.plan) > 0;
     return writable
         ? html`<hcm-button slot="actions" variant="filled" class="import-go" @click=${commit}
@@ -335,7 +335,7 @@ function importGo(locale: Locale, state: ImportStatePort | null, commit: () => v
 
 /** The import's dialog: the dry run's preview, then the writing and its outcome. */
 export function importDialog(
-    locale: Locale,
+    locale: UiLocale,
     state: ImportStatePort | null,
     categories: readonly CategoryItemPort[],
     handlers: { readonly choose: (category: string) => void; readonly commit: () => void; readonly close: () => void },

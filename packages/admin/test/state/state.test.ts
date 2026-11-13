@@ -57,8 +57,14 @@ describe('resolveAdminLocale', () => {
         expect(resolveAdminLocale('', null, ['en-GB'])).toBe('en');
     });
 
+    it('happyPath_everyInterfaceLanguageIsTakenFromTheAddressTheStoreOrTheBrowser', () => {
+        expect(resolveAdminLocale('?lang=fa', 'de', ['fr-FR'])).toBe('fa');
+        expect(resolveAdminLocale('', 'ja', ['fr-FR'])).toBe('ja');
+        expect(resolveAdminLocale('', null, ['hu-HU'])).toBe('hu');
+    });
+
     it('badPath_anythingElseIsRomanian', () => {
-        expect(resolveAdminLocale('?lang=fr', 'de', ['fr-FR'])).toBe('ro');
+        expect(resolveAdminLocale('?lang=sv', 'xx', ['sv-SE'])).toBe('ro');
         expect(resolveAdminLocale('', null, [])).toBe('ro');
     });
 });

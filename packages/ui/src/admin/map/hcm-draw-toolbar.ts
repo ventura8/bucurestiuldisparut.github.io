@@ -5,7 +5,7 @@
  * one-stop `hcm-toolbar` hides its other tools' shadow trees from Tab, which the tour's Tab round reports as never
  * reached); the active one is pressed. Fires `hcm-tool` with `{tool}`.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
 import { defineHcmIconButton } from '../../components/icon-button.js';
@@ -56,7 +56,7 @@ export class HcmDrawToolbar extends LitElement {
     declare canUndo: boolean;
     /** False until the place's centre is known (the map's, or the city's starting view without a map). */
     declare canAddCentre: boolean;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** A revoked admin's editor (`DECISIONS-for-review.md` §42d): every tool is off. */
     declare readOnly: boolean;
 

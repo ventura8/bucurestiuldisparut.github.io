@@ -2,7 +2,7 @@
  * The help panel's content (docs/research/viewer-input.md §2), a mode of `<hcm-about-dialog>`: the keys, the switch that
  * turns them off (WCAG 2.1.4, character key shortcuts) and the gamepad's buttons.
  */
-import { translate, type Locale, type MessageKey } from '@hcm/shared';
+import { translate, type ViewerLocale, type MessageKey } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { SHORTCUT_ROWS } from './viewer-keyboard.js';
@@ -18,7 +18,7 @@ function shortcutRow(keys: readonly string[], label: string): TemplateResult {
 }
 
 export function renderShortcutsHelp(
-    locale: Locale,
+    locale: ViewerLocale,
     enabled: boolean,
     onToggle: (event: CustomEvent<{ readonly checked: boolean }>) => void,
 ): TemplateResult {

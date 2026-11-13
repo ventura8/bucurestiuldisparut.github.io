@@ -6,12 +6,26 @@
  * every field still works. Mapbox GL JS is loaded on the first map of the session; the drawing tools on first use:
  * Terra Draw when its loader is given and succeeds, else the click-only tools (`createClickDrawPort`).
  */
-import { bboxExpand, PHOTO_LOCATION_SLACK_DEG, type BBox, type Locale, type Logger, type MapView } from '@hcm/shared';
+import {
+    bboxExpand,
+    PHOTO_LOCATION_SLACK_DEG,
+    viewerLocaleOf,
+    type BBox,
+    type Logger,
+    type MapView,
+    type UiLocale,
+    type ViewerLocale,
+} from '@hcm/shared';
 import { createMapboxPort, type AdapterEnv, type MapboxGl, type MapPort } from '@hcm/ui/map';
 import { createClickDrawPort, createTerraDrawPort, type MapDrawPort, type TerraDrawModules } from '@hcm/ui/map/draw';
 
 import { createMapPreview, type MapPreview } from './preview.js';
 import { withMapProjection, type ProjectableMapPort } from './projection.js';
+
+/** The map's own words exist in the viewer's languages; any other interface language shows the English ones. */
+function mapLocale(locale: UiLocale): ViewerLocale {
+    return viewerLocaleOf(locale) ?? 'en';
+}
 
 /** The only style the admin's map ever loads. */
 export const ADMIN_MAP_STYLE = 'mapbox://styles/mapbox/standard';
@@ -26,7 +40,7 @@ export interface AdminMapOptions {
     /** The city's bounds: the camera stays within them plus `PHOTO_LOCATION_SLACK_DEG`. */
     readonly bounds: BBox;
     readonly view: MapView;
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     /** M5 (`docs/research/M5-interfaces.md` §1.6): the New city map zooms out further; 9 by default. */
     readonly minZoom?: number;
     /** M13: the city whose public token serves an account that cannot read Setup's (`docs/research/M13-roles.md` §8). */
@@ -152,7 +166,7 @@ async function mount(port: MapPort, mounting: Mounting, deps: AdminMapDeps): Pro
             minZoom: options.minZoom ?? ADMIN_MAP_MIN_ZOOM,
             maxZoom: ADMIN_MAP_MAX_ZOOM,
             maxBounds: bboxExpand(options.bounds, PHOTO_LOCATION_SLACK_DEG),
-            locale: options.locale,
+            locale: mapLocale(options.locale),
             reducedMotion: deps.reducedMotion(),
         });
         return null;

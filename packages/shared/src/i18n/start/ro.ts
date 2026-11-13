@@ -6,6 +6,7 @@ export const ro = {
     'start.title': 'Pornește-ți propria hartă istorică',
     'start.lede': 'Fotografii vechi și straturi istorice ale orașului tău, așezate pe harta de azi, în proiectul tău Google.',
     'start.language': 'Limba',
+    'start.languageUnavailable': 'Textele acestei limbi nu s-au putut încărca. Limba rămâne aceeași.',
     'start.get.title': 'Ce primești',
     'start.get.map': 'o hartă publică a orașului, cu fotografii, locuri și straturi istorice;',
     'start.get.admin': 'o aplicație de administrare în care adaugi și publici totul, fără terminal;',

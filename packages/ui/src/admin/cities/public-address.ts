@@ -7,7 +7,7 @@
  */
 import { css, html, type TemplateResult } from 'lit';
 
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 
 import { contentText } from '../shell/text.js';
 
@@ -17,7 +17,7 @@ export function publicCityAddress(cityId: string, base: string): string {
 }
 
 /** The city's public address as a link that opens a new tab (the address is its text). */
-export function publicAddressLink(locale: Locale, cityId: string, base: string = document.baseURI): TemplateResult {
+export function publicAddressLink(locale: UiLocale, cityId: string, base: string = document.baseURI): TemplateResult {
     const address = publicCityAddress(cityId, base);
     return html`<a class="public-address" data-public-address href=${address} target="_blank" rel="noopener noreferrer"
         >${address}<span class="visually-hidden"> ${contentText(locale, 'adminContent.cities.newTab')}</span></a

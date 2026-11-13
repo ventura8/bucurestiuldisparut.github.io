@@ -19,7 +19,7 @@ export interface ExportKit {
     texts(): Promise<{ readonly page: string; readonly readme: string }>;
     /**
      * The engine's files without source maps: `engine.iife.js` and its extras (`extra-<name>-<hash>.js`), the side-loaded
-     * `engine.extras.js`, `engine.css`, `fonts/…`, `THIRD_PARTY_NOTICES.txt`.
+     * `engine.extras.js`, `engine.css`, `fonts/…`, `i18n/…`, `THIRD_PARTY_NOTICES.txt`.
      */
     engineFiles(): Promise<readonly KitFile[]>;
 }

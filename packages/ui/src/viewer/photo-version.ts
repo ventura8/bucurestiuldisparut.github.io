@@ -4,7 +4,7 @@
  * (`photoVersion`, the URL hash's `pv=`) when the photo has it, else the improved one when there is one, else the original
  * (colorized is never the default). A segmented button switches between them, only when there is more than one.
  */
-import { translate, type Locale, type Photo, type PhotoImage, type PhotoView } from '@hcm/shared';
+import { translate, type ViewerLocale, type Photo, type PhotoImage, type PhotoView } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
@@ -40,7 +40,7 @@ function creditOf(photo: Versioned, view: PhotoView): string | undefined {
     return view === 'original' ? undefined : photo.versions?.[view]?.credit;
 }
 
-export function viewCredit(photo: Versioned, view: PhotoView, locale: Locale): TemplateResult {
+export function viewCredit(photo: Versioned, view: PhotoView, locale: ViewerLocale): TemplateResult {
     const credit = creditOf(photo, view);
     const key = view === 'colorized' ? 'photoVersion.colorizedBy' : 'photoVersion.improvedBy';
     return credit === undefined ? EMPTY : html`<p class="supporting">${translate(locale, key, { credit })}</p>`;
@@ -52,7 +52,7 @@ function photoVersionEvent(view: PhotoView): CustomEvent<{ readonly view: PhotoV
 }
 
 /** The switch between the versions (`hasVersions`: a photo with only its original has none). */
-export function versionSwitch(photo: Versioned, view: PhotoView, locale: Locale, host: EventTarget): TemplateResult {
+export function versionSwitch(photo: Versioned, view: PhotoView, locale: ViewerLocale, host: EventTarget): TemplateResult {
     const options = photoViews(photo).map((value) => ({ value, label: translate(locale, `photoVersion.${value}`) }));
     const onChange = (event: CustomEvent<{ readonly value: PhotoView }>): void => {
         host.dispatchEvent(photoVersionEvent(event.detail.value));

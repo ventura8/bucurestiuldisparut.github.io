@@ -38,5 +38,9 @@ export const START_STATES = {
         title: 'The project’s landing page in Romanian, reached from the English page’s language switch',
         visit: 'specs/start/landing.spec.ts',
     },
+    'start.language-rtl': {
+        title: 'Start your map in Urdu, right to left: the language list, the texts no Urdu file has yet in English',
+        visit: 'specs/start/language.spec.ts',
+    },
     'start.done': { title: 'Start your map: the admin is published, the address and what comes next', visit: 'specs/start/start.spec.ts' },
 } as const;

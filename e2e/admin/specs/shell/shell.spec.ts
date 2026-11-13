@@ -1,4 +1,4 @@
-import { translate, translateAdminShell } from '@hcm/shared';
+import { LANGUAGE_NAMES, translateAdminShell } from '@hcm/shared';
 import type { Locator, Page } from '@playwright/test';
 
 import { SITE_ORIGIN } from '../../../fixtures/world.js';
@@ -141,7 +141,7 @@ test(
             .getByRole('button', { name: translateAdminShell(lang, 'adminShell.account.label') })
             .filter({ visible: true })
             .click();
-        await page.getByRole('radio', { name: translate(lang, `language.${other}`) }).click();
+        await page.getByRole('radio', { name: LANGUAGE_NAMES[other] }).click();
         await page.keyboard.press('Escape');
 
         await expect(page.getByRole('heading', { level: 1, name: translateAdminShell(other, 'adminShell.nav.photos') })).toBeVisible();

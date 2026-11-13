@@ -4,7 +4,7 @@
  * `packages/admin/test/app/admin-port.test.ts` checks that the real store satisfies it. The draft and the preview sink
  * are shared with the settings page.
  */
-import type { ApiErrorCode, LayerAdjustmentName, LayerAdjustments, LayerDoc, LayerSource, Locale, ValidationIssue } from '@hcm/shared';
+import type { ApiErrorCode, LayerAdjustmentName, LayerAdjustments, LayerDoc, LayerSource, UiLocale, ValidationIssue } from '@hcm/shared';
 
 import type { ListStatePort, LoadStatusPort, StoredPort, StoreFailurePort } from '../area-port.js';
 import type { AssistActionsPort, AssistViewPort } from '../assist/assist-port.js';
@@ -163,6 +163,6 @@ export interface LayersIntentsPort extends AssistActionsPort {
 }
 
 /** The text of a layer's label in the admin's language (English falls back to Romanian). */
-export function labelOf(label: LayerDoc['label'], locale: Locale): string {
+export function labelOf(label: LayerDoc['label'], locale: UiLocale): string {
     return locale === 'en' ? (label.en ?? label.ro) : label.ro;
 }

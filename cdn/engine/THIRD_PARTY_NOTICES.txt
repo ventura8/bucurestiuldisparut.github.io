@@ -1130,6 +1130,7 @@ Notice: Copyright 2025 Google LLC
 Package: @fontsource-variable/roboto-flex
 Version: 5.3.0
 Licence: OFL-1.1
+File: fonts/roboto-flex-cyrillic-wght.woff2
 File: fonts/roboto-flex-latin-ext-wght.woff2
 File: fonts/roboto-flex-latin-wght.woff2
 Licence text: LICENSE of the package

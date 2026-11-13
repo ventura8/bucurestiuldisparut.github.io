@@ -70,6 +70,24 @@ Settings → Categories → New category **Străzi dispărute** (icon `add_road`
 **Fixează sus** on, credit `OpenHistoricalMap (CC0)`), then Places → Import → the file, choosing that category for the
 features, then **Update the map**.
 
+## 3b. Streets traced on our own plans (2026-11-13)
+
+The owner then asked for the disappeared streets that fostulbucuresti shows first. Its public map was looked at only, as
+allowed: a list of 179 street **names** with a rough centre point each, in our own words, read from its labels on screen
+(no data file downloaded or parsed, no geometry copied). 45 of those names were already OpenHistoricalMap streets of the
+first batch. The other 134 were traced by eye on **our** georeferenced plans: each name found by its printed label on the
+1939 plan (`harta-bucuresti-1939`; one, Traian, on the 1914 SOCEC plan) and its centreline digitised from the scan's pixels,
+converted to positions with the tiles' own Web Mercator grid. 100 streets were traced
+(`scripts/seed/lost-streets-bucharest-traced.geojson`: `sourceLayer` names the plan, the description says "Trasată pe …";
+no years, since the plan shows only that the street existed then). 34 were not: no readable label on any of our plans
+near the name (Vigilenței, Intr. Bateriilor, Intr. Uranus, Intrarea Vânători, Intr. Evoluției, Gheorghe Petrescu, Antim,
+Intrarea Antim, Bd. G. Coșbuc, V. Adamache, I. Barasch, Măcin, Haiducul Bujor, Gh. Cristescu, Strehaia, Operetei,
+C-tin Bosianu, A. Goldfaden, Asan, Cernișoara, M. Popper, Intrarea Cobzei, Intrarea Naiului, Th. Speranția, Săcărâmb,
+Foișorului, Intrarea Alămarului, I. Voinescu, Gh. Județul, Vlad Județul, Electricii, Tarcău), a stretch that cannot be
+told from today's street (Calea 13 Septembrie), or a label that reads as another name (Unității: the plan says "Unirei").
+Precision is that of the scan: about 10–30 m. The data names no third-party site. Import: Places → Import, the same
+category, after the first batch.
+
 ## 4. Our own maps
 
 The georeferenced plans and scans (1846, 1852, 1895–1899, 1911, 1923, 1935 and the rest of the city's layers; Imagery)

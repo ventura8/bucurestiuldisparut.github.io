@@ -6,7 +6,7 @@
  * now anyway and only then the line or file that cleans it up by hand); and **Add another computer**: for a computer with a
  * screen, this admin's address to open there; for one without, the one line to paste over SSH.
  */
-import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, type UiLocale } from '@hcm/shared';
 import { translateAdminWorkerHousehold } from '@hcm/shared/admin-worker-household';
 import { css, html, LitElement, type PropertyValues, type TemplateResult } from 'lit';
 
@@ -82,7 +82,7 @@ export class HcmWorkerHousehold extends LitElement {
     ];
 
     declare household: HouseholdPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     declare city: string;
     declare level: number;
     declare view: HouseholdViewPort | null;

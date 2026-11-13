@@ -2,7 +2,7 @@
  * Pieces shared by the sign-in, claim, join and blocked panels: the panel's message and the "use another account"
  * button. A panel element takes the app (for its intents) and the state (to render), as every admin element does.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
 
 import type { AdminAppPort, AdminNoticeInputPort, AdminStatePort } from '../admin-port.js';
@@ -10,7 +10,7 @@ import { EMPTY } from '../shell/empty.js';
 import { noticeOf, shellText } from '../shell/text.js';
 
 /** The panel's message as an alert (announced when it appears), or nothing. */
-export function issueTemplate(locale: Locale, issue: AdminNoticeInputPort | null): TemplateResult {
+export function issueTemplate(locale: UiLocale, issue: AdminNoticeInputPort | null): TemplateResult {
     return issue === null
         ? EMPTY
         : html`<p class="issue" role="alert"><hcm-icon name="error"></hcm-icon><span>${noticeOf(locale, issue)}</span></p>`;
@@ -33,7 +33,7 @@ export class AdminPanel extends LitElement {
     }
 
     /** Signs out, so another Google account can sign in. */
-    protected otherAccount(locale: Locale): TemplateResult {
+    protected otherAccount(locale: UiLocale): TemplateResult {
         const signOut = (): void => {
             void this.app?.intents.signOut();
         };

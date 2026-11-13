@@ -8,7 +8,7 @@
  * credits in a bar below the surfaces and at the foot of About, which took the last 40 to 80 px of every sheet, the
  * lightbox, About and Settings on a phone.
  */
-import { translate, type Locale } from '@hcm/shared';
+import { translate, type ViewerLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { isDialogSheet } from './input-commands.js';
@@ -22,7 +22,7 @@ export function modalOpen(state: ViewerState | null, mode: SheetMode): boolean {
 
 /** The consent banner, in its dock over the map. */
 export function renderConsentBanner(
-    locale: Locale,
+    locale: ViewerLocale,
     onConsent: (event: CustomEvent<{ readonly decision: 'granted' | 'denied' }>) => void,
     docked = true,
 ): TemplateResult {

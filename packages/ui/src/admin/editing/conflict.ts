@@ -4,7 +4,7 @@
  * their names in the admin's language. The name is the admin's Google name or address as `admins.list` gives it (the
  * shell asks once a conflict appears); until it is known, "another admin". Text only.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 
 import { contentText } from '../shell/text.js';
 import { fieldNames } from './field-names.js';
@@ -26,7 +26,7 @@ export interface ConflictPort {
 }
 
 /** "Saved by Ana on 17 Oct 2026, 14:02." ("Saved by Ana." when the version is no time). */
-export function savedByText(locale: Locale, conflict: Pick<ConflictPort, 'by' | 'at'>, who: WhoPort): string {
+export function savedByText(locale: UiLocale, conflict: Pick<ConflictPort, 'by' | 'at'>, who: WhoPort): string {
     const name = whoText(locale, conflict.by, who.self, who.people);
     if (Number.isNaN(Date.parse(conflict.at))) {
         return contentText(locale, 'adminContent.common.savedByWho', { who: name });
@@ -35,6 +35,6 @@ export function savedByText(locale: Locale, conflict: Pick<ConflictPort, 'by' | 
 }
 
 /** The fields of a conflict, by their names ("Title, Year"). */
-export function conflictFields(locale: Locale, conflict: Pick<ConflictPort, 'fields'>): string {
+export function conflictFields(locale: UiLocale, conflict: Pick<ConflictPort, 'fields'>): string {
     return fieldNames(locale, conflict.fields);
 }
