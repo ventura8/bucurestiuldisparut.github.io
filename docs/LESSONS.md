@@ -3942,3 +3942,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-13, track/adminsite: forwarding the public map's `/admin/**` to the admin's own site would also have forwarded `/admin/starter.json`, which Linux starters already installed fetch with `curl` and no `-L`; RE2 has no lookahead to leave it out.
     - Fix: the forward's pattern lists every string but that name (`everyStringBut`, `scripts/site/src/hosting/admin-site.ts`) and the file stays in the public tree.
     - **Before a redirect replaces a path, list every client already installed that reads it and whether it follows redirects.**
+
+671. **The date menu's peek took every press over the map, and opened over the zoom buttons.**
+    - Seen: 2026-11-13, the tour's new `timeline-peek` state (V68, §195i) at 360 and 1024 wide: the map, the legal line, the compass, the zoom and the menu button "covered" by `hcm-date-menu`, and the menu over the zoom group and the photos chip.
+    - Cause: the viewer's `.modal-layer > * { pointer-events: auto }` sits outside the menu's shadow root and beats its own `:host { pointer-events: none }`; while the menu was always modal its scrim hid that. Its place beside the year ignored the floating controls, which the inert frame under a modal menu had excused.
+    - Fix and pin: `.modal-layer > hcm-date-menu { pointer-events: none }` in `viewer-styles.ts`; the dock measures the compass, the zoom, the menu button and the photos chip as the menu opens and the menu moves the shortest way past them (`date-menu-clear.ts`). Pinned by `timeline-dock-peek.test.ts`, `date-menu-clear.test.ts` and the tour's `timeline-peek`.
+    - **A host's own `:host` rule loses to any rule its parent's shadow root sets on it; a non-modal overlay states its pass-through where it is placed, and keeps clear of the controls it no longer makes inert.**

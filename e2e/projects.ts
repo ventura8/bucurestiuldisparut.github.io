@@ -138,6 +138,8 @@ const ONE_PROJECT_SPECS = [
     'viewer/compare.spec.ts',
     // Games consoles and the 10-foot view (V65, V66): the TV's 1920 x 1080 window with a coarse pointer is set by the spec.
     'viewer/consoles.spec.ts',
+    // V68's peek (DECISIONS-for-review.md §195i): a mouse at 1440 and 1024 wide, a finger at 360 and 768, set by the spec.
+    'viewer/timeline-peek.spec.ts',
     'viewer/public-manifest.spec.ts',
     // M6 (docs/research/M6-interfaces.md §2): the public map on the e2e Hosting site; its pages are the viewer's own.
     'viewer/hosting.spec.ts',

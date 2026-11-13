@@ -19506,6 +19506,61 @@
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195g). packages/ui/src/viewer/hcm-timeline.ts (#settle, #offerDates), timeline-pointer.ts, timeline-scrub.ts; unit tests in packages/ui/test/viewer/hcm-timeline-dates.test.ts (a drag, a finger scrub, a cancelled press, the arrows). Test: e2e/specs/viewer/timeline-dates.spec.ts."
         },
         {
+            "id": "S-V68-HAPPY-HOVER-PEEK",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Hovering a multi-date year opens its date menu without selecting",
+            "asserts": "at 1440x900 and at 1024x768 with touch, a city whose 1980 has two dates, the timeline on today, the page's clock paused: the mouse resting on 1980's point opens 'Dates in 1980' after 300 ms (none at 250 ms), the slider still on today and the focus not in the menu, the menu inside the window and clear of the compass, the zoom group and the menu button; the mouse moving up into the menu keeps it a second later; a click on March brings it to the front (layers= names it last) and closes the menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-HOVER-SWEEP",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Sweeping across years doesn't open menus",
+            "asserts": "at 1440x900 and 1024x768: the mouse swept from today across 1980 and back opens nothing after a second; a menu opened by resting on 1980 closes 300 ms after the mouse left the year and the menu, and on Esc, the year still today; unit: a held button's drag, a sweep and a modal menu opened by Enter are never turned into a peek",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-HOVER-TOUCH",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Touch doesn't open on hover",
+            "asserts": "at 360x800 (a phone) and 768x1024 (a tablet): a tap on today and a second's wait open no menu; unit: a touch pointer over the track never counts as a hover (hcm-timeline-peek.test.ts)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-HAPPY-DWELL-PICK",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A finger resting on a multi-date year opens its dates; sliding onto one and lifting picks it",
+            "asserts": "at 360x800 and 768x1024: a finger scrubbing from today onto 1980 and resting 400 ms opens the menu (none at 350 ms) beside it and clear of the controls; slid off the card onto March and lifted, March is picked (the slider on 1980, layers= names it last); lifting on the year instead keeps the menu open, the checked date focused, for a tap; unit: a haptic tick when it opens",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-DWELL-SWEEP",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A quick finger sweep opens nothing, and moving on closes the menu",
+            "asserts": "at 360x800 and 768x1024: a finger sweeping from today across 1980 and back opens nothing after a second; resting on 1980 opens it, moving on to today closes it while the scrub goes on (the slider on today), and lifting there opens nothing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
             "id": "S-V68-HAPPY-TOUR",
             "behaviour": "V68",
             "area": "viewer",
