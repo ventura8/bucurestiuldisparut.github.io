@@ -10,8 +10,6 @@ import type { GoogleTransport } from './transport.js';
 
 const HOSTING = 'https://firebasehosting.googleapis.com/v1beta1';
 const IDENTITY = 'https://identitytoolkit.googleapis.com/admin/v2';
-const HOSTING_ROLE = 'roles/firebasehosting.admin';
-const AUTH_ROLE = 'roles/firebaseauth.admin';
 
 export interface HostingSitesClient {
     /** Whether `siteId` is one of the project's own Hosting sites. */
@@ -28,7 +26,6 @@ export function createHostingSitesClient(transport: GoogleTransport): HostingSit
             (await transport.find({
                 operation: 'firebase-hosting.sites.get',
                 url: `${HOSTING}/projects/${projectId}/sites/${siteId}`,
-                role: HOSTING_ROLE,
             })) !== undefined,
         createSite: async (projectId, siteId) => {
             await transport.call({
@@ -37,14 +34,12 @@ export function createHostingSitesClient(transport: GoogleTransport): HostingSit
                 url: `${HOSTING}/projects/${projectId}/sites`,
                 query: { siteId },
                 body: {},
-                role: HOSTING_ROLE,
             });
         },
         authorizedDomains: async (projectId) => {
             const config = await transport.call({
                 operation: 'identity-toolkit.getConfig',
                 url: `${IDENTITY}/projects/${projectId}/config`,
-                role: AUTH_ROLE,
             });
             return strings(at(config, 'authorizedDomains'));
         },
@@ -55,7 +50,6 @@ export function createHostingSitesClient(transport: GoogleTransport): HostingSit
                 url: `${IDENTITY}/projects/${projectId}/config`,
                 query: { updateMask: 'authorizedDomains' },
                 body: { authorizedDomains: [...domains] },
-                role: AUTH_ROLE,
             });
         },
     };
