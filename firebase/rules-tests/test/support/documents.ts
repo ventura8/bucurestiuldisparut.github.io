@@ -15,6 +15,9 @@ import { archiveJobFields } from './archive-fields.js';
 import { derivative, reviewedFields, versionEdits, versionFields } from './photo-fields.js';
 import { POI_CATEGORY_EDITS } from './poi-categories.js';
 import { STORY_EDITS } from './stories.js';
+
+/** Re-exported for the tests that import every seeded document from here. */
+export { newPoiCategory, poiCategoryDoc } from './poi-categories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
 
 /** The bounds every test city gets: photo locations must fall within them (±0.5°). */

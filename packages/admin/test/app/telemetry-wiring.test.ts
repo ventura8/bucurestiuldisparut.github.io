@@ -25,12 +25,12 @@ function store(cityId: string | null): Store<AdminState<null>> {
 }
 
 function started(cityId: string | null): TelemetryView {
-    let seen: TelemetryView | null = null;
+    const seen: TelemetryView[] = [];
     const telemetry = { consent: 'unknown', available: false, measure: () => undefined } as unknown as AdminTelemetry;
     const { stop } = startTelemetry(
         {
             telemetry: (view) => {
-                seen = view;
+                seen.push(view);
                 return telemetry;
             },
             log,
@@ -38,10 +38,11 @@ function started(cityId: string | null): TelemetryView {
         store(cityId),
     );
     stop();
-    if (seen === null) {
+    const [view] = seen;
+    if (view === undefined) {
         throw new Error('the telemetry was not created');
     }
-    return seen;
+    return view;
 }
 
 describe('startTelemetry', () => {
