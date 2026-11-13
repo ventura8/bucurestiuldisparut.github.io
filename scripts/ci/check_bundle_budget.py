@@ -307,7 +307,7 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # an admin waits for.
 # 750 since 2026-11-12, the owner's decision (§168d): the georeferencer's panes and its sharper scan's tiles (`georef-panes`,
 # `scan-tiles`) took the total to 701.8 KB; both load only with the georeferencer, and the entry's 450 KB is unchanged.
-ADMIN_TOTAL_KB = 770  # §215 (the owner's raises, 2026-11-13): 754.8 KB with W5, 760.1 KB with §210g's stale-tab message
+ADMIN_TOTAL_KB = 770  # §215 (the owner's raises, 2026-11-13): 754.8 KB with W5, 760.6 KB with §210g's stale-tab message
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k

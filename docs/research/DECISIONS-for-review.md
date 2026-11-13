@@ -7018,7 +7018,7 @@ The owner: "There is no Bucharest in the left screen" on `DS09065A073MC043` (18 
 `scripts/ci/check_bundle_budget.py`: `join-card` 3 → 4 KB, `statistics-live` 4 → 6 KB (Material 3 redesign, 4.6 KB), `funnels` 2 → 3 KB (2.8 KB), `imagery` 18 → 20 KB (18.0 KB). The chunk measured 3.0 KB after the cloud estimate and the plain
 messages, failing the budget gate for every track. The owner approved raising budgets that block beta.1.
 
-Also for the beta.1 freeze (track/green, 2026-11-13): `settings` 20 → 22 KB (measured 20.2 KB, failing every track) and `ADMIN_TOTAL_KB` 760 → 770 KB (754.8 KB with W5; the §210g message naming the new address in a tab on the old one, left out at 760, is restored).
+Also for the beta.1 freeze (track/green, 2026-11-13): `settings` 20 → 22 KB (measured 20.2 KB, failing every track) and `ADMIN_TOTAL_KB` 760 → 770 KB (754.8 KB with W5, 760.6 KB measured with the §210g message restored; the §210g message naming the new address in a tab on the old one, left out at 760, is restored).
 
 ## 216. The 1895-1899 layer's white patches: left-out pieces found again in the overview's holes, and a placed series stitched again (the owner 2026-11-13) — APPLIED
 
