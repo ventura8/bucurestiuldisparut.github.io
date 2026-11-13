@@ -100,7 +100,8 @@ first quota read is the cap, never one of ours.
 The memory is counted in 256 MB steps (`MEMORY_STEP_MB`) and the log says a line only when the profile, its reason or the threads
 change (`governor._said`): until 2026-11-13 every tick's few megabytes more or less changed the budget, and the worker logged
 "this computer: quiet (user-active), 4 threads, 5880 MB" every 5 s (up to 720 lines an hour; the laptop's last hour of
-2026-11-13: 173 lines, 56 under the new rule, each a real change between user-active, battery, thermal and others-busy).
+2026-11-13: 173 lines, 56 under the new rule, each a real change between user-active, battery, thermal and others-busy). Within one profile a change of fewer than two threads is not made (`governor.steady`): the heat's share moved quiet's threads
+1, 2, 3, 4 in turn on the laptop, a log line and a `docker update` each.
 
 **Headroom and the claim** (2026-11-13: a city with three workers, the laptop, the NUC and the PC). `Governor.headroom()` is 0 to 1:
 the lesser of the heat's share (above) and 1 − others' load (their share of the machine), 0 while paused. The worker's claim pace (`worker/pace.py`)
