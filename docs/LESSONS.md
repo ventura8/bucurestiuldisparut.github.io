@@ -3902,3 +3902,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `ai_image` in `hcm-worker.sh` took the last `"image": "…"` of the whole `/state` line with a greedy `sed`; since the worker added its own `image` (`sha256:…`, after `ai`), that was the match, and the check refused it. The tests fed `/state` as the `ai` record alone, so they never saw the second field. The Windows starter parses the JSON and was right.
     - Fix and pin: the starter reads `image` inside `"ai": {…}` only; the sidecar tests now feed the worker's whole `/state` (its own `image` and `starter` after `ai`). Starter version `fae0e8664ab5`.
     - **A test of a parser feeds the producer's real, whole output, never the one field the parser wants; a shell `sed` over JSON is greedy across fields.**
+
+664. **The Statistics view blamed missing measurement names that Setup had just reported as all there.**
+    - Seen: 2026-11-13, the owner's live test: "Google Analytics does not know the map's measurement names yet", while step g said "0 created, 23 already there"; an hour later the read worked, with no values for the custom names yet.
+    - Cause: every HTTP 400 of `batchRunReports` was mapped to `noReports`. GA4 refuses the whole batch for one field its Data API does not list yet, and a name registered a few hours earlier is not listed yet; the fake answered 400 only for unregistered names, so the case never showed.
+    - Fix and pin: the read asks the property's metadata first, sends only the reports it can answer, and says which of not registered, not ready, or no values yet (`analytics-fields.ts`); another 400 is `refused`. `S-A153-BAD-NOT-READY`, `-NOT-REGISTERED`, `-NO-DATA`, `-REFUSED`.
+    - **Map an error code to a cause only when the code means that cause alone; a generic 400 is "refused", and the specific causes are found by asking, not guessed.**

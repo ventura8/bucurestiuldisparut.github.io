@@ -12,7 +12,7 @@ import { css, html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
-import type { CrashesIntentsPort, CrashesViewState } from './crashes-port.js';
+import type { CrashesIntentsPort, CrashesViewState, StatisticsNumbersPort } from './crashes-port.js';
 import type * as Live from './statistics-live.js';
 import { loadingTemplate } from '../editing/states.js';
 
@@ -55,7 +55,19 @@ type StepId = (typeof WIZARD_STEPS)[WizardId][number];
 
 const STEP_IDS: ReadonlySet<string> = new Set(Object.values(WIZARD_STEPS).flat());
 
-const HOW = ['how1', 'how2', 'how3', 'how4', 'how5', 'how6'] as const;
+const HOW = ['how1', 'how2', 'how3', 'how4', 'how5'] as const;
+
+type CodesState = 'unknown' | 'ready' | 'notRegistered' | 'notReady' | 'noData';
+
+/** Whether GA4 can show the codes, as the last read of the numbers found (unknown before one). */
+function codesState(view: CrashesViewState | null): CodesState {
+    const numbers = view?.statistics.numbers ?? null;
+    return numbers === null ? 'unknown' : codesOf(numbers);
+}
+
+function codesOf(numbers: StatisticsNumbersPort): CodesState {
+    return numbers.pending?.reason ?? 'ready';
+}
 
 export const statisticsStyles = css`
     /* The crashes page fills the page area (its list and detail panes scroll): this view scrolls on its own. */
@@ -202,6 +214,9 @@ export function statisticsView(locale: Locale, context: StatisticsContext): Temp
         <h3>${contentText(locale, 'adminContent.statistics.howTitle')}</h3>
         <ol>
             ${HOW.map((key) => howItem(locale, key))}
+            <li data-statistics-codes=${codesState(context.view)}>
+                ${contentText(locale, `adminContent.statistics.codes.${codesState(context.view)}`)}
+            </li>
         </ol>
         <ul class="wizards">
             ${WIZARD_IDS.map((wizard) => wizardItem(locale, wizard))}
