@@ -65,7 +65,7 @@ function common(entry: Json): Json {
  * The file the public map keeps in the admin's folder: the starter list (`starter.ts`), which a Linux starter installed
  * before §210 fetches there with `curl` and no `-L`, so it must stay a file, never a redirect.
  */
-export const KEPT_ADMIN_FILE = 'starter.json';
+const KEPT_ADMIN_FILE = 'starter.json';
 
 const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

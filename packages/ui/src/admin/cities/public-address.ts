@@ -18,7 +18,7 @@ export function publicCityAddress(cityId: string, base: string): string {
 }
 
 /** The public map's root as the admin's boot named it (§210), else the page's own base (the map and the admin share it). */
-export function publicMapBase(doc: Document = document): string {
+function publicMapBase(doc: Document = document): string {
     return doc.documentElement.dataset['hcmPublicMap'] ?? doc.baseURI;
 }
 

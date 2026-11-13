@@ -94,7 +94,7 @@ export const en: AdminSetupMessages = {
     'adminSetup.provision.item.org-policies': 'Organisation policies',
     'adminSetup.provision.item.crash-alerts': 'E-mail on new crashes',
     'adminSetup.provision.item.api-key': 'Browser key restriction',
-    'adminSetup.provision.item.admin-site': "The admin's own web address",
+    'adminSetup.provision.item.admin-site': 'The admin’s own web address',
     'adminSetup.deploy.progress': '{ready} of {total} functions installed',
     'adminSetup.deploy.failed': 'The function {name} was not installed. Run the installation again.',
     'adminSetup.deploy.notStarted': 'Nothing is installed yet.',
@@ -195,8 +195,7 @@ export const en: AdminSetupMessages = {
     'adminSetup.provision.installerPermission': 'The installer needs one more permission: Retry what failed grants it.',
     'adminSetup.provision.appEngineEditor': 'A project permission needs adjusting: “Retry what failed” fixes it.',
     'adminSetup.provision.computeBuildAccount': 'A project account needs setting up: “Retry what failed” does it.',
-    'adminSetup.provision.adminSiteTaken':
-        "The admin's web address {site}.web.app belongs to another Firebase project, so it could not be made. The admin keeps working at /admin/ of the public map; to move it, delete that site in the other project's Firebase console (Hosting), then Retry what failed.",
+    'adminSetup.provision.adminSiteTaken': '{site}.web.app is another project’s: free it in Firebase Hosting, then Retry what failed.',
     'adminSetup.provision.lastChecked': 'Last checked {time}; sign in to Google Cloud to check again.',
     'adminSetup.usgs.later': 'Do it later',
     'adminSetup.usgs.laterWhy': 'USGS only brings the historical imagery: the map works without it, and this step can wait.',
