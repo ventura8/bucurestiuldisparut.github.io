@@ -129,16 +129,7 @@ export const dockStyles = css`
         }
     }
 
-    /*
-     * Beside a standing timeline, above the chip's row: the group's foot is level with the card's. The chip there is a
-     * 40 px icon button (the owner, 2026-11-12) centred under the 68 px card, a row above the FAB: 14 px in.
-     */
-    .frame[data-timeline='vertical'] {
-        --hcm-zoom-end: calc(
-            var(--hcm-map-chrome) + var(--hcm-fab-size) + 40px + 2 * var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
-        );
-    }
-
+    /* Beside a standing timeline the chip there is a 40 px icon button (the owner, 2026-11-12) centred under the 68 px card: 14 px in. */
     .frame[data-timeline='vertical'] .dock.chip {
         inset-inline-start: calc(var(--hcm-gutter) + 14px);
         inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
@@ -169,10 +160,14 @@ export const dockStyles = css`
 
     /*
      * The top docks, compare's bar, the skip link and the menu's dock begin 8 px after the standing timeline, 68 px wide
-     * (the tour found the toast's dock, then the focused skip link, over the thumb of a vertical timeline).
+     * (the tour found the toast's dock, then the focused skip link, over the thumb of a vertical timeline). The zoom
+     * group and the compass sit above the chip's row there, the group's foot level with the card's, a row above the FAB.
      */
     .frame[data-timeline='vertical'] {
         --hcm-top-start: calc(var(--hcm-gutter) + 76px);
+        --hcm-zoom-end: calc(
+            var(--hcm-map-chrome) + var(--hcm-fab-size) + 40px + 2 * var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
+        );
     }
 
     @container hcm-viewer (width >= 600px) {
