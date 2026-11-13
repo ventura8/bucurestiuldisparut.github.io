@@ -31,7 +31,6 @@ import type { GamepadSurface } from '@hcm/ui/viewer/gamepad';
 
 import { configFromAttributes, readConfig, type Result } from './config/load.js';
 import { EXTRAS_PART_FILE, EXTRAS_PART_INTEGRITY } from './extras-part.js';
-import { urlLocaleOf } from './core/boot.js';
 import { catalogueLoader, type CatalogueLoader } from './core/catalogues.js';
 import type { CompareModule } from './core/compare-port.js';
 import type { ColorSchemeSource, ViewerDeps, ViewerLocation } from './core/deps.js';
@@ -40,7 +39,7 @@ import { colorSchemeOf, locationOf, storageOf } from './core/page-sources.js';
 import { createViewerStore, type ViewerState, type ViewerStore } from './core/store.js';
 import { extraImports } from './extras/imports.js';
 import { mapboxOf } from './mapbox-global.js';
-import { failBoot } from './mount-fail.js';
+import { bootLocale, failBoot, languageOf, withoutMapbox } from './mount-fail.js';
 import { createTelemetry } from './telemetry/telemetry.js';
 import type { TelemetryPort } from './telemetry/telemetry-port.js';
 
@@ -241,30 +240,9 @@ function containerOf(raw: unknown): string {
     return typeof container === 'string' && container.trim() !== '' ? container : DEFAULT_CONTAINER_SELECTOR;
 }
 
-/** The language of a configuration before validation (for its own error message). */
-function languageOf(raw: unknown): ViewerLocale {
-    const lang = typeof raw === 'object' && raw !== null ? (raw as { readonly lang?: unknown }).lang : undefined;
-    return resolveViewerLocale(typeof lang === 'string' ? lang : undefined);
-}
-
-/**
- * The language of a boot error card (docs/ENGINE_API.md → Language): the page address first, then the configuration's
- * own `lang`, so a city owner who opened `?lang=en` reads the whole card in English.
- */
-function bootLocale(configLocale: ViewerLocale, env: Pick<MountEnvironment, 'location'>): ViewerLocale {
-    return urlLocaleOf(env.location) ?? configLocale;
-}
-
 /** The viewer elements drive the store through `ViewerStorePort`; this checks at compile time that it satisfies it. */
 function storePort(store: ViewerStore): ViewerStorePort {
     return store;
-}
-
-/** Mapbox GL JS is missing from the page: the card says the map could not load, in the boot's language. */
-function withoutMapbox(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment): HistoricCityMapController {
-    const error: ViewerError = { code: 'error.mapLoad', retryable: false };
-    const locale = bootLocale(resolveViewerLocale(config.lang), env);
-    return failBoot(viewer, { errorIn: () => error, locale, catalogues: env.catalogues?.(config.engineBase) });
 }
 
 /** The store's loader of the languages' texts, from `engineBase` (none without one: the node tests). */

@@ -3,9 +3,10 @@
  * boot's language once that language's texts are here (else in Romanian, else as the engine's own bilingual card), and a
  * controller whose `ready` says why at once.
  */
-import { hasCatalogue, type ViewerLocale } from '@hcm/shared';
+import { hasCatalogue, resolveViewerLocale, type EngineConfig, type ViewerLocale } from '@hcm/shared';
 import type { HcmMapViewer, ViewerController, ViewerError } from '@hcm/ui';
 
+import { urlLocaleOf } from './core/boot.js';
 import { firstCatalogue, presentCatalogue, type CatalogueLoader } from './core/catalogues.js';
 
 /** A viewer that could not boot: `ready` says why at once, every call does nothing, `destroy` removes the card. */
@@ -60,4 +61,31 @@ export function failBoot(viewer: HcmMapViewer, failure: BootFailure): ViewerCont
     return failedController(errorIn(locale).code, () => {
         viewer.remove();
     });
+}
+
+/** The language of a configuration before validation (for its own error message). */
+export function languageOf(raw: unknown): ViewerLocale {
+    const lang = typeof raw === 'object' && raw !== null ? (raw as { readonly lang?: unknown }).lang : undefined;
+    return resolveViewerLocale(typeof lang === 'string' ? lang : undefined);
+}
+
+/** Where the page's address is read and the languages' texts are fetched (`MountEnvironment`'s part a boot error needs). */
+export interface BootLocaleSource {
+    readonly location: Parameters<typeof urlLocaleOf>[0];
+    readonly catalogues?: ((engineBase: string | undefined) => CatalogueLoader) | undefined;
+}
+
+/**
+ * The language of a boot error card (docs/ENGINE_API.md → Language): the page address first, then the configuration's
+ * own `lang`, so a city owner who opened `?lang=en` reads the whole card in English.
+ */
+export function bootLocale(configLocale: ViewerLocale, env: Pick<BootLocaleSource, 'location'>): ViewerLocale {
+    return urlLocaleOf(env.location) ?? configLocale;
+}
+
+/** Mapbox GL JS is missing from the page: the card says the map could not load, in the boot's language. */
+export function withoutMapbox(viewer: HcmMapViewer, config: EngineConfig, env: BootLocaleSource): ViewerController {
+    const error: ViewerError = { code: 'error.mapLoad', retryable: false };
+    const locale = bootLocale(resolveViewerLocale(config.lang), env);
+    return failBoot(viewer, { errorIn: () => error, locale, catalogues: env.catalogues?.(config.engineBase) });
 }

@@ -238,8 +238,7 @@ export class HcmMapViewer extends LitElement {
 
     /** No map to move: not ready, no WebGL, or a modal surface over it (the gamepad's lazy chunk asks). */
     mapCovered(): boolean {
-        const state = this.viewState;
-        return state?.status !== 'ready' || !state.webgl || modalOpen(state, layoutOf(state).sheetMode);
+        return this.viewState?.status !== 'ready' || !this.viewState.webgl || modalOpen(this.viewState, layoutOf(this.viewState).sheetMode);
     }
 
     /** The D-pad (the gamepad's lazy chunk, the Xbox's key emulation): spatial navigation (`spatial-nav.ts`). */
@@ -254,9 +253,7 @@ export class HcmMapViewer extends LitElement {
 
     /** A toast from the gamepad's lazy chunk. */
     toast(key: MessageKey): void {
-        this.#act(null, (store) => {
-            store.showToast(key);
-        });
+        this.#store?.showToast(key);
     }
 
     /** Connects the viewer to a store (and the controller that drives it); the current state renders at once. */

@@ -373,11 +373,8 @@ interface Selection {
     readonly category: PoiCategory | null;
 }
 
-function selectedPoi(ready: Ready): Poi | null {
-    if (ready.state.sheet !== 'poi') {
-        return null;
-    }
-    return (ready.manifest.pois ?? []).find((candidate) => candidate.id === ready.state.selectedPoiId) ?? null;
+function selectedPoi({ state, manifest }: Ready): Poi | null {
+    return state.sheet === 'poi' ? ((manifest.pois ?? []).find((candidate) => candidate.id === state.selectedPoiId) ?? null) : null;
 }
 
 function categoryOf(manifest: Manifest, poi: Poi | null): PoiCategory | null {
