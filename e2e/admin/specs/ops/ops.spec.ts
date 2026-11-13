@@ -222,7 +222,7 @@ test(
     async ({ page, lang }) => {
         await page.goto(adminPath(lang, 'crashes'));
         await page.getByRole('link', { name: contentText(lang, 'adminContent.statistics.link') }).click();
-        await expect(page.getByRole('heading', { name: contentText(lang, 'adminContent.statistics.title') })).toBeVisible();
+        await expect(page.getByRole('heading', { name: contentText(lang, 'adminContent.statistics.title'), exact: true })).toBeVisible();
         await expect(page.getByRole('heading', { name: contentText(lang, 'adminContent.statistics.wizard.new_city') })).toBeVisible();
         // The e2e admin has no measurement id: the view says statistics are off and leads to Setup's step g.
         await expect(page.getByText(contentText(lang, 'adminContent.statistics.off'))).toBeVisible();

@@ -23,19 +23,25 @@ test(
         await page.getByRole('button', { name: t(lang, 'consent.accept'), exact: true }).click();
         await expect.poll(async () => (await gaEvents(mockApis)).map((event) => event.name)).toContain('page_view');
 
-        // Four years in a row along the timeline: one year_change, the last year, once it stays.
+        // Four years in a row along the timeline: the year where the visitor stops is sent, never the ones passed on the way.
         const timeline = page.getByRole('slider', { name: t(lang, 'timeline.label'), exact: true });
         await timeline.focus();
+        const passed: string[] = [];
         for (let step = 0; step < 4; step += 1) {
             await timeline.press('ArrowLeft');
+            passed.push((await timeline.getAttribute('aria-valuetext')) ?? '');
         }
-        const years = async (): Promise<number> => (await gaEvents(mockApis)).filter((event) => event.name === 'year_change').length;
-        await expect.poll(years).toBe(1);
+        const last = passed.at(-1) ?? '';
+        const before = passed.filter((year) => year !== last);
+        const years = async (): Promise<string[]> =>
+            (await gaEvents(mockApis)).filter((event) => event.name === 'year_change').map((event) => event.params.get('ep.year') ?? '');
+        await expect.poll(years).toContain(last);
+        expect((await years()).filter((year) => before.includes(year))).toEqual([]);
 
         await page.getByRole('button', { name: t(lang, 'viewer.compass'), exact: true }).click();
 
         await expect.poll(async () => (await gaEvents(mockApis)).filter((event) => event.name === 'compass_reset').length).toBe(1);
-        expect(await years()).toBe(1);
+        expect((await years()).filter((year) => year === last)).toHaveLength(1);
         for (const event of await gaEvents(mockApis)) {
             expect(viewerEventProblem(event), event.name).toBeNull();
         }

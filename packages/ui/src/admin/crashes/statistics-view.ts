@@ -39,6 +39,14 @@ export const statisticsStyles = css`
         overflow-y: auto;
     }
 
+    /* M3's 48 px touch target for the links on their own lines (the tour's target-size check on a compact window). */
+    .statistics p > a,
+    a[data-statistics-link] {
+        display: inline-flex;
+        align-items: center;
+        min-block-size: 48px;
+    }
+
     .statistics code {
         font-family: var(--hcm-font-mono, ui-monospace, monospace);
         font-size: 0.875em;
