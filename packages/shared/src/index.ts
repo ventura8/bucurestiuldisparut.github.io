@@ -195,19 +195,11 @@ export type {
     UsgsRole,
     UsgsSceneDoc,
 } from './schemas/firestore-ops.js';
-export {
-    BROWSE_STATES,
-    DEM_ATTRIBUTION,
-    RANKING_VERSION,
-    RANKING_WEIGHTS,
-    RANK_REASONS,
-    SENSORS,
-    SENSOR_SPECS,
-    USGS_ATTRIBUTION,
-    rankReasonSchema,
-    usgsBrowseUrlSchema,
-} from './schemas/usgs-scene.js';
-export type { RankReason, RankReasonEntry, Sensor, SensorSpec, UsgsDataset } from './schemas/usgs-scene.js';
+export { BROWSE_STATES, CLOUDY_CITY_PERCENT, CLOUD_ESTIMATE_VERSION, DEM_ATTRIBUTION } from './schemas/usgs-scene.js';
+export { RANKING_VERSION, RANKING_WEIGHTS } from './schemas/usgs-scene.js';
+export { RANK_REASONS, SENSORS, SENSOR_SPECS, UNUSABLE_REASONS, USGS_ATTRIBUTION } from './schemas/usgs-scene.js';
+export { cloudEstimateSchema, rankReasonSchema, usgsBrowseUrlSchema } from './schemas/usgs-scene.js';
+export type { CloudEstimate, RankReason, RankReasonEntry, Sensor, SensorSpec, UnusableReason, UsgsDataset } from './schemas/usgs-scene.js';
 export { AUTO_MIN_MEASURED_PCT, CITY_MIN_COVERAGE_PCT, DEFAULT_RMSE_THRESHOLD_M, JOIN_MAX_PARTS } from './schemas/imagery-settings.js';
 export { MAX_TARGET_YEARS, RMSE_THRESHOLD_RANGE, cityImagerySchema, imagerySettingsOf } from './schemas/imagery-settings.js';
 // M25 (docs/research/M25-landsat.md): named, never `export *` (a star re-export costs the engine bytes: docs/LESSONS.md 532).
@@ -392,7 +384,9 @@ export type { AdjustmentSlider } from './overlays/adjustments.js';
 // Field measurements (DECISIONS-for-review.md §76): GA4's event schemas and guards, Core Web Vitals as GA4 parameters;
 // imported only by the apps' consented lazy chunks (each its own app's table).
 export {
+    APP_SURFACES,
     COMMON_EVENT_PARAMS,
+    SURFACE_PARAMS,
     FIELD_EVENT_BUDGET,
     GA_LIMITS,
     MAP_ERROR_KINDS,

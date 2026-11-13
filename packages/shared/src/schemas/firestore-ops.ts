@@ -138,11 +138,12 @@ export const PROVISION_ITEMS = [
  * an update (Update the map, Install) then runs the items changed since the version `setup/status.provision.setVersion`
  * records, in the same click. Version 2 (M7): `artifact-registry`'s public pull of the pipeline image and
  * `bucket-lifecycle`'s 7-day `usgs-raw/`. Version 3 (finding 74 of 2026-11-03): `iam`'s `roles/run.viewer` for
- * `fn-admin@`, whose worker callables read the image the job `raster-pipeline` runs.
+ * `fn-admin@`, whose worker callables read the image the job `raster-pipeline` runs. Version 4 (§203): `apis` turns on
+ * `analyticsdata.googleapis.com` for the Statistics view.
  */
-export const PROVISION_SET_VERSION = 3;
+export const PROVISION_SET_VERSION = 4;
 export const PROVISION_CHANGED_IN: Readonly<Record<(typeof PROVISION_ITEMS)[number], number>> = {
-    apis: 1,
+    apis: 4,
     'service-accounts': 1,
     iam: 3,
     buckets: 1,

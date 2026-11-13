@@ -1,5 +1,5 @@
 import { at, records, stringAt } from './json.js';
-import { createGoogleTransport, type GoogleTransportOptions } from './transport.js';
+import { createGoogleTransport, type GoogleTransport, type GoogleTransportOptions } from './transport.js';
 
 /**
  * Step (g)'s Create the measurement reports (`DECISIONS-for-review.md` §76f, the user's decision of 2026-11-01): the
@@ -34,6 +34,8 @@ export const FIELD_DIMENSIONS: readonly string[] = [
     'code',
     'route',
     'device',
+    // Which app and which role sent an event (§203: the Statistics view's visitors per app and role).
+    'app_surface',
 ];
 
 /** The event-scoped custom metrics and their units: the numbers reports add up or average. */
@@ -49,16 +51,28 @@ export interface MeasurementReports {
     readonly skipped: number;
 }
 
-/** The property (`properties/<id>`) whose web stream sends `measurementId`, among those the owner can see. */
-async function propertyOf(transport: ReturnType<typeof createGoogleTransport>, measurementId: string): Promise<string | undefined> {
+/** The GA4 properties (`properties/<id>`) the signed-in account can see, read with `role` named on a refusal. */
+export async function visibleProperties(transport: GoogleTransport, role: string): Promise<readonly string[]> {
     const summaries = await transport.pages(
-        { operation: 'analytics-admin.accountSummaries.list', url: `${API}/accountSummaries`, role: ROLE },
+        { operation: 'analytics-admin.accountSummaries.list', url: `${API}/accountSummaries`, role },
         'accountSummaries',
     );
-    const properties = summaries.flatMap((summary) => records(at(summary, 'propertySummaries'))).map((item) => String(item['property']));
+    return summaries.flatMap((summary) => records(at(summary, 'propertySummaries'))).map((item) => String(item['property']));
+}
+
+/**
+ * The property (`properties/<id>`) whose web stream sends `measurementId`, among `properties` (also the Statistics view's
+ * way to it, with the read-only scope: `analytics-data.ts`).
+ */
+export async function propertyOf(
+    transport: GoogleTransport,
+    measurementId: string,
+    properties: readonly string[],
+    role: string = ROLE,
+): Promise<string | undefined> {
     for (const property of properties) {
         const streams = await transport.pages(
-            { operation: 'analytics-admin.dataStreams.list', url: `${API}/${property}/dataStreams`, role: ROLE },
+            { operation: 'analytics-admin.dataStreams.list', url: `${API}/${property}/dataStreams`, role },
             'dataStreams',
         );
         if (streams.some((stream) => stringAt(stream, 'webStreamData', 'measurementId') === measurementId)) {
@@ -74,7 +88,7 @@ async function propertyOf(transport: ReturnType<typeof createGoogleTransport>, m
  */
 export async function createMeasurementReports(options: GoogleTransportOptions, measurementId: string): Promise<MeasurementReports | null> {
     const transport = createGoogleTransport(options);
-    const property = await propertyOf(transport, measurementId);
+    const property = await propertyOf(transport, measurementId, await visibleProperties(transport, ROLE));
     if (property === undefined) {
         return null;
     }

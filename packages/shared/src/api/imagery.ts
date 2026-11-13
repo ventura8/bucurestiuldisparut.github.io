@@ -14,6 +14,7 @@ import { JOIN_MAX_PARTS } from '../schemas/imagery-settings.js';
 import { LAYER_VERSION_STATES, PUBLISH_CHOICES } from '../schemas/imagery.js';
 import { cityIdSchema } from '../schemas/paths.js';
 import { coded, idSchema, isoDateSchema, plainText } from '../schemas/primitives.js';
+import { UNUSABLE_REASONS } from '../schemas/usgs-scene.js';
 import { isoTimeSchema } from './common.js';
 import { layerLinkRequestSchema } from './layers.js';
 
@@ -60,6 +61,12 @@ export const HARVEST_RETRY_HOURS = 1;
 export const HARVEST_RESUME_MINUTES = 15;
 /** Browse copies: at most this size; the harvest copies the best-ranked ones ahead, the rest on demand. */
 export const BROWSE_MAX_BYTES = 5_000_000;
+/**
+ * A browse image USGS serves may be this large: a KH-9 panoramic strip's is 7 to 13 MB (2026-11-13: every Declass 3 preview failed
+ * at the old 5 MB cap). One over `BROWSE_MAX_BYTES` is stored shrunk to `BROWSE_LONG_EDGE` pixels on its long side, as a JPEG.
+ */
+export const BROWSE_FETCH_MAX_BYTES = 30_000_000;
+export const BROWSE_LONG_EDGE = 4096;
 export const BROWSE_PREFETCH = 20;
 /** The publisher polls an MTS job after these delays, then every 15 minutes (`imagery.tick` as the safety net). */
 export const PUBLISH_POLL_SECONDS = [60, 120, 300, 900] as const;
@@ -97,6 +104,17 @@ export const imagerySearchResponseSchema = z.strictObject({
 /** `imagery.browse` (admin): the scene's browse image in our bucket, copied from USGS first when missing. */
 export const imageryBrowseRequestSchema = z.strictObject({ cityId: cityIdSchema, entityId: idSchema });
 export const imageryBrowseResponseSchema = z.strictObject({ path: z.string().max(300), contentType: z.enum(['image/jpeg', 'image/png']) });
+
+/**
+ * `imagery.markScene` (admin; the owner's report of 2026-11-13): set a scene aside as not useful, with why (`unusable`), or take
+ * that back (`null`). Marked, it is `rejected`: the whole-city plan and its Buy this scan leave it out, written again at once.
+ */
+export const imageryMarkSceneRequestSchema = z.strictObject({
+    cityId: cityIdSchema,
+    entityId: idSchema,
+    unusable: z.enum(UNUSABLE_REASONS).nullable(),
+});
+export const imageryMarkSceneResponseSchema = z.strictObject({ status: z.enum(['candidate', 'rejected']) });
 
 /**
  * `imagery.import` (admin): import an already-scanned scene; the job, its version and the reserved layer id. `again`: a scene

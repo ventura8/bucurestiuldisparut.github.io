@@ -134,6 +134,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.alreadyImported': spec('already-exists'),
     'apiError.imagery.dailyLimit': spec('resource-exhausted'),
     'apiError.imagery.browseUnavailable': spec('unavailable'),
+    'apiError.imagery.browseTooLarge': spec('failed-precondition'),
+    'apiError.imagery.browseNotImage': spec('unavailable'),
     'apiError.imagery.notTiff': spec('invalid-argument'),
     'apiError.imagery.unreadableRaster': spec('invalid-argument'),
     'apiError.imagery.processingFailed': spec('internal'),

@@ -113,3 +113,22 @@ def test_hints_parse_and_go_stale(tmp_path: Path) -> None:
     assert read_hints(tmp_path, FakeClock()) == HostHints()
     (tmp_path / HINTS_FILE).write_text("{", encoding="utf-8")
     assert read_hints(tmp_path, FakeClock()) == HostHints()
+
+
+def test_a_command_s_message_is_never_a_card_s_name() -> None:
+    """The NUC (2026-11-13): an older starter wrote nvidia-smi's failure, and an empty second row, as two NVIDIA cards."""
+    failure = "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is"
+    raw = {
+        "at": 0,
+        "gpus": [
+            {"vendor": "nvidia", "name": failure + " installed and running.", "vramMb": 0, "via": None},
+            {"vendor": "nvidia", "name": "", "vramMb": 0, "via": None},
+            {"vendor": "nvidia", "name": "two\nlines", "vramMb": 0, "via": None},
+            {"vendor": "nvidia", "vramMb": 0},
+            {"vendor": "nvidia", "name": "GA104M [GeForce RTX 3080 Mobile]", "vramMb": 0, "via": None, "why": "no-driver"},
+            {"vendor": "intel", "name": "Arrow Lake-P [Arc Pro 130T/140T]", "vramMb": 0, "via": "openvino"},
+        ],
+    }
+    hints = parse_hints(raw, 0)
+    assert [gpu.name for gpu in hints.gpus] == ["GA104M [GeForce RTX 3080 Mobile]", "Arrow Lake-P [Arc Pro 130T/140T]"]
+    assert hints.gpus[0].why == "no-driver"

@@ -235,6 +235,7 @@ describe('telemetry: field measurements', () => {
             app: 'viewer',
             window_class: 'expanded',
             release: '1.0.0',
+            app_surface: 'viewer',
             page_location: 'https://site.example.org/bucuresti/',
         });
     });

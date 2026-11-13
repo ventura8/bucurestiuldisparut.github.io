@@ -335,6 +335,8 @@ describe('platform fakes', () => {
         await expect(images.inspect(new TextEncoder().encode('<svg/>'))).resolves.toMatchObject({ contentType: undefined });
         await expect(images.inspect(UNREADABLE_IMAGE)).rejects.toMatchObject({ failure: 'invalid' });
         await expect(images.inspect(fakeImage())).rejects.toMatchObject({ failure: 'invalid' });
+        await expect(images.grey(fakeImage(), 128)).rejects.toMatchObject({ failure: 'invalid' });
+        await expect(images.jpeg(fakeImage(), 4096)).rejects.toMatchObject({ failure: 'invalid' });
     });
 });
 

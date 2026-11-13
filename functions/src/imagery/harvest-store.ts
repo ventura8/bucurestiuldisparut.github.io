@@ -14,6 +14,7 @@ import {
     usgsSceneDocSchema,
     validate,
     type CityDoc,
+    type RankedScene,
     type UsgsDataset,
     type UsgsSceneDoc,
 } from '@hcm/shared';
@@ -22,11 +23,11 @@ import { compact } from '../api/objects.js';
 import type { Ports } from '../ports/index.js';
 import { copyBrowse } from './browse.js';
 import { inBatches } from './harvest-target.js';
-import { IMAGERY_WRITER, stampOf } from './records.js';
+import { IMAGERY_WRITER, pickDefined, stampOf } from './records.js';
 import { browseSourceOf, sceneFields, type SceneFields, type SceneRecord } from './scene-record.js';
 import { rankContextOf, type ShownYear } from './versions.js';
 
-type StoreDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'remote' | 'blobs'>;
+type StoreDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'remote' | 'blobs' | 'images'>;
 
 /** Browse copies made at once by the prefetch. */
 const BROWSE_CONCURRENCY = 5;
@@ -77,23 +78,24 @@ function browseFor(existing: UsgsSceneDoc | undefined, sourceUrl: string | undef
 }
 
 /** A scene's rank against the city's target years and the years its layers show (its own import left out). */
-function rankOf(fields: SceneFields, layerId: string | undefined, world: RankWorld): UsgsSceneDoc['rank'] {
+function rankOf(fields: RankedScene, layerId: string | undefined, world: RankWorld): UsgsSceneDoc['rank'] {
     const others = world.shown.filter((shown) => shown.layerId !== layerId);
     return rankScene(fields, rankContextOf(world.targetYears, others));
 }
 
-type Kept = Pick<UsgsSceneDoc, 'status' | 'createdAt' | 'note' | 'layerId' | 'order' | 'eeDatasetId'>;
+type Kept = Pick<UsgsSceneDoc, 'status' | 'createdAt' | 'note' | 'layerId' | 'order' | 'eeDatasetId' | 'unusable' | 'cloudEstimate'>;
 
 /**
  * What a harvest keeps of a scene it knew: the admin's triage and note, the layer of its import, its creation, and (M4)
- * its order, which only the order callables and the watch write, and the EarthExplorer id an earlier run or order read.
+ * its order, which only the order callables and the watch write, and the EarthExplorer id an earlier run or order read; the
+ * owner's "not useful" and the clouds measured on its browse image (2026-11-13).
  */
 function keptOf(existing: UsgsSceneDoc | undefined, at: UsgsSceneDoc['harvestedAt']): Kept {
     if (existing === undefined) {
         return { status: 'candidate', createdAt: at };
     }
-    const { status, note, layerId, order, eeDatasetId } = existing;
-    return compact<Kept>({ status, note, layerId, order, eeDatasetId, createdAt: existing.createdAt ?? at });
+    const { status, note, layerId, order, eeDatasetId, unusable, cloudEstimate } = existing;
+    return compact<Kept>({ status, note, layerId, order, eeDatasetId, unusable, cloudEstimate, createdAt: existing.createdAt ?? at });
 }
 
 /** The scene's EarthExplorer dataset id: this run's for its dataset, else the one it kept. */
@@ -111,7 +113,7 @@ function sceneDoc(fields: SceneFields, sourceUrl: string | undefined, world: Ran
         ...kept,
         ...eeDatasetIdOf(fields.dataset, kept, world),
         browse: browseFor(existing, sourceUrl, now),
-        rank: rankOf(fields, kept.layerId, world),
+        rank: rankOf({ ...fields, ...pickDefined(kept, ['cloudEstimate']) }, kept.layerId, world),
         harvestedAt: at,
         ...stampOf(IMAGERY_WRITER, now),
     };
@@ -177,7 +179,10 @@ export async function rerankUnseen(deps: StoreDeps, cityId: string, world: RankW
     );
 }
 
-/** The best-ranked frames without a browse copy get one, each on its own (a failure is recorded on the scene). */
+/**
+ * The best-ranked frames without a browse copy get one, each on its own (a failure is recorded on the scene), and its clouds
+ * measured; the plan is written once after them (the run's date plan step).
+ */
 export async function prefetchBrowse(deps: StoreDeps, cityId: string, tally: StoreTally): Promise<void> {
-    await inBatches(tally.browse, BROWSE_CONCURRENCY, (scene) => copyBrowse(deps, cityId, scene).catch(() => undefined));
+    await inBatches(tally.browse, BROWSE_CONCURRENCY, (scene) => copyBrowse(deps, cityId, scene, false).catch(() => undefined));
 }

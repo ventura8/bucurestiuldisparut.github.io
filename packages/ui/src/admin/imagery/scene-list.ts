@@ -18,6 +18,7 @@ import { orderTag } from './orders/order-list.js';
 import { searchParts } from './search-parts.js';
 import { importable, importButton, importRefusal } from './scene-detail.js';
 import { usgsSetupLink } from './scene-refusal.js';
+import { usefulnessTags } from './scene-tags.js';
 import { when } from './when.js';
 
 /** The reasons a row shows (the rest on its page). */
@@ -165,7 +166,7 @@ function sceneTags(locale: Locale, scene: SceneItemPort): TemplateResult {
     return html`<span class="chips">
         <span class="tag" data-tone=${scene.free ? 'good' : 'wait'}>${contentText(locale, free)}</span>
         ${when(scene.status === 'imported', () => html`<span class="tag">${contentText(locale, 'adminContent.imagery.tag.imported')}</span>`)}
-        ${orderTag(locale, scene)}
+        ${orderTag(locale, scene)} ${usefulnessTags(locale, scene)}
     </span>`;
 }
 

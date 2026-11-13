@@ -101,6 +101,8 @@ export const RANK_REASONS = [
     'resolution',
     // M25: a Landsat scene out of the leaf-on months (June to August) {month}.
     'season',
+    // The owner's report of 2026-11-13: the share of the city the browse image shows clouded {percent} (`cloudEstimate`).
+    'cloudCity',
 ] as const;
 
 export type RankReason = (typeof RANK_REASONS)[number];
@@ -109,9 +111,35 @@ export type RankReason = (typeof RANK_REASONS)[number];
  * Bumped when the weights, the parts or the reasons change: the harvest re-ranks every scene of an older version. 2: the
  * reasons that explain a low rank come first, and a city without layers says so (CR-M3-47). 3 (M8): a frame of the same
  * date as one in progress is its join's neighbour, never "a year the city already has". 4 (M25): a Landsat scene's cloud part
- * counts its season.
+ * counts its season. 5: a declassified frame without USGS's cloud cover counts the estimate from its browse image
+ * (`cloudEstimate`), and one probably cloudy over the city loses that share of its score.
  */
-export const RANKING_VERSION = 4;
+export const RANKING_VERSION = 5;
+
+/**
+ * Why the owner set a scene aside as not useful (`unusable.reason`, `adminContent.imagery.unusable.<reason>`): clouds over the
+ * city, a hazy or blurred frame, a frame of the wrong area, or anything else.
+ */
+export const UNUSABLE_REASONS = ['clouds', 'haze', 'area', 'other'] as const;
+
+export type UnusableReason = (typeof UNUSABLE_REASONS)[number];
+
+/**
+ * The share of the city a browse image shows clouded from which a scene is "probably cloudy over the city": its rank loses that
+ * share, its card says so, and Buy this scan warns before anything is paid.
+ */
+export const CLOUDY_CITY_PERCENT = 40;
+
+/** Bumped when the estimate's method changes: a browse copy measured by an older one is measured again when read. */
+export const CLOUD_ESTIMATE_VERSION = 1;
+
+export const cloudEstimateSchema = z.strictObject({
+    /** The share of the city's part of the frame that looks like cloud (bright and flat), 0 to 100. */
+    percent: z.number().int().min(0).max(100),
+    version: z.number().int().min(1),
+});
+
+export type CloudEstimate = z.infer<typeof cloudEstimateSchema>;
 
 /**
  * The weight of each part of the score (they add up to 100; each part is 0 to 1): free first, then how much of the city
@@ -157,6 +185,13 @@ export const usgsSceneDocSchema = z.strictObject({
     downloadAvailable: z.boolean(),
     /** The frame's outline (`spatialCoverage`), at most 64 vertices, open. */
     footprint: z.array(latLngSchema).min(3).max(64),
+    /**
+     * Set aside by the owner (`imagery.markScene`, the server's only): with `status: 'rejected'`, so the whole-city plan and Buy this
+     * scan leave it out and the list hides it under Hide not useful; Undo removes it and makes the scene a candidate again.
+     */
+    unusable: z.strictObject({ reason: z.enum(UNUSABLE_REASONS), at: timestampSchema }).optional(),
+    /** The clouds the browse image shows over the city (`imagery.browse` and the harvest's prefetch measure it): absent until measured. */
+    cloudEstimate: cloudEstimateSchema.optional(),
     /** The four corners from the scene's metadata when M2M lists them; the corner guess falls back to the footprint. */
     corners: cornersSchema.optional(),
     /** Percent; absent when USGS records none (`-1`). */

@@ -278,6 +278,8 @@ each wanted year on its own (§4 of M25).
 | `resolutionM` | `SENSOR_SPECS[sensor].resolutionM` (a metadata resolution, when present, wins) |
 | `coverage` | the share of the city's bounds inside the footprint (the footprint clipped to the bounds, areas in an equal-area approximation: longitudes times the cosine of the bounds' middle latitude) |
 | `browse.sourceUrl` | the first `browse[].browsePath` when it passes `usgsBrowseUrlSchema` (`ims.cr.usgs.gov`, a browse or thumbnail path, no query, no `..`) |
+| `cloudEstimate` | not from the search: `{percent, version}`, the share of the city its browse image shows clouded, measured by `imagery.browse` and the harvest's prefetch (§3.4; the owner's report of 2026-11-13). A harvest keeps it |
+| `unusable` | not from the search: `{reason, at}`, the owner's **Not useful** (`clouds`, `haze`, `area`, `other`), written with `status: 'rejected'` by `imagery.markScene` only (M4 §1.9). A harvest keeps it |
 
 ### 3.3 The ranking
 
@@ -292,12 +294,14 @@ resolution 10) times its part:
 | coverage | `coverage` | `coverage {percent}` (whole percent) |
 | target year | 1 when the year is one of `targetYears`, 0.5 within one year of one, else 0 | `targetYear {year}`, `nearTargetYear {year}` |
 | new year | 0 when a layer (or an unfinished version) has the same year, else the distance in years to the nearest one over 10, at most 1 (1 when the city has none) | `sameYear {year}`, or `newYear {years}` |
-| cloud | unknown 0.5; else `1 − cloudCover / 50`, at least 0 | `cloudUnknown`, or `cloud {percent}` |
+| cloud | USGS's `cloudCover`, else (`RANKING_VERSION` 5) the browse image's `cloudEstimate.percent`, else unknown 0.5; `1 − percent / 50`, at least 0 | `cloud {percent}`, `cloudCity {percent}` (the estimate), or `cloudUnknown` |
 | resolution | `1 − (resolutionM − 1) / 8`, between 0.2 and 1 | `resolution {metres}` (one decimal) |
 
 - `reasons` lists the parts in the order of their weighted contribution, largest first; `needsOrder`, `sameYear` and a
   coverage under 50 % are always listed (they explain a low rank). The screen shows the first three and the rest on
   demand. The list sorts free scenes first, then by `rank.score`, then by `acquisitionDate`.
+- `RANKING_VERSION` 5 (2026-11-13): a frame without USGS's cloud cover whose estimate is `CLOUDY_CITY_PERCENT` (40) or more keeps
+  only its clear share of the score (70 % clouded: 30 % of it), and `cloudCity` is listed first.
 - A change of weights or parts bumps `RANKING_VERSION`; the harvest re-ranks every document of an older version, and the
 - M8 (`RANKING_VERSION` 3): `RankContext.pendingDates` holds the dates of unfinished versions. A scene of such a date scores
   1 for the new year, with the reason `sameDate`, listed first (a card shows three): a frame of a date in progress is a
@@ -309,10 +313,20 @@ resolution 10) times its part:
 The browser never requests a USGS address (the admin's CSP does not allow one, and the e2e firewall fails it):
 
 - `imagery.browse` (admin) `{cityId, entityId}` → `{path, contentType}`: when `browse.state` is not `copied`, it fetches
-  `browse.sourceUrl` through `RemoteFiles.get` (`allowedHosts: ['ims.cr.usgs.gov']`, `BROWSE_MAX_BYTES`, 10 s), checks the
-  JPEG or PNG magic bytes, writes `RASTER_PATHS.browse(dataset, entityId)` (create-only), and records `browse.state`,
-  `path`, `checkedAt`; a failure records `state: 'failed'` with `apiError.imagery.browseUnavailable` and answers that code
-  (retryable: the card's Try again). The admin reads the copy with the Storage SDK (`getBlob` → a `blob:` URL), which is
+  `browse.sourceUrl` through `RemoteFiles.get` (`allowedHosts: ['ims.cr.usgs.gov']`, `BROWSE_FETCH_MAX_BYTES` 30 MB, 30 s), checks
+  the JPEG or PNG magic bytes, stores a file over `BROWSE_MAX_BYTES` (5 MB) shrunk to a JPEG at most `BROWSE_LONG_EDGE` (4,096) px
+  long (`ImageProcessor.jpeg`, sharp; 2026-11-13: USGS's KH-9 panoramic previews are 7 to 13 MB, and every Declass 3 card failed
+  at the old 5 MB cap), writes `RASTER_PATHS.browse(dataset, entityId)` (create-only), and records `browse.state`, `path`,
+  `checkedAt`; a failure records `state: 'failed'` with what failed and answers that code: `browseNotImage` (a web page in place
+  of the picture: try later), `browseTooLarge` (over 30 MB or not shrinkable: trying again will not help, EarthExplorer shows it),
+  else `browseUnavailable` (USGS did not answer: try again in a few minutes).
+- **The cloud estimate** (`functions/src/imagery/cloud-estimate.ts`, `cloud-record.ts`): a scene copied, or read without a
+  `cloudEstimate` of `CLOUD_ESTIMATE_VERSION`, is measured once on a grey copy at most 128 px long (`ImageProcessor.grey`): each
+  pixel placed on the ground between the frame's corners (the metadata's, else the four-vertex footprint from its north-western
+  vertex, else the footprint's box: **UNVERIFIED** orientation for frames without corners), and of those inside the city's bounds
+  the share that is bright (at least 150 and 60 over the frame's median, at most 210) and flat (its 3 × 3 spread under 45); under 24
+  such pixels it stays unmeasured. Stored with the scene's new rank; at 40 % or more the plan is written again (its row's
+  `cloudyFrames`; the harvest writes it once after its prefetch). A failure is logged by code and never fails the copy. The admin reads the copy with the Storage SDK (`getBlob` → a `blob:` URL), which is
   also the admin map's image source for the footprint preview (§10.2).
 - A copy is stored as USGS made it: up to 37,440 x 1,920 px, and our functions carry no image library to shrink one. Pages never show
   it as it is, as an `<img>` of it holds 288 MB of pixels per row and 24 rows froze the tab (2026-11-07). `PicturePort` (`packages/admin/src/imagery/pictures.ts`):
@@ -909,7 +923,8 @@ implementation, `maxInstances` 3, as `fn-admin@`; the schemas are done (`package
 | Callable | App Check | Request → response | Errors |
 | --- | --- | --- | --- |
 | `imagery.search` | enforce | `imagerySearchRequestSchema` → `imagerySearchResponseSchema` | `usgs.notConfigured`, `usgs.credentials`, `usgs.maintenance`, `usgs.unavailable`, `rateLimited`, `notFound` (city) |
-| `imagery.browse` | enforce | `{cityId, entityId}` → `{path, contentType}` | `notFound`, `imagery.browseUnavailable` |
+| `imagery.browse` | enforce | `{cityId, entityId}` → `{path, contentType}` | `notFound`, `imagery.browseUnavailable`, `imagery.browseNotImage`, `imagery.browseTooLarge` |
+| `imagery.markScene` | enforce | `{cityId, entityId, unusable: 'clouds' \| 'haze' \| 'area' \| 'other' \| null}` → `{status}` (M4 §1.9) | `notFound`, `imagery.alreadyImported`, `city.notEditor` |
 | `imagery.import` | enforce | `{cityId, entityId}` → `{jobId, versionId, layerId}` | `notFound`, `usgs.notConfigured`, `usgs.accessPending`, `imagery.notScanned`, `imagery.alreadyImported`, `imagery.dailyLimit`, `guardPaused` |
 | `imagery.approve` | enforce | `{cityId, versionId}` → `{state, jobId}` | `notFound`, `imagery.versionState` |
 | `imagery.reject` | enforce | `{cityId, versionId}` → `{state: 'rejected'}` | `notFound`, `imagery.versionState` |
@@ -970,7 +985,7 @@ until fn-imagery wires them (done: `Omit<Ports, 'jobs' | 'tilesets' | 'scenes' |
 | Address | Shows | Chunk (budget, gzip) |
 | --- | --- | --- |
 | `#/imagery` | the Imagery area: Find (ranked results, map, filters), In progress, Needs you (awaiting approval, points, a choice), Upload | `imagery` (30 KB) |
-| `#/imagery/scene/<entityId>` | a scene: browse image, metadata, reasons, Import | `imagery` |
+| `#/imagery/scene/<entityId>` | a scene: browse image, the cloudy warning, metadata, reasons, Import, Not useful (M4 §1.9) | `imagery`, its page's own parts in `scene-unusable` (2 KB, fetched when the page opens; DECISIONS §201g) |
 | `#/imagery/version/<versionId>` | a version: live progress, the approval card, the guard's choices, the error with Retry or Open georeferencer | `imagery` |
 | Find, a version, a scene (M8; no new route) | the whole-city dates, the offer to join, a join's frames and report | `join-card` (3 KB, fetched when the city has a plan or a join opens); Upload moved to `upload-panel` (2 KB) |
 | `#/georef/<versionId>` | the georeferencer | `georef` (30 KB) |

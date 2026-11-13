@@ -42,7 +42,10 @@ import { requireCity } from './records.js';
 import { requireUsgs, withUsgs } from './usgs-session.js';
 import { shownYears } from './versions.js';
 
-export type HarvestDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'secrets' | 'usgs' | 'scenes' | 'setup' | 'remote' | 'blobs'>;
+export type HarvestDeps = Pick<
+    Ports,
+    'documents' | 'clock' | 'log' | 'secrets' | 'usgs' | 'scenes' | 'setup' | 'remote' | 'blobs' | 'images'
+>;
 
 /** Every page's request is over by then (the rest of the run stores what was found). */
 const PAGES_BUDGET_MS = 360_000;
