@@ -114,7 +114,8 @@ def _correlate_at(tile: np.ndarray, overview: np.ndarray, holes: np.ndarray, con
         return None
     scores = cv2.matchTemplate(overview, template, cv2.TM_CCOEFF_NORMED)
     scores = np.where(_hole_share(holes, size, scores.shape) >= HOLE_SHARE, scores, -1.0)
-    _low, score, _where, best = cv2.minMaxLoc(scores)
+    _low, score, _where, peak = cv2.minMaxLoc(scores)
+    best = (int(peak[0]), int(peak[1]))
     if score < MIN_SCORE:
         return None
     margin = _margin(scores, best, size)
@@ -166,9 +167,13 @@ def refit_in_holes(tiles: Sequence[tuple[str, np.ndarray]], fits: Sequence[TileF
     if consensus is None:
         return result
     shapes = [tile.shape for _name, tile in tiles]
-    for index in [index for index, fit in enumerate(fits) if fit is None]:
+    for index in _left_out(fits):
         result[index] = _in_holes(tiles[index][1], overview, coverage(shapes, result, overview.shape[:2]) == 0, consensus)
     return result
+
+
+def _left_out(fits: Sequence[TileFit | None]) -> list[int]:
+    return [index for index, fit in enumerate(fits) if fit is None]
 
 
 def _in_holes(tile: np.ndarray, overview: np.ndarray, uncovered: np.ndarray, consensus: tuple[float, float]) -> TileFit | None:
