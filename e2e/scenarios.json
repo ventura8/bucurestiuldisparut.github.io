@@ -14396,6 +14396,17 @@
             "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/specs/viewer/unplaced.spec.ts, e2e/tour/viewer.tour.ts, packages/ui/test/viewer/hcm-unplaced-gallery.test.ts."
         },
         {
+            "id": "S-V40-BAD-SUGGEST-SMALL-TARGET",
+            "behaviour": "V40",
+            "area": "viewer",
+            "path": "bad",
+            "title": "I know where is a full touch target, not the height of its text",
+            "asserts": "the gallery of photos with no place at 768 x 1024 and every tour viewport -> the tour's target-size check finds I know where at least 48 px tall (it was 19 px)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "2026-11-13, the tour at tour-m768. Test: e2e/tour/viewer.tour.ts (Photos with no place yet)."
+        },
+        {
             "id": "S-V40-HAPPY-MANIFEST",
             "behaviour": "V40",
             "area": "viewer",
@@ -15945,6 +15956,17 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Test: e2e/tour/viewer.tour.ts (e2e/tour/story-states.ts)."
+        },
+        {
+            "id": "S-V50-BAD-TEXT-SPACING-ALL-STORIES",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "bad",
+            "title": "With a reader's text spacing a docked story scrolls to its end",
+            "asserts": "a story in the docked pane at 1024 x 768 with WCAG 1.4.12 text spacing -> All stories is reachable, not cut off by the pane",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "2026-11-13, the tour at tour-e1024: the stories sheet's wrapper grew past the pane. Test: e2e/tour/viewer.tour.ts (Stories)."
         },
         {
             "id": "S-V50-BAD-UNKNOWN",
@@ -18321,6 +18343,17 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/tour/viewer.tour.ts (e2e/tour/photo-version-states.ts)."
+        },
+        {
+            "id": "S-V61-BAD-ZOOMED-TAB-ORDER",
+            "behaviour": "V61",
+            "area": "viewer",
+            "path": "bad",
+            "title": "In the zoomed full-size view at 320 px Tab never climbs back up a column",
+            "asserts": "the full-size view with versions, zoomed in, at 320 px -> the Tab round from Zoom in through Next to Close follows the visual order (the arrows' row clears Close's column)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "2026-11-13, the tour at tour-c320. Test: e2e/tour/viewer.tour.ts (A photo's versions)."
         },
         {
             "id": "S-A140-HAPPY",

@@ -166,10 +166,12 @@ export const viewerStyles = [
         /*
          * The photo list's wrapper draws no box (as the other sheets' hosts): docked, its sheet is as tall as the pane and
          * its body scrolls. As a block it grew with the list past the pane, which hides its overflow, so the photos
-         * below the fold were out of reach (the tour, from expanded up).
+         * below the fold were out of reach (the tour, from expanded up). The stories' wrapper did the same: with a reader's
+         * text spacing a story grew past the 1024 x 768 pane and "All stories" was cut off at its foot (the tour, e1024).
          */
         .photos-sheet,
-        .unplaced-sheet {
+        .unplaced-sheet,
+        .stories-sheet {
             display: contents;
         }
 

@@ -90,7 +90,16 @@ test(
 
 test(
     "A photo's versions in its sheet and in the full-size view, zoomed in",
-    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V61-HAPPY-TOUR'] },
+    {
+        tag: [
+            '@S-V15-HAPPY',
+            '@S-V15-BAD-TEXT-SPACING',
+            '@S-V15-BAD-REFLOW-320',
+            '@S-V14-HAPPY-EVERY-STATE',
+            '@S-V61-HAPPY-TOUR',
+            '@S-V61-BAD-ZOOMED-TAB-ORDER',
+        ],
+    },
     async ({ page, context, lang }) => {
         await expectJourneySound({ page, context, lang }, journey('photo-versions'));
     },
@@ -130,7 +139,16 @@ test(
 
 test(
     'Photos with no place yet, and the Contribute link',
-    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V40-HAPPY-GALLERY'] },
+    {
+        tag: [
+            '@S-V15-HAPPY',
+            '@S-V15-BAD-TEXT-SPACING',
+            '@S-V15-BAD-REFLOW-320',
+            '@S-V14-HAPPY-EVERY-STATE',
+            '@S-V40-HAPPY-GALLERY',
+            '@S-V40-BAD-SUGGEST-SMALL-TARGET',
+        ],
+    },
     async ({ page, context, lang }) => {
         await expectJourneySound({ page, context, lang }, journey('unplaced'));
     },
@@ -138,7 +156,16 @@ test(
 
 test(
     'Stories: the list and one story',
-    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V50-HAPPY-PHONE'] },
+    {
+        tag: [
+            '@S-V15-HAPPY',
+            '@S-V15-BAD-TEXT-SPACING',
+            '@S-V15-BAD-REFLOW-320',
+            '@S-V14-HAPPY-EVERY-STATE',
+            '@S-V50-HAPPY-PHONE',
+            '@S-V50-BAD-TEXT-SPACING-ALL-STORIES',
+        ],
+    },
     async ({ page, context, lang }) => {
         await expectJourneySound({ page, context, lang }, journey('stories'));
     },

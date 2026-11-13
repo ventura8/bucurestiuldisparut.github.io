@@ -57,6 +57,17 @@ export class HcmUnplacedGallery extends LitElement {
             .date {
                 color: var(--md-sys-color-on-surface-variant);
             }
+
+            /*
+             * "I know where" stands alone on its line, so it is a target of its own: 48 px tall like the sheet's lone links
+             * (detailStyles' .link > a). The tour at m768 found it 19 px tall, the height of its text.
+             */
+            li > a {
+                display: inline-flex;
+                align-items: center;
+                align-self: flex-start;
+                min-block-size: 48px;
+            }
         `,
     ];
 
