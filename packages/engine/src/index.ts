@@ -21,6 +21,7 @@ import {
     type HistoricCityMapController,
     type MountEnvironment,
 } from './mount.js';
+import { setExtrasBase } from './extras/runtime.js';
 
 export type { HistoricCityMapController } from './mount.js';
 
@@ -32,6 +33,7 @@ export const MAPBOX_GL_VERSION = '3.34.1';
 
 /** The folder of this script (read now: the IIFE build only knows it while the script runs). */
 const ENGINE_BASE = engineBaseOf((import.meta as Partial<ImportMeta>).url, globalThis);
+setExtrasBase(ENGINE_BASE);
 
 /** The page's environment, made when a viewer mounts (never at import: the node tests import this file). */
 function pageEnvironment(): MountEnvironment {

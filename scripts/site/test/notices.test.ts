@@ -160,6 +160,20 @@ describe('thirdPartyNoticesPlugin: the bundled packages', () => {
     });
 });
 
+describe('thirdPartyNoticesPlugin: the engine extras', () => {
+    it('happyPath_modulesBuiltApartAreListedAsTheBundlesAre', () => {
+        const root = tree({
+            'node_modules/web-vitals/package.json': manifest('web-vitals', '6.2.3', { license: 'Apache-2.0' }),
+            'node_modules/web-vitals/LICENSE': 'Apache text',
+        });
+        const extraModules = [join(root, 'node_modules/web-vitals/dist/web-vitals.attribution.js'), join(root, 'src/own.ts')];
+
+        const text = lastText(run({ product: 'x', from: root, moreModules: () => extraModules }, {}));
+
+        expect(headers(text).slice(0, 3)).toEqual(['Package: web-vitals', 'Version: 6.2.3', 'Licence: Apache-2.0']);
+    });
+});
+
 describe('thirdPartyNoticesPlugin: packages without a licence file', () => {
     it('happyPath_aPackageWithoutALicenceFileGetsItsCopyrightLinesAndTheStandardText', () => {
         const root = tree({

@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 156 | 1598 | 659 | 939 | 1596 | 2 | 411 |
+| 157 | 1601 | 661 | 940 | 1599 | 2 | 412 |
 
 ## Viewer
 
@@ -296,6 +296,9 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V62-BAD-ESC-EDGE` | V62 | bad | Esc closes the menu; near the edge it stays inside the map | a right click 4 px from the right edge -> the menu lies inside the map; Esc -> no menu | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
 | `S-V62-BAD-LONE-LINKS-SMALL` | V62 | bad | A photo's sheet keeps its lone links, Street View and Suggest a correction, 48 px tall | a photo with a bearing and a manifest with contributeUrl -> the sheet's Street View and Suggest a correction links are visible and at least 48 px tall | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
 | `S-V62-BAD-SHORT-TAP` | V62 | bad | A short tap on the map lets the browser select again once the finger lifts, and opens no menu | a touch pointer down and up at once -> no menu; selectstart is no longer cancelled | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
+| `S-V63-HAPPY-EXTRAS-CONSENT-AND-PAD` | V63 | happy | The IIFE fetches the analytics extras only after the consent and the gamepad extra only with a pad, each once | a page with engine.iife.js and a city with GA4 requests no extra-*.js before an answer; after Accept it requests extra-firebase-sdk-<hash>.js and extra-field-sdk-<hash>.js once each, as head scripts with integrity sha384-… and crossorigin anonymous, and GA4 receives viewer_timing; a connected pad adds extra-gamepad-<hash>.js once the same way and the toast 'gamepad.ready' shows | e2e-viewer | exists | `e2e/specs/viewer/extras.spec.ts` |
+| `S-V63-HAPPY-EXTRAS-ON-DEMAND` | V63 | happy | The IIFE fetches swipe compare only at the first Compare, once, as a script with its integrity | a page with engine.iife.js mounts the viewer and requests no extra-*.js; openCompare(null) adds one head script extra-compare-<hash>.js with integrity sha384-… and crossorigin anonymous, the compare bar shows and the second map is created (2 made, 0 removed); closing and comparing again requests nothing more | e2e-viewer | exists | `e2e/specs/viewer/extras.spec.ts` |
+| `S-V63-BAD-EXTRAS-CHUNK-FAILS` | V63 | bad | An extra that does not arrive closes compare with a message to try again, and the next Compare fetches it afresh | extra-compare-<hash>.js refused -> a toast 'error.extraLoad', no compare bar, no extra script left in head, one map only and the map still shown; once the file is served again, Compare requests it a second time and opens with the second map | e2e-viewer | exists | `e2e/specs/viewer/extras.spec.ts` |
 
 ## Admin
 
