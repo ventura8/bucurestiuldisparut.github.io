@@ -4,6 +4,7 @@
  * one job the worker claimed: its city, its version, its layer and its parameters.
  */
 import {
+    ARCHIVE_COPY_FILE,
     FIRESTORE_PATHS,
     RASTER_PATHS,
     VERSION_FILES,
@@ -204,6 +205,8 @@ export function isCityVersions(scope: JobScope, collection: string): boolean {
 /** The objects of a version's run: the version's folder, its layer, and the inputs its parameters name. */
 export interface ObjectScope {
     readonly cityId: string;
+    /** The job (M20: an archive series reads its sheets' copy from the job's own folder of `tmp/archive-copies/`). */
+    readonly jobId: string;
     readonly layerId: string;
     readonly versionId: string;
     readonly job: JobDoc;
@@ -249,9 +252,16 @@ function isCityAlignImage({ cityId }: ObjectScope, path: string): boolean {
     return city === cityId && isId(layer) && isId(version);
 }
 
-/** True when the run may read `path`: a file of its version, one of its inputs, or a frame's image of its city (M15). */
+/** M20 (2026-11-13): one file of the copy of an archive series' sheets that its job reads (`RASTER_PATHS.archiveCopy`). */
+function isOwnArchiveCopy({ cityId, jobId, job }: ObjectScope, path: string): boolean {
+    const folder = `tmp/archive-copies/${cityId}/${jobId}/`;
+    return job.type === 'archive-series' && path.startsWith(folder) && ARCHIVE_COPY_FILE.test(path.slice(folder.length));
+}
+
+/** True when the run may read `path`: a file of its version, one of its inputs, a frame's image of its city (M15), its archive copy. */
 export function mayRead(scope: ObjectScope, path: string): boolean {
-    return inVersionFolder(scope, path) || inputsOf(scope).includes(path) || isInputScan(scope, path) || isCityAlignImage(scope, path);
+    const inputs = inputsOf(scope).includes(path) || isInputScan(scope, path);
+    return inVersionFolder(scope, path) || inputs || isCityAlignImage(scope, path) || isOwnArchiveCopy(scope, path);
 }
 
 /** True when the run may write `path`: one of its version's files (`VERSION_FILES`), nothing else. */

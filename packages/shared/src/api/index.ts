@@ -353,7 +353,10 @@ export type {
 } from './registry.js';
 // M7: the local worker's callables, and the whole table (the functions' and the tests'; the admin reads ADMIN_CALLABLES).
 export {
+    ARCHIVE_COPY_MAX_BYTES,
     WORKER_CALLABLES,
+    workerArchiveCopyRequestSchema,
+    workerArchiveCopyResponseSchema,
     workerClaimRequestSchema,
     workerClaimResponseSchema,
     workerEndRequestSchema,

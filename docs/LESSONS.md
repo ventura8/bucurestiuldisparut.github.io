@@ -3847,3 +3847,12 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: another file in the same worker had loaded the colour library, and the module's state is shared by every test of that worker.
     - Fix and pin: the test takes a fresh copy (`vi.resetModules()` and a dynamic `import`) before asserting the unloaded state.
     - **A test of a module's initial state imports a fresh copy; never trust module state left by whoever ran before.**
+
+655. **A second worker failed every archive series it took: the scanned maps were on another computer.**
+    - Seen: live, 2026-11-13: after the NUC and the PC joined the laptop, five archive series failed at `gather` with "no record of
+      ar-971b77774eee2871 on this computer", and an atlas used up its attempts on the same cause.
+    - Found by: the owner's Jobs page; every test ran one worker, which always held the archive it imported.
+    - Fix and pin: a worker without the sheets hands the job back unspent and the computer with the archive sends a copy through the
+      bucket (M20 §20; `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/test_archive_copy.py`).
+    - **Data that lives on one machine needs a test with two workers: one that has it and one that does not.**
+

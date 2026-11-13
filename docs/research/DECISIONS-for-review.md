@@ -6934,3 +6934,21 @@ The owner: "make sure we have analytics through the app and especially in the wi
 - **200g Budgets**: the field guard caps `step_action` at 60 and `ui_error` at 30 a page; the hub batches (2 s, or at once on hide); no new request on the viewer's critical path (the events wait for the consented lazy chunk); the engine got only `settle.ts`, `viewer-analytics.ts` and the privacy check (no engine budget raised: IIFE 108.5 KB, ES 105.9 KB gzip). In the admin the wizards' snapshots and the shared `trackFunnel` would have taken `archive`, `imagery`, `worker` and `editor-shared` 0.1 KB over their budgets each: they are a `funnels` chunk of their own (`packages/admin/vite.config.ts`) with a new row of 2 KB in `scripts/ci/check_bundle_budget.py`; no existing row was raised.
 - **200h Lines kept within the limits**: the shared index's field-events types became `export type *` (no runtime cost), the engine store's zoom and window size moved to `compass.ts` and `window-size.ts`, the admin's telemetry wiring to `telemetry-wiring.ts`.
 - **Verify**: S-A150-HAPPY-FUNNEL-ORDER, S-A150-BAD-NO-EVENTS-BEFORE-CONSENT, S-A150-BAD-STEP-ERROR-CODE-NOT-TEXT, S-A151-HAPPY-STATISTICS, S-A151-BAD-NO-ANALYTICS, S-V70-HAPPY-KEY-ACTIONS, S-V70-BAD-NO-EVENTS-BEFORE-CONSENT, S-V70-BAD-YEAR-DRAG-ONE-EVENT.
+- **Verify**: S-V67-HAPPY-PILL-ON-PHONE, S-V67-HAPPY-PILL-LANDSCAPE, S-V67-BAD-ESC-AND-LARGE-WINDOW, S-V67-HAPPY-TOUR, S-V68-HAPPY-PICK-DATE, S-V68-BAD-ESC-CHANGES-NOTHING, S-V68-BAD-SINGLE-DATE, S-V68-HAPPY-TOUR.
+
+## 202. Any computer runs an archive series: the hand-back and the copy through the bucket (live report of 2026-11-13) — APPLIED, step 1
+
+- **Seen**: the NUC (w-12a21a1738d6b1ed) and the PC's WSL (w-438aea84a5181070) joined the laptop (w-c9cc212966de0cb3) for Bucharest; five
+  series of `ar-971b77774eee2871` failed at `gather` with `apiError.imagery.archiveMissing` and the Borroczyn atlas spent its attempts.
+- **202a Every worker claims every job.** The owner rejected pinning an archive's jobs to the computer that imported it.
+- **202b A worker without the series' sheets hands the job back without spending an attempt** (`worker.end` `returned`: the attempt
+  the claim counted is given back, `waitReason: 'archive-copy'`). The computer the archive came from, and the fifth return, fail it
+  with `archiveMissing` instead (no loop).
+- **202c The copy goes through the private bucket** (`tmp/archive-copies/{city}/{job}/`, the existing one-day lifecycle of `tmp/`):
+  only the series' sheets, each by its SHA-256 and checked on arrival, sent by the computer that holds the archive whole when its
+  claim is answered `copy`; the new callable `worker.archiveCopy` signs it while the job waits for it, never with the guard red,
+  at most 8 GiB, and logs the bytes. A copied archive is recorded `partial` on the receiving computer and never offered as a source.
+- **202d Step 2** (pending): the copy over the home network (a separate LAN endpoint off unless the city has two paired workers, a
+  short-lived read-only token from a callable, archive files only), and pre-seeding under the governor; the bucket stays the fallback.
+- **Verify**: S-A120-HAPPY-ARCHIVE-COPY, S-A120-BAD-ARCHIVE-COPY, S-P20-HAPPY-ARCHIVE-COPY, S-P20-BAD-ARCHIVE-COPY.
+

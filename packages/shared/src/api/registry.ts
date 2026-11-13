@@ -346,6 +346,7 @@ export const WORKER_CALLABLE_NAMES = [
     'worker.urls',
     'worker.end',
     'worker.archiveReport',
+    'worker.archiveCopy',
     'worker.pair',
     'worker.image',
 ] as const;

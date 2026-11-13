@@ -848,3 +848,13 @@ origin the owner downloaded the first file from; a file whose hash or version is
 The file still holds no secret, and the update never runs a downloaded file before it is checked.
 
 Scenarios `S-A142-HAPPY-VERSIONS`, `S-A142-BAD-OLD-STARTER`, `S-A142-HAPPY-SELF-UPDATE`, `S-A142-BAD-SELF-UPDATE`.
+
+## Addendum of 2026-11-13: several workers and a local archive (M20 §20)
+
+Every worker claims every job type again; an archive series' sheets, which exist on the computer that imported them, reach another
+worker as a copy through the private bucket (`tmp/archive-copies/{city}/{job}/`, deleted after a day). Two contract changes:
+`worker.claim` takes `archives` (the archives this computer holds whole) and may answer `copy` (a series to send before any job), and
+`worker.end` takes `outcome: 'returned'` (no sheets and no copy: the job goes back queued, its attempt given back, waiting
+`archive-copy`). The new callable `worker.archiveCopy` signs the copy's files for the holder and marks the copy done. A job waiting
+`archive-copy` is claimed by nobody until its copy is done. `RoutedObjectStore` reads `tmp/archive-copies/` through `worker.urls`,
+whose allow-list adds the job's own copy folder (`isOwnArchiveCopy`).
