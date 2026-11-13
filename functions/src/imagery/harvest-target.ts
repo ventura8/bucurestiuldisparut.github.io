@@ -16,7 +16,7 @@ export const MAX_SCENES_PER_DATASET = 500;
  */
 export const SEARCH_BUDGET_MS = 360_000;
 /** Target years searched at once. */
-export const YEAR_CONCURRENCY = 2;
+const YEAR_CONCURRENCY = 2;
 
 /** `work` over `items`, `size` at a time, in order. */
 export async function inBatches<T>(items: readonly T[], size: number, work: (item: T) => Promise<unknown>): Promise<void> {
