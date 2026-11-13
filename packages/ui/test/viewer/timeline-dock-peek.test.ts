@@ -59,6 +59,10 @@ describe('<hcm-map-viewer>: the peek of a year of several dates (V13)', () => {
         expect(menu).not.toBeNull();
         expect(menu?.shadowRoot?.querySelector('.scrim')).toBeNull();
         expect(part(mounted, '.frame').inert).toBe(false);
+        const box = mounted.element.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        const deep = hit?.shadowRoot?.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        expect(deep?.localName, 'the map under the peek takes the pointer').not.toBe('hcm-date-menu');
         expect(mounted.store.callsOf('setYear')).toEqual([]);
         expect(mounted.store.callsOf('pickLayer')).toEqual([]);
     });
