@@ -8,14 +8,14 @@
  * its own (a landscape phone), and a label wider than its item wraps inside it (a long translation, or a reader's wider
  * text spacing, WCAG 1.4.12) instead of leaving the rail.
  */
-import { DEFAULT_LOCALE, INBOX_BADGE_MAX, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, INBOX_BADGE_MAX, type UiLocale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
 import { visuallyHidden } from '../../components/styles.js';
 import type { AdminDestinationPort, AdminRouteIdPort } from '../admin-port.js';
 import { adminBase } from './admin-styles.js';
 import { EMPTY } from './empty.js';
-import { contentText, shellText } from './text.js';
+import { contentText, shellLanguage, shellText } from './text.js';
 
 /** M4: the unread count as the badge shows it (`99+` above `INBOX_BADGE_MAX`), or null for none. */
 export function badgeText(unread: number | null): string | null {
@@ -211,7 +211,7 @@ export class HcmAdminNav extends LitElement {
     declare destinations: readonly AdminDestinationPort[];
     declare current: AdminRouteIdPort;
     declare variant: AdminNavVariant;
-    declare locale: Locale;
+    declare locale: UiLocale;
     declare moreOpen: boolean;
     /** M4: the signed-in admin's unread notifications, shown on the Notifications item (null: unknown or none). */
     declare unread: number | null;
@@ -246,7 +246,9 @@ export class HcmAdminNav extends LitElement {
         };
         return html`<a class="item" href=${['#', destination.id].join('/')} aria-current=${current ? 'page' : 'false'} @click=${close}>
             <span class="indicator"><hcm-icon name=${destination.icon} ?filled=${current}></hcm-icon></span>
-            <span class="label">${shellText(this.locale, `adminShell.nav.${destination.id}`)}</span>
+            <span class="label" lang=${shellLanguage(this.locale, `adminShell.nav.${destination.id}`)}
+                >${shellText(this.locale, `adminShell.nav.${destination.id}`)}</span
+            >
             ${destination.id === 'inbox' ? this.#badge() : EMPTY}
         </a>`;
     }

@@ -54,6 +54,7 @@ function seen(changes: Partial<NonNullable<WorkerViewPort['worker']>> = {}): Non
         outdated: false,
         revoked: false,
         ai: null,
+        paused: null,
         ...changes,
     };
 }
@@ -76,6 +77,8 @@ class FakeFeed implements WorkerFeedPort {
             this.calls.push('retry');
         },
         disconnect: (): Promise<boolean> => this.#record('disconnect'),
+        pauseJob: (action: string): Promise<boolean> => this.#record(`pauseJob ${action}`),
+        pauseComputer: (length: string | null): Promise<boolean> => this.#record(`pauseComputer ${String(length)}`),
         local: (project: string): Promise<FakeLocal> => {
             this.calls.push(`local ${project}`);
             if (this.localFails) {
@@ -328,7 +331,8 @@ describe('<hcm-worker-panel>: findings 66-68 of 2026-11-02', () => {
 
     it('happyPath_aConnectedWorkersJobShowsItsStepAndProgressAndDisconnectAsksTheFeed', async () => {
         const worker = seen({ state: 'busy', jobId: 'j7' });
-        const job = { id: 'j7', status: 'running', runOn: 'local', waitReason: null, estimate: { vcpuSeconds: 0, gibSeconds: 0 } } as const;
+        const estimate = { vcpuSeconds: 0, gibSeconds: 0 };
+        const job = { id: 'j7', status: 'running', runOn: 'local', waitReason: null, estimate, paused: null } as const;
         const host = new FakeHost(view({ connected: true, worker, job: { ...job, step: 'georef', progress: 0.4, overdue: false } }));
         const element = await panel(host);
 
@@ -431,6 +435,7 @@ describe('<hcm-run-place>', () => {
             step: null,
             progress: null,
             overdue: false,
+            paused: null,
             ...changes,
         };
     }

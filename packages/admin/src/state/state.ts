@@ -2,7 +2,7 @@
  * The admin's state (`docs/research/M2b-interfaces.md` §1.7): one immutable object the shell renders, replaced on every
  * change (`store.ts`). `setup` is the Setup Assistant's own part (setup-ui), opaque to the shell.
  */
-import type { AdminContentKey, AdminSetupKey, AdminShellKey, ApiErrorCode, CityRole, Locale, ThemeTokens } from '@hcm/shared';
+import type { AdminContentKey, AdminSetupKey, AdminShellKey, ApiErrorCode, CityRole, UiLocale, ThemeTokens } from '@hcm/shared';
 
 import type { AdminAuthState, AdminMode } from '../auth/auth-state.js';
 import type { ContributorWelcome } from '../app/welcome.js';
@@ -85,7 +85,7 @@ export interface AdminState<Setup = unknown> {
     readonly route: AdminRoute;
     /** The navigation's destinations, in order (Setup only in start-up mode). */
     readonly destinations: readonly AdminDestination[];
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly theme: AdminThemeState;
     readonly consent: ConsentState;
     /** A GA4 measurement id exists, so the consent banner may ask. */

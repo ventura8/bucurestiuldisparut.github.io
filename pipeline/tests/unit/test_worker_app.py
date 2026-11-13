@@ -145,6 +145,7 @@ class App:
         self.paired: list[object] = []
         self.pair_refusal: str | None = None
         self.profiles: list[tuple[object, object]] = []
+        self.pauses: list[Mapping[str, object]] = []
         self.removals = 0
         self.remove_refusal: str | None = None
 
@@ -168,6 +169,10 @@ class App:
     def profile(self, chosen: object, battery_allowed: object) -> bool:
         self.profiles.append((chosen, battery_allowed))
         return chosen in {"auto", "quiet", "full"}
+
+    def pause(self, body: Mapping[str, object]) -> bool:
+        self.pauses.append(body)
+        return body.get("action") in {"pause", "resume"}
 
     def remove(self) -> str | None:
         self.removals += 1

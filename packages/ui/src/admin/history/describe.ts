@@ -4,12 +4,12 @@
  * and position count, an opacity or an image adjustment as a percentage, a theme as its seed colour, a place as its
  * coordinates, a list as its length, a timestamp as a date. Anything else is its JSON, cut to 200 characters.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 
 import { contentText } from '../shell/text.js';
 import { formatWhen } from '../editing/states.js';
 
-type Describer = (locale: Locale, field: string, value: unknown) => string | null;
+type Describer = (locale: UiLocale, field: string, value: unknown) => string | null;
 
 const MAX_TEXT = 200;
 
@@ -30,7 +30,7 @@ function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function percent(locale: Locale, share: number): string {
+function percent(locale: UiLocale, share: number): string {
     return new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 }).format(share);
 }
 
@@ -137,7 +137,7 @@ const DESCRIBERS: readonly Describer[] = [
 ];
 
 /** The value of `field`, as text in `locale`. */
-export function describeValue(locale: Locale, field: string, value: unknown): string {
+export function describeValue(locale: UiLocale, field: string, value: unknown): string {
     for (const describe of DESCRIBERS) {
         const described = describe(locale, field, value);
         if (described !== null) {

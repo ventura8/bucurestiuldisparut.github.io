@@ -67,10 +67,12 @@ class Runtime:
         self.before = before
         self.jobs: list[str] = []
         self.asked_to_stop: Callable[[], bool] = lambda: False
+        self.asked_to_release: Callable[[], bool] = lambda: False
 
-    def run(self, job_id: str, asked_to_stop: Callable[[], bool]) -> RunOutcome:
+    def run(self, job_id: str, asked_to_stop: Callable[[], bool], asked_to_release: Callable[[], bool]) -> RunOutcome:
         self.jobs.append(job_id)
         self.asked_to_stop = asked_to_stop
+        self.asked_to_release = asked_to_release
         self.before()
         if isinstance(self.ending, Exception):
             raise self.ending

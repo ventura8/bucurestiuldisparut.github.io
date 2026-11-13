@@ -5,7 +5,7 @@
  * layers by date (`<hcm-date-menu>`); picking one brings it to the front (the store's `pickLayer`, V15's mechanism). The
  * stops, the badge's template and the picker's items are here; the timeline and the viewer only call them.
  */
-import { translate, type Layer, type Locale } from '@hcm/shared';
+import { localized, translate, type Layer, type ViewerLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
@@ -51,7 +51,7 @@ export function dateBadge(year: TimelineStop, count: number): TemplateResult {
 }
 
 /** The slider's value text: the year, and on a year with several dates how many and that Enter lists them. */
-export function datesValueText(locale: Locale, yearText: string, count: number): string {
+export function datesValueText(locale: ViewerLocale, yearText: string, count: number): string {
     return count < 2 ? yearText : `${yearText}, ${translate(locale, 'timeline.datesHint', { count: String(count) })}`;
 }
 
@@ -63,7 +63,7 @@ export interface DateItem {
 }
 
 /** A layer's date in the visitor's language (`12 aprilie 1966`), else its year; the date is `YYYY`, `YYYY-MM` or `YYYY-MM-DD`. */
-export function dateText(layer: Pick<Layer, 'year' | 'date'>, locale: Locale): string {
+export function dateText(layer: Pick<Layer, 'year' | 'date'>, locale: ViewerLocale): string {
     const [, month, day] = (layer.date ?? '').split('-').map(Number);
     if (month === undefined) {
         return String(layer.year);
@@ -79,13 +79,13 @@ export function dateText(layer: Pick<Layer, 'year' | 'date'>, locale: Locale): s
 export function dateItems(
     layers: readonly Pick<Layer, 'id' | 'year' | 'date' | 'label'>[],
     year: number,
-    locale: Locale,
+    locale: ViewerLocale,
 ): readonly DateItem[] {
     return layers
         .filter((layer) => layer.year === year)
         .map((layer, at) => ({ layer, at, key: layer.date ?? '￿' }))
         .sort((a, b) => a.key.localeCompare(b.key) || a.at - b.at)
-        .map(({ layer }) => ({ id: layer.id, date: dateText(layer, locale), label: layer.label[locale] }));
+        .map(({ layer }) => ({ id: layer.id, date: dateText(layer, locale), label: localized(layer.label, locale) }));
 }
 
 /**

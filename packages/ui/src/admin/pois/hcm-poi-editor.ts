@@ -7,7 +7,7 @@
  * writes: Save and the actions are off, the fields read-only. Fires `hcm-delete`, `hcm-redraw` with `{shape}`,
  * `hcm-history` and `hcm-pick-photos`; everything else goes to the area's intents.
  */
-import type { CityRole, AdminContentKey, LngLat, Locale } from '@hcm/shared';
+import type { CityRole, AdminContentKey, LngLat, UiLocale } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
 
 import { defineOnce, emit } from '../../components/internal.js';
@@ -82,7 +82,7 @@ export class HcmPoiEditor extends LitElement {
     declare intents: PoisIntentsPort | null;
     /** Whether Add at centre has a centre to add (the city is read): the button waits until then. */
     declare centreKnown: boolean;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** The admin's access was removed: nothing on the editor writes (§42d). */
     declare readOnly: boolean;
     /** Who reads the page and the admins' names: the conflict banner names who saved. */

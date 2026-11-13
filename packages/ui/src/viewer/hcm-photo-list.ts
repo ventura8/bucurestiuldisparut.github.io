@@ -4,7 +4,7 @@
  * items: the title in body-large, the date as supporting text in body-medium (14 px; the M1 UX review found the
  * 12 px body-small too small to read on a phone).
  */
-import { DEFAULT_LOCALE, translate, type Locale, type Photo } from '@hcm/shared';
+import { DEFAULT_LOCALE, translate, type ViewerLocale, type Photo } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
@@ -85,7 +85,7 @@ export class HcmPhotoList extends LitElement {
     ];
 
     declare photos: readonly Photo[];
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare manifestUrl: string;
 
     constructor() {

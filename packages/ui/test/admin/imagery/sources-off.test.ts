@@ -12,14 +12,14 @@ describe('<hcm-imagery-page>: the sources', () => {
     beforeAll(defineImagery);
     afterEach(cleanup);
 
-    it('happyPath_landsatAloneKeepsFind @S-A171-HAPPY-IMAGERY-GATED', async () => {
+    it('happyPath_landsatAloneKeepsFind @S-A180-HAPPY-IMAGERY-GATED', async () => {
         const { element } = await imageryPage(imageryState({ sources: { usgs: false, landsat: true, archives: true } }));
 
         expect(deepAll(element, '[data-sources-off]')).toEqual([]);
         expect(deepAll(element, '.filters')).not.toEqual([]);
     });
 
-    it('badPath_withoutUsgsAndLandsatFindSaysWhyAndLinksSources @S-A171-BAD-IMAGERY-OFF', async () => {
+    it('badPath_withoutUsgsAndLandsatFindSaysWhyAndLinksSources @S-A180-BAD-IMAGERY-OFF', async () => {
         const { element } = await imageryPage(imageryState({ sources: { usgs: false, landsat: false, archives: true } }));
 
         const off = deep(element, '[data-sources-off="find"]');

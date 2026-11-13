@@ -485,9 +485,13 @@ function unknownStep(step: SetupStepState, behind: 'all' | 'status' | null): boo
     return decided && step.state === 'missing' && step.checkedAt === null;
 }
 
-/** The steps the later ones may follow: the done ones, and (c) once the server's items are (finding 31). */
+/**
+ * The steps the later ones may follow: the done ones, and (c) once the server's items are (finding 31) or a server is in place but
+ * older than the admin (2026-11-13: (b) and (c) then read "Update the server to check", and (d), which offers that update, waited
+ * for them: the owner could never update). A server in place proves the project was prepared.
+ */
 function reachedSteps(state: SetupState, done: ReadonlySet<SetupStepId>): ReadonlySet<SetupStepId> {
-    return serverPrepared(state) ? new Set([...done, 'provision']) : done;
+    return serverPrepared(state) || serverBehind(state) !== null ? new Set([...done, 'provision']) : done;
 }
 
 /** Recomputes what follows from the steps: availability, the progress, `ready` and the totals. */

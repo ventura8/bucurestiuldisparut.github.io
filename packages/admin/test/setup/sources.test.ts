@@ -26,7 +26,7 @@ function withDone(state: SetupState, ...ids: Parameters<typeof withStep>[1][]): 
 }
 
 describe('the Sources step', () => {
-    it('happyPath_aCityWithoutAChoiceOpensTheStepWithTheSuggestedSwitches @S-A171-HAPPY-SAVE-DEFAULTS', async () => {
+    it('happyPath_aCityWithoutAChoiceOpensTheStepWithTheSuggestedSwitches @S-A180-HAPPY-SAVE-DEFAULTS', async () => {
         const { harness, controller } = started((h) => {
             h.sources.read.mockResolvedValue(undefined);
         });
@@ -54,7 +54,7 @@ describe('the Sources step', () => {
         expect(controller.getState().sources.choices).toMatchObject({ cloudAi: true, usgs: true });
     });
 
-    it('happyPath_withoutUsgsAndLandsatTheUsgsStepLeavesAndIsRecordedForLater @S-A171-HAPPY-USGS-LEFT-OUT', async () => {
+    it('happyPath_withoutUsgsAndLandsatTheUsgsStepLeavesAndIsRecordedForLater @S-A180-HAPPY-USGS-LEFT-OUT', async () => {
         const { harness, controller } = started((h) => {
             h.sources.read.mockResolvedValue(undefined);
             h.backend.recordCloud.mockResolvedValue({
@@ -76,7 +76,7 @@ describe('the Sources step', () => {
         expect(state.openStep).not.toBe('usgs');
     });
 
-    it('badPath_aSaveTheStoreRefusesSaysWhatToDoAndKeepsTheSwitches @S-A171-BAD-SAVE-REFUSED', async () => {
+    it('badPath_aSaveTheStoreRefusesSaysWhatToDoAndKeepsTheSwitches @S-A180-BAD-SAVE-REFUSED', async () => {
         const { harness, controller } = started((h) => {
             h.sources.read.mockResolvedValue(undefined);
             h.sources.save.mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' }));

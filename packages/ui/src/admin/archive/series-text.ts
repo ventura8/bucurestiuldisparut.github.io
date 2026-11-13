@@ -3,7 +3,7 @@
  * calibrate itself, its rights, its estimate, and, once imported, where it stands (waiting for its day, at work, waiting for points
  * and why, waiting for approval with its error against its threshold, published), each in the page's language.
  */
-import { yearSchema, type ArchiveSeries, type Locale } from '@hcm/shared';
+import { yearSchema, type ArchiveSeries, type UiLocale } from '@hcm/shared';
 import type { AdminArchiveKey } from '@hcm/shared/admin-archive';
 
 import type { SeriesEditPort, SeriesProgressPort } from './archive-port.js';
@@ -15,14 +15,14 @@ export function yearShown(text: string): boolean {
 }
 
 /** "Place 4,545 sheets from their names on the city's grid", or "Skipped: …". */
-export function actionText(locale: Locale, series: ArchiveSeries): string {
+export function actionText(locale: UiLocale, series: ArchiveSeries): string {
     if (series.action === 'skip' && series.reason !== undefined) {
         return archiveText(locale, 'adminArchive.action.skip', { reason: archiveText(locale, `adminArchive.reason.${series.reason}`) });
     }
     return archiveText(locale, `adminArchive.action.${series.class}`, { files: count(locale, series.files) });
 }
 
-export function estimateText(locale: Locale, series: ArchiveSeries): string {
+export function estimateText(locale: UiLocale, series: ArchiveSeries): string {
     const { maxzoom, tilesBytes, minutes } = series.estimate;
     return archiveText(locale, 'adminArchive.estimate', {
         ...{ zoom: String(maxzoom), size: sizeText(locale, tilesBytes) },
@@ -34,7 +34,7 @@ export function estimateText(locale: Locale, series: ArchiveSeries): string {
  * The chosen series' total: how many and their tiles' bytes. Every series starts at once on the owner's computer: a local-only
  * job is outside the daily share of new layers (2026-11-09), so the total no longer counts days.
  */
-export function totalText(locale: Locale, chosen: readonly ArchiveSeries[]): string {
+export function totalText(locale: UiLocale, chosen: readonly ArchiveSeries[]): string {
     if (chosen.length === 0) {
         return archiveText(locale, 'adminArchive.totalNone');
     }
@@ -47,16 +47,16 @@ export function chosenOf(series: readonly ArchiveSeries[], edits: Readonly<Recor
     return series.filter((each) => edits[each.seriesId]?.include === true);
 }
 
-type Line = (locale: Locale, progress: SeriesProgressPort) => string;
+type Line = (locale: UiLocale, progress: SeriesProgressPort) => string;
 
-function metres(locale: Locale, value: number | null): string {
+function metres(locale: UiLocale, value: number | null): string {
     return value === null ? '?' : new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value);
 }
 
 /** A job the computer has taken. */
 const AT_WORK: ReadonlySet<SeriesProgressPort['jobStatus']> = new Set<SeriesProgressPort['jobStatus']>(['starting', 'running']);
 
-function processing(locale: Locale, progress: SeriesProgressPort): string {
+function processing(locale: UiLocale, progress: SeriesProgressPort): string {
     if (progress.waitReason === 'daily') {
         return archiveText(locale, 'adminArchive.state.daily');
     }
@@ -67,12 +67,12 @@ function processing(locale: Locale, progress: SeriesProgressPort): string {
     return archiveText(locale, 'adminArchive.state.running', { step: progress.step ?? '…', percent });
 }
 
-function points(locale: Locale, progress: SeriesProgressPort): string {
+function points(locale: UiLocale, progress: SeriesProgressPort): string {
     const reason = progress.help === null ? 'low-confidence' : progress.help.reason;
     return archiveText(locale, 'adminArchive.state.points', { note: archiveText(locale, `adminArchive.help.${reason}`) });
 }
 
-function approval(locale: Locale, progress: SeriesProgressPort): string {
+function approval(locale: UiLocale, progress: SeriesProgressPort): string {
     const error = metres(locale, progress.errorM);
     if (progress.thresholdM === null) {
         return archiveText(locale, 'adminArchive.state.approvalNoScale', { error });
@@ -97,7 +97,7 @@ const LINES: Readonly<Partial<Record<NonNullable<SeriesProgressPort['state']>, L
 };
 
 /** Where an imported series stands, in one line. */
-export function stateText(locale: Locale, progress: SeriesProgressPort): string {
+export function stateText(locale: UiLocale, progress: SeriesProgressPort): string {
     const line = progress.state === null ? undefined : LINES[progress.state];
     return (line ?? processing)(locale, progress);
 }

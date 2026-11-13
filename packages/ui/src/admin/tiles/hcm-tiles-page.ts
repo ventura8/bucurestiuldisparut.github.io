@@ -5,7 +5,7 @@
  * sit in a bar after the step (on a phone too: fixed over the step, it hid its last lines and buttons). Loading, a layout that cannot be read, a wrong address and a series that no
  * longer waits each say so. Text only: every value is bound as a property or text.
  */
-import { translateApiError, type Locale } from '@hcm/shared';
+import { translateApiError, type UiLocale } from '@hcm/shared';
 import { css, html, type PropertyValues, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
@@ -114,7 +114,7 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
         return html`<div class="pane">${view.status === 'ready' ? this.#wizard(locale, view) : this.#state(locale, view)}</div>`;
     }
 
-    #state(locale: Locale, view: TilesViewState): TemplateResult {
+    #state(locale: UiLocale, view: TilesViewState): TemplateResult {
         if (view.status === 'error') {
             return html`<p class="alert" role="alert">${t(locale, 'adminTiles.loadFailed')}</p>
                 <div class="actions">
@@ -132,11 +132,11 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
             ${view.status === 'moved' ? this.#georefLink(locale, view) : ''}`;
     }
 
-    #georefLink(locale: Locale, view: TilesViewState): TemplateResult {
+    #georefLink(locale: UiLocale, view: TilesViewState): TemplateResult {
         return html`<a class="link" href=${['#/georef', view.versionId].join('/')}>${t(locale, 'adminTiles.openGeoref')}</a>`;
     }
 
-    #wizard(locale: Locale, view: TilesViewState): TemplateResult {
+    #wizard(locale: UiLocale, view: TilesViewState): TemplateResult {
         const n = String(TILE_STEPS.indexOf(view.step) + 1);
         return html`<p>${t(locale, 'adminTiles.intro')}</p>
             ${this.#steps(locale, view)}
@@ -144,7 +144,7 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
             ${this.#refusal(locale, view)} ${this.#step(locale, view)} ${this.#bar(locale, view)}`;
     }
 
-    #steps(locale: Locale, view: TilesViewState): TemplateResult {
+    #steps(locale: UiLocale, view: TilesViewState): TemplateResult {
         return html`<nav aria-label=${t(locale, 'adminTiles.stepsLabel')}>
             <ol class="steps">
                 ${TILE_STEPS.map(
@@ -163,14 +163,14 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
         </nav>`;
     }
 
-    #refusal(locale: Locale, view: TilesViewState): TemplateResult {
+    #refusal(locale: UiLocale, view: TilesViewState): TemplateResult {
         const refusal = view.refusal;
         return html`<p class="alert" role="alert" ?hidden=${refusal === null}>
             ${refusal === null ? '' : translateApiError(locale, refusal.key, refusal.params)}
         </p>`;
     }
 
-    #step(locale: Locale, view: TilesViewState): TemplateResult {
+    #step(locale: UiLocale, view: TilesViewState): TemplateResult {
         const intents = this.intents;
         switch (view.step) {
             case 'order':
@@ -184,7 +184,7 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
         }
     }
 
-    #handOff(locale: Locale, view: TilesViewState): TemplateResult {
+    #handOff(locale: UiLocale, view: TilesViewState): TemplateResult {
         if (view.handedOff) {
             return html`<p class="note" role="status">${t(locale, 'adminTiles.handedOff')}</p>
                 ${this.#georefLink(locale, view)}`;
@@ -203,7 +203,7 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
             </div>`;
     }
 
-    #bar(locale: Locale, view: TilesViewState): TemplateResult {
+    #bar(locale: UiLocale, view: TilesViewState): TemplateResult {
         const back = stepAt(view.step, -1);
         const next = stepAt(view.step, 1);
         const go = (step: TileStepPort | undefined): void => {

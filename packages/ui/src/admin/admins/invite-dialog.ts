@@ -3,7 +3,7 @@
  * checks it with `cityInviteRequestSchema` before the call), the problem at the field (`aria-invalid`, described by its
  * message), M5's role in the city (Editor unless changed: `inviteToCity` is three inputs), Cancel and Invite. Enter submits.
  */
-import type { CityRole, Locale } from '@hcm/shared';
+import type { CityRole, UiLocale } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import type { AdminNoticeInputPort } from '../admin-port.js';
@@ -27,7 +27,7 @@ export const adminsStyles = css`
 `;
 
 export interface InviteDialogContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly open: boolean;
     readonly busy: boolean;
     readonly issue: AdminNoticeInputPort | null;

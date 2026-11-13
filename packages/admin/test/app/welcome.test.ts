@@ -93,7 +93,7 @@ describe('startLocale (M13 §3: the welcome speaks the language of the map, Roma
     });
 
     it('badPath_noLanguageAnywhereIsTheMapsRomanian_notTheBrowsers_butTheAdminsOwnChoiceCounts', () => {
-        expect(startLocale(new FakeLocation('#/contribute/bucharest', '?lang=fr'), stored({ 'hcm:bucharest:lang': 'de' }), ['en'])).toBe(
+        expect(startLocale(new FakeLocation('#/contribute/bucharest', '?lang=sv'), stored({ 'hcm:bucharest:lang': 'xx' }), ['en'])).toBe(
             'ro',
         );
         expect(startLocale(new FakeLocation('#/contribute', ''), stored({ [LANGUAGE_KEY]: 'en' }), ['ro'])).toBe('en');

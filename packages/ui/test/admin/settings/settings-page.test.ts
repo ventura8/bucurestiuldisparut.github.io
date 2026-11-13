@@ -51,7 +51,7 @@ describe('<hcm-settings-page> sections', () => {
             '#/settings/publish',
             '#/settings/budget',
             '#/settings/export',
-            // M28 (@S-A171-HAPPY-SETTINGS-ROW): the sources are changed in Setup's Sources step.
+            // M28 (@S-A180-HAPPY-SETTINGS-ROW): the sources are changed in Setup's Sources step.
             '#/setup/sources',
         ]);
         expect(deepText(element)).toContain('Which old images, places and photos the map uses');

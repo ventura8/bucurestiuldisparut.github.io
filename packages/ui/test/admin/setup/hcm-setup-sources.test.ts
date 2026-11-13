@@ -37,7 +37,7 @@ function text(element: Element): string {
 describe('<hcm-setup-sources>', () => {
     afterEach(cleanup);
 
-    it('happyPath_theSuggestedSwitchesTheMonthAndSaveMyChoice @S-A171-HAPPY-SAVE-DEFAULTS', async () => {
+    it('happyPath_theSuggestedSwitchesTheMonthAndSaveMyChoice @S-A180-HAPPY-SAVE-DEFAULTS', async () => {
         const { port, element } = await sources();
         const signals: FunnelSignal[] = [];
         element.addEventListener(FUNNEL_EVENT, (event) => signals.push((event as CustomEvent<FunnelSignal>).detail));
@@ -77,7 +77,7 @@ describe('<hcm-setup-sources>', () => {
         expect(port.calls).toEqual([['chooseSource', 'landsat', false]]);
     });
 
-    it('happyPath_theUsgsAccountStates_needed_waiting_signedIn @S-A171-HAPPY-ACCOUNT-STATES', async () => {
+    it('happyPath_theUsgsAccountStates_needed_waiting_signedIn @S-A180-HAPPY-ACCOUNT-STATES', async () => {
         const needed = await sources({ steps: { usgs: { links: [{ id: 'usgs.register', url: 'https://ers.cr.usgs.gov/register' }] } } });
         expect(text(needed.element)).toContain('Account needed');
         const signUp = shadowPart(needed.element, 'a.action[target="_blank"]') as HTMLAnchorElement;
@@ -108,7 +108,7 @@ describe('<hcm-setup-sources>', () => {
         expect(link?.getAttribute('href')).toBe('#/setup/billing');
     });
 
-    it('badPath_paidScansWaitForTheDeclassifiedFrames_andTheUsgsStepIsLeftOut @S-A171-BAD-USGS-OFF', async () => {
+    it('badPath_paidScansWaitForTheDeclassifiedFrames_andTheUsgsStepIsLeftOut @S-A180-BAD-USGS-OFF', async () => {
         const off = { ...DEFAULT_SOURCES, usgs: false, landsat: false };
         const { element } = await sources({ sources: { choices: off, saved: off } }, 'ro');
 
@@ -142,7 +142,7 @@ describe('<hcm-setup-sources>', () => {
 describe('<hcm-setup-platform>', () => {
     afterEach(cleanup);
 
-    it('happyPath_fiveSectionsWithTheirStateAndTheirSteps @S-A171-HAPPY-PLATFORM', async () => {
+    it('happyPath_fiveSectionsWithTheirStateAndTheirSteps @S-A180-HAPPY-PLATFORM', async () => {
         const { element } = await platform({ steps: { mapbox: { state: 'ok' } } });
 
         expect(element.shadowRoot?.querySelectorAll('[data-platform]')).toHaveLength(5);

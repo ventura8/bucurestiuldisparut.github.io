@@ -3,7 +3,7 @@
  * Show my location, `my-location.ts`) and Settings. Plain functions over `ViewerStorePort` and `ViewerServices`, so each is tested without
  * the element.
  */
-import type { Layer, Locale, Manifest } from '@hcm/shared';
+import { localized, type Layer, type Manifest, type ViewerLocale } from '@hcm/shared';
 
 import { layoutFor } from './layout.js';
 import { toggleMyLocation } from './my-location.js';
@@ -44,19 +44,19 @@ export function selectPhoto(store: ViewerStorePort, photoId: string): void {
 }
 
 /** Switches the store to `locale` unless it already shows it (the element's `lang` attribute follows the store). */
-export function syncLocale(store: ViewerStorePort, locale: Locale): void {
+export function syncLocale(store: ViewerStorePort, locale: ViewerLocale): void {
     if (store.getState().locale !== locale) {
         store.setLocale(locale);
     }
 }
 
 /** The title a share uses: the open photo's title, else the city's name in `locale` (nothing before the manifest). */
-export function shareTitle(manifest: Manifest | null, state: Pick<ViewerState, 'selectedPhotoId'>, locale: Locale): string {
+export function shareTitle(manifest: Manifest | null, state: Pick<ViewerState, 'selectedPhotoId'>, locale: ViewerLocale): string {
     if (manifest === null) {
         return '';
     }
     const photo = manifest.photos.find((candidate) => candidate.id === state.selectedPhotoId);
-    return photo === undefined ? manifest.city.name[locale] : localizedText(photo.title, locale);
+    return photo === undefined ? localized(manifest.city.name, locale) : localizedText(photo.title, locale);
 }
 
 /**
@@ -123,7 +123,12 @@ export function menuAction(store: ViewerStorePort, services: ViewerServices, act
             const url = manifest?.contributeUrl;
             if (url !== undefined) {
                 // M13 §3: the Contribute page's signed-out welcome speaks the map's language and names the city.
-                services.openPage(url.replace('#', `?lang=${locale}&name=${encodeURIComponent(manifest?.city.name[locale] ?? '')}#`));
+                services.openPage(
+                    url.replace(
+                        '#',
+                        `?lang=${locale}&name=${encodeURIComponent(manifest === null ? '' : localized(manifest.city.name, locale))}#`,
+                    ),
+                );
             }
         },
         about: () => {

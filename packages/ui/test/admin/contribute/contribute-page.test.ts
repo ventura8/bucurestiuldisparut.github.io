@@ -116,7 +116,7 @@ describe('<hcm-contribute-page>', () => {
         const { host } = await page(state({ context }));
         expect(deepText(host)).toContain('You are already a member');
         expect(deepAll(host, 'option').map((option) => (option as HTMLOptionElement).value)).toEqual(['moderator']);
-        // M28 (@S-A171-BAD-UPLOADER-SATELLITE): the satellite sources stay with the owner and the editors, and the line says why.
+        // M28 (@S-A180-BAD-UPLOADER-SATELLITE): the satellite sources stay with the owner and the editors, and the line says why.
         expect(deep(host, '[data-satellite-note]').textContent).toContain("Satellite search is for the map's owner");
     });
 

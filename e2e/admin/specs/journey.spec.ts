@@ -491,8 +491,8 @@ test(
             '@S-A28-HAPPY',
             '@S-A31-HAPPY',
             '@S-A31-BAD-ALERTS',
-            '@S-A171-HAPPY-SAVE-DEFAULTS',
-            '@S-A172-HAPPY-PLATFORM',
+            '@S-A180-HAPPY-SAVE-DEFAULTS',
+            '@S-A181-HAPPY-PLATFORM',
         ],
     },
     async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment, consoleErrors, adminWorld }) => {

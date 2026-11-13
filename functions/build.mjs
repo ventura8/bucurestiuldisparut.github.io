@@ -11,7 +11,7 @@
 //
 // The static export's kit (M5, docs/research/M5-interfaces.md §5.3, CR-M5-9) is copied beside the bundle into
 // dist/export-kit/: the starter kit's index.html and README.md (templates/starter-kit/), the engine's files without
-// source maps (packages/engine/dist: engine.iife.js with its extras `extra-<name>-<hash>.js`, engine.css, fonts/,
+// source maps (packages/engine/dist: engine.iife.js with its extras `extra-<name>-<hash>.js`, engine.css, fonts/, i18n/,
 // THIRD_PARTY_NOTICES.txt, so the engine is built first, as `npm run build` does) and kit.json, the engine's ENGINE_VERSION and every copied file with its size.
 //
 // The starter files' templates (finding 73 of 2026-11-03: `worker.starter` serves them filled as a download) are copied
@@ -79,14 +79,17 @@ try {
         await copyFile(`${ENGINE_DIST}${file}`, `${KIT_DIR}engine/${file}`);
     }
     await cp(`${ENGINE_DIST}fonts`, `${KIT_DIR}engine/fonts`, { recursive: true });
+    // The languages' texts the engine fetches when it shows one (DECISIONS-for-review.md §218).
+    await cp(`${ENGINE_DIST}i18n`, `${KIT_DIR}engine/i18n`, { recursive: true });
 } catch (error) {
     throw new Error(`the export kit needs the engine's build (npm run build --workspace @hcm/engine first): ${String(error)}`, {
         cause: error,
     });
 }
 const fonts = (await readdir(`${KIT_DIR}engine/fonts`)).sort().map((file) => `fonts/${file}`);
+const languages = (await readdir(`${KIT_DIR}engine/i18n`)).sort().map((file) => `i18n/${file}`);
 const engine = await Promise.all(
-    [...engineFiles, ...fonts].sort().map(async (path) => ({ path, bytes: (await stat(`${KIT_DIR}engine/${path}`)).size })),
+    [...engineFiles, ...fonts, ...languages].sort().map(async (path) => ({ path, bytes: (await stat(`${KIT_DIR}engine/${path}`)).size })),
 );
 await writeFile(`${KIT_DIR}kit.json`, `${JSON.stringify({ engineVersion, engine }, null, 4)}\n`);
 

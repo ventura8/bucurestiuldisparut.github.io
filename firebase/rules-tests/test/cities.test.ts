@@ -175,7 +175,7 @@ describe('update', () => {
 // M28 (docs/research/M28-sources.md §3): the map's sources, saved on their own as the imagery settings are.
 describe('the sources (M28)', () => {
     it.each([
-        ['the default sources @S-A171-HAPPY-RULES-SAVE', { sources: {} }],
+        ['the default sources @S-A180-HAPPY-RULES-SAVE', { sources: {} }],
         [
             'every source chosen',
             {
@@ -197,7 +197,7 @@ describe('the sources (M28)', () => {
     });
 
     it.each([
-        ['sources that are not a map (M28) @S-A171-BAD-RULES-SHAPE', { sources: 'all' }],
+        ['sources that are not a map (M28) @S-A180-BAD-RULES-SHAPE', { sources: 'all' }],
         ['a source the schema does not know (M28)', { sources: { usgs: true, scraped: true } }],
         ['a source choice that is not a boolean (M28)', { sources: { cloudAi: 'yes' } }],
         ['the sources with a city setting (M28)', { sources: { usgs: false }, zoom: 12 }],

@@ -1,4 +1,4 @@
-import type { Locale } from '@hcm/shared';
+import type { Locale, ViewerLocale } from '@hcm/shared';
 import { expect, type BrowserContext, type Page, type Route } from '@playwright/test';
 
 import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
@@ -7,6 +7,7 @@ import { COMPARE_STATES, openComparing } from './compare-states.js';
 import { UNPLACED_JOURNEY, unplacedStates } from './unplaced-states.js';
 import { STORY_JOURNEY, storyStates } from './story-states.js';
 import { INPUT_JOURNEYS, INPUT_STATES } from './input-states.js';
+import { CJK_JOURNEY, LANGUAGE_STATES, RTL_JOURNEY } from './language-states.js';
 import { LOST_STREETS_JOURNEY, LOST_STREETS_STATES } from './lost-streets-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { MY_LOCATION_STATES } from './my-location-states.js';
@@ -19,6 +20,7 @@ import { MAP_MENU_JOURNEY, MAP_MENU_STATES } from './map-menu-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
 import { SETTINGS_STATES, SHORT_LANDSCAPE_JOURNEY, THEME_MENU_JOURNEY } from './settings-states.js';
 import { hasBottomSheets, scrollToEnd, toDetent } from './sheets.js';
+import { notFound, withoutWebGl } from './faults.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
 import { SITE_ORIGIN } from '../fixtures/world.js';
@@ -76,8 +78,8 @@ interface ViewerState {
     readonly announcements?: (lang: Locale) => readonly string[];
     /** Esc closes the state's popup (the focus goes back to the control of this name); only where it is a popup. */
     readonly escape?: (tour: TourContext) => { readonly opener: string | null } | null;
-    /** The language the page shows (the language chosen in Settings switches to the other one). */
-    readonly shows?: (lang: Locale) => Locale;
+    /** The language the page shows (a state may switch it, or open the viewer in a language of its own). */
+    readonly shows?: (lang: Locale) => ViewerLocale;
 }
 
 /**
@@ -314,6 +316,8 @@ const VIEWER_STATES = {
     ...MAP_LABEL_STATES,
     ...LOST_STREETS_STATES,
     ...PHOTO_SOURCE_STATES,
+    // The language list, Arabic right to left and Japanese (V11).
+    ...LANGUAGE_STATES,
 } as const satisfies Record<string, Omit<ViewerState, 'id'>>;
 
 type ViewerStateId = keyof typeof VIEWER_STATES;
@@ -376,24 +380,6 @@ async function openWithManifestHeld({ page, lang }: TourContext): Promise<void> 
     await expect.poll(() => held.length).toBe(1);
 }
 
-/** The 404 answer of a missing manifest. */
-function notFound(route: Route): Promise<void> {
-    return route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not found' });
-}
-
-/** WebGL refused, as a browser without it does (`getContext` answers null), before the engine probes it. */
-function withoutWebGl(): void {
-    const original = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'getContext')?.value as (
-        this: HTMLCanvasElement,
-        ...args: unknown[]
-    ) => unknown;
-    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
-        value: function getContext(this: HTMLCanvasElement, kind: string, ...rest: unknown[]): unknown {
-            return ['webgl', 'webgl2', 'experimental-webgl'].includes(kind) ? null : original.call(this, kind, ...rest);
-        },
-    });
-}
-
 /** The viewer's journeys: together they visit every state of `VIEWER_STATES`. */
 const VIEWER_JOURNEYS: readonly Journey[] = [
     {
@@ -425,6 +411,8 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     MAP_LABEL_JOURNEY,
     LOST_STREETS_JOURNEY,
     PHOTO_SOURCE_JOURNEY,
+    RTL_JOURNEY,
+    CJK_JOURNEY,
     {
         title: 'A photo at every height, shown on the map, its lightbox, and the photo list',
         id: 'photo',
@@ -698,6 +686,6 @@ export { expectKitJourneySound } from './kit-states.js';
 // [end kit]
 
 /** The visit of an admin state, in the project's language. */
-export function adminVisit(id: AdminStateId, lang: Locale, extra: Partial<StateVisit> = {}): StateVisit {
+export function adminVisit(id: AdminStateId, lang: ViewerLocale, extra: Partial<StateVisit> = {}): StateVisit {
     return { id: `admin.${id}`, title: ADMIN_STATES[id].title, lang, ...extra };
 }

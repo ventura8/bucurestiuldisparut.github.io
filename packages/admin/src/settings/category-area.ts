@@ -4,7 +4,7 @@
  * starter categories** (finding 41 of 2026-11-01: the starters the city lacks, in one batch). The settings store routes
  * `#/settings/categories/<id>` here.
  */
-import { FIRESTORE_PATHS, poiCategoryDocSchema, type Locale, type PoiCategoryDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, poiCategoryDocSchema, type UiLocale, type PoiCategoryDoc } from '@hcm/shared';
 
 import { LiveDoc, type DocState } from '../content/doc.js';
 import type { ContentServices, WriteOutcome } from '../content/services.js';
@@ -30,7 +30,7 @@ export interface CategoryIntents {
     moveCategory(id: string, direction: MoveDirection): Promise<WriteOutcome | null>;
     moveCategoryTo(id: string, index: number): Promise<WriteOutcome | null>;
     editCategory(patch: CategoryPatch): void;
-    setCategoryLabel(locale: Locale, text: string): void;
+    setCategoryLabel(locale: UiLocale, text: string): void;
     setCategoryOpacity(percent: number): void;
     useProposedColor(): void;
     /** Saves the open category: its id (a new one's new id) once written, else null. */

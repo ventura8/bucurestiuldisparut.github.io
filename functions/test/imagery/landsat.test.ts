@@ -151,7 +151,7 @@ describe('the tick’s Landsat imports', () => {
         const outOfYears = await readyWorld();
         await seedCity(outOfYears, { imagery: { landsatFrom: 1995, landsatTo: 1999 } });
         await seedLandsat(outOfYears);
-        // M28 (@S-A171-BAD-LANDSAT-OFF): Landsat left out of the map's sources imports nothing either.
+        // M28 (@S-A180-BAD-LANDSAT-OFF): Landsat left out of the map's sources imports nothing either.
         const notASource = await readyWorld();
         await seedCity(notASource, { sources: { landsat: false } });
         await seedLandsat(notASource);

@@ -43,6 +43,7 @@ function world(): { readonly files: SiteFileSystem } {
         'dist/hosting-public/admin/runtime.json': '{}',
         'dist/hosting-public/admin/legacy/bucharest/city.json': '{}',
         'dist/start-app/start.mjs': 'export {};',
+        'dist/start-app/i18n/fr.json': '{"locale":"fr","messages":{}}',
         'dist/functions/index.js': 'exports.a = 1;',
         'dist/functions/package.json': '{}',
         'dist/functions/package-lock.json': '{}',
@@ -88,6 +89,8 @@ describe('the start site', () => {
         const bundle = JSON.parse(tree(`admin/install/${config.release}/manifest.json`)) as { readonly projectId: string };
         expect(bundle.projectId).toBe(GENERIC_INSTALL_PROJECT);
         expect(files.readText('dist/start/start.mjs')).toBe('export {};');
+        // The languages fetched when chosen sit beside the module (docs/I18N.md → Loading).
+        expect(files.readText('dist/start/i18n/fr.json')).toBe('{"locale":"fr","messages":{}}');
         // What a site build adopts is the public tree's own marks, the city page's policy included when it names the project.
         const site = files.readBytes(`dist/start/release/${config.release}/tree/admin/install/${config.release}/hosting.tgz`);
         const listed = execFileSync('/usr/bin/tar', ['-xzO', 'templates.json'], { input: site }).toString('utf8');

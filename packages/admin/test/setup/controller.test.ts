@@ -246,6 +246,8 @@ describe('a server older than the admin (finding 27 of 2026-10-31)', () => {
         expect(state.steps.mapbox).toMatchObject({ state: 'missing', unknown: true });
         expect(state.steps.usgs.unknown).toBe(true);
         expect(state.steps.claim.unknown).toBe(false);
+        expect(state.steps.provision.state).not.toBe('ok');
+        expect(state.steps.deploy.available).toBe(true);
     });
 });
 

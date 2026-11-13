@@ -82,6 +82,7 @@ describe('formatPath and codes', () => {
 
         expect(keys.length).toBeGreaterThan(10);
         expect(keys.every(isValidationCode)).toBe(true);
+        expect(keys.map((key) => key.replace('validation.', 'validation.x')).some(isValidationCode)).toBe(false);
     });
 
     it('badPath_otherKeysAreNotCodes', () => {

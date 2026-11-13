@@ -1,5 +1,5 @@
 /** The `stories` sheet (M17, V50): the list or one story, modal or docked as the viewer's other sheets. */
-import { translate, type Manifest } from '@hcm/shared';
+import { translate, type Manifest, type ViewerLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { Placement } from './layout.js';
@@ -8,7 +8,7 @@ import { localizedText } from './text.js';
 
 /** What the sheet needs of the viewer's view and state. */
 interface StoriesView {
-    readonly locale: 'ro' | 'en';
+    readonly locale: ViewerLocale;
     readonly manifestUrl: string;
     readonly storyId: string | null;
 }

@@ -2,16 +2,18 @@
  * The admin's boot (`docs/research/M2b-interfaces.md` §1.4): the web configuration first (unreadable or invalid: the
  * `configMissing` screen with Reload, nothing else runs), then the optional runtime file, then the ports and `mount`.
  */
-import type { Logger } from '@hcm/shared';
+import type { Logger, UiLocale } from '@hcm/shared';
 
 import { ContentRegistry } from '../content/registry.js';
-import { NO_GATE, type AdminState } from '../state/state.js';
+import { NO_GATE, type AdminState, type NoticeInput } from '../state/state.js';
 import { LANGUAGE_KEY, resolveAdminLocale } from '../state/locale.js';
 import { Store } from '../state/store.js';
+import { firstShown } from '../state/ui-language.js';
 import type { ProjectConfig } from '../provision/project-config.js';
 import { loadProject, loadRuntime, loadWebConfig, type AdminRuntime, type FirebaseWebConfig } from './config.js';
 import { mount, THEME_KEY, themeModeOf, type AdminApp, type AdminDeps, type AdminIntents } from './mount.js';
 import type { HashLocation, KeyValueStore } from './ports.js';
+import { adminLanguage } from './language.js';
 import { AdminTelemetry } from './telemetry.js';
 
 export interface BootEnvironment<Setup, SetupIntents> {
@@ -38,7 +40,7 @@ const NO_CONTENT = new ContentRegistry({}, () => {
     throw new Error('no content services without a configuration');
 }).stores;
 
-type MissingEnvironment = Pick<BootEnvironment<null, null>, 'location' | 'local' | 'languages' | 'log'>;
+type MissingEnvironment = Pick<BootEnvironment<null, null>, 'fetch' | 'location' | 'local' | 'languages' | 'log'>;
 
 function missingState(env: MissingEnvironment): AdminState<null> {
     return {
@@ -50,7 +52,7 @@ function missingState(env: MissingEnvironment): AdminState<null> {
         gate: NO_GATE,
         route: { id: 'setup', params: [] },
         destinations: [],
-        locale: resolveAdminLocale(env.location.search(), env.local.get(LANGUAGE_KEY), env.languages),
+        locale: firstShown(wantedLocale(env)),
         theme: { mode: themeModeOf(env.local.get(THEME_KEY)), city: null, preview: null },
         consent: 'unknown',
         analytics: false,
@@ -71,10 +73,22 @@ function missingState(env: MissingEnvironment): AdminState<null> {
     };
 }
 
+function wantedLocale(env: MissingEnvironment): UiLocale {
+    return resolveAdminLocale(env.location.search(), env.local.get(LANGUAGE_KEY), env.languages);
+}
+
 /** The app of a page without a readable web configuration: its screen, Reload, the language and the theme. */
 export function configMissingApp(env: MissingEnvironment): AdminApp<null, null> {
     const initial = missingState(env);
     const store = new Store(initial, env.log);
+    const shell = {
+        update: (patch: Partial<AdminState<null>>): void => {
+            store.update(patch);
+        },
+        notice: (input: NoticeInput) => ({ ...input, id: 1 }),
+    };
+    const language = adminLanguage({ fetch: env.fetch, local: env.local, shell });
+    void language.start(wantedLocale(env));
     const intents: AdminIntents<null> = {
         ...{ signIn: NOTHING, signOut: NOTHING, claim: NOTHING, join: NOTHING, retry: NOTHING, enableApi: NOTHING, leavePage: NOTHING },
         stayOnPage: () => undefined,
@@ -85,8 +99,7 @@ export function configMissingApp(env: MissingEnvironment): AdminApp<null, null> 
         switchCity: () => undefined,
         refreshCities: NOTHING,
         setLocale: (locale) => {
-            env.local.set(LANGUAGE_KEY, locale);
-            store.update({ locale });
+            void language.choose(locale);
         },
         setTheme: (mode) => {
             env.local.set(THEME_KEY, mode);

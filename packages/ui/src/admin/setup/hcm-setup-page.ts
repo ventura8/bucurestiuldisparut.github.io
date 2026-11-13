@@ -9,7 +9,7 @@
  * "done" leaves open (USGS later, or its approval pending); a card gets the consent note only while no live token
  * holds its scope.
  */
-import type { AdminSetupKey, Locale } from '@hcm/shared';
+import type { AdminSetupKey, UiLocale } from '@hcm/shared';
 import { funnelHelpOpened, trackFunnel } from '@hcm/shared/funnels';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
@@ -51,7 +51,7 @@ const READY_TEXTS: Readonly<Record<NonNullable<SetupViewState['doneNote']> | 'no
 };
 
 /** "n of total steps done" (with "m for later" when a step is postponed). */
-function progressText(language: Locale, view: SetupViewState): string {
+function progressText(language: UiLocale, view: SetupViewState): string {
     const counts = { done: String(view.done), total: String(view.total), later: String(view.later) };
     return setupLabel(language, view.later > 0 ? 'adminSetup.progressLater' : 'adminSetup.progress', counts);
 }
@@ -62,7 +62,7 @@ const SPLIT_CLASSES: ReadonlySet<WindowClass> = new Set<WindowClass>(['expanded'
 interface BodyInput {
     readonly view: SetupViewState;
     readonly intents: SetupIntentsPort | null;
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     /** The admin app (M7: the pipeline card's worker panel asks it for its feed). */
     readonly app: unknown;
 }

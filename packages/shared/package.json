@@ -2,7 +2,7 @@
     "name": "@hcm/shared",
     "version": "1.0.0-beta.1",
     "private": true,
-    "description": "Environment-neutral code shared by the engine, admin and functions: logging, i18n catalogues (RO default, EN) and, from M1, zod schemas.",
+    "description": "Environment-neutral code shared by the engine, admin and functions: logging, i18n catalogues (RO default, EN, and the viewer's 14 more languages) and, from M1, zod schemas.",
     "license": "UNLICENSED",
     "type": "module",
     "sideEffects": false,
@@ -50,6 +50,10 @@
         "./map-labels": {
             "types": "./src/i18n/map-labels/index.ts",
             "default": "./src/i18n/map-labels/index.ts"
+        },
+        "./viewer-catalogues": {
+            "types": "./src/i18n/viewer-catalogues.ts",
+            "default": "./src/i18n/viewer-catalogues.ts"
         },
         "./funnels": {
             "types": "./src/telemetry/funnels.ts",

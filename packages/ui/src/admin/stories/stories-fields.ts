@@ -1,5 +1,5 @@
 /** The stories editor's pure parts (M17, `docs/research/M17-stories.md` §6): its texts, its fields, a row's state. */
-import type { AdminContentKey, CityRole, Locale, StoryDoc } from '@hcm/shared';
+import type { AdminContentKey, CityRole, UiLocale, StoryDoc } from '@hcm/shared';
 
 import { contentText as t } from '../shell/text.js';
 import type { StoryItemPort } from './stories-port.js';
@@ -15,12 +15,12 @@ export function yearOf(text: string): number | undefined {
 }
 
 /** `text` in `locale`, English falling back to Romanian. */
-export function inLocale(text: Text, locale: Locale): string {
+export function inLocale(text: Text, locale: UiLocale): string {
     return locale === 'en' ? (text.en ?? text.ro) : text.ro;
 }
 
 /** A localized text with `locale`'s part set to `value`: an empty English part goes, an empty text goes altogether. */
-export function withPart(text: Text | undefined, locale: Locale, value: string): Text | undefined {
+export function withPart(text: Text | undefined, locale: UiLocale, value: string): Text | undefined {
     const next = { ...partsOf(text), [locale]: value };
     if (next.en === '') {
         return next.ro === '' ? undefined : { ro: next.ro };
@@ -39,7 +39,7 @@ const STATE_KEYS = {
 } as const;
 
 /** What a row says of a story's state: waiting or refused, unpublished, or nothing once it is public. */
-export function stateText(locale: Locale, item: StoryItemPort): string {
+export function stateText(locale: UiLocale, item: StoryItemPort): string {
     if (item.review !== null) {
         return t(locale, STATE_KEYS[item.review]);
     }
@@ -68,12 +68,12 @@ function yearSpecs(value: StoryDoc, edit: (patch: Partial<StoryDoc>) => void): r
 }
 
 /** The editor's text fields, in order. */
-export function textSpecs(locale: Locale, value: StoryDoc, edit: (patch: Partial<StoryDoc>) => void): readonly TextSpec[] {
+export function textSpecs(locale: UiLocale, value: StoryDoc, edit: (patch: Partial<StoryDoc>) => void): readonly TextSpec[] {
     const help = `${t(locale, 'adminContent.stories.format')} ${t(locale, 'adminContent.stories.formatPhoto')}`;
-    const title = (part: Locale) => (next: string) => {
+    const title = (part: UiLocale) => (next: string) => {
         edit({ title: withPart(value.title, part, next) ?? { ro: '' } });
     };
-    const body = (part: Locale) => (next: string) => {
+    const body = (part: UiLocale) => (next: string) => {
         edit({ body: withPart(value.body, part, next) });
     };
     const titles = partsOf(value.title);

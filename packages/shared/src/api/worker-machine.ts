@@ -9,6 +9,11 @@ import { z } from 'zod';
 
 /** The owner's choice in the card; `auto` lets the governor decide. */
 export const WORKER_PROFILE_CHOICES = ['auto', 'quiet', 'full'] as const;
+/**
+ * Pause this computer (the owner's request of 2026-11-13): besides the three profiles the owner picks, `paused`, chosen with Pause
+ * this computer (the admin or the computer's own page), never with the profile switch.
+ */
+export const WORKER_CHOSEN = [...WORKER_PROFILE_CHOICES, 'paused'] as const;
 /** The profile in force. */
 export const WORKER_PROFILES = ['full', 'quiet', 'paused'] as const;
 /** Why the governor chose it. */
@@ -39,9 +44,11 @@ export const workerMachineSchema = z.object({
     npus: z.array(z.object(acceleratorFields)).max(16),
     backend: z.object({ matcher: z.enum(WORKER_MATCHERS), why: word.optional() }),
     profile: z.object({
-        chosen: z.enum(WORKER_PROFILE_CHOICES),
+        chosen: z.enum(WORKER_CHOSEN),
         active: z.enum(WORKER_PROFILES),
         why: z.enum(WORKER_PROFILE_WHYS),
+        /** While `chosen` is `paused` for a while (For 1 hour, Until tomorrow): when the pause ends on its own. */
+        until: z.iso.datetime().optional(),
     }),
     budget: z.object({ threads: z.number().int().min(0), memoryMb: megabytes, gpuFraction: z.number().min(0).max(1) }),
     usage: z.object({

@@ -7,6 +7,7 @@ import type { EngineConfig, Logger } from '@hcm/shared';
 import type { Unsubscribe, ViewerMapPort } from '@hcm/ui/map';
 
 import type { TelemetryPort } from '../telemetry/telemetry-port.js';
+import type { CatalogueLoader } from './catalogues.js';
 import type { CompareDeps } from './compare-port.js';
 import type { PreferenceStorage } from './preferences.js';
 
@@ -51,4 +52,9 @@ export interface ViewerDeps {
     readonly compare?: CompareDeps;
     /** Without it the `system` theme counts as light (the node tests of the store). */
     readonly colorScheme?: ColorSchemeSource;
+    /**
+     * The viewer's languages, fetched when first shown (`catalogues.ts`); without it only the languages the page already
+     * has (the node tests of the store: Romanian and English).
+     */
+    readonly catalogues?: CatalogueLoader;
 }

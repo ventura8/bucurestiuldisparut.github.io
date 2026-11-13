@@ -29,8 +29,11 @@ import { rankContextOf, type ShownYear } from './versions.js';
 
 type StoreDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'remote' | 'blobs' | 'images'>;
 
-/** Browse copies made at once by the prefetch. */
-const BROWSE_CONCURRENCY = 5;
+/**
+ * Browse copies made at once by the prefetch: one, since each decodes its image to estimate its clouds (live, 2026-11-13: five at once
+ * took the search past its 256 MiB and the server stopped it).
+ */
+const BROWSE_CONCURRENCY = 1;
 /** Scene documents written at once. */
 const WRITE_CONCURRENCY = 25;
 

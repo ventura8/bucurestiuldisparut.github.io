@@ -3,7 +3,7 @@
  * the attribution control on, the Standard configuration on the `basemap` import) and the reading of Mapbox `error`
  * events (a style error before `load` fails the mount; source and tile errors never do).
  */
-import { translate, type Locale } from '@hcm/shared';
+import { translate, type ViewerLocale } from '@hcm/shared';
 import { localizedCredit } from '@hcm/shared/credits';
 
 import type { MapOptions, MapEventMap } from './map-port.js';
@@ -45,7 +45,16 @@ export function classifyError(event: MapboxEvent, loaded: boolean): MapEventMap[
  * the visitor's language: Mapbox's defaults are English, which the tour's i18n check found in every Romanian page.
  * Mapbox reads them when the map and its controls are created; `relabelMapbox` rewrites them after a language switch.
  */
-function mapboxUiStrings(locale: Locale): Readonly<Record<MapboxUiString, string>> {
+/**
+ * The basemap labels' language for a viewer language (docs/ENGINE_API.md → Language): Mapbox's code, the same except
+ * Simplified Chinese's script tag. A language Mapbox's style has no names in shows each place's local name, as Romanian
+ * does in Bucharest (checked on a real map: docs/MANUAL_TEST_PLAN.md).
+ */
+export function mapboxLanguage(locale: ViewerLocale): string {
+    return locale === 'zh' ? 'zh-Hans' : locale;
+}
+
+function mapboxUiStrings(locale: ViewerLocale): Readonly<Record<MapboxUiString, string>> {
     return {
         'Map.Title': translate(locale, 'map.title'),
         'AttributionControl.ToggleAttribution': translate(locale, 'map.toggleAttribution'),
@@ -67,7 +76,7 @@ const LABELLED: readonly { readonly selector: string; readonly attribute: string
  * Rewrites Mapbox's UI strings in `container` (the map's) in `locale`: Mapbox has no API to change them once its
  * controls exist, and a language switch left "Map", "Mapbox homepage" and the toggle's name in the first language.
  */
-export function relabelMapbox(container: Pick<ParentNode, 'querySelectorAll'>, locale: Locale): void {
+export function relabelMapbox(container: Pick<ParentNode, 'querySelectorAll'>, locale: ViewerLocale): void {
     const strings = mapboxUiStrings(locale);
     for (const { selector, attribute, key } of LABELLED) {
         for (const element of container.querySelectorAll(selector)) {
@@ -83,7 +92,7 @@ export function relabelMapbox(container: Pick<ParentNode, 'querySelectorAll'>, l
  * The layers' credits in Mapbox's attribution line in `locale` (the viewer hands Mapbox each credit in the language of
  * the page's first load, `map-specs.ts` `rasterSpec`): every text node, so the links in the line stay links.
  */
-function localizeText(node: Node, locale: Locale): void {
+function localizeText(node: Node, locale: ViewerLocale): void {
     if (node.nodeType === Node.TEXT_NODE) {
         node.nodeValue = localizedCredit(node.nodeValue ?? '', locale);
     }
@@ -104,7 +113,7 @@ export function mapboxOptions(container: HTMLElement, options: MapOptions): Mapb
         bearing: options.view.bearing,
         minZoom: options.minZoom,
         maxZoom: options.maxZoom,
-        language: options.locale,
+        language: mapboxLanguage(options.locale),
         locale: mapboxUiStrings(options.locale),
         attributionControl: true,
         performanceMetricsCollection: false,

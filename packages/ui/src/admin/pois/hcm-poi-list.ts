@@ -6,7 +6,7 @@
  * Fires `hcm-add` with `{shape}`, `hcm-import` with `{file}`, `hcm-export` with
  * `{selection}` and `hcm-bulk` with `{action}`; filters and the selection go to the area's intents.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../../components/css-properties.js';
@@ -72,7 +72,7 @@ export class HcmPoiList extends LitElement {
 
     declare view: PoisViewState | null;
     declare intents: PoisIntentsPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** The open place's id (its row is the current one). */
     declare selected: string;
     /** A revoked admin's page (`DECISIONS-for-review.md` §42d): adding, importing and the selection's actions are off. */

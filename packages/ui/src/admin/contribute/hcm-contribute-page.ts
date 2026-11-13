@@ -8,7 +8,7 @@ import {
     REQUESTABLE_ROLES,
     type ContributeContextResponse,
     type ContributePhoto,
-    type Locale,
+    type UiLocale,
     type RequestableRole,
     type SuggestionProposal,
 } from '@hcm/shared';
@@ -104,7 +104,7 @@ function askableRoles(context: ContributeContextResponse): readonly RequestableR
     return context.role === 'uploader' ? ['moderator'] : [];
 }
 
-function roleOption(locale: Locale, role: RequestableRole): TemplateResult {
+function roleOption(locale: UiLocale, role: RequestableRole): TemplateResult {
     const key = `adminContent.contribute.role.${role}` as const;
     return html`<option value=${role}>${contentText(locale, key)}</option>`;
 }
@@ -128,7 +128,7 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
         return html`<div class="pane">${this.#body(this.locale, view)}</div>`;
     }
 
-    #body(locale: Locale, view: ContributeViewState): TemplateResult {
+    #body(locale: UiLocale, view: ContributeViewState): TemplateResult {
         if (view.status === 'loading') {
             return html`<p role="status">${contentText(locale, 'adminContent.contribute.loading')}</p>`;
         }
@@ -138,7 +138,7 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
         return view.context.photo === null ? this.#ask(locale, view, view.context) : this.#suggest(locale, view, view.context.photo);
     }
 
-    #failed(locale: Locale, view: ContributeViewState): TemplateResult {
+    #failed(locale: UiLocale, view: ContributeViewState): TemplateResult {
         const retry = (): void => {
             this.intents?.retry();
         };
@@ -151,7 +151,7 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
     }
 
     /** The account's standing, or the form when it may ask. */
-    #ask(locale: Locale, view: ContributeViewState, context: ContributeContextResponse): TemplateResult {
+    #ask(locale: UiLocale, view: ContributeViewState, context: ContributeContextResponse): TemplateResult {
         const name = locale === 'en' ? (context.city.name.en ?? context.city.name.ro) : context.city.name.ro;
         return html`<h2>${contentText(locale, 'adminContent.contribute.title', { city: name })}</h2>
             <p>${contentText(locale, 'adminContent.contribute.intro')}</p>
@@ -159,7 +159,7 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
     }
 
     /** What the account stands as, and the form when it may ask: a request answered earlier decides nothing once the role is gone. */
-    #standing(locale: Locale, view: ContributeViewState, context: ContributeContextResponse): TemplateResult {
+    #standing(locale: UiLocale, view: ContributeViewState, context: ContributeContextResponse): TemplateResult {
         const roles = askableRoles(context);
         if (context.blocked) {
             return html`<p class="alert" role="alert">${contentText(locale, 'adminContent.contribute.blocked')}</p>`;
@@ -171,7 +171,7 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
     }
 
     #request(
-        locale: Locale,
+        locale: UiLocale,
         view: ContributeViewState,
         context: ContributeContextResponse,
         roles: readonly RequestableRole[],
@@ -187,7 +187,7 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
     }
 
     /** An uploader: a member who may ask for more; M28: the satellite sources stay with the owner and the editors, and why. */
-    #askMore(locale: Locale, form: TemplateResult): TemplateResult {
+    #askMore(locale: UiLocale, form: TemplateResult): TemplateResult {
         return html`${this.#member(locale)}
             <p class="note" data-satellite-note>
                 ${contentText(locale, 'adminContent.contribute.satelliteNote')}
@@ -197,19 +197,19 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
             ${form}`;
     }
 
-    #member(locale: Locale): TemplateResult {
+    #member(locale: UiLocale): TemplateResult {
         return html`<p role="status">${contentText(locale, 'adminContent.contribute.member')}</p>
             <p><a href="#/photos">${contentText(locale, 'adminContent.contribute.openAdmin')}</a></p>`;
     }
 
-    #refused(locale: Locale, request: NonNullable<ContributeContextResponse['request']>, form: TemplateResult): TemplateResult {
+    #refused(locale: UiLocale, request: NonNullable<ContributeContextResponse['request']>, form: TemplateResult): TemplateResult {
         return html`<p class="alert" role="alert">${contentText(locale, 'adminContent.contribute.refused')}</p>
             ${request.note === undefined ? nothing : html`<p>${contentText(locale, 'adminContent.contribute.refusedNote', { note: request.note })}</p>`}
             ${this.#askAgain(locale, request, form)}`;
     }
 
     /** The date a refused account may ask again, or the form once it has passed. */
-    #askAgain(locale: Locale, request: NonNullable<ContributeContextResponse['request']>, form: TemplateResult): TemplateResult {
+    #askAgain(locale: UiLocale, request: NonNullable<ContributeContextResponse['request']>, form: TemplateResult): TemplateResult {
         const retryAt = request.retryAt ?? '';
         if (Date.parse(retryAt) > Date.now()) {
             return html`<p>${contentText(locale, 'adminContent.contribute.retry', { date: retryAt.slice(0, 10) })}</p>`;
@@ -217,7 +217,7 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
         return form;
     }
 
-    #requestForm(locale: Locale, view: ContributeViewState, roles: readonly RequestableRole[]): TemplateResult {
+    #requestForm(locale: UiLocale, view: ContributeViewState, roles: readonly RequestableRole[]): TemplateResult {
         const submit = (event: SubmitEvent): void => {
             event.preventDefault();
             const form = event.currentTarget as HTMLFormElement;
@@ -236,11 +236,11 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
         </form>`;
     }
 
-    #problem(locale: Locale, view: ContributeViewState): TemplateResult {
+    #problem(locale: UiLocale, view: ContributeViewState): TemplateResult {
         return view.problem === null ? EMPTY : html`<p class="alert" role="alert">${noticeOf(locale, view.problem)}</p>`;
     }
 
-    #suggest(locale: Locale, view: ContributeViewState, photo: ContributePhoto): TemplateResult {
+    #suggest(locale: UiLocale, view: ContributeViewState, photo: ContributePhoto): TemplateResult {
         const placed = photo.location !== undefined;
         const title = locale === 'en' ? (photo.title.en ?? photo.title.ro) : photo.title.ro;
         const texts = placed ? CORRECTION_TEXTS : PLACE_TEXTS;
@@ -265,14 +265,14 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
         void this.intents?.suggest({ reason: fieldOf(form, 'why'), sourceUrl: fieldOf(form, 'source'), credit: fieldOf(form, 'credit') });
     };
 
-    #thanks(locale: Locale, view: ContributeViewState): TemplateResult {
+    #thanks(locale: UiLocale, view: ContributeViewState): TemplateResult {
         const remaining = view.thanks?.remaining;
         return remaining === undefined
             ? EMPTY
             : html`<p role="status">${contentText(locale, 'adminContent.contribute.thanks', { remaining: String(remaining) })}</p>`;
     }
 
-    #mapBox(locale: Locale, view: ContributeViewState): TemplateResult {
+    #mapBox(locale: UiLocale, view: ContributeViewState): TemplateResult {
         return html`<hcm-admin-map
             .status=${view.map}
             .locale=${locale}
@@ -281,7 +281,7 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
         ></hcm-admin-map>`;
     }
 
-    #placeFields(locale: Locale, view: ContributeViewState): TemplateResult {
+    #placeFields(locale: UiLocale, view: ContributeViewState): TemplateResult {
         const { location, bearing } = view.proposal;
         return html`<div class="actions">
                 <hcm-button variant="tonal" icon="place" @click=${() => this.intents?.placeAtCentre()}

@@ -8,7 +8,7 @@
  * live region, so a turning map does not flood a screen reader. Its own element, so a frame of the camera repaints the
  * needle alone, not the viewer.
  */
-import { DEFAULT_LOCALE, translate, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, translate, type ViewerLocale } from '@hcm/shared';
 import { LitElement, css, html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../components/css-properties.js';
@@ -32,7 +32,7 @@ function wholeDegrees(value: number): number {
 }
 
 /** The compass's description: north and level, turned, or turned and tilted (whole degrees). */
-export function compassDescription(locale: Locale, { bearing, pitch }: MapCamera): string {
+export function compassDescription(locale: ViewerLocale, { bearing, pitch }: MapCamera): string {
     const degrees = String(wholeDegrees(bearing));
     const tilt = Math.round(pitch);
     if (tilt > 0) {
@@ -102,7 +102,7 @@ export class HcmCompass extends LitElement {
     ];
 
     declare source: CameraSource | null;
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare camera: MapCamera;
     /** Reflected: the camera faces north and looks straight down (the quiet look; tests and styles read it). */
     declare north: boolean;

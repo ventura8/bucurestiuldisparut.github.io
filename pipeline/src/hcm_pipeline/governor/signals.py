@@ -6,7 +6,8 @@ from typing import Final, Literal
 PowerSource = Literal["ac", "battery", "unknown"]
 Via = Literal["cuda", "rocm", "openvino"]
 Profile = Literal["full", "quiet", "paused"]
-Chosen = Literal["auto", "quiet", "full"]
+# `paused` (the owner's request of 2026-11-13): Pause this computer, from the admin or its own page; never from the profile switch.
+Chosen = Literal["auto", "quiet", "full", "paused"]
 Why = Literal["idle", "user-active", "others-busy", "battery", "thermal", "gpu-busy", "owner"]
 
 MB: Final = 1024 * 1024

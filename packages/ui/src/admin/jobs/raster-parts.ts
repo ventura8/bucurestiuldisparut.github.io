@@ -1,15 +1,16 @@
 /**
  * The Jobs page's raster parts (`docs/research/M3-interfaces.md` §10.6; CR-M3-5): why an unfinished job waits, in
  * words (with the date it tries again), **Run it again** on a failed pipeline or publish job with attempts left, and
- * the georeferencer on a job awaiting its points. Text only.
+ * the georeferencer on a job awaiting its points. Text only. Also the job's steps, and Pause all and Resume all (2026-11-13).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { waitText, wordedWait } from '../imagery/imagery-text.js';
 import { when, withValue } from '../imagery/when.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
+import { stepNameText, stepStateText } from './job-text.js';
 import type { JobItemPort } from './jobs-port.js';
 
 export interface RasterActions {
@@ -19,7 +20,7 @@ export interface RasterActions {
 }
 
 /** Why the unfinished job is not running, or nothing. */
-export function waitLine(locale: Locale, job: JobItemPort): TemplateResult {
+export function waitLine(locale: UiLocale, job: JobItemPort): TemplateResult {
     if (job.finished) {
         return EMPTY;
     }
@@ -31,7 +32,7 @@ function awaitingPoints(job: JobItemPort): string | null {
     return job.status === 'awaiting_gcps' ? job.versionId : null;
 }
 
-function retryButton(locale: Locale, actions: RasterActions): TemplateResult {
+function retryButton(locale: UiLocale, actions: RasterActions): TemplateResult {
     return html`<hcm-button
         variant="tonal"
         icon="replay"
@@ -44,7 +45,7 @@ function retryButton(locale: Locale, actions: RasterActions): TemplateResult {
 }
 
 /** Retry on a failed raster job, the georeferencer on one awaiting points; nothing for the others. */
-export function rasterActions(locale: Locale, job: JobItemPort, actions: RasterActions): TemplateResult {
+export function rasterActions(locale: UiLocale, job: JobItemPort, actions: RasterActions): TemplateResult {
     const versionId = awaitingPoints(job);
     return when(
         job.retryable || versionId !== null,
@@ -61,4 +62,43 @@ export function rasterActions(locale: Locale, job: JobItemPort, actions: RasterA
                 )}
             </div>`,
     );
+}
+
+/** The job's steps in the order its type runs them, with each one's state; nothing before the first. */
+export function stepsList(locale: UiLocale, job: JobItemPort): TemplateResult {
+    if (job.steps.length === 0) {
+        return EMPTY;
+    }
+    return html`<h3>${contentText(locale, 'adminContent.jobs.steps')}</h3>
+        <dl class="facts">
+            ${job.steps.map(
+                (step) =>
+                    html`<dt>${stepNameText(locale, step.name)}</dt>
+                        <dd>${stepStateText(locale, step.status)}</dd>`,
+            )}
+        </dl>`;
+}
+
+/** Pause all and Resume all (the owner's request of 2026-11-13): every queued or running job of the city, said in a notice. */
+export function pauseAllActions(locale: UiLocale, off: boolean, act: (action: 'pause' | 'resume') => void): TemplateResult {
+    return html`<div class="actions" data-pause-all>
+        <hcm-button
+            variant="text"
+            icon="pause"
+            ?disabled=${off}
+            @click=${() => {
+                act('pause');
+            }}
+            >${contentText(locale, 'adminContent.jobs.pauseAll')}</hcm-button
+        >
+        <hcm-button
+            variant="text"
+            icon="play_arrow"
+            ?disabled=${off}
+            @click=${() => {
+                act('resume');
+            }}
+            >${contentText(locale, 'adminContent.jobs.resumeAll')}</hcm-button
+        >
+    </div>`;
 }

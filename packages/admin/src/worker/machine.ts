@@ -7,7 +7,9 @@
  *
  * The same `/state` says the versions (`docs/research/M7-local-worker.md`, *The starter updates itself*): the image the worker
  * runs (`image`, and `outdated` when it is not the installed one) and the version of the starter file that runs it (`starter`),
- * which the card compares with this release's `WORKER_STARTER_VERSION` (the admin is the installed release).
+ * which the card compares with this release's `WORKER_STARTER_VERSION` (the admin is the installed release). The image is current
+ * when its digest equals the installed pipeline's (`setup/status.install.pipeline.image`); `outdated` is only the fallback while
+ * that digest is unknown (a busy worker only learns `outdated` at its next claim).
  */
 import {
     WORKER_STARTER_UPDATES,
@@ -66,15 +68,25 @@ function matching(value: unknown, pattern: RegExp): string | null {
     return typeof value === 'string' && pattern.test(value) ? value : null;
 }
 
-/** The card's versions of one `/state` answer. */
-export function versionsOf(answer: unknown): VersionsView {
+/**
+ * Whether the worker's image is the installed pipeline's: compare digests when the installed one is known, else the
+ * worker's `outdated` flag (set only on the next claim).
+ */
+function imageCurrentOf(image: string | null, outdated: boolean, installed: string | null): boolean {
+    const wanted = matching(installed, DIGEST);
+    return wanted !== null && image !== null ? image === wanted : !outdated;
+}
+
+/** The card's versions of one `/state` answer, with the installed pipeline digest when `setup.status` named one. */
+export function versionsOf(answer: unknown, installed: string | null = null): VersionsView {
     const record = fieldsOf(answer);
     const starter = fieldsOf(record['starter']);
     const version = matching(starter['version'], STARTER_WORD);
+    const image = matching(record['image'], DIGEST);
     return {
         said: 'starter' in record,
-        image: matching(record['image'], DIGEST),
-        imageCurrent: record['outdated'] !== true,
+        image,
+        imageCurrent: imageCurrentOf(image, record['outdated'] === true, installed),
         starter: version,
         starterCurrent: version === WORKER_STARTER_VERSION,
         update: WORKER_STARTER_UPDATES.find((word) => word === starter['update']) ?? null,

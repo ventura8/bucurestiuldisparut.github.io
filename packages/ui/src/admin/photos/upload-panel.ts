@@ -4,7 +4,7 @@
  * Cancel and Hide, a link to the photo it created or repeats, and the line saying what new photos get (the sticky
  * author, source and licence). File names and reasons are text.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -20,7 +20,7 @@ function canRetry(item: UploadItemPort): boolean {
 }
 
 export interface UploadPanelInput {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly items: readonly UploadItemPort[];
     readonly sticky: StickyPort;
     readonly intents: PhotosIntentsPort | null;
@@ -28,7 +28,7 @@ export interface UploadPanelInput {
     readonly href: (photoId: string) => string;
 }
 
-function progress(locale: Locale, item: UploadItemPort): TemplateResult {
+function progress(locale: UiLocale, item: UploadItemPort): TemplateResult {
     const label = photoText(locale, 'adminContent.photos.uploads.status', { name: item.name, status: phaseText(locale, item) });
     if (item.phase === 'uploading') {
         return html`<hcm-progress .value=${item.percent / 100} .label=${label}></hcm-progress>`;
@@ -38,7 +38,7 @@ function progress(locale: Locale, item: UploadItemPort): TemplateResult {
         : EMPTY;
 }
 
-function reason(locale: Locale, item: UploadItemPort): TemplateResult {
+function reason(locale: UiLocale, item: UploadItemPort): TemplateResult {
     return item.error === null ? EMPTY : html`<p class="alert">${messageText(locale, item.error, item.params)}</p>`;
 }
 

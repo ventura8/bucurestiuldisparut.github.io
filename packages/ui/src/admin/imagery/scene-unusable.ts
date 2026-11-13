@@ -7,7 +7,7 @@
  * its budget; the card's chips are `scene-tags.ts`'s.
  */
 
-import { CLOUDY_CITY_PERCENT, type Locale } from '@hcm/shared';
+import { CLOUDY_CITY_PERCENT, type UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -31,7 +31,7 @@ export interface SceneUseChunk {
 const REASONS: readonly UnusableReasonPort[] = ['clouds', 'haze', 'area', 'other'];
 
 /** The page's warning of a frame probably cloudy over the city: what is wrong, why, what to do (before an import or a purchase). */
-export function cloudyWarning(locale: Locale, scene: SceneItemPort): TemplateResult {
+export function cloudyWarning(locale: UiLocale, scene: SceneItemPort): TemplateResult {
     const share = scene.cloudCity !== null && scene.cloudCity >= CLOUDY_CITY_PERCENT ? scene.cloudCity : null;
     return share === null || scene.unusable !== null
         ? EMPTY
@@ -110,12 +110,12 @@ export function unusableSection(context: ImageryContext, scene: SceneItemPort): 
     );
 }
 
-function fact(locale: Locale, key: Parameters<typeof contentText>[1], value: string): TemplateResult {
+function fact(locale: UiLocale, key: Parameters<typeof contentText>[1], value: string): TemplateResult {
     return html`<dt>${contentText(locale, key)}</dt>
         <dd>${value}</dd>`;
 }
 
-export function facts(locale: Locale, scene: SceneItemPort): TemplateResult {
+export function facts(locale: UiLocale, scene: SceneItemPort): TemplateResult {
     const cloud =
         scene.cloudCover === null
             ? contentText(locale, 'adminContent.imagery.cloudUnknown')

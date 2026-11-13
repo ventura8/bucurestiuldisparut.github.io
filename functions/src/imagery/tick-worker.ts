@@ -23,7 +23,7 @@ import { stampOf, IMAGERY_WRITER, versionIdOf } from './records.js';
 const MINUTE_MS = 60_000;
 
 function waitsForWorker(job: JobDoc): boolean {
-    return job.status === 'queued' && job.runOn === 'local' && job.waitReason === 'worker';
+    return job.status === 'queued' && job.runOn === 'local' && job.waitReason === 'worker' && job.paused === undefined;
 }
 
 /**

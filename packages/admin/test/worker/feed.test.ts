@@ -171,6 +171,7 @@ describe("the local worker feed: a version's job and the failures", () => {
             step: null,
             progress: null,
             overdue: false,
+            paused: null,
         });
         expect(world.callables.named('setup.status')).toBe(0);
         await expect(feed.intents.runJob('cloud', true)).resolves.toBe(true);
