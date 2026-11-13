@@ -1,18 +1,16 @@
 /**
  * The timeline's year chip (the owner, 2026-11-13): an M3 plain tooltip that names a year whose stop has no label of its
- * own (a dense track labels every other year), and its dates when its layers have several. A mouse over such a stop shows
- * it, the keyboard on a year with several dates too; a finger on the track always shows the year under it, clear of the
- * finger (above a lying timeline, beside a standing one), and selects it on lift (`timeline-scrub.ts`). Pure: the text and
- * the place; `<hcm-timeline>` draws it.
+ * own (a dense track labels every other year). A mouse over such a stop shows it; a finger on the track shows the year
+ * under it, clear of the finger (above a lying timeline, beside a standing one), and selects it on lift (`timeline-scrub.ts`).
+ * A year of several dates shows no chip at all: its date menu names them. Pure: the text and the place; `<hcm-timeline>`
+ * draws it.
  */
-import { translate, type Layer, type Locale } from '@hcm/shared';
+import { translate, type Locale } from '@hcm/shared';
 
 import type { TimelineStop } from './timeline-model.js';
 
 /** Px between the chip and the timeline's card, and between the chip and the viewport's edge. */
 const TIP_GAP_PX = 8;
-/** At most this many dates are named; more end with "…". */
-const MAX_DATES = 3;
 
 /** What the chip shows: the stop it names, and whether a finger holds it (always shown) or a mouse or key (when needed). */
 export interface TimelineTip {
@@ -20,34 +18,17 @@ export interface TimelineTip {
     readonly touch: boolean;
 }
 
-/** The distinct ISO dates of the layers of `year`, oldest first (none for "today" or undated layers). */
-export function datesOfYear(layers: readonly Pick<Layer, 'year' | 'date'>[], year: TimelineStop): readonly string[] {
-    const dates = layers.filter((layer) => layer.year === year && layer.date !== undefined).map((layer) => String(layer.date));
-    return [...new Set(dates)].sort((a, b) => a.localeCompare(b));
+/** The chip's text: the year, or "Today". */
+export function tipText(stop: TimelineStop, locale: Locale): string {
+    return stop === null ? translate(locale, 'timeline.present') : String(stop);
 }
 
-/** An ISO date as the visitor reads it: "12 aug." / "Aug 12" (the year is the chip's first word); a month alone stays as is. */
-function shortDate(iso: string, locale: Locale): string {
-    const [year, month, day] = iso.split('-').map(Number);
-    if (year === undefined || month === undefined || day === undefined || Number.isNaN(day)) {
-        return iso;
-    }
-    return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(Date.UTC(year, month - 1, day));
-}
-
-/** The chip's text: the year (or "Today"), then its dates when it has several. */
-export function tipText(stop: TimelineStop, dates: readonly string[], locale: Locale): string {
-    const year = stop === null ? translate(locale, 'timeline.present') : String(stop);
-    if (dates.length < 2) {
-        return year;
-    }
-    const named = dates.slice(0, MAX_DATES).map((date) => shortDate(date, locale));
-    return `${year} · ${named.join(', ')}${dates.length > MAX_DATES ? ', …' : ''}`;
-}
-
-/** Whether a mouse or a key shows the chip on a stop: one without its own label, or a year of several dates. */
-export function tipWanted(labelled: boolean, dates: readonly string[]): boolean {
-    return !labelled || dates.length >= 2;
+/**
+ * Whether a mouse or a key shows the chip on a stop: one without its own label, and never a year of several dates (the
+ * owner, 2026-11-13: its date menu names them; the chip would say it twice).
+ */
+export function tipWanted(labelled: boolean, severalDates: boolean): boolean {
+    return !labelled && !severalDates;
 }
 
 /** A box: its place and size in px. */
