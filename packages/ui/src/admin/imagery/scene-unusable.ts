@@ -28,7 +28,9 @@ function percentText(locale: Locale, percent: number): string {
 /** The card's chips: Not useful, or Probably cloudy over the city: N %. */
 export function usefulnessTags(locale: Locale, scene: SceneItemPort): TemplateResult {
     if (scene.unusable !== null) {
-        return html`<span class="tag" data-tone="error" data-state="unusable">${contentText(locale, 'adminContent.imagery.unusable.tag')}</span>`;
+        return html`<span class="tag" data-tone="error" data-state="unusable"
+            >${contentText(locale, 'adminContent.imagery.unusable.tag')}</span
+        >`;
     }
     const share = cloudyShare(scene);
     return share === null
@@ -64,7 +66,11 @@ function reasonButtons(context: ImageryContext, scene: SceneItemPort): TemplateR
         <div class="actions" role="group" aria-labelledby="scene-unusable">
             ${REASONS.map(
                 (reason) =>
-                    html`<hcm-button variant="outlined" ?disabled=${off} data-unusable=${reason} @click=${() => void mark(context, scene, reason)}
+                    html`<hcm-button
+                        variant="outlined"
+                        ?disabled=${off}
+                        data-unusable=${reason}
+                        @click=${() => void mark(context, scene, reason)}
                         ><span class="visually-hidden">${contentText(locale, 'adminContent.imagery.unusable.prefix')} </span>${contentText(
                             locale,
                             `adminContent.imagery.unusable.${reason}`,

@@ -101,7 +101,9 @@ async function fetchAndStore(deps: BrowseDeps, scene: UsgsSceneDoc, sourceUrl: s
 
 /** A failure's code: our own refusal's, else USGS or the bucket not answering. */
 function browseErrorOf(error: unknown): BrowseError {
-    return error instanceof ApiError ? (BROWSE_ERRORS.find((code) => code === error.code) ?? 'apiError.imagery.browseUnavailable') : BROWSE_ERRORS[0];
+    return error instanceof ApiError
+        ? (BROWSE_ERRORS.find((code) => code === error.code) ?? 'apiError.imagery.browseUnavailable')
+        : BROWSE_ERRORS[0];
 }
 
 /**

@@ -21,7 +21,11 @@ describe('<hcm-imagery-page>: Not useful', () => {
     afterEach(cleanup);
 
     it('happyPath_aReasonIsOneClick @S-A152-HAPPY', async () => {
-        const { element, area } = await imageryPage(withScene({}), { params: ['scene', SCENE.id] }, { markUnusable: Promise.resolve(true) });
+        const { element, area } = await imageryPage(
+            withScene({}),
+            { params: ['scene', SCENE.id] },
+            { markUnusable: Promise.resolve(true) },
+        );
 
         const section = deep(element, '[data-scene-unusable]');
         expect(deep(section, 'h3').textContent).toBe('Not useful?');

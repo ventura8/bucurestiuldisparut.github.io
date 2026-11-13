@@ -105,7 +105,10 @@ export class OrderActions {
             this.#set({ ordering: null, orderRefusal: null });
             return answer;
         } catch (error) {
-            this.#set({ ordering: null, orderRefusal: { id, notice: refusalOf(error), ...(action === 'unusable' ? { action: 'unusable' as const } : {}) } });
+            this.#set({
+                ordering: null,
+                orderRefusal: { id, notice: refusalOf(error), ...(action === 'unusable' ? { action: 'unusable' as const } : {}) },
+            });
             return null;
         }
     }

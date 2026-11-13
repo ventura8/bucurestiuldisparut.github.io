@@ -129,7 +129,11 @@ describe('imagery.browse', () => {
         await seedScene(world, ENTITY);
         // Noise does not compress: a 1,800 × 1,200 PNG of it is over 5 MB, as USGS's 7 to 13 MB Declass 3 strips are.
         const noise = Buffer.from(Array.from({ length: 1800 * 1200 * 3 }, (_, index) => (index * 2654435761) % 251));
-        const large = new Uint8Array(await sharp(noise, { raw: { width: 1800, height: 1200, channels: 3 } }).png({ compressionLevel: 0 }).toBuffer());
+        const large = new Uint8Array(
+            await sharp(noise, { raw: { width: 1800, height: 1200, channels: 3 } })
+                .png({ compressionLevel: 0 })
+                .toBuffer(),
+        );
         expect(large.length).toBeGreaterThan(5_000_000);
         world.remote.serve(SOURCE, large, 'image/png');
 

@@ -50,7 +50,10 @@ import { rewriteDatePlan } from './join-plan.js';
 import { requireUsgs, usgsError, withUsgs } from './usgs-session.js';
 import { rankContextOf, shownYears, type ShownYear } from './versions.js';
 
-export type HarvestDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'secrets' | 'usgs' | 'scenes' | 'setup' | 'remote' | 'blobs' | 'images'>;
+export type HarvestDeps = Pick<
+    Ports,
+    'documents' | 'clock' | 'log' | 'secrets' | 'usgs' | 'scenes' | 'setup' | 'remote' | 'blobs' | 'images'
+>;
 
 const PAGE_SIZE = 100;
 /** Browse copies made at once by the prefetch. */

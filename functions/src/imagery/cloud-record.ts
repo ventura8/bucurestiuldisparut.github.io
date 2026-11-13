@@ -59,6 +59,11 @@ export async function measureClouds(
     rewritePlan = true,
 ): Promise<void> {
     await measure(deps, { cityId, scene, bytes, rewritePlan }).catch((error: unknown) => {
-        deps.log.warn('cloud estimate failed', { cityId, entityId: scene.entityId, code: 'imagery.cloudEstimateFailed', error: String(error) });
+        deps.log.warn('cloud estimate failed', {
+            cityId,
+            entityId: scene.entityId,
+            code: 'imagery.cloudEstimateFailed',
+            error: String(error),
+        });
     });
 }

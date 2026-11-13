@@ -43,30 +43,61 @@ async function jpegOf(image: GreyImage): Promise<Uint8Array> {
 describe('estimateClouds', () => {
     it('happyPath_theWesternHalfClouded_isAboutHalfTheCity', () => {
         // 32 of 64 columns are cloud; the one at its edge is not flat, so 31.
-        expect(estimateClouds(greyImage((x) => x < SIZE / 2), OVER_THE_CITY, BOUNDS)).toEqual({ percent: 48, version: 1 });
+        expect(
+            estimateClouds(
+                greyImage((x) => x < SIZE / 2),
+                OVER_THE_CITY,
+                BOUNDS,
+            ),
+        ).toEqual({ percent: 48, version: 1 });
     });
 
     it('happyPath_aClearFrameIsNoCloud_aRoadsGlintIsNotCloud', () => {
         // A one-pixel bright line on dark ground: bright but not flat.
-        expect(estimateClouds(greyImage((x) => x === 20), OVER_THE_CITY, BOUNDS)?.percent).toBe(0);
+        expect(
+            estimateClouds(
+                greyImage((x) => x === 20),
+                OVER_THE_CITY,
+                BOUNDS,
+            )?.percent,
+        ).toBe(0);
     });
 
     it('happyPath_onlyTheCitysPartOfTheFrameCounts', () => {
         // The frame is twice the city's width, the city its western half; the eastern half (outside) is all cloud.
-        const wide = { footprint: OVER_THE_CITY.footprint.map((point) => ({ ...point, lng: point.lng === BOUNDS.east ? 26.7 : point.lng })) };
+        const wide = {
+            footprint: OVER_THE_CITY.footprint.map((point) => ({ ...point, lng: point.lng === BOUNDS.east ? 26.7 : point.lng })),
+        };
 
-        expect(estimateClouds(greyImage((x) => x >= SIZE / 2), wide, BOUNDS)?.percent).toBe(0);
+        expect(
+            estimateClouds(
+                greyImage((x) => x >= SIZE / 2),
+                wide,
+                BOUNDS,
+            )?.percent,
+        ).toBe(0);
     });
 
     it('badPath_aFrameThatBarelyReachesTheCityIsUnmeasured', () => {
         // A corner of a hundredth of a degree each way: about three of the 4,096 pixels.
         const far = { footprint: OVER_THE_CITY.footprint.map((point) => ({ lat: point.lat + 0.29, lng: point.lng + 0.39 })) };
 
-        expect(estimateClouds(greyImage(() => true), far, BOUNDS)).toBeUndefined();
+        expect(
+            estimateClouds(
+                greyImage(() => true),
+                far,
+                BOUNDS,
+            ),
+        ).toBeUndefined();
     });
 
     it('happyPath_cornersFromTheMetadataWin_aLongFootprintFallsBackToItsBox', () => {
-        const [nw, ne, se, sw] = OVER_THE_CITY.footprint as [UsgsSceneDoc['footprint'][number], UsgsSceneDoc['footprint'][number], UsgsSceneDoc['footprint'][number], UsgsSceneDoc['footprint'][number]];
+        const [nw, ne, se, sw] = OVER_THE_CITY.footprint as [
+            UsgsSceneDoc['footprint'][number],
+            UsgsSceneDoc['footprint'][number],
+            UsgsSceneDoc['footprint'][number],
+            UsgsSceneDoc['footprint'][number],
+        ];
         expect(frameQuad({ corners: { nw: se, ne: sw, se: nw, sw: ne }, footprint: OVER_THE_CITY.footprint })?.[0]).toEqual(se);
         const ring = [...OVER_THE_CITY.footprint, { lat: 44.45, lng: 25.8 }];
         expect(frameQuad({ footprint: ring })).toEqual([
@@ -82,7 +113,13 @@ describe('estimateClouds', () => {
 
         expect(frameQuad(reversed)?.[0]).toEqual({ lat: BOUNDS.north, lng: BOUNDS.west });
         // The northern quarter (16 rows) is cloud, its last row an edge: 15 of 64.
-        expect(estimateClouds(greyImage((_x, y) => y < SIZE / 4), reversed, BOUNDS)?.percent).toBe(23);
+        expect(
+            estimateClouds(
+                greyImage((_x, y) => y < SIZE / 4),
+                reversed,
+                BOUNDS,
+            )?.percent,
+        ).toBe(23);
     });
 });
 
@@ -95,7 +132,11 @@ describe('the estimate recorded by imagery.browse', () => {
         const world = await readyWorld();
         const source = `https://ims.cr.usgs.gov/browse/declass1/${F040}.jpg`;
         await seedScene(world, F039, frameFields());
-        await seedScene(world, F040, frameFields({ footprint: EAST, downloadAvailable: false, browse: { state: 'none', sourceUrl: source } }));
+        await seedScene(
+            world,
+            F040,
+            frameFields({ footprint: EAST, downloadAvailable: false, browse: { state: 'none', sourceUrl: source } }),
+        );
         world.remote.serve(source, await jpegOf(greyImage(() => true)));
 
         await browse(world, F040);

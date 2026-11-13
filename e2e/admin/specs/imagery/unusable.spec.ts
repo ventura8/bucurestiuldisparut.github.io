@@ -74,7 +74,9 @@ test(
         // Undo on its page: offered again, and the plan's Buy this scan is back.
         await page.goto(adminPath(lang, `imagery/scene/${CLOUDY}`));
         await page.getByRole('button', { name: imageryText(lang, 'adminContent.imagery.unusable.undo') }).click();
-        await expect(page.locator('[data-scene-unusable] hcm-button[data-unusable="clouds"]')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(page.locator('[data-scene-unusable] hcm-button[data-unusable="clouds"]')).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
         await expect
             .poll(async () => (await planRows(imagery))?.find((row) => row.date === DATE)?.paidFrames, { timeout: FUNCTIONS_TIMEOUT_MS })
             .toEqual([CLOUDY]);
