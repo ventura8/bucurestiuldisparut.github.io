@@ -902,5 +902,5 @@ or `{action: 'resume'}`, recorded as `paused.by: 'computer'`. `GET /state` gains
 The hand-back reuses the shape of M20's (archivehost, §204: `worker.end` `returned`, the attempt given back) with its own outcome,
 because a paused computer's job waits for no copy. Tests: `functions/test/imagery/pause.test.ts`, `functions/test/worker/pause.test.ts`,
 `packages/admin/test/worker/pause.test.ts`, `packages/ui/test/admin/worker/pause.test.ts`, `pipeline/tests/unit/test_runner_pause.py`,
-`test_worker_pausing.py`, the rules' `jobs.test.ts`, `e2e/admin/specs/imagery/pause.spec.ts`; scenarios A160, A161, P32; tour states
+`test_worker_pausing.py`, the rules' `jobs.test.ts`, `e2e/admin/specs/imagery/pause.spec.ts`; scenarios A170, A171, P32; tour states
 `worker.job-paused`, `worker.jobs-pause-all`, `worker.computer-paused`.

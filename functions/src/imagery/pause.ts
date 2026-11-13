@@ -21,7 +21,7 @@ import { pausedWorker, resumedWorker } from '../worker/pause-state.js';
 import { requireCity, stampOf, type Stamp } from './records.js';
 
 /**
- * `imagery.pause` (a city editor; the owner's request of 2026-11-13; `docs/research/M7-local-worker.md` → *Pause*; S-A160-*, S-A161-*):
+ * `imagery.pause` (a city editor; the owner's request of 2026-11-13; `docs/research/M7-local-worker.md` → *Pause*; S-A170-*, S-A171-*):
  *
  * - a job (`jobId`): Pause marks a queued, starting or running pipeline job `paused` (`{by, at}`, `inRun` when a run holds it): a
  *   queued one is claimed and dispatched by nobody, a running one stops at its next step boundary and goes back to `queued`

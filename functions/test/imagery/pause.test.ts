@@ -36,7 +36,7 @@ function claim(world: World) {
 }
 
 describe('imagery.pause: a job', () => {
-    it('happyPath_aQueuedJobPausedIsClaimedByNobodyAndResumedIsClaimedAgain @S-A160-HAPPY', async () => {
+    it('happyPath_aQueuedJobPausedIsClaimedByNobodyAndResumedIsClaimedAgain @S-A170-HAPPY', async () => {
         const world = await workerWorld();
         await seedWorker(world);
         await seedJob(world, JOB, localJob());
@@ -50,7 +50,7 @@ describe('imagery.pause: a job', () => {
         await expect(claim(world)).resolves.toEqual({ job: { jobId: JOB } });
     });
 
-    it('happyPath_aRunningJobIsMarkedInRunAndItsResumeGivesBackTheAttemptOnceTheRunStopped @S-A160-HAPPY', async () => {
+    it('happyPath_aRunningJobIsMarkedInRunAndItsResumeGivesBackTheAttemptOnceTheRunStopped @S-A170-HAPPY', async () => {
         const world = await workerWorld();
         await seedJob(world, JOB, heldJob({ attempt: 2 }));
 
@@ -76,7 +76,7 @@ describe('imagery.pause: a job', () => {
         expect(job?.paused).toBeUndefined();
     });
 
-    it('badPath_aFinishedJobIsNotPausableAndNothingChanges @S-A160-BAD-FINISHED', async () => {
+    it('badPath_aFinishedJobIsNotPausableAndNothingChanges @S-A170-BAD-FINISHED', async () => {
         const world = await workerWorld();
         await seedJob(world, JOB, localJob({ status: 'awaiting_approval', waitReason: 'approval' }));
 
@@ -106,7 +106,7 @@ describe('imagery.pause: a job', () => {
 });
 
 describe('imagery.pause: every job', () => {
-    it('happyPath_pauseAllPausesTheQueuedAndRunningPipelineJobsAndResumeAllResumesThem @S-A160-HAPPY-ALL', async () => {
+    it('happyPath_pauseAllPausesTheQueuedAndRunningPipelineJobsAndResumeAllResumesThem @S-A170-HAPPY-ALL', async () => {
         const world = await workerWorld();
         await seedJob(world, 'j-a', localJob());
         await seedJob(world, 'j-b', heldJob());
@@ -121,7 +121,7 @@ describe('imagery.pause: every job', () => {
         expect((await readJob(world, 'j-a'))?.paused).toBeUndefined();
     });
 
-    it('badPath_pauseAllWithNothingToPauseChangesNothing @S-A160-BAD-NOTHING', async () => {
+    it('badPath_pauseAllWithNothingToPauseChangesNothing @S-A170-BAD-NOTHING', async () => {
         const world = await workerWorld();
         await seedJob(world, 'j-c', localJob({ status: 'succeeded' }));
 
@@ -130,7 +130,7 @@ describe('imagery.pause: every job', () => {
 });
 
 describe('imagery.pause: a computer', () => {
-    it('happyPath_aPausedComputerClaimsNothingItsJobIsAskedBackAndResumeDropsBoth @S-A161-HAPPY', async () => {
+    it('happyPath_aPausedComputerClaimsNothingItsJobIsAskedBackAndResumeDropsBoth @S-A171-HAPPY', async () => {
         const world = await workerWorld();
         await seedHeld(world);
         const until = new Date(Date.parse(NOW) + 3_600_000).toISOString();
@@ -155,7 +155,7 @@ describe('imagery.pause: a computer', () => {
         expect((await readJob(world, JOB))?.status).toBe('queued');
     });
 
-    it('badPath_aPauseEndingPastTwoDaysOrInThePastIsRefused @S-A161-BAD-UNTIL', async () => {
+    it('badPath_aPauseEndingPastTwoDaysOrInThePastIsRefused @S-A171-BAD-UNTIL', async () => {
         const world = await workerWorld();
         await seedWorker(world);
 

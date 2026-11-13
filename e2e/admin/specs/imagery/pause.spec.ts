@@ -13,7 +13,7 @@ import { readyImagery } from './world.js';
 test.describe.configure({ lock: ADMIN_LOCK });
 
 /**
- * Pause (the owner's request of 2026-11-13; docs/research/M7-local-worker.md → Pause; behaviours A160, A161): a version's job is
+ * Pause (the owner's request of 2026-11-13; docs/research/M7-local-worker.md → Pause; behaviours A170, A171): a version's job is
  * paused and resumed from its page (`imagery.pause` in the Functions emulator), Pause all and Resume all on Jobs, and the city's
  * computer paused for an hour and resumed from the Jobs page's computer card. A finished job offers no Pause.
  */
@@ -58,7 +58,7 @@ function pauseCard(page: Page): Locator {
 
 test(
     'A job is paused and resumed from its page and from Jobs, and the computer is paused for an hour and resumed',
-    { tag: ['@S-A160-HAPPY', '@S-A160-HAPPY-ALL', '@S-A161-HAPPY'] },
+    { tag: ['@S-A170-HAPPY', '@S-A170-HAPPY-ALL', '@S-A171-HAPPY'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
         test.setTimeout(180_000);
         const owner = adminWorld.accounts.owner.uid;
@@ -109,7 +109,7 @@ test(
 
 test(
     'A finished job offers no Pause, and Resume all with nothing paused says so',
-    { tag: ['@S-A160-BAD-FINISHED', '@S-A160-BAD-NOTHING'] },
+    { tag: ['@S-A170-BAD-FINISHED', '@S-A170-BAD-NOTHING'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
         const owner = adminWorld.accounts.owner.uid;
         const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);

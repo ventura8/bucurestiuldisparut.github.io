@@ -7010,7 +7010,7 @@ The owner: "take me to the analytics permission button", then: the page must sho
   choice (M26 §3), and the computer's own page sends its pause with the next claim or end (`pause` command), so either side pauses it.
 - **216e Until tomorrow is 08:00 tomorrow** on the clock of whoever clicked; a pause ends within 48 hours at most
   (`PAUSE_UNTIL_MAX_HOURS`, `apiError.imagery.pauseUntil`).
-- **Verify**: S-A160-*, S-A161-*, S-P32-*; `docs/research/M7-local-worker.md` → *Pause*.
+- **Verify**: S-A170-*, S-A171-*, S-P32-*; `docs/research/M7-local-worker.md` → *Pause*.
 
 ## 205. Under WSL the starter reads Windows' idle time, not logind's (the owner's PC, 2026-11-13) — APPLIED, no gate relaxed
 

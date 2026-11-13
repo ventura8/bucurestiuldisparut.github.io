@@ -74,7 +74,7 @@ describe('<hcm-jobs-page>', () => {
         expect(deepText(element)).toContain('Choose a job to see its steps and log.');
     });
 
-    it('happyPath_pauseAllAndResumeAllAskTheStoreAndAPausedJobReadsPaused @S-A160-HAPPY-ALL', async () => {
+    it('happyPath_pauseAllAndResumeAllAskTheStoreAndAPausedJobReadsPaused @S-A170-HAPPY-ALL', async () => {
         const paused = jobItem({ paused: true, status: 'queued', progress: null });
         const jobs = area(jobsState({ list: ready([paused]), detail: detail(paused) }));
         const { element } = await page('jobs', jobs, { params: ['b'] });

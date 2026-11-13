@@ -135,7 +135,7 @@ describe('cancel a job', () => {
 });
 
 // Pause (the owner's request of 2026-11-13): only imagery.pause pauses or resumes a job or a computer; a paused job can be cancelled.
-describe('pause a job or a computer @S-A160-BAD-CLIENT-WRITE', () => {
+describe('pause a job or a computer @S-A170-BAD-CLIENT-WRITE', () => {
     it('happyPath_aPausedQueuedJobCanStillBeCancelled', async () => {
         expect(await cancel('queued')).toBe('allow');
     });

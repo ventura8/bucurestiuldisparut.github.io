@@ -53,7 +53,7 @@ describe('how long a computer is paused', () => {
 });
 
 describe('the worker feed: Pause', () => {
-    it('happyPath_aVersionsJobIsPausedAndResumedAndShowsWhoPausedIt @S-A160-HAPPY', async () => {
+    it('happyPath_aVersionsJobIsPausedAndResumedAndShowsWhoPausedIt @S-A170-HAPPY', async () => {
         const world = contentWorld();
         world.callables.answer('imagery.pause', () => ({ changed: 1 }));
         world.store.docs.set(FIRESTORE_PATHS.job(CITY, 'j1'), jobDoc({ paused: { by: 'admin-uid', at: at('2025-10-09T08:05:00Z') } }));
@@ -69,7 +69,7 @@ describe('the worker feed: Pause', () => {
         ]);
     });
 
-    it('happyPath_theSeenComputerIsPausedForAnHourAndResumed @S-A161-HAPPY', async () => {
+    it('happyPath_theSeenComputerIsPausedForAnHourAndResumed @S-A171-HAPPY', async () => {
         const world = contentWorld();
         world.callables.answer('imagery.pause', () => ({ changed: 1 }));
         world.store.docs.set(FIRESTORE_PATHS.worker(CITY, WORKER), seenNow(world));
@@ -102,7 +102,7 @@ describe('the worker feed: Pause', () => {
         await expect(empty.intents.pauseComputer('hour')).resolves.toBe(false);
     });
 
-    it('badPath_aRefusedPauseIsSaidWhereItWasAsked @S-A160-BAD-FINISHED', async () => {
+    it('badPath_aRefusedPauseIsSaidWhereItWasAsked @S-A170-BAD-FINISHED', async () => {
         const world = contentWorld();
         world.callables.fail('imagery.pause', failure('failed-precondition', 'apiError.imagery.notPausable'));
         world.store.docs.set(FIRESTORE_PATHS.job(CITY, 'j1'), jobDoc({ status: 'awaiting_approval' }));
@@ -115,7 +115,7 @@ describe('the worker feed: Pause', () => {
 });
 
 describe('the Jobs store: Pause all and Resume all', () => {
-    it('happyPath_pauseAllSaysHowManyAndAPausedJobsRowSaysPaused @S-A160-HAPPY-ALL', async () => {
+    it('happyPath_pauseAllSaysHowManyAndAPausedJobsRowSaysPaused @S-A170-HAPPY-ALL', async () => {
         const world = contentWorld();
         world.callables.answer('imagery.pause', () => ({ changed: 3 }));
         world.store.docs.set(FIRESTORE_PATHS.job(CITY, 'j1'), jobDoc({ paused: { by: 'admin-uid', at: at('2025-10-09T08:05:00Z') } }));
@@ -135,7 +135,7 @@ describe('the Jobs store: Pause all and Resume all', () => {
         ]);
     });
 
-    it('badPath_nothingToPauseOrResumeIsSaidAndARefusalToo @S-A160-BAD-NOTHING', async () => {
+    it('badPath_nothingToPauseOrResumeIsSaidAndARefusalToo @S-A170-BAD-NOTHING', async () => {
         const world = contentWorld();
         world.callables.answer('imagery.pause', () => ({ changed: 0 }));
         const store = JOBS_MODULE.create(world.services);

@@ -1,5 +1,5 @@
 /**
- * `<hcm-job-pause>` (the owner's request of 2026-11-13; `docs/research/M7-local-worker.md` → *Pause*; behaviour A160), on the Jobs
+ * `<hcm-job-pause>` (the owner's request of 2026-11-13; `docs/research/M7-local-worker.md` → *Pause*; behaviour A170), on the Jobs
  * page's job and a version's page: **Pause** on a pipeline job that is queued or running, and **Resume** on a paused one. A paused
  * job says who paused it and when, and that Resume puts it back in the queue to go on from the step where it stopped; a running one
  * asked to pause says it stops after the step it is on.

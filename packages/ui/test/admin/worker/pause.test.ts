@@ -129,7 +129,7 @@ async function panel(host: FakeHost): Promise<LitElement> {
 describe('<hcm-job-pause>', () => {
     afterEach(cleanup);
 
-    it('happyPath_aQueuedJobOffersPauseAndAPausedOneSaysWhoAndWhenAndOffersResume @S-A160-HAPPY', async () => {
+    it('happyPath_aQueuedJobOffersPauseAndAPausedOneSaysWhoAndWhenAndOffersResume @S-A170-HAPPY', async () => {
         const host = new FakeHost(view({ job: job() }));
         const element = await jobPause(host);
 
@@ -153,7 +153,7 @@ describe('<hcm-job-pause>', () => {
         expect(said).toContain(t('adminWorker.job.pausing', { who: '', when: '' }, 'ro').split('(')[0]?.trim() ?? '');
     });
 
-    it('badPath_aFinishedJobOrNoJobShowsNoPause @S-A160-BAD-FINISHED', async () => {
+    it('badPath_aFinishedJobOrNoJobShowsNoPause @S-A170-BAD-FINISHED', async () => {
         const host = new FakeHost(view({ job: job({ status: 'awaiting_approval' }) }));
         const element = await jobPause(host);
         expect(deepAll(element, 'hcm-button')).toHaveLength(0);
@@ -174,7 +174,7 @@ describe('<hcm-job-pause>', () => {
 describe('<hcm-worker-panel>: Pause this computer', () => {
     afterEach(cleanup);
 
-    it('happyPath_theThreeLengthsPauseTheComputerAndAPausedOneSaysWhoUntilWhenAndOffersResume @S-A161-HAPPY', async () => {
+    it('happyPath_theThreeLengthsPauseTheComputerAndAPausedOneSaysWhoUntilWhenAndOffersResume @S-A171-HAPPY', async () => {
         const host = new FakeHost(view({ worker: worker() }));
         const element = await panel(host);
 

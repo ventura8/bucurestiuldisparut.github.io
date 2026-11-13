@@ -1172,14 +1172,14 @@
             "source": "the owner, 2026-11-13: \"This scan is useless (too many clouds!!!)\", DS09066A047MC019, a 1964 scan the whole-city plan kept offering to buy; docs/research/M4-interfaces.md, Not useful and the cloud estimate"
         },
         {
-            "id": "A160",
+            "id": "A170",
             "area": "admin",
             "name": "Pause a job and resume it, one at a time or all at once, from Jobs and from its version page",
             "milestone": "M7",
             "source": "the owner, 2026-11-13: \"I want the user to be able to pause jobs, and to pause using a machine\"; docs/research/M7-local-worker.md, Pause"
         },
         {
-            "id": "A161",
+            "id": "A171",
             "area": "admin",
             "name": "Pause a computer (until I resume, for 1 hour, until tomorrow) and resume it from the computers card",
             "milestone": "M7",
@@ -20126,8 +20126,8 @@
             "notes": "The owner's report of 2026-11-13. Tests: functions/test/imagery/browse.test.ts."
         },
         {
-            "id": "S-A160-HAPPY",
-            "behaviour": "A160",
+            "id": "S-A170-HAPPY",
+            "behaviour": "A170",
             "area": "admin",
             "path": "happy",
             "title": "A queued job paused from its version page waits; Resume puts it back in the queue",
@@ -20137,8 +20137,8 @@
             "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts (tour state worker.job-paused), functions/test/imagery/pause.test.ts, packages/ui/test/admin/worker/pause.test.ts, packages/admin/test/worker/pause.test.ts."
         },
         {
-            "id": "S-A160-HAPPY-ALL",
-            "behaviour": "A160",
+            "id": "S-A170-HAPPY-ALL",
+            "behaviour": "A170",
             "area": "admin",
             "path": "happy",
             "title": "Pause all and Resume all on Jobs",
@@ -20148,8 +20148,8 @@
             "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts (tour state worker.jobs-pause-all), functions/test/imagery/pause.test.ts, packages/admin/test/worker/pause.test.ts."
         },
         {
-            "id": "S-A160-BAD-FINISHED",
-            "behaviour": "A160",
+            "id": "S-A170-BAD-FINISHED",
+            "behaviour": "A170",
             "area": "admin",
             "path": "bad",
             "title": "A finished job, or one waiting for USGS, points or the approval, cannot be paused",
@@ -20159,8 +20159,8 @@
             "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts, functions/test/imagery/pause.test.ts, packages/ui/test/admin/worker/pause.test.ts."
         },
         {
-            "id": "S-A160-BAD-NOTHING",
-            "behaviour": "A160",
+            "id": "S-A170-BAD-NOTHING",
+            "behaviour": "A170",
             "area": "admin",
             "path": "bad",
             "title": "Pause all or Resume all with nothing to change says so",
@@ -20170,8 +20170,8 @@
             "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts, functions/test/imagery/pause.test.ts, packages/admin/test/worker/pause.test.ts."
         },
         {
-            "id": "S-A160-BAD-CLIENT-WRITE",
-            "behaviour": "A160",
+            "id": "S-A170-BAD-CLIENT-WRITE",
+            "behaviour": "A170",
             "area": "admin",
             "path": "bad",
             "title": "No client pauses or resumes a job or a computer by writing it",
@@ -20181,8 +20181,8 @@
             "notes": "Pause, 2026-11-13. Tests: firebase/rules-tests/test/jobs.test.ts."
         },
         {
-            "id": "S-A161-HAPPY",
-            "behaviour": "A161",
+            "id": "S-A171-HAPPY",
+            "behaviour": "A171",
             "area": "admin",
             "path": "happy",
             "title": "The computer is paused for an hour from the computers card and resumed",
@@ -20192,8 +20192,8 @@
             "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts (tour state worker.computer-paused), functions/test/imagery/pause.test.ts, packages/ui/test/admin/worker/pause.test.ts, packages/admin/test/worker/pause.test.ts."
         },
         {
-            "id": "S-A161-BAD-UNTIL",
-            "behaviour": "A161",
+            "id": "S-A171-BAD-UNTIL",
+            "behaviour": "A171",
             "area": "admin",
             "path": "bad",
             "title": "A pause that would end in the past or after two days is refused",
