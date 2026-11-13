@@ -52,7 +52,8 @@ test.describe('an English browser', () => {
 });
 
 test.describe('a browser in a language the admin does not have', () => {
-    test.use({ locale: 'de-DE' });
+    // Swedish is not in UI_LOCALES (`docs/I18N.md`); German (`de`) is, so de-DE would open the admin in Deutsch.
+    test.use({ locale: 'sv-SE' });
 
     test(
         'A browser language the admin does not have keeps the Romanian title and language',
@@ -63,7 +64,7 @@ test.describe('a browser in a language the admin does not have', () => {
             await expect(page.getByRole('heading', { level: 1, name: translateAdminShell('ro', 'adminShell.nav.photos') })).toBeVisible();
             await expect(page).toHaveTitle(translateAdminShell('ro', 'adminShell.appName'));
             await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
-            expect(await page.evaluate(() => navigator.language)).toBe('de-DE');
+            expect(await page.evaluate(() => navigator.language)).toBe('sv-SE');
         },
     );
 });

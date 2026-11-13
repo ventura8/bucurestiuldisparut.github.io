@@ -7490,10 +7490,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A browser language the admin does not have keeps the Romanian title and language",
-            "asserts": "a German browser (de-DE) -> the Romanian screens, the tab titled 'Administrarea hărții' and <html lang> ro (never de, never the English title)",
+            "asserts": "a Swedish browser (sv-SE; sv is not in UI_LOCALES) -> the Romanian screens, the tab titled 'Administrarea hărții' and <html lang> ro (never sv, never the English title); de-DE would open Deutsch because de is one of the 25",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M3 (the integrator, 2026-10-24). Test: e2e/admin/specs/shell/title.spec.ts."
+            "notes": "Milestone M3 (the integrator, 2026-10-24). After the 25 languages (2026-11-12) the unsupported tag is sv-SE, not de-DE. Test: e2e/admin/specs/shell/title.spec.ts."
         },
         {
             "id": "S-A22-HAPPY",
@@ -20261,10 +20261,10 @@
             "area": "admin",
             "path": "happy",
             "title": "The account menu lists the 25 languages; French is fetched, shown and kept after a reload; Arabic turns the page right to left",
-            "asserts": "25 radios by their own names; /admin/i18n/fr.json fetched, the photos page's empty text in French, html lang fr, again after a reload; Arabic: html dir rtl, the page's area marked lang en (no Arabic admin file yet), the tour's layout, axe and i18n checks read as Arabic (admin.shell.language-rtl); the latest choice wins over a file still loading (packages/admin/test/app/language.test.ts)",
+            "asserts": "one language dropdown (hcm-language-select / combobox Limbă) with 25 options by their own names, no radios; /admin/i18n/fr.json fetched, the photos page's empty text in French, html lang fr, again after a reload; Arabic: html dir rtl, the page's area marked lang en (no Arabic admin file yet), the tour's layout, axe and i18n checks read as Arabic (admin.shell.language-rtl); the latest choice wins over a file still loading (packages/admin/test/app/language.test.ts)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md. Picker is a dropdown since 2026-11-14 (hcm-language-select), not a radiogroup."
         },
         {
             "id": "S-A95-BAD-MISSING-KEY-FALLS-BACK",
