@@ -154,7 +154,7 @@ export class HcmLayerPanel extends LitElement {
              * of 310 px, and in a 1024 x 768 side sheet a switch the focus scrolled back to sat under it (the tour's
              * focus-obscured and target-size checks, docs/LESSONS.md 618). Below 1200 x 700 the strip scrolls with the list.
              */
-            @media (max-width: 1199.98px), (max-height: 699.98px) {
+            @media (width < 1200px), (height < 700px) {
                 .pinned {
                     position: static;
                     box-shadow: none;
