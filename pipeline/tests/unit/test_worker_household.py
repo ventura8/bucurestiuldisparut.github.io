@@ -1,6 +1,20 @@
 """W5, household computers (docs/research/M7-local-worker.md, *Household computers*): what a worker says of its computer."""
 
+import httpx
 from hcm_pipeline.worker.household import Removal, host_on_hello, last_word, removable, share_of
+from hcm_pipeline.worker.loop import Pass
+
+from tests.unit.test_worker_loop import IDS, Runtime, Server, loop_with
+
+
+class RemovalServer(Server):
+    """The server of the loop's tests, whose first claim is answered with Remove this computer."""
+
+    def _claim(self) -> httpx.Response:
+        if self.claims and self.claims[0] == "remove":
+            self.claims.pop(0)
+            return httpx.Response(200, json={"result": {"job": None, "remove": {"docker": True, "keep": False}}})
+        return super()._claim()
 
 
 def test_happy_path_hello_names_the_computer_and_its_starter() -> None:
@@ -50,3 +64,56 @@ def test_bad_path_only_a_starter_that_cleans_up_is_removable_and_only_its_last_r
     assert last_word({"HCM_REMOVAL": "maybe"}) is None
     assert last_word({"HCM_REMOVAL": "done"}) == {"step": "done"}
     assert last_word({"HCM_REMOVAL": "done", "HCM_REMOVAL_DOCKER_LEFT": "true"}) == {"step": "done", "dockerLeft": True}
+
+
+def test_happy_path_a_claim_says_the_governors_share() -> None:
+    """Scenarios: S-A143-HAPPY-GOVERNOR"""
+    server = Server(None)
+    loop, _state, _session = loop_with(server, Runtime())
+    share = {"profile": "quiet", "why": "user-active", "cores": 8, "threads": 2, "memoryMb": 4096}
+    loop.share = lambda: share
+
+    assert loop.run_once() is Pass.IDLE
+    assert server.calls[0][1]["share"] == share
+
+
+def test_happy_path_remove_this_computer_is_accepted_and_ends_the_loop() -> None:
+    """Scenarios: S-A143-HAPPY-REMOVE"""
+    server = RemovalServer("remove", None)
+    loop, _state, _session = loop_with(server, Runtime())
+    loop.removable = True
+
+    assert loop.run_once() is Pass.IDLE
+    assert loop.stopping.is_set()
+    assert loop.removal is not None
+    assert int(loop.removal.exit_code) == 77
+    assert server.calls[1] == ("worker-claim", {**IDS, "removal": {"step": "accepted"}})
+
+
+def test_bad_path_a_worker_without_a_cleaning_starter_says_it_cannot() -> None:
+    """Scenarios: S-A143-BAD-REMOVE-NO-STARTER"""
+    server = RemovalServer("remove", None)
+    loop, _state, _session = loop_with(server, Runtime())
+
+    assert loop.run_once() is Pass.IDLE
+    assert (loop.stopping.is_set(), loop.removal) == (False, None)
+    assert server.calls[1] == ("worker-claim", {**IDS, "removal": {"step": "failed", "why": "no-starter"}})
+
+
+def test_bad_path_the_removals_word_needs_a_session_and_a_server_that_takes_it() -> None:
+    server = Server("apiError.worker.revoked")
+    loop, _state, _session = loop_with(server, Runtime(), signed_in=False)
+    assert loop.say_removal({"step": "done"}) is False
+    assert server.calls == []
+
+    signed, _state, _session = loop_with(server, Runtime())
+    assert signed.say_removal({"step": "done"}) is False
+    assert server.calls == [("worker-claim", {**IDS, "removal": {"step": "done"}})]
+
+
+def test_happy_path_a_claim_without_a_share_says_none() -> None:
+    server = Server(None)
+    loop, _state, _session = loop_with(server, Runtime())
+
+    assert loop.run_once() is Pass.IDLE
+    assert "share" not in server.calls[0][1]

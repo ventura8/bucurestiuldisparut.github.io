@@ -44,8 +44,6 @@ class Server:
         claim = self.claims.pop(0) if self.claims else None
         if claim == "outdated":
             return httpx.Response(200, json={"result": {"job": None, "outdated": True}})
-        if claim == "remove":
-            return httpx.Response(200, json={"result": {"job": None, "remove": {"docker": True, "keep": False}}})
         return self._job(claim)
 
     @staticmethod
@@ -133,18 +131,6 @@ def test_happy_path_a_claim_names_only_the_job_types_this_image_runs() -> None:
     (name, data), *_rest = server.calls
     assert name == "worker-claim"
     assert data["types"] == list(RUN_JOB_TYPES)
-    assert "share" not in data
-
-
-def test_happy_path_a_claim_says_the_governors_share() -> None:
-    """Scenarios: S-A143-HAPPY-GOVERNOR"""
-    server = Server(None)
-    loop, _state, _session = loop_with(server, Runtime())
-    share = {"profile": "quiet", "why": "user-active", "cores": 8, "threads": 2, "memoryMb": 4096}
-    loop.share = lambda: share
-
-    assert loop.run_once() is Pass.IDLE
-    assert server.calls[0][1]["share"] == share
 
 
 def test_happy_path_an_outdated_image_without_the_supervisor_stays_and_takes_no_job() -> None:
@@ -319,37 +305,3 @@ def test_happy_path_an_idle_worker_waits_its_poll_interval_in_short_looks() -> N
     assert isinstance(loop, CountingLoop)
     assert loop.passes == [Pass.IDLE, Pass.IDLE]
     assert [name for name, _data in server.calls] == ["worker-claim", "worker-claim"]
-
-
-def test_happy_path_remove_this_computer_is_accepted_and_ends_the_loop() -> None:
-    """Scenarios: S-A143-HAPPY-REMOVE"""
-    server = Server("remove", None)
-    loop, _state, _session = loop_with(server, Runtime())
-    loop.removable = True
-
-    assert loop.run_once() is Pass.IDLE
-    assert loop.stopping.is_set()
-    assert loop.removal is not None
-    assert int(loop.removal.exit_code) == 77
-    assert server.calls[1] == ("worker-claim", {**IDS, "removal": {"step": "accepted"}})
-
-
-def test_bad_path_a_worker_without_a_cleaning_starter_says_it_cannot() -> None:
-    """Scenarios: S-A143-BAD-REMOVE-NO-STARTER"""
-    server = Server("remove", None)
-    loop, _state, _session = loop_with(server, Runtime())
-
-    assert loop.run_once() is Pass.IDLE
-    assert (loop.stopping.is_set(), loop.removal) == (False, None)
-    assert server.calls[1] == ("worker-claim", {**IDS, "removal": {"step": "failed", "why": "no-starter"}})
-
-
-def test_bad_path_the_removals_word_needs_a_session_and_a_server_that_takes_it() -> None:
-    server = Server("apiError.worker.revoked")
-    loop, _state, _session = loop_with(server, Runtime(), signed_in=False)
-    assert loop.say_removal({"step": "done"}) is False
-    assert server.calls == []
-
-    signed, _state, _session = loop_with(server, Runtime())
-    assert signed.say_removal({"step": "done"}) is False
-    assert server.calls == [("worker-claim", {**IDS, "removal": {"step": "done"}})]
