@@ -15,11 +15,11 @@ import {
     type HashState,
     type Locale,
     type Manifest,
-    type Overlay,
 } from '@hcm/shared';
 
 import { hashMapLabels, withHashLabels } from './map-labels.js';
 import { isCompareLayer, withStory, withVisibleLayers, type CompareView, type ViewerState } from './state.js';
+import { frontOfIds, hashLayerIds } from './stack.js';
 import { yearOfLayers } from './timeline.js';
 
 /** How long the hash waits for the map to settle before it is written. */
@@ -60,7 +60,8 @@ function withHashStory(applied: AppliedHash, hash: DecodedHash): AppliedHash {
     if (state === null) {
         return { ...applied, unknownStory: hash.story };
     }
-    const kept = hash.layers === undefined ? state : { ...state, year: applied.state.year, overlays: applied.state.overlays };
+    const { year, front, overlays } = applied.state;
+    const kept = hash.layers === undefined ? state : { ...state, year, front, overlays };
     return { ...applied, state: kept };
 }
 
@@ -69,7 +70,7 @@ function withHashLayers(state: ViewerState, layers: readonly string[] | undefine
         return state;
     }
     const overlays = withVisibleLayers(state.overlays, new Set(layers));
-    return { ...state, overlays, year: yearOfLayers(state.manifest.layers, layers) };
+    return { ...state, overlays, ...frontOfIds(state.manifest.layers, layers) };
 }
 
 function withHashPhoto(state: ViewerState, { photo, photoVersion }: DecodedHash): AppliedHash {
@@ -115,16 +116,17 @@ export function applyDecodedHash(state: ViewerState, hash: DecodedHash): Applied
     return withHashStory(withHashPhoto(overlays === withLang.overlays ? withLang : { ...withLang, overlays }, hash), hash);
 }
 
-function sameIds(a: readonly string[], b: readonly string[]): boolean {
-    return a.length === b.length && a.every((id) => b.includes(id));
-}
-
-/** `layers=` only when the visible historical layers differ from the manifest's default-visible ones. */
-function hashLayers(overlays: readonly Overlay[]): Pick<HashState, 'layers'> {
-    const rasters = overlays.filter((overlay) => overlay.kind === 'raster');
-    const visible = rasters.filter((overlay) => overlay.visible).map((overlay) => overlay.id);
-    const defaults = rasters.filter((overlay) => overlay.defaultVisible).map((overlay) => overlay.id);
-    return sameIds(visible, defaults) ? {} : { layers: visible };
+/**
+ * `layers=` only when the visible historical layers, or the one on top, differ from the manifest's defaults; the layer on
+ * top is named last (V15, `stack.ts`).
+ */
+function hashLayers(state: ViewerState): Pick<HashState, 'layers'> {
+    const layers = state.manifest?.layers ?? [];
+    const overlays = state.overlays.map((overlay) => ({ ...overlay, visible: overlay.defaultVisible }));
+    const visible = overlays.filter((overlay) => overlay.kind === 'raster' && overlay.visible).map((overlay) => overlay.id);
+    const defaults = { layers, overlays, year: yearOfLayers(layers, visible), front: null };
+    const ids = hashLayerIds({ layers, overlays: state.overlays, year: state.year, front: state.front, defaults });
+    return ids === null ? {} : { layers: ids };
 }
 
 /** What the hash carries for `state`; `defaultLocale` (the page's language) is left out. */
@@ -132,7 +134,7 @@ export function hashStateOf(state: ViewerState, defaultLocale: Locale): HashStat
     const overlayOpacity = hashOverlayOpacity(state.overlays);
     return {
         view: hashViewOf(state),
-        ...hashLayers(state.overlays),
+        ...hashLayers(state),
         ...(overlayOpacity === undefined ? {} : { overlayOpacity }),
         ...(state.compare === null ? {} : { compare: { layer: state.compare.layerId, position: state.compare.position } }),
         ...hashMapLabels(state.mapLabels),

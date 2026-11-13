@@ -76,6 +76,11 @@ export interface ViewerState {
     /** The timeline stop; null is "today" (no historical layer). */
     readonly year: number | null;
     /**
+     * V15: the layer the visitor brought to the front (switched on, or a date picked on the timeline), drawn above every
+     * other while visible (`stack.ts`); null: the timeline's year on top, its last layer in manifest order highest.
+     */
+    readonly front: string | null;
+    /**
      * Every overlay in list order (`overlaysFromManifest`: historical layers, photos, POI categories), updated only with
      * `withOverlayOpacity`, `withOverlayVisibility` and `withHashOpacity`; `[]` before the manifest loads.
      */
@@ -121,6 +126,7 @@ export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentS
         webgl: true,
         view: NO_VIEW,
         year: null,
+        front: null,
         overlays: [],
         selectedPhotoId: null,
         selectedPoiId: null,
@@ -172,6 +178,7 @@ export function withManifest(state: ViewerState, manifest: Manifest): ViewerStat
         overlays,
         view: cityView(manifest),
         year: yearOfLayers(manifest.layers, visible),
+        front: null,
         selectedPhotoId: null,
         selectedPoiId: null,
         selectedStoryId: null,
@@ -190,20 +197,26 @@ export function withVisibleLayers(overlays: readonly Overlay[], ids: ReadonlySet
 }
 
 /**
- * A historical layer switched on moves the timeline to its year, so that it shows (V03, the owner 2026-11-09); with several
- * on, the last one switched on is the timeline's. Switched off, or any other overlay, leaves the timeline as it is.
+ * A historical layer switched on moves the timeline to its year, so that it shows (V03, the owner 2026-11-09), and comes to
+ * the front, above a newer opaque one too (V15, the owner 2026-11-13); with several on, the last one switched on is the
+ * timeline's. Switched off, or any other overlay, leaves the timeline as it is.
  */
 export function withLayerYear(state: ViewerState, overlay: Overlay): ViewerState {
     const layer = overlay.visible ? state.manifest?.layers.find((candidate) => candidate.id === overlay.id) : undefined;
-    return layer === undefined ? state : { ...state, year: layer.year };
+    return layer === undefined ? state : { ...state, year: layer.year, front: layer.id };
 }
 
-/** The timeline stop nearest `year`, with exactly its layers visible. */
+/** The timeline stop nearest `year`, with exactly its layers visible, the last of them in manifest order on top. */
 export function withYear(state: ViewerState, year: number | null): ViewerState {
     const layers = state.manifest?.layers ?? [];
     const stop = snapYear(year, timelineYears(layers));
-    const overlays = withVisibleLayers(state.overlays, layerIdsOfYear(layers, stop));
-    return stop === state.year && overlays === state.overlays ? state : { ...state, year: stop, overlays };
+    const next = { ...state, year: stop, overlays: withVisibleLayers(state.overlays, layerIdsOfYear(layers, stop)), front: null };
+    return sameStop(state, next) ? state : next;
+}
+
+/** Whether two states stand on the same stop with the same layers and no chosen front. */
+function sameStop(state: ViewerState, next: ViewerState): boolean {
+    return next.year === state.year && next.overlays === state.overlays && state.front === null;
 }
 
 /**

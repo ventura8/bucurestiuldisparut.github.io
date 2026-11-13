@@ -8,17 +8,23 @@
  * own labels follow the visitor's choice on either map (`map-labels.ts`, V31), its light the theme (`map-light.ts`, V38).
  * The visitor's position, once known, is a blue dot on either map (V10), Show on map's ring around a photo's place too (V51).
  */
-import { findOverlay, PHOTOS_OVERLAY_ID, rasterAdjustmentPaint, type Manifest, type Overlay } from '@hcm/shared';
+import { findOverlay, PHOTOS_OVERLAY_ID, rasterAdjustmentPaint, type Layer, type Manifest, type Overlay } from '@hcm/shared';
 import type { MyLocationFix, ViewerMapPort } from '@hcm/ui/map';
 
 import { drawMapLabels } from './map-labels.js';
 import { drawMapLight, mapLight } from './map-light.js';
 import { photoFeatures, poiSpecs, rasterSpec } from './map-specs.js';
+import { stackOrder } from './stack.js';
 import { displayedOverlays, type MyLocationState, type ViewerState } from './state.js';
 
 /** The position to draw: none while off or waiting for the first one. */
 function fixOf(state: MyLocationState): MyLocationFix | null {
     return typeof state === 'object' ? state : null;
+}
+
+/** Each layer's place in the stack of the overlays the map draws (`stack.ts`). */
+function stackOf(state: ViewerState, { layers }: Manifest): (layer: Pick<Layer, 'id' | 'year'>) => number {
+    return stackOrder({ layers, overlays: displayedOverlays(state), year: state.year, front: state.front });
 }
 
 export class MapSync {
@@ -38,8 +44,10 @@ export class MapSync {
             return;
         }
         const overlays = displayedOverlays(state);
+        const order = stackOf(state, manifest);
         for (const layer of manifest.layers) {
-            this.#map.addRasterLayer(rasterSpec(layer, findOverlay(overlays, layer.id), this.#assetBase, state.locale), 'middle');
+            const spec = rasterSpec(layer, findOverlay(overlays, layer.id), this.#assetBase, state.locale);
+            this.#map.addRasterLayer({ ...spec, order: order(layer) }, 'middle');
             this.#map.setLayerPaint(layer.id, rasterAdjustmentPaint(layer.adjustments));
         }
         const photos = findOverlay(state.overlays, PHOTOS_OVERLAY_ID);
@@ -63,12 +71,24 @@ export class MapSync {
             return;
         }
         this.#overlays(displayedOverlays(previous), displayedOverlays(next));
+        this.#stack(previous, next, manifest);
         this.#yearAndLanguage(previous, next, manifest);
         if (next.mapLabels.shown !== previous.mapLabels.shown) {
             drawMapLabels(this.#map, next.mapLabels.shown, manifest.city.basemap.config);
         }
         this.#light(previous, next);
         this.#places(previous, next);
+    }
+
+    /** V15: a layer whose place in the stack changed (the timeline's layer to the front) moves there, its tiles kept. */
+    #stack(previous: ViewerState, next: ViewerState, manifest: Manifest): void {
+        const before = stackOf(previous, manifest);
+        const after = stackOf(next, manifest);
+        for (const layer of manifest.layers) {
+            if (before(layer) !== after(layer)) {
+                this.#map.setLayerOrder(layer.id, after(layer));
+            }
+        }
     }
 
     /** The visitor's blue dot and Show on map's ring. */

@@ -35,14 +35,37 @@ describe('viewer store: a layer switched on moves the timeline to its year', () 
         expect(location.written.at(-1)).toContain('layers=kh4-1966,kh9-1980');
     });
 
-    it('happyPath_theTimelineFollowsTheLastLayerSwitchedOn', async () => {
-        const { store } = await loaded();
+    it('happyPath_theTimelineFollowsTheLastLayerSwitchedOnAndBringsItToTheFront', async () => {
+        const { store, map, location } = await loaded();
 
         store.toggleOverlay('kh9-1980', true);
         store.toggleOverlay('kh4-1966', true);
+        vi.advanceTimersByTime(HASH_WRITE_DELAY_MS);
 
         expect(store.getState().year).toBe(1966);
+        expect(store.getState().front).toBe('kh4-1966');
         expect(visible(store.getState())).toEqual(['kh4-1966', 'kh9-1980']);
+        const [, older] = map.callsOf('setLayerOrder').findLast((call) => call[0] === 'kh4-1966') ?? [];
+        const [, newer] = map.callsOf('setLayerOrder').findLast((call) => call[0] === 'kh9-1980') ?? [];
+        expect(Number(older)).toBeGreaterThan(Number(newer));
+        expect(location.written.at(-1)).toContain('layers=kh9-1980,kh4-1966');
+    });
+
+    it('happyPath_aLinkNamingTheOlderLayerLastStandsOnItsYearWithItOnTop', async () => {
+        const { store } = await loaded({ hash: '#15/44.43/26.1&layers=kh9-1980,kh4-1966' });
+
+        expect(store.getState().year).toBe(1966);
+        expect(store.getState().front).toBe('kh4-1966');
+    });
+
+    it('badPath_theTimelinesOwnStopForgetsTheChosenFront', async () => {
+        const { store } = await loaded();
+        store.toggleOverlay('kh4-1966', true);
+
+        store.setYear(1980);
+
+        expect(store.getState().front).toBeNull();
+        expect(visible(store.getState())).toEqual(['kh9-1980']);
     });
 
     it('badPath_switchingLayersOffLeavesTheTimelineAsItIs', async () => {
