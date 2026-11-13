@@ -3807,11 +3807,11 @@ steps of M5 (§2.6), after the other workstreams' engine changes (kit-cli's `eng
   +                      reports/release/create-historic-city-*.tgz
                      if-no-files-found: error
                      retention-days: 7
-   
+
   @@ -86,6 +88,10 @@ jobs:
                      title="$(sed -n 's/^# //p' "release/docs/releases/${TAG}_github_description.md" | head -n 1)"
                      echo "title=${title:-$TAG}" >>"$GITHUB_OUTPUT"
-   
+
   +            # The engine's release file under a name that says what it is, beside the bundles on the GitHub Release.
   +            - name: Name the engine's release file
   +              run: cp release/cdn/engine/release.json release/engine-release.json
@@ -6951,4 +6951,3 @@ The owner: "make sure we have analytics through the app and especially in the wi
 - **202d Step 2** (pending): the copy over the home network (a separate LAN endpoint off unless the city has two paired workers, a
   short-lived read-only token from a callable, archive files only), and pre-seeding under the governor; the bucket stays the fallback.
 - **Verify**: S-A120-HAPPY-ARCHIVE-COPY, S-A120-BAD-ARCHIVE-COPY, S-P20-HAPPY-ARCHIVE-COPY, S-P20-BAD-ARCHIVE-COPY.
-

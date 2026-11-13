@@ -12,9 +12,6 @@ import { idSchema } from './primitives.js';
 const PAIR_ID = /^[0-9a-f]{40}$/;
 const digestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 
-/** M20 (2026-11-13): a file of an archive series' copy for another worker (`RASTER_PATHS.archiveCopy`): a sheet by its SHA-256, or the manifest. */
-export const ARCHIVE_COPY_FILE = /^(?:[0-9a-f]{64}|manifest\.json)$/;
-
 /** What a worker is doing: waiting for a job, or running one. */
 export const WORKER_STATES = ['idle', 'busy'] as const;
 

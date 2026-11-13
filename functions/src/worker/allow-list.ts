@@ -4,7 +4,6 @@
  * one job the worker claimed: its city, its version, its layer and its parameters.
  */
 import {
-    ARCHIVE_COPY_FILE,
     FIRESTORE_PATHS,
     RASTER_PATHS,
     VERSION_FILES,
@@ -17,6 +16,8 @@ import {
     type LayerJoinParams,
     type LayerVersionState,
 } from '@hcm/shared';
+
+import { ARCHIVE_COPY_FILE } from './archive-host.js';
 
 /**
  * The job fields a run writes (`pipeline/src/hcm_pipeline/{runner,lease,jobs}.py`: the lease and its heartbeat, the step
@@ -252,7 +253,7 @@ function isCityAlignImage({ cityId }: ObjectScope, path: string): boolean {
     return city === cityId && isId(layer) && isId(version);
 }
 
-/** M20 (2026-11-13): one file of the copy of an archive series' sheets that its job reads (`RASTER_PATHS.archiveCopy`). */
+/** M20 (2026-11-13): one file of the copy of an archive series' sheets that its job reads (`ARCHIVE_COPY_FILE`). */
 function isOwnArchiveCopy({ cityId, jobId, job }: ObjectScope, path: string): boolean {
     const folder = `tmp/archive-copies/${cityId}/${jobId}/`;
     return job.type === 'archive-series' && path.startsWith(folder) && ARCHIVE_COPY_FILE.test(path.slice(folder.length));

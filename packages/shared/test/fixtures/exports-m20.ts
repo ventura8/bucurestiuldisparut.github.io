@@ -3,7 +3,6 @@ export const M20_EXPORTS = [
     'ARCHIVE_ACTIONS',
     'ARCHIVE_AUTO_LIKELIHOODS',
     // Live report of 2026-11-13: an archive series' sheets copied through the bucket for another computer.
-    'ARCHIVE_COPY_FILE',
     'ARCHIVE_COPY_MAX_BYTES',
     'ARCHIVE_ENCODINGS',
     'ARCHIVE_ID_PATTERN',

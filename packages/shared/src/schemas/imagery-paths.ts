@@ -5,7 +5,6 @@
  * `pipeline/tests/contracts/paths.json`. Nothing here is public: a published version's tiles are copied to the public bucket
  * (M12: `STORAGE_PATHS.layerTiles`) or live at Mapbox, previews are read by admins through the Storage SDK or a signed address.
  */
-import { ARCHIVE_COPY_FILE } from './worker.js';
 import { USGS_DATASETS } from './firestore.js';
 import { CITY_ID_PATTERN } from './paths.js';
 import { isId } from './primitives.js';
@@ -89,12 +88,6 @@ export const RASTER_PATHS = {
     /** One of a layer version's files (kept while the version is current or pending; ended versions are swept). */
     version: (cityId: string, layerId: string, versionId: string, file: VersionFile) =>
         ['rasters', city(cityId), id(layerId), id(versionId), file].join('/'),
-    /**
-     * M20 (2026-11-13): one file of an archive series' copy for another worker, by its SHA-256 (or `manifest.json`), written by the
-     * computer that holds the archive and read by the job's worker (`tmp/`: lifecycle 1 day).
-     */
-    archiveCopy: (cityId: string, jobId: string, name: string) =>
-        ['tmp/archive-copies', city(cityId), id(jobId), segment(name, matching(ARCHIVE_COPY_FILE))].join('/'),
     /** The reference cache: a Sentinel-2 window or a surface model (GeoTIFF), or OSM features (GeoJSON), by window key (lifecycle: 90 days). */
     reference: (cityId: string, kind: ReferenceKind, key: string) =>
         `reference/${city(cityId)}/${kind}/${segment(key, matching(REFERENCE_KEY))}.${kind === 'osm' ? 'geojson' : 'tif'}`,

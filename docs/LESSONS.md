@@ -3855,4 +3855,3 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: a worker without the sheets hands the job back unspent and the computer with the archive sends a copy through the
       bucket (M20 §20; `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/test_archive_copy.py`).
     - **Data that lives on one machine needs a test with two workers: one that has it and one that does not.**
-

@@ -15,6 +15,12 @@ import type { Ports } from '../ports/index.js';
 import { IMAGERY_WRITER, stampOf } from '../imagery/records.js';
 import type { WorkerCall } from './holder.js';
 
+/**
+ * A file of an archive series' copy (`tmp/archive-copies/{city}/{job}/<name>`): a sheet by its SHA-256, or the manifest. The
+ * pipeline's side: `pipeline/src/hcm_pipeline/archive/copy.py` `copy_path`.
+ */
+export const ARCHIVE_COPY_FILE = /^(?:[0-9a-f]{64}|manifest\.json)$/;
+
 /** How often a job may go back for a copy before it fails `archiveMissing` (a copy that never arrives, or never reads). */
 export const ARCHIVE_RETURNS_MAX = 5;
 
