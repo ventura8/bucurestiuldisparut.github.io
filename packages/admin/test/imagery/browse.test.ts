@@ -57,6 +57,23 @@ describe('the browse images', () => {
         expect(shown()['d']).toEqual({ status: 'ready', url: `blob:${COPY('d')}`, preview: `blob:preview:${COPY('d')}` });
     });
 
+    it('happyPath_aCopyMadeBeforeTheCloudEstimateIsMeasuredWhenItsPageOpens @S-A152-BAD-CLOUDY', async () => {
+        const { browse, files, callables } = images();
+        files.put(COPY('e'));
+        files.put(COPY('f'));
+        answer(callables, 'imagery.browse', (request) => ({ path: COPY(request.entityId), contentType: 'image/jpeg' }));
+        const measured = sceneItemOf({
+            ...{ id: 'f', path: 'f', version: '', pending: false },
+            data: usgsSceneDocSchema.parse(sceneDoc('f', { browse: BROWSE.copied('f'), cloudEstimate: { percent: 3, version: 1 } })),
+        });
+
+        await browse.open(scene('e'));
+        await browse.open(measured);
+        await settle();
+
+        expect(callsOf(callables, 'imagery.browse')).toEqual([{ cityId: 'bucharest', entityId: 'e' }]);
+    });
+
     it('happyPath_closingReleasesEveryAddressAndALateOneToo', async () => {
         const { browse, files, shown, callables } = images();
         files.put(COPY('a'));

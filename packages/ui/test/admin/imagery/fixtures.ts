@@ -20,6 +20,7 @@ import { UPLOAD_PANEL_CHUNK } from '../../../src/admin/imagery/hcm-imagery-page.
 import { JOIN_CARD_CHUNK } from '../../../src/admin/imagery/join/lazy-card.js';
 import { ORDER_CARD_CHUNK } from '../../../src/admin/imagery/orders/lazy-card.js';
 import { MAPBOX_CHOICES_CHUNK } from '../../../src/admin/imagery/lazy-approval.js';
+import { SCENE_USE_CHUNK } from '../../../src/admin/imagery/scene-detail.js';
 import { APPROVAL_MAP_CHUNK } from '../../../src/admin/imagery/lazy-version.js';
 import { FakeArea } from '../editing/fake-area.js';
 import { adminState, deep, deepAll, defineAll, FakeAdminApp, mount, updated } from '../shell/fake-app.js';
@@ -38,6 +39,7 @@ export async function defineImagery(): Promise<void> {
     await UPLOAD_PANEL_CHUNK.load();
     await APPROVAL_MAP_CHUNK.load();
     await MAPBOX_CHOICES_CHUNK.load();
+    await SCENE_USE_CHUNK.load();
 }
 
 export function scene(overrides: Partial<SceneItemPort> = {}): SceneItemPort {
@@ -71,6 +73,8 @@ export function scene(overrides: Partial<SceneItemPort> = {}): SceneItemPort {
         acquisition: overrides.free === false ? 'needsOrder' : 'available',
         order: null,
         earthExplorerUrl: `https://earthexplorer.usgs.gov/scene/metadata/full/5e839febdccb64b3/${overrides.id ?? 'DS1035-1057DA023'}/`,
+        unusable: null,
+        cloudCity: null,
         ...overrides,
     };
 }
@@ -387,6 +391,11 @@ export function nth(root: HTMLElement, selector: string, index: number): HTMLEle
 }
 
 /** The `hcm-button` whose label is `text`. */
+/** The scene page's action buttons, its Not useful section's left out (`scene-unusable.test.ts` has those). */
+export function sceneButtons(root: HTMLElement): HTMLElement[] {
+    return deepAll(root, '.pane[data-scene] hcm-button').filter((target) => target.closest('[data-scene-unusable]') === null);
+}
+
 export function button(root: HTMLElement, text: string): HTMLElement {
     const found = deepAll(root, 'hcm-button').find((candidate) => candidate.textContent.trim() === text);
     if (found === undefined) {

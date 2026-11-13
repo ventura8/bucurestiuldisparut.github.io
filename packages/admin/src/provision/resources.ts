@@ -40,6 +40,8 @@ export const REQUIRED_APIS: readonly string[] = [
     'orgpolicy',
     'apikeys',
     'analyticsadmin',
+    // §203: the Statistics view reads GA4's numbers with the owner's read-only token (set version 4: Update the map turns it on).
+    'analyticsdata',
     // M4 (docs/research/M4-interfaces.md §4.4, CR-M4-5): Vertex AI for the translation drafts, FCM's sends and the browser's
     // token registration for web push.
     'aiplatform',

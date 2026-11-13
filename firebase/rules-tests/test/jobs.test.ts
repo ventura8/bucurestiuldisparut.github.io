@@ -185,6 +185,14 @@ describe('triage a USGS scene', () => {
     });
 
     it.each([
+        ['a not-useful mark', { status: 'rejected', unusable: { reason: 'clouds', at: new Date() } }],
+        ['a not-useful mark taken back', { status: 'candidate', unusable: deleted() }],
+        ['a cloud estimate', { cloudEstimate: { percent: 0, version: 1 } }],
+    ])('badPath_onlyTheServerWrites_%s @S-A152-BAD-CLIENT-MARK', async (_label, changes) => {
+        expect(await triage(changes)).toBe('deny');
+    });
+
+    it.each([
         ['a note over 1000 characters', { status: 'rejected', note: 'x'.repeat(1001) }],
         ['an empty note', { note: '' }],
         ['a harvested field', { status: 'rejected', downloadAvailable: false }],

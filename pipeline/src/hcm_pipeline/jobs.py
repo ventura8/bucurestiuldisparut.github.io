@@ -80,6 +80,11 @@ class DeclinedError(StepFailedError):
     hold). The job and its version end `cancelled` with this code, so the layer is released and the current version stays as it was."""
 
 
+class ArchiveElsewhereError(Exception):
+    """M20 (2026-11-13): the job's local archive has no record on this computer; the worker hands the job back (`worker.end`
+    `returned`), so the computer that holds the files runs it, and no attempt is spent."""
+
+
 class RunStoppedError(Exception):
     """The run must stop at this checkpoint."""
 

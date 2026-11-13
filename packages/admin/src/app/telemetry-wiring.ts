@@ -3,7 +3,7 @@
  * answers; the field measurements of the state (`field.ts`, §76) and the wizard funnels and shown errors (`funnels.ts`)
  * follow it for as long as the store lives.
  */
-import type { Logger } from '@hcm/shared';
+import type { CityRole, Logger } from '@hcm/shared';
 import type { FunnelWindow } from '@hcm/shared/funnels';
 
 import type { AdminState } from '../state/state.js';
@@ -18,6 +18,8 @@ export interface TelemetryView {
     windowClass(): string;
     /** The server answers (normal mode): only then does the crash endpoint exist. */
     serverAnswers(): boolean;
+    /** §203: the signed-in account's role on the open city (GA4's `app_surface`), null before one is known. */
+    role(): CityRole | null;
 }
 
 /** The parts of the app's dependencies telemetry needs (`AdminDeps` of `mount.ts`). */
@@ -44,6 +46,7 @@ export function startTelemetry<Setup>(
         locale: () => store.state.locale,
         windowClass: () => store.state.windowClass,
         serverAnswers: () => store.state.mode === 'normal',
+        role: () => store.state.cities.find((city) => city.id === store.state.cityId)?.role ?? null,
     });
     store.update({ consent: telemetry.consent, analytics: telemetry.available });
     const now = (): number => globalThis.performance.now();

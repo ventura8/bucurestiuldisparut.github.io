@@ -35,6 +35,7 @@ const WAITS = {
     mapbox: 'adminContent.imagery.wait.mapbox',
     parts: 'adminContent.imagery.wait.parts',
     daily: 'adminContent.imagery.wait.daily',
+    'archive-copy': 'adminContent.imagery.wait.archiveCopy',
 } as const satisfies Readonly<Record<WordedWait, string>>;
 
 /**

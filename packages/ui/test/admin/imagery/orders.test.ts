@@ -12,7 +12,7 @@ import type { ImageryIntentsPort, ImageryViewState, SceneItemPort, SceneOrderPor
 import { EARTH_EXPLORER_HOME } from '../../../src/admin/imagery/orders/order-card.js';
 import type { FakeArea } from '../editing/fake-area.js';
 import { cleanup, deep, deepAll, deepText, updated } from '../shell/fake-app.js';
-import { button, click, defineImagery, imageryPage, imageryState, ready, scene } from './fixtures.js';
+import { button, click, defineImagery, imageryPage, imageryState, ready, scene, sceneButtons } from './fixtures.js';
 
 const PAID = 'DS1105-1071DF076';
 const EE_PAGE = `https://earthexplorer.usgs.gov/scene/metadata/full/5e839febdccb64b3/${PAID}/`;
@@ -75,7 +75,7 @@ describe('<hcm-imagery-page>: buying a scan', () => {
             'noopener noreferrer',
         ]);
         expect(link.textContent).toContain('Order in EarthExplorer');
-        expect(deepAll(element, '.pane[data-scene] hcm-button').map((target) => target.textContent.trim())).toEqual(['I ordered it']);
+        expect(sceneButtons(element).map((target) => target.textContent.trim())).toEqual(['I ordered it']);
         click(button(element, 'I ordered it'));
         await updated(element);
 
@@ -111,7 +111,7 @@ describe('<hcm-imagery-page>: buying a scan', () => {
 
         expect(deepAll(element, '.order-card')).toEqual([]);
         expect(deepAll(element, '.pane[data-scene] .alert[role="alert"]')).toEqual([]);
-        expect(deepAll(element, '.pane[data-scene] hcm-button').map((target) => target.textContent.trim())).toEqual(['Import (free)']);
+        expect(sceneButtons(element).map((target) => target.textContent.trim())).toEqual(['Import (free)']);
         expect(await axeViolations(element)).toEqual([]);
     });
 
@@ -144,7 +144,7 @@ describe('<hcm-imagery-page>: buying a scan', () => {
         const { element } = await scenePage(scene());
 
         expect(deepAll(element, '.order-card')).toEqual([]);
-        expect(deepAll(element, '.pane[data-scene] hcm-button').map((target) => target.textContent.trim())).toEqual(['Import (free)']);
+        expect(sceneButtons(element).map((target) => target.textContent.trim())).toEqual(['Import (free)']);
     });
 
     it('happyPath_romanianTextsToo', async () => {
@@ -218,7 +218,7 @@ describe('<hcm-imagery-page>: an order', () => {
         const delivered = paid({ free: true, acquisition: 'delivered', order: order({ state: 'delivered' }) });
         const { element, area } = await scenePage(delivered);
         const deliveredText = deep(element, '.order-card[data-state="delivered"]').textContent;
-        const buttons = deepAll(element, '.pane[data-scene] hcm-button').length;
+        const buttons = sceneButtons(element).length;
         const importing = paid({
             status: 'imported',
             layerId: 'corona-1968',

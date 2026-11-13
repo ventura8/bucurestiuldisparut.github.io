@@ -171,6 +171,7 @@ export function crashesState(overrides: Partial<CrashesViewState> = {}): Crashes
         failure: null,
         apiDisabled: false,
         selected: null,
+        statistics: { days: 28, status: 'idle', problem: null, notice: null, numbers: null },
         ...overrides,
     };
 }

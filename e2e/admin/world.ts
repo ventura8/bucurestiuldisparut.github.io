@@ -117,8 +117,9 @@ export const FIREBASE_APP_NAME = '[DEFAULT]';
  * client, the stand-in consent's (CR-M2b-2). The emulators' JVMs (Firestore, the Storage rules runtime, Pub/Sub) get a
  * heap ceiling of 2 GB each: without one each may grow to a quarter of the machine's memory. `npm test` gives them 6 GB, as
  * it also asks the Firestore emulator for the whole rule-coverage report (DECISIONS-for-review.md §180). Every Node
- * process the emulators start inherits `NODE_OPTIONS`: the Functions emulator keeps one worker per function trigger for
- * the whole run (about 46, never stopped while idle), and a young generation of 1 MB instead of V8's 16 MB semi-spaces
+ * process the emulators start inherits `NODE_OPTIONS`: the Functions emulator keeps one worker per function trigger
+ * (at most `HCM_EMULATOR_MAX_WORKERS` live, the least recently used idle one stopped: `e2e/support/emulator-pool.ts`,
+ * DECISIONS-for-review.md §202a), and a young generation of 1 MB instead of V8's 16 MB semi-spaces
  * keeps each one's heap at about half (one worker that loaded the functions: 102 to 48 MB of heap, 148 to 122 MB resident;
  * in the e2e stage about 250 to 165 MB a worker, §180i).
  */

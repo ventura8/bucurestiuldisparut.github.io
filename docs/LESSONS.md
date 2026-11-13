@@ -3848,7 +3848,62 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: the test takes a fresh copy (`vi.resetModules()` and a dynamic `import`) before asserting the unloaded state.
     - **A test of a module's initial state imports a fresh copy; never trust module state left by whoever ran before.**
 
-655. **The map pane's list pushed the map 80 px below the scan, and no check compared the two panes.**
+655. **Every KH-9 panoramic preview failed with "cannot be fetched right now, try again", and Try again never helped.**
+    - Seen: 2026-11-13, the live admin, D3C1207-300256A038 and D3C1212-300570A079; the logs read `UpstreamError: remote call failed: invalid`.
+    - Cause: USGS's Declass 3 browse images are 7 to 13 MB (`curl -I` on `ims.cr.usgs.gov/browse/declass3/…`); `RemoteFiles` stops at `BROWSE_MAX_BYTES` (5 MB) and calls a longer file `invalid`, which the browse proxy turned into the retryable "unavailable".
+    - Fix and pin: the fetch takes up to 30 MB in 30 s and stores a file over 5 MB shrunk to a 4,096 px JPEG; each failure records what failed (`browseNotImage`, `browseTooLarge`, `browseUnavailable`) and says what to do (`functions/test/imagery/browse.test.ts`, S-A12-HAPPY-LARGE-BROWSE, S-A12-BAD-BROWSE-SPECIFIC).
+    - **Measure a real upstream file before choosing a size cap, and never word a failure that a retry cannot fix as "try again".**
+
+656. **The whole-city plan kept offering to buy a scan that is all cloud over the city.**
+    - Seen: 2026-11-13, the owner on DS09066A047MC019 (1964): "This scan is useless (too many clouds!!!)".
+    - Cause: declassified records carry no cloud cover, so the rank scored every frame's clouds "unknown", and nothing let the owner set a scene aside: the client rule allowed `rejected`, but no screen wrote it and a client write would not rewrite the plan.
+    - Fix and pin: the browse image's clouds over the city are measured (`cloud-estimate.ts`) and rank, card, page and Buy this scan say so; `imagery.markScene` sets a scene aside with why and writes the plan again (S-A152-*).
+    - **When a choice the server makes for the owner can be wrong, give the owner a one-click way to overrule it, and make the server act on it at once.**
+
+657. **The e2e count of Create the measurement reports still said 14 after §200 had registered 22 parameters.**
+    - Seen: 2026-11-13, track/gadata adding `app_surface`: `e2e/admin/steps/analytics.spec.ts` asserted 14 creations while the unit test of `analytics-reports.ts` said 22.
+    - Cause: the track that added eight dimensions updated the Vitest count and not the Playwright one (the e2e tier was not run before the merge).
+    - Fix and pin: both counts follow `FIELD_DIMENSIONS` and `FIELD_METRICS` (23 now); a new parameter changes both in the same commit.
+    - **A count asserted in two tiers changes in both, or the slower tier keeps the old truth until someone runs it.**
+
+658. **GA4's funnel report is not in the Data API's stable version.**
+    - Seen: 2026-11-13, track/gadata: `runFunnelReport` exists in `v1alpha` only; `v1beta` has `runReport` and `batchRunReports`.
+    - Fix: the Statistics view computes the funnel (who left before each step) from `runReport` rows of `step_view` in the page's step order (`packages/admin/src/google/analytics-data.ts`).
+    - **Check an API method's version before you design on it; build on the stable one and compute what it lacks.**
+
+659. **The NUC's worker listed nvidia-smi's error sentence as a graphics card, and the admin called the worker out of date.**
+    - Seen: 2026-11-13, the NUC (Intel Arc, NVIDIA's tools installed, no NVIDIA driver): `/state` listed a card named "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver…" and a second with an empty name; the empty name failed `workerMachineSchema`, so "This computer" asked to update a current worker.
+    - Found by: the owner reading `/state`; the starter's test only faked an nvidia-smi that succeeds or is missing, never one that fails on stdout.
+    - Fix and pin: the starter keeps nvidia-smi's rows only on exit 0 and in shape, names cards by `lspci`, says `no-driver` for an NVIDIA card it cannot reach; the worker drops a card with an empty, multi-line or overlong name; the card links to NVIDIA's drivers. `S-A141-BAD-NO-DRIVER` (`starter-governor.test.ts`, `test_governor_probe.py`, `machine.test.ts`).
+    - **A command's output is data only when the command succeeded and the output has the expected shape; never parse a failure's text as a value.**
+
+660. **The worker's governor logged the same line every five seconds, for ever.**
+    - Seen: 2026-11-13, `docker logs hcm-worker` on the laptop: "this computer: quiet (user-active), 4 threads, 5880 MB", then 5881, 5856, … one line a tick.
+    - Cause: the line was written whenever the budget changed, and the memory budget (35 % of what is free) moved by a few megabytes each tick.
+    - Fix and pin: the memory budget counts whole 256 MB steps, and the line is written only when the profile, its reason or the threads change (`test_the_log_says_a_change_of_state_only`).
+    - **Log a state's change, not each reading of a noisy number; quantise a budget that follows a measurement.**
+
+661. **The canvas test passed on one thread and the worker needed 870 MB on sixteen.**
+    - Seen: 2026-11-13, the worker on the laptop and the NUC: two large colour sheets mosaicked past the 800 MB budget that `test_placing_canvas_window.py` held, because the test's child ran GDAL on one thread and the worker runs it on the cores but one.
+    - Cause: GDAL's threads allocate from glibc's per-thread malloc arenas, which keep freed pages; about 115 MB of the layout's reads stayed resident while the canvas read its own.
+    - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
+    - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**
+
+662. **A second worker failed every archive series it took: the scanned maps were on another computer.**
+    - Seen: live, 2026-11-13: after the NUC and the PC joined the laptop, five archive series failed at `gather` with "no record of
+      ar-971b77774eee2871 on this computer", and an atlas used up its attempts on the same cause.
+    - Found by: the owner's Jobs page; every test ran one worker, which always held the archive it imported.
+    - Fix and pin: a worker without the sheets hands the job back unspent and the computer with the archive sends a copy through the
+      bucket (M20 §20; `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/test_archive_copy.py`).
+    - **Data that lives on one machine needs a test with two workers: one that has it and one that does not.**
+
+663. **`imagery-onJobWrite` ran out of its 256 MiB four times in a day: three frames ending together each read the whole city.**
+    - Seen: 2026-11-13, the admin's Statistics page, Cloud Error Reporting: "Memory limit of 256 MiB exceeded" (4 times, revision `imagery-onjobwrite-00043`); the function's log showed three events in one instance within a second, each ending in "date plan rewritten" over about 480 frames.
+    - Cause: `rewriteDatePlan` reads every scene and every layer version of the city, and the trigger takes 80 events at once (`GLOBAL_OPTIONS.concurrency`), so frames ending together held several copies of the city in memory.
+    - Fix and pin: one rewrite per city at a time in an instance; calls that come meanwhile share one more rewrite that starts after them, so the plan still shows their write (`functions/src/imagery/join-plan.ts`; `functions/test/imagery/join-plan-flight.test.ts` reads the city three times without it).
+    - **A trigger with concurrency above one multiplies whatever one event reads: a read of a whole collection is coalesced per key, not repeated per event.**
+
+664. **The map pane's list pushed the map 80 px below the scan, and no check compared the two panes.**
     - Seen: 2026-11-13, the owner in full screen at about 2000 × 1125 (`#/georef/…`): "The right screen should be the same size and aligned with the left one, as it was before."
     - Cause: *The map shows* (§173, track/georefbase) went above the map inside the map pane's own flex column, so the map started under it while the scan started at the pane's top; the turn rows and notes followed at different heights. The tour's checkers look at each element (overlap, edges, targets), never at two elements that must line up, so every state stayed green.
     - Fix and pin: the panes share one grid's rows by subgrid (header, view, turn row, note, `georef-styles.ts`); on a compact window both panes sit in the same cell and the hidden one is `visibility: hidden`, so the switch keeps the view in place. `expectPanesAligned` (`e2e/admin/specs/imagery/georef.ts`) compares the views' top and height and the turn rows' top within 1 px, in the page and in full screen and on the map-shows state (`S-A122-BAD-GEOREF-PANES-MISALIGNED`).

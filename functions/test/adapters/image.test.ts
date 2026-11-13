@@ -136,6 +136,25 @@ describe('iconPng', () => {
     });
 });
 
+describe('grey', () => {
+    it('happyPath_aColourImageIsOneGreyChannelFittedInsideTheLongEdge', async () => {
+        const grey = await images.grey(await encoded('png', 300, 150), 128);
+
+        expect([grey.width, grey.height, grey.pixels.length]).toEqual([128, 64, 128 * 64]);
+    });
+
+    it('badPath_unreadableBytesAreInvalid', async () => {
+        await expect(images.grey(pngHeaderOnly(64, 64), 128)).rejects.toMatchObject({ failure: 'invalid' });
+        await expect(images.jpeg(pngHeaderOnly(64, 64), 128)).rejects.toMatchObject({ failure: 'invalid' });
+    });
+
+    it('happyPath_aLargeImageIsShrunkToAJpegWithinTheLongEdge', async () => {
+        const shrunk = await sharp(await images.jpeg(await encoded('png', 600, 100), 300)).metadata();
+
+        expect([shrunk.format, shrunk.width, shrunk.height]).toEqual(['jpeg', 300, 50]);
+    });
+});
+
 describe('inspect: frames', () => {
     it('happyPath_anAnimatedWebpCountsItsFrames', async () => {
         await expect(images.inspect(await animatedWebp(200))).resolves.toMatchObject({ contentType: 'image/webp', frames: 2 });

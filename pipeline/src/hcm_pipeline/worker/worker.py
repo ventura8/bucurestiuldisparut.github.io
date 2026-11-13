@@ -27,11 +27,12 @@ from hcm_pipeline.worker.ai_state import initial_state, starter_on_state, starte
 from hcm_pipeline.worker.api import ARCHIVE_REPORT, WorkerApi
 from hcm_pipeline.worker.app import PageActions
 from hcm_pipeline.worker.args import WorkerArgs
+from hcm_pipeline.worker.copying import copier
 from hcm_pipeline.worker.imports import ImportRoutes
 from hcm_pipeline.worker.loop import WorkerLoop
 from hcm_pipeline.worker.page import PageSettings, content_security_policy
 from hcm_pipeline.worker.pairing import Connector, Pairing, SessionFile, Signer
-from hcm_pipeline.worker.runtime import StepsFactory, WorkerRuntime
+from hcm_pipeline.worker.runtime import StepsFactory, WorkerRuntime, signed_client
 from hcm_pipeline.worker.server import LocalServer
 from hcm_pipeline.worker.session import Session
 from hcm_pipeline.worker.state import WorkerState
@@ -112,10 +113,14 @@ class Worker:
             owner_threads(os.environ),
         )
         state.machine = governor.machine
+        state.pace.headroom = governor.headroom
         runtime.matcher_budget = governor.matcher_budget
         actions.choose_profile = governor.choose
         loop.connect_with(connector)
         loop.sweep = runtime.sweep
+        archives = ArchiveStore(args.work)
+        loop.archives = archives.held
+        loop.copier = copier(api, args.city, worker_id, archives, signed_client(args.emulators))
         loop.supervised = args.supervised
         return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector, governor, threading.Event())
 
