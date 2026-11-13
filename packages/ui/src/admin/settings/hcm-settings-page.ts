@@ -7,7 +7,7 @@
  * at the top of the detail (`DECISIONS-for-review.md` §42a): the city's content as the visitors see it, the bounds as a
  * rectangle, the overlay defaults previewed live; the same map element for both, so moving between them loads no other.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { MAPBOX_GL_CSS_URL } from '../../map/mapbox-loader.js';
@@ -131,7 +131,7 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
             ${announcer(this.announcement)}`;
     }
 
-    #sections(locale: Locale, view: SettingsViewState): TemplateResult {
+    #sections(locale: UiLocale, view: SettingsViewState): TemplateResult {
         return html`<div class="list-head">
                 <h2>${contentText(locale, 'adminContent.settings.title')}</h2>
                 ${reconnectingStatus(locale, view.city.reconnecting)}
@@ -152,7 +152,7 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
             </ul>`;
     }
 
-    #detail(locale: Locale, view: SettingsViewState): TemplateResult {
+    #detail(locale: UiLocale, view: SettingsViewState): TemplateResult {
         const section = view.section;
         if (section === null) {
             return html`<hcm-empty-state icon="settings" .text=${contentText(locale, 'adminContent.settings.choose')}></hcm-empty-state>`;
@@ -167,7 +167,7 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
     }
 
     /** The page's map, for the area and overlays sections of a city that exists. */
-    #mapBox(locale: Locale, view: SettingsViewState, section: SettingsSectionPort): TemplateResult {
+    #mapBox(locale: UiLocale, view: SettingsViewState, section: SettingsSectionPort): TemplateResult {
         if (!MAP_SECTIONS.has(section) || view.city.doc === null) {
             return EMPTY;
         }
@@ -190,7 +190,7 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
         return this.state?.cityId ?? null;
     }
 
-    #section(locale: Locale, view: SettingsViewState, section: SettingsSectionPort): TemplateResult {
+    #section(locale: UiLocale, view: SettingsViewState, section: SettingsSectionPort): TemplateResult {
         if (view.city.doc === null && section !== 'categories' && section !== 'overlays') {
             return html`<h2 tabindex="-1" data-detail-heading>${sectionRowTexts(locale, section).title}</h2>
                 <p class="alert" role="alert"><span>${contentText(locale, 'adminContent.settings.cityMissing')}</span></p>`;

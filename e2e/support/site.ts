@@ -1,3 +1,4 @@
+import type { ViewerLocale } from '@hcm/shared';
 import type { APIRequestContext, Page } from '@playwright/test';
 import sharp from 'sharp';
 
@@ -15,7 +16,7 @@ export type SiteName = 'bucharest' | 'bucharest-bucket' | 'starter-kit';
 
 export interface OpenOptions {
     /** `?lang=` (docs/ENGINE_API.md → Language: the URL wins over the stored choice and config.js). */
-    readonly lang?: 'ro' | 'en';
+    readonly lang?: ViewerLocale;
     /** The URL hash without `#` (`14/44.43/26.1&photo=...`). */
     readonly hash?: string;
 }

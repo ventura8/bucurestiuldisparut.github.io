@@ -96,7 +96,7 @@ A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](rese
 | `manifest` | object | none | An inline City Manifest v1 (the starter kit's static mode, no backend). Validated like a fetched one. |
 | `cityId` | string | none | `^[A-Za-z0-9_-]{1,40}$`. When present it must equal `manifest.city.id` (else `error.config.cityMismatch`); it also namespaces the stored preferences. |
 | `container` | string | `#historic-city-map` | CSS selector of the element to mount into (auto-boot only). |
-| `lang` | string | `ro` | A BCP 47 tag; anything that is not English resolves to Romanian. |
+| `lang` | string | `ro` | A BCP 47 tag, read by its primary subtag (`de-AT` is German); a tag of no viewer language resolves to Romanian. |
 | `engineBase` | string | the folder of the engine script | https or relative, ending with `/`: where the engine's own files live (`fonts/`: the self-hosted Roboto Flex and Material Symbols subset). |
 
 **Auto-boot.** When either build runs (the ES module or the IIFE), it registers the elements and, once the document is parsed, reads `window.HistoricCityMapConfig`:
@@ -106,7 +106,15 @@ A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](rese
 - absent while `#historic-city-map` exists: the error card shows `error.config.missing` (scenario V17);
 - absent and no default container: nothing happens (the page uses `<hcm-map-viewer>` or `HistoricCityMap.mount` itself).
 
-**Language** is resolved in this order: the URL (`#…&lang=` or `?lang=`), the visitor's stored choice, `config.lang`, then Romanian. `<html lang>` follows the result (scenario V11). An error card shown before any manifest (a missing or invalid `config.js`) follows the URL, then `config.lang`. The visitor switches it, and the theme (system, light, dark), in the menu's **Settings** (Setări), a dialog of its own; About holds neither (the owner, 2026-11-08). `setLang` accepts any tag and resolves it like `config.lang`. On an extra-large window (1600 px and wider) the Layers pane, always docked there, minimizes with its collapse button (**Restrânge straturile** / **Collapse layers**, `aria-expanded="true"`, where narrower windows have a close) to one floating button on the map's leading edge, at its gutter (**Straturi**, a layers icon, `aria-expanded="false"`, or the `l` key's focus on it), which brings it back; there is no rail, and the map takes the whole width (the owner, 2026-11-09). The minimized pane lasts for the session, also when the window leaves the extra-large layout and comes back: it is not in the URL hash, and the switches and sliders keep their values.
+**Language.** The viewer speaks the interface's 25 languages (`VIEWER_LOCALES` of `@hcm/shared`, the same list as `UI_LOCALES`, `docs/I18N.md`): `ro` (the default and the source of every text), `en`, `es`, `fr`, `de`, `it`, `pt`, `ru`, `uk`, `pl`, `tr`, `ar` (right to left), `hi`, `zh` (Simplified), `ja` and `ko`, translated and complete, and `nl`, `hu`, `id`, `vi`, `bn`, `bg`, `el`, `fa` and `ur` (`fa` and `ur` right to left), still being translated: a text one of them lacks shows in English (its file says `"fallback": "en"`, and the engine fetches English with it). It is resolved in this order: the URL (`#…&lang=` or `?lang=`, an exact code), the visitor's stored choice, `config.lang`, then Romanian; a code the viewer does not have is ignored where it stands (scenario V11). `<html lang>` and `dir` follow the result: Arabic mirrors the whole viewer, while the map's own container stays left to right (Mapbox's logo and attribution, swipe compare). An error card shown before any manifest (a missing or invalid `config.js`) follows the URL, then `config.lang`. The visitor switches it, and the theme (system, light, dark), in the menu's **Settings** (Setări), a dialog of its own, which lists the 25 languages by their own names (`LANGUAGE_NAMES`, each with its `lang`, always in the same order); About holds neither (the owner, 2026-11-08). `setLang` accepts a code or a tag of one (`pt-BR`) and ignores anything else.
+
+- **Each language is a file next to the engine.** The engine bundles no catalogue: `i18n/<code>.json` beside its script (the jsDelivr release folder, which `release.json` lists with each file's SRI, Hosting's `engine/` or an export's) holds a language's texts and names the engine version; the engine fetches the file the first time it shows that language, beside the manifest at boot, and takes it only when it names its own version and that language (`docs/research/DECISIONS-for-review.md` §183). A page's CSP must let the engine's folder answer `connect-src` (the kit's policy does: `kitContentSecurityPolicy`).
+- **A language that cannot be fetched** leaves the page in the language it had, and the snackbar says so (`language.unavailable`). At boot the viewer falls back to Romanian, saying so; when not even Romanian's file can be fetched (a page opened from the disk, `file://`), the engine shows its one card worded in its own bundle, in Romanian and English with a Retry that reloads, and `hcm-error` still reports the boot's own error.
+- **A city's own texts** (`{ro, en?}`, `{ro, en}`) show in the visitor's language when the city has it, else in English, else in Romanian: the element showing one carries the `lang` it is in, and a note says when a text is not in the visitor's language (`content.fallback`).
+- **The basemap's labels** follow the language where Mapbox's style has names in it (`zh` as `zh-Hans`); elsewhere each place shows its local name.
+- **Fonts.** Latin and Cyrillic come from the engine's `fonts/`; Arabic, Devanagari, Chinese, Japanese and Korean use the system's fonts (`system-ui, sans-serif`), so nothing is fetched from a font CDN.
+
+On an extra-large window (1600 px and wider) the Layers pane, always docked there, minimizes with its collapse button (**Restrânge straturile** / **Collapse layers**, `aria-expanded="true"`, where narrower windows have a close) to one floating button on the map's leading edge, at its gutter (**Straturi**, a layers icon, `aria-expanded="false"`, or the `l` key's focus on it), which brings it back; there is no rail, and the map takes the whole width (the owner, 2026-11-09). The minimized pane lasts for the session, also when the window leaves the extra-large layout and comes back: it is not in the URL hash, and the switches and sliders keep their values.
 
 ## `<hcm-map-viewer>`
 
@@ -116,7 +124,7 @@ The engine's custom element (Lit, registered by the engine; the tag never change
 | --- | --- | --- | --- |
 | `manifest-url` | `manifestUrl` | string | As in `config.js`. |
 | `city-id` | `cityId` | string | As in `config.js`. |
-| `lang` | `lang` | `ro` or `en` | Reflected; changing it switches the language live. |
+| `lang` | `lang` | a viewer language (a tag of one) | Reflected; changing it switches the language live, once its texts are fetched; `dir` follows. |
 | `engine-base` | `engineBase` | string | As in `config.js`. |
 | (none) | `manifest` | object | An inline manifest; set it before the element is connected. |
 | (none) | `controller` | `HistoricCityMapController` or `null` | Read-only; the same object `mount` returns, `null` before connection. |
@@ -165,7 +173,7 @@ interface HistoricCityMapController {
     openPhoto(photoId: string | null): void;
     /** Opens a POI's details (null closes them); an unknown id is ignored. */
     openPoi(poiId: string | null): void;
-    setLang(lang: 'ro' | 'en'): void;
+    setLang(lang: ViewerLocale): void; // one of the 25 codes, or a tag of one; anything else is ignored
     /** M4: compares the map with `layerId` (null: today, no historical layer); an unknown or non-raster id is ignored. */
     openCompare(layerId: string | null, options?: { readonly position?: number }): void;
     /** M4: moves the divider (0: the compared side fills the map, 1: the main side does; clamped). */
@@ -184,7 +192,7 @@ interface HistoricCityMapController {
 ## URL hash v1
 
 ```text
-#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&labels=streets,pois][&photo=<id>][&pv=original|improved|colorized][&story=<id>][&lang=ro|en]
+#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&labels=streets,pois][&photo=<id>][&pv=original|improved|colorized][&story=<id>][&lang=<code>]
 ```
 
 | Part | Rule when read |
@@ -199,7 +207,7 @@ interface HistoricCityMapController {
 | `photo` | The open photo; an id that is not in the manifest shows a toast (scenario V09). |
 | `pv` | The version of the open photo the visitor picked ([Photo versions](#photo-versions), V61): `original`, `improved` or `colorized`; any other word reads as `original`. Written only with `photo=`, and only once the visitor picked one; absent, each photo shows its default. A version the photo does not have shows its default. |
 | `story` | M17: the open story, in its sheet, with the timeline at the stop nearest its first year; an id that is not in the manifest shows a toast (`error.unknownStory`, scenario V50) and opens nothing. The viewer writes it while a story is open, so Share copies a story's own link. With `layers=` in the same hash, the link's layers (and their year) win over the story's year. |
-| `lang` | `ro` or `en`; anything else is ignored. |
+| `lang` | One of the 25 viewer languages (`ro`, `en`, `es`, `fr`, `de`, `it`, `pt`, `ru`, `uk`, `pl`, `tr`, `ar`, `hi`, `zh`, `ja`, `ko`, `nl`, `hu`, `id`, `vi`, `bn`, `bg`, `el`, `fa`, `ur`); anything else is ignored. |
 
 Unknown parameters are ignored, a repeated one keeps its last valid value, and a hash longer than 2,048 characters is ignored as a whole. Ids are only ever looked up in a `Map`, never used in a selector. The legacy hash of the 2015–2022 site, `#zoom/lat/lng/rotation/!a3!p2`, still opens the same view: its `!…` layer codes are ignored and the viewer rewrites the hash in the v1 form. Codec: `encodeHash` and `decodeHash` in `packages/shared/src/url/hash.ts`.
 
@@ -284,7 +292,7 @@ Status (2026-11-08): the owner's request ("add zoom in and out buttons to the ma
 - **What**: one zoom level from the camera's current zoom, animated as the map's own moves (a jump under reduced motion); the URL hash follows when the camera stops. Without WebGL there is no map and no buttons.
 - **At the city's limits** (`city.maxZoom`; for Zoom out the higher of `city.minZoom` and the zoom at which `city.bounds` just cover the map, where Mapbox stops because it keeps the view inside the bounds: for Bucharest about 10.8 on a phone and 11.6 at 1440 px) the button is **soft-disabled**: dimmed and `aria-disabled="true"`, but it keeps the focus and its place in the Tab order (a disabled button would drop the focus of a visitor pressing Enter), and a press changes nothing: the button drops its click listener, so the map does not move and the address keeps what it says. It shows no hover or pressed layer, and in forced colours it turns `GrayText` like a disabled button. The gamepad's zoom, the wheel, a pinch or a typed hash that reach a limit disable it too.
 - **Compare**: the second map follows the first, so the one pair zooms both.
-- **Our own buttons, not Mapbox's `NavigationControl`**: the control costs no bundle bytes (`mapbox-gl` is external) but brings 29 px targets, a compass and its own look and texts; ours use the kit's icon button (`soft-disabled` is new there), the city's theme and both languages. They cost about 650 bytes gzip of the IIFE, paid by a smaller baseline theme (`packages/ui/src/theme/baseline.ts`, about 630 bytes, the same tokens; the IIFE measures 124,993 of its 125,000 bytes): DECISIONS-for-review.md §128.
+- **Our own buttons, not Mapbox's `NavigationControl`**: the control costs no bundle bytes (`mapbox-gl` is external) but brings 29 px targets, a compass and its own look and texts; ours use the kit's icon button (`soft-disabled` is new there), the city's theme and both languages. They cost about 650 bytes gzip of the IIFE, paid by a smaller baseline theme (`packages/ui/src/theme/baseline.ts`, about 630 bytes, the same tokens; the IIFE measures 124,993 of its 125,000 bytes): DECISIONS-for-review.md §183.
 
 Code: `packages/ui/src/viewer/viewer-zoom.ts` (the group), `zoomBy` in `packages/engine/src/core/store.ts` (one level within the range), `packages/ui/src/components/icon-button.ts` (`softDisabled`).
 
@@ -334,7 +342,7 @@ The only data the viewer reads: a static JSON file (from the public bucket, or i
 
 Common rules:
 
-- **Text** is plain text, rendered with `textContent` or Lit templates, never as HTML; it is trimmed and must not be empty. `{ro, en}` means both languages are required, `{ro, en?}` that English falls back to Romanian.
+- **Text** is plain text, rendered with `textContent` or Lit templates, never as HTML; it is trimmed and must not be empty. `{ro, en}` means both languages are required, `{ro, en?}` that English falls back to Romanian; a visitor reading another of the viewer's languages sees the English text, else the Romanian one, with its own `lang` and a note (Language, above).
 - **Markdown subset** (`about`, `privacy`, POI `description`): paragraphs separated by a blank line, `**bold**`, `_italic_` or `*italic*`, `[label](https://…)` links, `\` escapes. A link that is not https makes the manifest invalid; HTML is shown as text. Parser: `parseMarkdown` in `packages/shared/src/text/markdown.ts`.
 - **URLs** are https without credentials. Image and archive addresses may also be relative to the manifest (no `..`, no `//host`, no query).
 - **Coordinates** are `[lng, lat]` in degrees; bounds are `[[west, south], [east, north]]` with west < east and south < north.

@@ -3,12 +3,13 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 
-import { cataloguePackPlugin } from '../../scripts/site/src/catalogue-pack.js';
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
 import { engineExtrasPlugin, hostKeyOf } from '../../scripts/site/src/engine-extras.js';
+import { i18nCataloguesPlugin } from '../../scripts/site/src/i18n-catalogues.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
 import { sidePartPlugin } from '../../scripts/site/src/side-part.js';
 import { zodStandInsPlugin } from '../../scripts/site/src/zod-stand-ins.js';
+import { VIEWER_CATALOGUES } from '../shared/src/i18n/viewer-catalogues.js';
 import { FONT_FILES } from '../ui/src/fonts/font-files.js';
 
 /**
@@ -31,9 +32,10 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  *   (scripts/site/src/zod-stand-ins.ts; DECISIONS-for-review.md §100): about 6 KB gzip of both builds. zod's English
  *   messages, which the engine never shows (an issue reaches the visitor as its `validation.*` code), resolve to the admin's
  *   empty stand-in (§120a): about 1 KB gzip of both builds.
- * - The viewer's message catalogues are packed by `cataloguePackPlugin` (scripts/site/src/catalogue-pack.ts,
- *   DECISIONS-for-review.md §127a): the same objects, built from one string of keys and an array of texts, about 270 bytes
- *   gzip of the IIFE.
+ * - The viewer's message catalogues are not in the bundle (`i18nCataloguesPlugin`, scripts/site/src/i18n-catalogues.ts,
+ *   DECISIONS-for-review.md §183, which replaced §127a's packing): each of the sixteen languages is
+ *   dist/i18n/<locale>.json, fetched when the viewer first shows it (`ENGINE_VERSION` is the package's version, which the
+ *   release keeps equal: a file of another version is refused).
  * - dist/engine.extras.js is the side-loaded full-size view (docs/ENGINE_API.md → *Side-loaded parts*), built first by
  *   `vite.part.config.ts` into .tsbuild/part/; `sidePartPlugin` (scripts/site/src/side-part.ts) writes its Subresource
  *   Integrity into src/extras-part.ts, which both builds load it with, and serves it here (the owner's "Load extras on
@@ -60,6 +62,10 @@ function engineVersion(): string {
     }
     return version;
 }
+
+/** The engine's version: the release keeps `ENGINE_VERSION` equal to it, and a catalogue file names it. */
+const ENGINE_PACKAGE_VERSION = (JSON.parse(readFileSync(new URL('package.json', import.meta.url), 'utf8')) as { readonly version: string })
+    .version;
 
 const HOST_KEY = hostKeyOf(engineVersion());
 const HOST = `__hcmEngineHost.${HOST_KEY}`;
@@ -97,7 +103,7 @@ export default defineConfig(({ mode }) => {
             ...(iife ? [extras] : []),
             zodStandIns(),
             cssLiteralsPlugin(),
-            cataloguePackPlugin(/[\\/]packages[\\/]shared[\\/]src[\\/]i18n[\\/]/),
+            i18nCataloguesPlugin(ENGINE_PACKAGE_VERSION, VIEWER_CATALOGUES),
             // Both runs load the side-loaded part with its integrity; only the ES run emits it.
             sidePartPlugin({
                 built: here('.tsbuild/part/engine.extras.js'),

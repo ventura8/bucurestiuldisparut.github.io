@@ -15,9 +15,10 @@
 import {
     DEFAULT_LOCALE,
     isPhotoNearYear,
+    shownLanguage,
     streetViewUrl,
     translate,
-    type Locale,
+    type ViewerLocale,
     type Photo,
     type PhotoView,
     type Poi,
@@ -33,6 +34,7 @@ import { relatedStories } from './hcm-stories.js';
 import { externalLink } from './markdown.js';
 import { resolveAssetUrl } from './services.js';
 import { closeEvent, renderSheetFrame } from './sheet-frame.js';
+import { fallbackNote } from './fallback-note.js';
 import { baseStyles, detailStyles, sheetStyles } from './shared-styles.js';
 import { photoRights } from './photo-rights.js';
 import { hasVersions, shownView, versionSwitch, viewCredit, viewImage } from './photo-version.js';
@@ -136,7 +138,7 @@ export class HcmPhotoSheet extends LitElement {
     declare category: PoiCategory | null;
     /** Every manifest photo (a POI's linked thumbnails are looked up here). */
     declare photos: readonly Photo[];
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     /** M13: the city's Contribute page (`manifest.contributeUrl`): a photo's "Suggest a correction" opens it on the photo. */
     declare contributeUrl: string | null;
     /** M17: the city's stories; those naming the photo or the place are listed. */
@@ -216,8 +218,13 @@ export class HcmPhotoSheet extends LitElement {
             ${this.#image(photo)} ${this.#locate(photo)}
             <p class="link">${externalLink(streetViewUrl(photo.location, photo.bearing), translate(locale, 'mapMenu.streetView'))}</p>
             ${this.#date(photo)} ${photoRights(photo, locale)} ${this.#source(photo)}
-            ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`} ${this.#links(photo)}
-            ${this.#suggestion(photo)} ${relatedStories(this.stories, 'photoIds', photo.id, this.locale)}
+            ${
+                photo.description === undefined
+                    ? nothing
+                    : html`<p lang=${shownLanguage(photo.description, locale)}>${localizedText(photo.description, locale)}</p>`
+            }
+            ${fallbackNote(photo.title, locale)} ${this.#links(photo)} ${this.#suggestion(photo)}
+            ${relatedStories(this.stories, 'photoIds', photo.id, this.locale)}
         </div>`;
     }
 

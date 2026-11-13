@@ -8,7 +8,7 @@
  * shows its seams and its checks against OpenStreetMap, and only the city's owner sees **Approve the sheet-name placement**.
  * M25: a Landsat scene has no checkpoint error; the card says its shift from Sentinel-2 and the city's cloud.
  */
-import { landsatClear, recalibrationVerdict, type LandsatReport, type Locale } from '@hcm/shared';
+import { landsatClear, recalibrationVerdict, type LandsatReport, type UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -65,7 +65,7 @@ function namesReport(context: ImageryContext, version: VersionViewPort): Templat
 }
 
 /** M25: a Landsat scene's shift from Sentinel-2 and the city's cloud, and why it waits when it is not clear. */
-function landsatText(locale: Locale, report: LandsatReport): TemplateResult {
+function landsatText(locale: UiLocale, report: LandsatReport): TemplateResult {
     const offset =
         report.offsetPx === undefined || report.offsetM === undefined
             ? contentText(locale, 'adminContent.imagery.landsat.unchecked')
@@ -91,7 +91,7 @@ function rmseText(context: ImageryContext, version: VersionViewPort): TemplateRe
         : measured(context, rmse);
 }
 
-function pairsText(locale: Locale, version: VersionViewPort): TemplateResult {
+function pairsText(locale: UiLocale, version: VersionViewPort): TemplateResult {
     return withValue(
         version.georef,
         (georef) =>

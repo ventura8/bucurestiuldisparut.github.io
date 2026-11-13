@@ -1,12 +1,15 @@
 /**
  * `<hcm-account-menu>`: the account button of the top app bar (or of the rail's foot on a landscape phone) and its
- * dialog (`docs/research/M2b-interfaces.md` §1.2): who is signed in, the language (Romanian, English: switching keeps
+ * dialog (`docs/research/M2b-interfaces.md` §1.2): who is signed in, the language (any of `docs/I18N.md`'s: switching keeps
  * every form's state), the theme (automatic, light, dark), the analytics consent (withdrawable at any time, when GA4 is
  * configured) and Sign out. A rotation of a phone moves it between the top bar and the rail: the shell then gives the
  * new one's button the focus the old one held (`active`, `focusButton`).
  */
-import { translate, type Locale } from '@hcm/shared';
+import { isUiLocale, translate, type UiLocale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
+import { live } from 'lit/directives/live.js';
+
+import { UI_LANGUAGE_OPTIONS } from '../../components/language-options.js';
 
 import type { SegmentOption } from '../../components/segmented-button.js';
 import type { ThemeMode } from '../../theme/apply.js';
@@ -14,20 +17,13 @@ import type { AdminAppPort, AdminStatePort } from '../admin-port.js';
 import { adminBase } from './admin-styles.js';
 import { EMPTY } from './empty.js';
 import { showsCityMenu } from './hcm-city-menu.js';
-import { shellText } from './text.js';
+import { shellLanguage, shellText } from './text.js';
 
 export const HCM_ACCOUNT_MENU_TAG = 'hcm-account-menu';
 
 const THEMES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 
-function languageOptions(locale: Locale): SegmentOption[] {
-    return [
-        { value: 'ro', label: translate(locale, 'language.ro') },
-        { value: 'en', label: translate(locale, 'language.en') },
-    ];
-}
-
-function themeOptions(locale: Locale): SegmentOption[] {
+function themeOptions(locale: UiLocale): SegmentOption[] {
     return THEMES.map((mode) => ({ value: mode, label: translate(locale, `theme.${mode}`) }));
 }
 
@@ -140,7 +136,10 @@ export class HcmAccountMenu extends LitElement {
 
     #who(state: AdminStatePort): TemplateResult {
         const email = state.user?.email ?? null;
-        return email === null ? EMPTY : html`<p class="who">${shellText(state.locale, 'adminShell.auth.signedInAs', { email })}</p>`;
+        const key = 'adminShell.auth.signedInAs';
+        return email === null
+            ? EMPTY
+            : html`<p class="who" lang=${shellLanguage(state.locale, key)}>${shellText(state.locale, key, { email })}</p>`;
     }
 
     /** M5: the city switcher, when the shell puts it here (`cities`). */
@@ -150,15 +149,21 @@ export class HcmAccountMenu extends LitElement {
 
     #language(state: AdminStatePort): TemplateResult {
         const label = translate(state.locale, 'language.label');
+        // The list shows the admin's language until it has switched (`live`): a language whose texts cannot be fetched
+        // leaves it where it was (`docs/I18N.md` → Loading).
         const change = (event: CustomEvent<{ readonly value: string }>): void => {
-            this.app?.intents.setLocale(event.detail.value === 'en' ? 'en' : 'ro');
+            (event.currentTarget as HTMLElement & { value: string }).value = state.locale;
+            const chosen = event.detail.value;
+            if (isUiLocale(chosen)) {
+                this.app?.intents.setLocale(chosen);
+            }
         };
         return html`<div class="group">
             <span class="group-label">${label}</span>
             <hcm-segmented-button
                 .label=${label}
-                .options=${languageOptions(state.locale)}
-                .value=${state.locale}
+                .options=${UI_LANGUAGE_OPTIONS}
+                .value=${live(state.locale)}
                 @hcm-change=${change}
             ></hcm-segmented-button>
         </div>`;
@@ -210,7 +215,11 @@ export class HcmAccountMenu extends LitElement {
             this.open = false;
             void this.app?.intents.signOut();
         };
-        return html`<hcm-button variant="tonal" icon="logout" @click=${signOut}
+        return html`<hcm-button
+            variant="tonal"
+            icon="logout"
+            lang=${shellLanguage(state.locale, 'adminShell.auth.signOut')}
+            @click=${signOut}
             >${shellText(state.locale, 'adminShell.auth.signOut')}</hcm-button
         >`;
     }

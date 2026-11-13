@@ -7,7 +7,7 @@
  * load (`switchTo`): every area, listener and draft belongs to one city, and a reload is the one way that cannot leave a
  * listener of the previous city behind.
  */
-import type { Locale, Logger, SessionResponse } from '@hcm/shared';
+import type { UiLocale, Logger, SessionResponse } from '@hcm/shared';
 
 import type { CallablesPort } from '../firebase/ports.js';
 import { RETURN_TO_KEY } from '../routing/router.js';
@@ -23,12 +23,12 @@ export function cityMemoryKey(uid: string): string {
 }
 
 /** A city's name in `locale` (its Romanian name when it has no English one). */
-export function cityName(city: Pick<AdminCity, 'name'>, locale: Locale): string {
+export function cityName(city: Pick<AdminCity, 'name'>, locale: UiLocale): string {
     return locale === 'en' ? (city.name.en ?? city.name.ro) : city.name.ro;
 }
 
 /** The cities by name in `locale`, then by id. */
-export function sortedCities(cities: readonly AdminCity[], locale: Locale): AdminCity[] {
+export function sortedCities(cities: readonly AdminCity[], locale: UiLocale): AdminCity[] {
     return [...cities].sort((a, b) => cityName(a, locale).localeCompare(cityName(b, locale), locale) || a.id.localeCompare(b.id));
 }
 
@@ -40,7 +40,7 @@ export interface CityChoiceDeps {
     /** The `e2e` build's own city (`?city=`), or null. */
     readonly preferred: string | null;
     readonly uid: () => string | null;
-    readonly locale: () => Locale;
+    readonly locale: () => UiLocale;
 }
 
 /** What the session decides of the shell: the cities, the current one and the project role. */

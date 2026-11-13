@@ -6,7 +6,14 @@
  * DOM-free logic: the document, the factories of the map, telemetry and store, the network, storage and the location
  * are injected (`MountEnvironment`; `index.ts` wires the browser's), so the node tests drive every path with fakes.
  */
-import { DEFAULT_CONTAINER_SELECTOR, resolveLocale, translate, type EngineConfig, type Locale, type Logger } from '@hcm/shared';
+import {
+    DEFAULT_CONTAINER_SELECTOR,
+    resolveViewerLocale,
+    viewerLocaleOf,
+    type EngineConfig,
+    type Logger,
+    type ViewerLocale,
+} from '@hcm/shared';
 import type { MapLabels } from '@hcm/shared/map-labels';
 import {
     installFonts,
@@ -25,6 +32,7 @@ import type { GamepadSurface } from '@hcm/ui/viewer/gamepad';
 import { configFromAttributes, readConfig, type Result } from './config/load.js';
 import { EXTRAS_PART_FILE, EXTRAS_PART_INTEGRITY } from './extras-part.js';
 import { urlLocaleOf } from './core/boot.js';
+import { catalogueLoader, type CatalogueLoader } from './core/catalogues.js';
 import type { CompareModule } from './core/compare-port.js';
 import type { ColorSchemeSource, ViewerDeps, ViewerLocation } from './core/deps.js';
 import type { PreferenceStorage } from './core/preferences.js';
@@ -32,6 +40,7 @@ import { colorSchemeOf, locationOf, storageOf } from './core/page-sources.js';
 import { createViewerStore, type ViewerState, type ViewerStore } from './core/store.js';
 import { extraImports } from './extras/imports.js';
 import { mapboxOf } from './mapbox-global.js';
+import { failBoot } from './mount-fail.js';
 import { createTelemetry } from './telemetry/telemetry.js';
 import type { TelemetryPort } from './telemetry/telemetry-port.js';
 
@@ -113,9 +122,13 @@ class Controller implements HistoricCityMapController {
         });
     }
 
-    setLang(lang: Locale): void {
+    /** One of the viewer's languages by its code or a tag of it (`de`, `de-AT`); anything else is ignored. */
+    setLang(lang: ViewerLocale): void {
+        const locale = viewerLocaleOf(lang);
         this.#run(() => {
-            this.#store.setLocale(resolveLocale(lang));
+            if (locale !== undefined) {
+                this.#store.setLocale(locale);
+            }
         });
     }
 
@@ -180,31 +193,6 @@ class Controller implements HistoricCityMapController {
     }
 }
 
-/** A viewer that could not boot: `ready` says why at once, every call does nothing, `destroy` removes the card. */
-function failedController(code: ViewerError['code'], teardown: () => void): HistoricCityMapController {
-    let removed = false;
-    const ignore = (): void => undefined;
-    return {
-        ready: Promise.resolve({ ok: false, code }),
-        setYear: ignore,
-        toggleLayer: ignore,
-        setOverlayOpacity: ignore,
-        openPhoto: ignore,
-        openPoi: ignore,
-        setLang: ignore,
-        openCompare: ignore,
-        setComparePosition: ignore,
-        closeCompare: ignore,
-        setMapLabels: ignore,
-        destroy: () => {
-            if (!removed) {
-                removed = true;
-                teardown();
-            }
-        },
-    };
-}
-
 /**
  * The two calls `mount` makes on the document, each with the one signature it uses: the viewer's element by its tag, a
  * container by its selector (`Pick<Document, ...>` also brought in the DOM's deprecated overloads for legacy tag names,
@@ -232,6 +220,11 @@ export interface MountEnvironment {
     readonly reducedMotion: () => boolean;
     /** Registers the kit's fonts, loaded from `<engineBase>fonts/` (`config.engineBase`, else next to the engine). */
     readonly installFonts: (engineBase: string | undefined) => void;
+    /**
+     * The viewer's languages, fetched from `<engineBase>i18n/` (`core/catalogues.ts`); without it only the languages the
+     * page already has (the node tests: Romanian and English).
+     */
+    readonly catalogues?: (engineBase: string | undefined) => CatalogueLoader;
     /** M4: swipe compare's lazy chunk (`compare-<hash>.js` of the ES module build, inlined in the IIFE). */
     readonly loadCompare: () => Promise<CompareModule>;
     /** `prefers-color-scheme` of the page (the basemap's light under the `system` theme). */
@@ -249,16 +242,16 @@ function containerOf(raw: unknown): string {
 }
 
 /** The language of a configuration before validation (for its own error message). */
-function languageOf(raw: unknown): Locale {
+function languageOf(raw: unknown): ViewerLocale {
     const lang = typeof raw === 'object' && raw !== null ? (raw as { readonly lang?: unknown }).lang : undefined;
-    return resolveLocale(typeof lang === 'string' ? lang : undefined);
+    return resolveViewerLocale(typeof lang === 'string' ? lang : undefined);
 }
 
 /**
  * The language of a boot error card (docs/ENGINE_API.md → Language): the page address first, then the configuration's
  * own `lang`, so a city owner who opened `?lang=en` reads the whole card in English.
  */
-function bootLocale(configLocale: Locale, env: Pick<MountEnvironment, 'location'>): Locale {
+function bootLocale(configLocale: ViewerLocale, env: Pick<MountEnvironment, 'location'>): ViewerLocale {
     return urlLocaleOf(env.location) ?? configLocale;
 }
 
@@ -267,13 +260,16 @@ function storePort(store: ViewerStore): ViewerStorePort {
     return store;
 }
 
-/** Shows `error` in `viewer`'s card, in `locale` (the card follows the element's `lang`). */
-function fail(viewer: HcmMapViewer, error: ViewerError, locale: Locale): HistoricCityMapController {
-    viewer.setAttribute('lang', locale);
-    viewer.bootError = error;
-    return failedController(error.code, () => {
-        viewer.remove();
-    });
+/** Mapbox GL JS is missing from the page: the card says the map could not load, in the boot's language. */
+function withoutMapbox(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment): HistoricCityMapController {
+    const error: ViewerError = { code: 'error.mapLoad', retryable: false };
+    const locale = bootLocale(resolveViewerLocale(config.lang), env);
+    return failBoot(viewer, { errorIn: () => error, locale, catalogues: env.catalogues?.(config.engineBase) });
+}
+
+/** The store's loader of the languages' texts, from `engineBase` (none without one: the node tests). */
+function catalogueDeps(env: MountEnvironment, engineBase: string | undefined): Pick<ViewerDeps, 'catalogues'> {
+    return env.catalogues === undefined ? {} : { catalogues: env.catalogues(engineBase) };
 }
 
 function createMap(env: MountEnvironment): ViewerMapPort | null {
@@ -296,7 +292,7 @@ function withLightbox(viewer: HcmMapViewer, load: MountEnvironment['loadExtras']
 function start(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment): HistoricCityMapController {
     const map = createMap(env);
     if (map === null) {
-        return fail(viewer, { code: 'error.mapLoad', retryable: false }, bootLocale(resolveLocale(config.lang), env));
+        return withoutMapbox(viewer, config, env);
     }
     viewer.manifestUrl = config.manifestUrl ?? '';
     viewer.engineVersion = env.engineVersion;
@@ -316,6 +312,7 @@ function start(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment
         reducedMotion: env.reducedMotion,
         compare: { load: env.loadCompare, createMap: env.createMap, mapboxCssUrl: env.mapboxCssUrl },
         ...(env.colorScheme === undefined ? {} : { colorScheme: env.colorScheme }),
+        ...catalogueDeps(env, config.engineBase),
     });
     const stopGamepads = env.watchGamepads?.(viewer, map);
     const controller = new Controller(store, () => {
@@ -328,16 +325,26 @@ function start(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment
     return controller;
 }
 
-/** Boots `viewer` from a configuration result: an invalid one shows its error card (in `locale`), for the city owner to fix. */
-function bootViewer(viewer: HcmMapViewer, config: Result<EngineConfig>, env: MountEnvironment, locale: Locale): HistoricCityMapController {
-    return config.ok ? start(viewer, config.value, env) : fail(viewer, config.error, locale);
+/** Boots `viewer` from a configuration read in a language: an invalid one shows its error card, for the city owner to fix. */
+function bootViewer(
+    viewer: HcmMapViewer,
+    configIn: (locale: ViewerLocale) => Result<EngineConfig>,
+    env: MountEnvironment,
+    locale: ViewerLocale,
+): HistoricCityMapController {
+    const config = configIn(locale);
+    const errorIn = (shown: ViewerLocale): ViewerError => {
+        const read = configIn(shown);
+        return read.ok ? { code: 'error.generic', retryable: false } : read.error;
+    };
+    return config.ok ? start(viewer, config.value, env) : failBoot(viewer, { errorIn, locale, catalogues: env.catalogues?.(undefined) });
 }
 
 /** `HistoricCityMap.mount(element, config)`: renders a viewer into `element` and returns its controller. */
 export function mount(element: Element, config: unknown, env: MountEnvironment): HistoricCityMapController {
     const viewer = env.document.createElement(VIEWER_TAG);
     const locale = bootLocale(languageOf(config), env);
-    const controller = bootViewer(viewer, readConfig(config, locale), env, locale);
+    const controller = bootViewer(viewer, (shown) => readConfig(config, shown), env, locale);
     element.append(viewer);
     return controller;
 }
@@ -353,8 +360,8 @@ export function bootDeclared(viewer: HcmMapViewer, env: MountEnvironment): Histo
         lang: viewer.getAttribute('lang'),
         engineBase: viewer.engineBase,
     };
-    const locale = bootLocale(resolveLocale(attributes.lang), env);
-    return bootViewer(viewer, configFromAttributes(attributes, viewer.manifest, locale), env, locale);
+    const locale = bootLocale(resolveViewerLocale(attributes.lang), env);
+    return bootViewer(viewer, (shown) => configFromAttributes(attributes, viewer.manifest, shown), env, locale);
 }
 
 /**
@@ -367,7 +374,8 @@ export function autoBoot(rawConfig: unknown, env: MountEnvironment): HistoricCit
     const container = querySelector(env, selector);
     if (container === null) {
         if (rawConfig !== undefined) {
-            env.log.error(translate(bootLocale(languageOf(rawConfig), env), 'error.config.container', { selector }), { selector });
+            // For the city owner, in the console: in English, the language of the engine's other console messages.
+            env.log.error(`The map element “${selector}” does not exist on the page.`, { selector });
         }
         return null;
     }
@@ -486,6 +494,12 @@ export function browserEnvironment(
         installFonts: (engineBase) => {
             installFonts(win.document, `${engineBase ?? release.engineBase}fonts/`, win.FontFace);
         },
+        catalogues: (engineBase) =>
+            catalogueLoader({
+                fetch: (url, init) => win.fetch(url, init),
+                folder: `${engineBase ?? release.engineBase}i18n/`,
+                engineVersion: release.engineVersion,
+            }),
         loadCompare: () => extraImports.compare().then((chunk) => chunk.compareModule),
         colorScheme: colorSchemeOf(win),
         watchGamepads: (surface, map) => watchGamepads(win, extraImports.gamepad, { surface, map, log: log.child('gamepad') }),

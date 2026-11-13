@@ -8,7 +8,8 @@ export const HCM_ICON_TAG = 'hcm-icon';
 /**
  * A Material Symbols Rounded icon, drawn from the bundled subset by its ligature name (`ICONS`). Decorative: the
  * control around it carries the accessible name. A name outside the subset draws nothing, never the bare word.
- * `filled` switches the font's FILL axis (selected states). Size: `--hcm-icon-size` (default 24 px).
+ * `filled` switches the font's FILL axis (selected states). Size: `--hcm-icon-size` (default 24 px). Right to left the
+ * directional ones (`chevron_*`, `arrow_*`) mirror.
  */
 export class HcmIcon extends LitElement {
     static override readonly properties = {
@@ -50,6 +51,12 @@ export class HcmIcon extends LitElement {
 
         :host([filled]) span {
             font-variation-settings: 'FILL' 1;
+        }
+
+        /* Right to left a chevron or an arrow points the other way (previous is on the right); other icons never mirror. */
+        :host([name^='chevron_']:dir(rtl)),
+        :host([name^='arrow_']:dir(rtl)) {
+            transform: scaleX(-1);
         }
     `;
 

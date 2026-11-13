@@ -11,7 +11,7 @@ import {
     validate,
     validateManifest,
     type EngineConfig,
-    type Locale,
+    type ViewerLocale,
     type Manifest,
     type ValidationIssue,
 } from '@hcm/shared';
@@ -42,7 +42,7 @@ function fail<T>(code: ViewerError['code'], retryable: boolean, params?: Readonl
 }
 
 /** The first issue as `path: message` in the visitor's language. */
-function issueDetail(issues: readonly ValidationIssue[], locale: Locale): string {
+function issueDetail(issues: readonly ValidationIssue[], locale: ViewerLocale): string {
     return issues
         .slice(0, 1)
         .map((issue) => `${issue.path === '' ? 'config' : issue.path}: ${translate(locale, issue.code)}`)
@@ -50,7 +50,7 @@ function issueDetail(issues: readonly ValidationIssue[], locale: Locale): string
 }
 
 /** `window.HistoricCityMapConfig` (or any embed configuration) validated; absent is `error.config.missing`. */
-export function readConfig(input: unknown, locale: Locale): Result<EngineConfig> {
+export function readConfig(input: unknown, locale: ViewerLocale): Result<EngineConfig> {
     if (input === undefined || input === null) {
         return fail('error.config.missing', false);
     }
@@ -68,7 +68,7 @@ export interface ConfigAttributes {
 }
 
 /** The configuration of a `<hcm-map-viewer>`: its attributes plus the `manifest` property (absent ones left out). */
-export function configFromAttributes(attributes: ConfigAttributes, manifest: unknown, locale: Locale): Result<EngineConfig> {
+export function configFromAttributes(attributes: ConfigAttributes, manifest: unknown, locale: ViewerLocale): Result<EngineConfig> {
     const present = Object.entries(attributes).filter(([, value]) => typeof value === 'string' && value !== '');
     const input = manifest === undefined || manifest === null ? Object.fromEntries(present) : { ...Object.fromEntries(present), manifest };
     return readConfig(input, locale);

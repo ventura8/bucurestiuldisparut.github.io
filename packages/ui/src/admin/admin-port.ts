@@ -6,7 +6,7 @@
  * assignable to `AdminAppPort`, which `packages/admin/test/app/admin-port.test.ts` checks at compile time. The elements
  * render `state` and call the intents; they never touch Firebase, Google or the address themselves.
  */
-import type { CityRole, Locale, ThemeTokens } from '@hcm/shared';
+import type { CityRole, UiLocale, ThemeTokens } from '@hcm/shared';
 
 import type { ThemeMode } from '../theme/apply.js';
 import type { ContentPort } from './content-port.js';
@@ -90,7 +90,7 @@ export interface AdminStatePort {
     readonly gate: { readonly reconsent: boolean; readonly issue: AdminNoticePort | null; readonly enableApi: string | null };
     readonly route: AdminRoutePort;
     readonly destinations: readonly AdminDestinationPort[];
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly theme: { readonly mode: ThemeMode; readonly city: ThemeTokens | null; readonly preview: ThemeTokens | null };
     readonly consent: 'unknown' | 'granted' | 'denied';
     readonly analytics: boolean;
@@ -139,7 +139,7 @@ export interface AdminIntentsPort {
     switchCity?(cityId: string, route?: AdminRoutePort): void;
     /** M5: asks the server for the admin's cities again (the city menu opening: at most once a minute; `now`: at once). */
     refreshCities?(now?: boolean): Promise<void>;
-    setLocale(locale: Locale): void;
+    setLocale(locale: UiLocale): void;
     setTheme(mode: ThemeMode): void;
     setConsent(consent: 'granted' | 'denied'): void;
     dismissNotice(): void;

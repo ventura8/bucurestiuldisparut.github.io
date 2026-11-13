@@ -13,6 +13,7 @@ export {
     isHttpsUrl,
     isPhotoNearYear,
     observeWebVitals,
+    overlayLabel,
     poiIcon,
     poiInYear,
     rasterAdjustmentPaint,

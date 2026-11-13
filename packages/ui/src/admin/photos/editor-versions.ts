@@ -5,7 +5,7 @@
  * public map shows under that version. Only a reviewer (an administrator or a moderator) has the section: the server
  * refuses an uploader's version (`apiError.photo.versionNotAllowed`).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -15,7 +15,7 @@ import { fieldIssue, photoText } from './photo-text.js';
 import type { PhotoEditorPort, PhotoPatchPort, PhotosIntentsPort, PhotoValuePort, PhotoVersionKindPort } from './photos-port.js';
 
 export interface VersionsInput {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly editor: PhotoEditorPort;
     readonly value: PhotoValuePort;
     readonly intents: PhotosIntentsPort | null;
@@ -65,7 +65,7 @@ function buttons(input: VersionsInput, kind: PhotoVersionKindPort, remove: (() =
 }
 
 /** The version's thumbnail, or "None yet". */
-function shownImage(locale: Locale, label: string, thumb: string | undefined): TemplateResult {
+function shownImage(locale: UiLocale, label: string, thumb: string | undefined): TemplateResult {
     return thumb === undefined
         ? html`<p class="note">${photoText(locale, 'adminContent.photos.version.none')}</p>`
         : html`<img class="image" src=${thumb} alt=${label} />`;

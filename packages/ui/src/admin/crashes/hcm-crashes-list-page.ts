@@ -6,7 +6,7 @@
  * Reporting API is explained with the way to enable it (Setup's analytics card). The selection is page state: Error
  * Reporting's group ids are never routed. The Setup card's `hcm-crash-groups` stays where it is.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
@@ -87,7 +87,7 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
         </hcm-list-detail>`;
     }
 
-    #list(locale: Locale, view: CrashesViewState): TemplateResult {
+    #list(locale: UiLocale, view: CrashesViewState): TemplateResult {
         const choose = (event: CustomEvent<{ readonly value: string }>): void => {
             this.intents?.setPeriod(Number(event.detail.value) as CrashPeriodPort);
         };
@@ -106,7 +106,7 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
             ${this.#body(locale, view)}`;
     }
 
-    #body(locale: Locale, view: CrashesViewState): TemplateResult {
+    #body(locale: UiLocale, view: CrashesViewState): TemplateResult {
         if (view.status === 'error') {
             return this.#failure(locale, view);
         }
@@ -121,7 +121,7 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
             ${this.#more(locale, view)}`;
     }
 
-    #more(locale: Locale, view: CrashesViewState): TemplateResult {
+    #more(locale: UiLocale, view: CrashesViewState): TemplateResult {
         if (view.nextPageToken === null) {
             return EMPTY;
         }
@@ -135,7 +135,7 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
         </div>`;
     }
 
-    #failure(locale: Locale, view: CrashesViewState): TemplateResult {
+    #failure(locale: UiLocale, view: CrashesViewState): TemplateResult {
         const retry = (): void => {
             this.intents?.retry();
         };
@@ -152,7 +152,7 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
         </div>`;
     }
 
-    #row(locale: Locale, group: CrashGroupPort, selected: boolean): TemplateResult {
+    #row(locale: UiLocale, group: CrashGroupPort, selected: boolean): TemplateResult {
         const select = (): void => {
             this.intents?.select(group.groupId);
         };
@@ -166,7 +166,7 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
         </li>`;
     }
 
-    #detail(locale: Locale, view: CrashesViewState): TemplateResult {
+    #detail(locale: UiLocale, view: CrashesViewState): TemplateResult {
         const group = view.groups.find((candidate) => candidate.groupId === view.selected);
         if (group === undefined) {
             return html`<hcm-empty-state icon="bug_report" .text=${contentText(locale, 'adminContent.crashes.choose')}></hcm-empty-state>`;

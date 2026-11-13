@@ -5,13 +5,14 @@
  * comes from: an account may have no city at all.
  */
 import {
+    contentLocale,
     bboxCenter,
     bearingBetween,
     roundTo,
     type CallableRequest,
     type ContributeContextResponse,
     type LngLat,
-    type Locale,
+    type UiLocale,
     type MapView,
     type SuggestionProposal,
 } from '@hcm/shared';
@@ -78,15 +79,15 @@ function trimmed(text: string | undefined): string | undefined {
     return text?.trim();
 }
 
-function currentOfPhoto(photo: ContributeContextResponse['photo'], locale: Locale): Readonly<Record<string, unknown>> {
-    return photo === null ? {} : { ...photo, dateText: photo.dateText?.[locale] };
+function currentOfPhoto(photo: ContributeContextResponse['photo'], locale: UiLocale): Readonly<Record<string, unknown>> {
+    return photo === null ? {} : { ...photo, dateText: photo.dateText?.[contentLocale(locale)] };
 }
 
 /**
  * What the form says that the photo does not (M13 §4): the form starts from the photo's place, and a date correction must not carry
  * it, or approving it would move a photo back. An end year names its start; a date text says the language it was typed in.
  */
-export function changedFrom(photo: ContributeContextResponse['photo'], proposal: SuggestionProposal, locale: Locale): SuggestionProposal {
+export function changedFrom(photo: ContributeContextResponse['photo'], proposal: SuggestionProposal, locale: UiLocale): SuggestionProposal {
     const current = currentOfPhoto(photo, locale);
     const kept = Object.entries(proposal).filter(([key, value]) => JSON.stringify(current[key]) !== JSON.stringify(value));
     const changed: SuggestionProposal = Object.fromEntries(kept);
@@ -94,7 +95,7 @@ export function changedFrom(photo: ContributeContextResponse['photo'], proposal:
     return defined({
         ...changed,
         ...(changed.yearEnd === undefined ? {} : { year: start as number | undefined }),
-        ...(changed.dateText === undefined ? {} : { dateLocale: locale }),
+        ...(changed.dateText === undefined ? {} : { dateLocale: contentLocale(locale) }),
     });
 }
 

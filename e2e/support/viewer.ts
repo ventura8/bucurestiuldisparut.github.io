@@ -1,5 +1,15 @@
 import { expect, type Locator, type Page, type Route } from '@playwright/test';
-import { translate, type Locale, type MessageKey, type ValidationIssue, type ValidationResult } from '@hcm/shared';
+import {
+    LANGUAGE_NAMES,
+    registerCatalogue,
+    translate,
+    VIEWER_LOCALES,
+    type MessageKey,
+    type ValidationIssue,
+    type ValidationResult,
+    type ViewerLocale,
+} from '@hcm/shared';
+import { VIEWER_CATALOGUES } from '@hcm/shared/viewer-catalogues';
 
 import { readInstrumentation } from './instrumentation.js';
 import { mapIdle } from './map.js';
@@ -15,8 +25,13 @@ import { sitePath, type OpenOptions, type SiteName } from './site.js';
 /** The data/manifest.json of the Bucharest site (a bad path serves its own copy). */
 export const BUCHAREST_MANIFEST = '**/bucharest/data/manifest.json';
 
+// The tests read every viewer language's texts (the engine fetches them; the specs only compare).
+for (const locale of VIEWER_LOCALES) {
+    registerCatalogue(locale, VIEWER_CATALOGUES[locale]);
+}
+
 /** The catalogue text of `key` in `lang`. */
-export function t(lang: Locale, key: MessageKey, params: Readonly<Record<string, string>> = {}): string {
+export function t(lang: ViewerLocale, key: MessageKey, params: Readonly<Record<string, string>> = {}): string {
     return translate(lang, key, params);
 }
 
@@ -76,7 +91,7 @@ export function viewer(page: Page): Locator {
 }
 
 /** The floating menu button. */
-export function menuButton(page: Page, lang: Locale): Locator {
+export function menuButton(page: Page, lang: ViewerLocale): Locator {
     return page.getByRole('button', { name: t(lang, 'action.menu'), exact: true });
 }
 
@@ -86,9 +101,27 @@ function menuItemNamed(page: Page, label: string): Locator {
 }
 
 /** Opens the FAB menu and picks the item named `label`. */
-export async function chooseMenuItem(page: Page, lang: Locale, label: string): Promise<void> {
+export async function chooseMenuItem(page: Page, lang: ViewerLocale, label: string): Promise<void> {
     await menuButton(page, lang).click();
     await menuItemNamed(page, label).click();
+}
+
+/** Settings' language list, its first choice (slotted into the kit's dialog: found through `<hcm-about-dialog>`). */
+export function languageList(page: Page): Locator {
+    return viewer(page).locator('hcm-about-dialog hcm-segmented-button').first();
+}
+
+/**
+ * The menu's Settings (Setări) lists the viewer's sixteen languages by their own names: picks `to`
+ * there and closes the dialog once the page has switched (`<html lang>`).
+ */
+export async function chooseLanguage(page: Page, from: ViewerLocale, to: ViewerLocale): Promise<void> {
+    await chooseMenuItem(page, from, t(from, 'settings.title'));
+    await expect(page.getByRole('dialog', { name: t(from, 'settings.title') })).toBeVisible();
+    await languageList(page).getByRole('radio', { name: LANGUAGE_NAMES[to], exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', to);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: t(to, 'settings.title') })).toBeHidden();
 }
 
 /** Keeps a toast open while a check looks at it: the pointer rests on it, as a visitor's would (M3 pauses the timeout). */
@@ -99,7 +132,7 @@ export async function holdToast(page: Page, message: string): Promise<void> {
 }
 
 /** Closes the toast on show, if one is (a state that is not about a toast is checked without one). */
-export async function dismissToast(page: Page, lang: Locale): Promise<void> {
+export async function dismissToast(page: Page, lang: ViewerLocale): Promise<void> {
     const close = viewer(page)
         .locator('hcm-snackbar')
         .getByRole('button', { name: t(lang, 'action.close'), exact: true });
@@ -113,7 +146,7 @@ export async function dismissToast(page: Page, lang: Locale): Promise<void> {
  * Opens the Layers panel unless it is already shown. Its first slider named for the photos is the photos' own (a category
  * may carry the same name: DECISIONS-for-review.md §37i).
  */
-export async function openLayers(page: Page, lang: Locale): Promise<void> {
+export async function openLayers(page: Page, lang: ViewerLocale): Promise<void> {
     const opacity = page.getByRole('slider', { name: t(lang, 'layers.opacity', { name: t(lang, 'layers.photos') }) }).first();
     if (!(await opacity.isVisible())) {
         await chooseMenuItem(page, lang, t(lang, 'layers.title'));
@@ -122,12 +155,12 @@ export async function openLayers(page: Page, lang: Locale): Promise<void> {
 }
 
 /** The opacity slider of the overlay named `name` in the Layers panel. */
-export function opacitySlider(page: Page, lang: Locale, name: string): Locator {
+export function opacitySlider(page: Page, lang: ViewerLocale, name: string): Locator {
     return page.getByRole('slider', { name: t(lang, 'layers.opacity', { name }), exact: true });
 }
 
 /** The visibility switch of the overlay named `name` in the Layers panel. */
-export function visibilitySwitch(page: Page, lang: Locale, name: string): Locator {
+export function visibilitySwitch(page: Page, lang: ViewerLocale, name: string): Locator {
     return page.getByRole('switch', { name: t(lang, 'layers.toggle', { name }), exact: true });
 }
 

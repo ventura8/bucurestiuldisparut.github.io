@@ -3,6 +3,7 @@ import type { EngineConfig } from '@hcm/shared';
 import { FakeMap, type FakeMapOptions } from '@hcm/test-support/fake-map';
 import { vi } from 'vitest';
 
+import type { CatalogueLoader } from '../../src/core/catalogues.js';
 import type { ColorSchemeSource } from '../../src/core/deps.js';
 import { createViewerStore, type ViewerStore } from '../../src/core/store.js';
 import type { FakeCompare } from '../compare/support.js';
@@ -69,6 +70,8 @@ export interface HarnessOptions {
     readonly colorScheme?: ColorSchemeSource;
     /** The storage of an earlier harness (the visitor comes back). */
     readonly storage?: MemoryStorage;
+    /** The languages' texts (`core/catalogues.ts`); without it only Romanian and English, which the tests import. */
+    readonly catalogues?: CatalogueLoader;
 }
 
 export interface Harness {
@@ -107,6 +110,7 @@ export function harness(options: HarnessOptions = {}): Harness {
         ...(options.reducedMotion === undefined ? {} : { reducedMotion: () => options.reducedMotion === true }),
         ...(options.compare === undefined ? {} : { compare: options.compare.deps }),
         ...(options.colorScheme === undefined ? {} : { colorScheme: options.colorScheme }),
+        ...(options.catalogues === undefined ? {} : { catalogues: options.catalogues }),
     });
     return { store, map, telemetry, storage, location, fetch, log, container };
 }

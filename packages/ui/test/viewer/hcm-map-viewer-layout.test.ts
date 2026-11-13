@@ -315,9 +315,11 @@ describe('<hcm-map-viewer>: details, lightbox and menu', () => {
         chooseFromMenu(mounted, 'about');
         await mounted.element.updateComplete;
         await expect.element(page.getByRole('dialog', { name: 'Despre' })).toBeVisible();
+        // Settings lists the sixteen languages, each by its own name.
         chooseFromMenu(mounted, 'settings');
         await mounted.element.updateComplete;
         await expect.element(page.getByRole('dialog', { name: 'Setări' })).toBeVisible();
+        await expect.element(page.getByRole('radio', { name: 'Deutsch' })).toBeVisible();
         await page.getByRole('radio', { name: 'English' }).click();
 
         expect(mounted.store.getState().locale).toBe('en');

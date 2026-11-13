@@ -7,7 +7,7 @@
  * `withHashOpacity` return the same list when nothing changed (an unknown id, the same value), so a store can skip a
  * render. The viewer's Layers panel, its URL hash (`&op=`) and the admin's default-opacity sliders all use them.
  */
-import { translate, type Locale } from '../i18n/index.js';
+import { localized, translate, type ViewerLocale } from '../i18n/index.js';
 import { clamp, roundTo } from '../geo/math.js';
 import type { Layer, Manifest } from '../schemas/manifest.js';
 import type { PoiCategory } from '../schemas/poi.js';
@@ -75,8 +75,9 @@ export function findOverlay(overlays: readonly Overlay[], id: string): Overlay |
     return overlays.find((candidate) => candidate.id === id);
 }
 
-export function overlayLabel(target: Overlay, locale: Locale): string {
-    return target.label[locale];
+/** An overlay's name in `locale`: the photos' from the catalogue (fetched after this module loads), a city's own otherwise. */
+export function overlayLabel(target: Overlay, locale: ViewerLocale): string {
+    return target.kind === 'photos' ? translate(locale, 'layers.photos') : localized(target.label, locale);
 }
 
 /** Opacity as the slider and the hash show it: a whole percent, 0 to 100. */

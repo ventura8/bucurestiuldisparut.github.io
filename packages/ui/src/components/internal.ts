@@ -15,6 +15,16 @@ export function emit(target: EventTarget, type: string, detail: unknown = {}): v
     target.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
 }
 
+const MIRRORED_KEYS: Readonly<Record<string, string>> = { ArrowLeft: 'ArrowRight', ArrowRight: 'ArrowLeft' };
+
+/**
+ * The key as a left-to-right layout means it: right to left (an Arabic page), Left and Right swap, so they follow what is
+ * on screen (the next segment, a higher value is to the left; WAI-ARIA's keyboard guidance for bidirectional text).
+ */
+export function logicalKey(key: string, element: Element): string {
+    return element.matches(':dir(rtl)') ? (MIRRORED_KEYS[key] ?? key) : key;
+}
+
 const PLACEHOLDER = /\{(\w+)\}/g;
 
 /**

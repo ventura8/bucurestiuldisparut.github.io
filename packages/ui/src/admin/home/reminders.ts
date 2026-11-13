@@ -5,7 +5,7 @@
  * soon, with the link to upgrade it in Google Cloud (a new tab) and "It is a paid account"; and (M6 installer) the
  * map's installation stopped or an update ready, with the Setup step that acts on it. Nothing when none. Text only.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -14,7 +14,7 @@ import type { HomeIntentsPort, HomeReminderPort, HomeViewState } from './home-po
 
 const USGS_STEP = '#/setup/usgs';
 
-function usgsLater(locale: Locale): TemplateResult {
+function usgsLater(locale: UiLocale): TemplateResult {
     return html`<li class="reminder" data-reminder="usgsLater">
         <hcm-icon name="satellite_alt"></hcm-icon>
         <p>${setupLabel(locale, 'adminSetup.reminder.usgsLater')}</p>
@@ -22,7 +22,7 @@ function usgsLater(locale: Locale): TemplateResult {
     </li>`;
 }
 
-function usgsPending(locale: Locale, since: string | null): TemplateResult {
+function usgsPending(locale: UiLocale, since: string | null): TemplateResult {
     const date = since === null ? '…' : formatDate(locale, since);
     const step = setupLabel(locale, 'adminSetup.step.usgs');
     return html`<li class="reminder" data-reminder="usgsPending">
@@ -34,7 +34,7 @@ function usgsPending(locale: Locale, since: string | null): TemplateResult {
 
 type TrialReminder = Extract<HomeReminderPort, { kind: 'trial' }>;
 
-function trial(locale: Locale, reminder: TrialReminder, view: HomeViewState, intents: HomeIntentsPort | null): TemplateResult {
+function trial(locale: UiLocale, reminder: TrialReminder, view: HomeViewState, intents: HomeIntentsPort | null): TemplateResult {
     const paid = (): void => {
         void intents?.dismissTrial();
     };
@@ -56,7 +56,7 @@ function trial(locale: Locale, reminder: TrialReminder, view: HomeViewState, int
 type InstallReminder = Extract<HomeReminderPort, { kind: 'installUpdate' | 'installFailed' }>;
 
 // [section install] owner: installer (M6, `home.update-tile`)
-function installTile(locale: Locale, reminder: InstallReminder): TemplateResult {
+function installTile(locale: UiLocale, reminder: InstallReminder): TemplateResult {
     const failed = reminder.kind === 'installFailed';
     return html`<li class="reminder" data-reminder=${reminder.kind}>
         <hcm-icon name=${failed ? 'error' : 'publish'}></hcm-icon>
@@ -70,7 +70,7 @@ function isInstall(reminder: HomeReminderPort): reminder is InstallReminder {
     return reminder.kind === 'installUpdate' || reminder.kind === 'installFailed';
 }
 
-function reminderTile(locale: Locale, reminder: HomeReminderPort, view: HomeViewState, intents: HomeIntentsPort | null): TemplateResult {
+function reminderTile(locale: UiLocale, reminder: HomeReminderPort, view: HomeViewState, intents: HomeIntentsPort | null): TemplateResult {
     if (isInstall(reminder)) {
         return installTile(locale, reminder);
     }
@@ -81,7 +81,7 @@ function reminderTile(locale: Locale, reminder: HomeReminderPort, view: HomeView
 }
 
 /** The reminders section, or nothing when Setup left nothing open. */
-export function remindersSection(locale: Locale, view: HomeViewState, intents: HomeIntentsPort | null): TemplateResult {
+export function remindersSection(locale: UiLocale, view: HomeViewState, intents: HomeIntentsPort | null): TemplateResult {
     if (view.reminders.length === 0) {
         return EMPTY;
     }

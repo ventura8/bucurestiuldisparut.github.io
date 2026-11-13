@@ -1,5 +1,7 @@
-export { DEFAULT_LOCALE, LOCALES, resolveLocale, translate, type Locale, type MessageKey, type Messages } from './i18n/index.js';
+// The viewer's and the interface's languages, their catalogues' registry and the fallback to English (docs/I18N.md).
+export * from './i18n/index.js';
 export { pluralOf } from './i18n/plural.js';
+export * from './i18n/locales.js';
 export type { Translator } from './i18n/catalogue.js';
 // The admin's own texts (docs/research/M2b-interfaces.md §1.6): separate catalogues the viewer never imports.
 export { translateAdminShell } from './i18n/admin-shell/index.js';

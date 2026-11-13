@@ -74,6 +74,7 @@ export const en: AdminShellMessages = {
     'adminShell.account.analytics': 'Anonymous usage and performance statistics of the administration (Google Analytics)',
     'adminShell.account.analyticsVisitor': 'Anonymous usage and performance statistics of the Contribute page (Google Analytics)',
     'adminShell.notice.close': 'Close the message',
+    'adminShell.language.unavailable': 'The texts in {language} could not be loaded. The language stays as it was.',
     'adminShell.nav.close': 'Close',
     'adminShell.page.unavailable': 'This page is not available yet.',
     'adminShell.page.failed': 'The page did not load. Check the internet connection and try again.',

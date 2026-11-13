@@ -5,7 +5,7 @@
  * colour: drawn once (`draw-<shape>`) for a new place, then moved and edited in `select`. Its category's overlay leaves
  * the open place out meanwhile (`MapPreview`). Nothing here writes: finished shapes go to the editor's draft.
  */
-import { bboxCenter, bboxOf, geometryPositions, poiIcon, type Geometry, type LngLat, type Locale, type Logger } from '@hcm/shared';
+import { bboxCenter, bboxOf, geometryPositions, poiIcon, type Geometry, type LngLat, type UiLocale, type Logger } from '@hcm/shared';
 import type { VectorOverlaySpec } from '@hcm/ui/map';
 import type { DrawChange, DrawRefusal, MapDrawPort } from '@hcm/ui/map/draw';
 
@@ -27,7 +27,7 @@ export interface EditTarget {
 
 export interface PoisMapDeps {
     readonly maps: AdminMapFactory | null;
-    readonly locale: () => Locale;
+    readonly locale: () => UiLocale;
     readonly log: Logger;
     readonly status: (status: MapStatus) => void;
     /** A place's shape on the map was clicked. */

@@ -5,7 +5,7 @@
  * card says to delete a layer (with the way to Layers) or use Studio; a file Mapbox refused as too large has only the Studio way
  * (CR-M3-47). A chunk of its own (the admin's `mapbox-choices-<hash>.js`): a city on its own bucket, the default, never fetches it.
  */
-import { availableComputeUnits, MAX_TILESETS, nextMonthStart, translateApiError, type Locale } from '@hcm/shared';
+import { availableComputeUnits, MAX_TILESETS, nextMonthStart, translateApiError, type UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { contentText } from '../shell/text.js';
@@ -63,13 +63,13 @@ function megabytesOf(version: VersionViewPort): string {
 }
 
 /** M5: the city's share of the month is what stops the publish (`apiError.city.budgetReached`). */
-function cityOverText(locale: Locale, guard: Guard, version: VersionViewPort): string {
+function cityOverText(locale: UiLocale, guard: Guard, version: VersionViewPort): string {
     const params = { estimate: numberText(locale, version.estimate ?? 0), available: numberText(locale, Math.max(0, guard.available)) };
     return translateApiError(locale, 'apiError.city.budgetReached', params);
 }
 
 /** Why the publish waits: the month's compute units, the tileset cap, a file Mapbox refused as too large, or the city's share. */
-function overText(locale: Locale, guard: Guard, version: VersionViewPort): string {
+function overText(locale: UiLocale, guard: Guard, version: VersionViewPort): string {
     if (guard.verdict === 'city-over') {
         return cityOverText(locale, guard, version);
     }
@@ -114,7 +114,7 @@ function laterOrPay(context: ImageryContext, page: VersionPagePort, guard: Guard
 }
 
 /** At the tileset cap a layer must go: the way to Layers. */
-function layersLink(locale: Locale, guard: Guard): TemplateResult {
+function layersLink(locale: UiLocale, guard: Guard): TemplateResult {
     return when(
         guard.verdict === 'tileset-limit',
         () => html`<a href="#/layers">${contentText(locale, 'adminContent.imagery.openLayers')}</a>`,
@@ -142,7 +142,7 @@ function choices(context: ImageryContext, page: VersionPagePort, guard: Guard, v
     </div>`;
 }
 
-function deferred(locale: Locale, deferUntil: string): TemplateResult {
+function deferred(locale: UiLocale, deferUntil: string): TemplateResult {
     return html`<p class="note" data-state="deferred">
         ${contentText(locale, 'adminContent.imagery.wait.deferred', { date: dayText(locale, deferUntil) })}
     </p>`;

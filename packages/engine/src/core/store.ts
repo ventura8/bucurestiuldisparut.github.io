@@ -12,7 +12,7 @@ import {
     withOverlayVisibility,
     type DecodedHash,
     type LngLat,
-    type Locale,
+    type ViewerLocale,
     type MapView,
     type MessageKey,
     type PhotoView,
@@ -26,6 +26,7 @@ import { Boot, type BootHost } from './boot.js';
 import { CompareDriver, type CompareDriverHost } from './compare-driver.js';
 import type { MountedMap } from './compare-port.js';
 import type { ViewerDeps } from './deps.js';
+import { LocaleSwitch } from './locale-switch.js';
 import { withRequestedLabels } from './map-labels.js';
 import { Preferences } from './preferences.js';
 import {
@@ -55,7 +56,7 @@ export interface ViewerActions {
     /** Fetch (or take the inline) manifest, check compat, validate, mount the map; errors land in state.error. */
     load(): Promise<void>;
     retry(): Promise<void>;
-    setLocale(locale: Locale): void;
+    setLocale(locale: ViewerLocale): void;
     setYear(year: number | null): void;
     /**
      * Any overlay id (layer, `photos`, POI category); without `visible` it toggles. The map follows; a layer switched on
@@ -141,6 +142,7 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     readonly #unsubscribe: Unsubscribe[] = [];
     #state: ViewerState;
     #destroyed = false;
+    readonly #locale: LocaleSwitch;
     /** Show my location's flight is under way: its own `moveend` keeps the hash's view wherever the flight ended. */
     #flying = false;
     /**
@@ -157,6 +159,7 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         });
         this.#boot = new Boot(this);
         this.#compare = new CompareDriver(this);
+        this.#locale = new LocaleSwitch(this, (locale) => this.#boot.catalogue(locale));
         this.#state = this.#boot.initialState();
         this.hash = new HashWriter(deps.location, () => encodeViewerHash(this.#state, this.#boot.defaultLocale));
         this.#unsubscribe.push(
@@ -214,13 +217,9 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         return this.#boot.load();
     }
 
-    setLocale(locale: Locale): void {
-        if (locale === this.#state.locale) {
-            return;
-        }
-        this.set({ ...this.#state, locale });
-        this.preferences.set(this.#state.manifest?.city.id ?? this.deps.config.cityId, 'lang', locale);
-        this.hash.schedule();
+    /** The visitor's language, once its texts are here (`locale-switch.ts`). */
+    setLocale(locale: ViewerLocale): void {
+        this.#locale.choose(locale);
     }
 
     setYear(year: number | null): void {

@@ -3,7 +3,7 @@
  * admin (their role in the city, the project's owner, you), the current city's name and the signed-in admin's role in
  * it, and the role field of an admin's detail and of the Invite dialog (a native `<select>`: one input to change it).
  */
-import type { CityRole, Locale } from '@hcm/shared';
+import type { CityRole, UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { AdminCityPort, AdminStatePort } from '../admin-port.js';
@@ -12,13 +12,13 @@ import { shellText } from '../shell/text.js';
 const CITY_ROLE_OPTIONS: readonly CityRole[] = ['uploader', 'moderator', 'editor', 'owner'];
 
 /** A role as the page names it. */
-export function roleText(locale: Locale, role: CityRole): string {
+export function roleText(locale: UiLocale, role: CityRole): string {
     return shellText(locale, `adminShell.city.role.${role}`);
 }
 
 /** What an admin's row says besides their name: the role in the city, the project's owner, you. */
 export function rowDetail(
-    locale: Locale,
+    locale: UiLocale,
     admin: { readonly role: CityRole; readonly projectOwner: boolean; readonly self: boolean },
 ): string {
     const parts = [
@@ -35,12 +35,12 @@ function currentCity(state: AdminStatePort | null): AdminCityPort | undefined {
 }
 
 /** A city's name in `locale` (the Romanian one when it has no English name). */
-function nameIn(city: AdminCityPort, locale: Locale): string {
+function nameIn(city: AdminCityPort, locale: UiLocale): string {
     return locale === 'en' ? (city.name.en ?? city.name.ro) : city.name.ro;
 }
 
 /** The open city's name in `locale` (its id when unknown). */
-export function currentCityName(state: AdminStatePort | null, locale: Locale): string {
+export function currentCityName(state: AdminStatePort | null, locale: UiLocale): string {
     const city = currentCity(state);
     return city === undefined ? (state?.cityId ?? '') : nameIn(city, locale);
 }
@@ -51,7 +51,7 @@ export function ownsCurrentCity(state: AdminStatePort | null): boolean {
 }
 
 export interface RoleFieldContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly id: string;
     readonly label: string;
     readonly value: CityRole;

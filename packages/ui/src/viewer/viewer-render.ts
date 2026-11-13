@@ -8,7 +8,7 @@
  * the element's handlers; none keeps state. The map container is the one static `<div class="map">`: Lit never
  * re-creates it, so the Mapbox canvas that the engine mounts into it survives every render.
  */
-import { translate, type Locale, type Manifest, type Photo, type Poi, type PoiCategory } from '@hcm/shared';
+import { localized, translate, type Manifest, type Photo, type Poi, type PoiCategory, type ViewerLocale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 
@@ -28,6 +28,7 @@ import { menuActions, menuItem } from './viewer-menu.js';
 import { nearYearChip, textChip } from './viewer-near-year.js';
 import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
+import { statusOrCard } from './viewer-wordless.js';
 import { zoomButtons, type MapSize } from './viewer-zoom.js';
 import { modalOpen, renderConsentBanner } from './viewer-legal.js';
 
@@ -36,7 +37,7 @@ export interface ViewerView {
     readonly state: ViewerState | null;
     readonly bootError: ViewerError | null;
     readonly layout: ViewerLayout;
-    readonly locale: Locale;
+    readonly locale: ViewerLocale;
     readonly stops: readonly TimelineStop[];
     readonly manifestUrl: string;
     readonly engineVersion: string;
@@ -79,7 +80,7 @@ export interface ViewerHandlers extends LightboxHandlers, MapMenuHandlers {
     /** The photo sheet's thumbnail was decoded (or failed): the `photo_timing` field measurement. */
     readonly onPhotoShown: (event: CustomEvent<{ readonly ok: boolean }>) => void;
     readonly onMenuSelect: (event: CustomEvent<{ readonly value: string }>) => void;
-    readonly onLocaleChange: (event: CustomEvent<{ readonly locale: Locale }>) => void;
+    readonly onLocaleChange: (event: CustomEvent<{ readonly locale: ViewerLocale }>) => void;
     readonly onThemeChange: (event: CustomEvent<{ readonly theme: ViewerState['theme'] }>) => void;
     readonly onConsent: (event: CustomEvent<{ readonly decision: 'granted' | 'denied' }>) => void;
     readonly onRetry: (event: Event) => void;
@@ -149,7 +150,7 @@ function timelineArea(view: ViewerView, ready: Ready, handlers: ViewerHandlers):
     return ready.state.webgl ? timelineNote(view.locale) : EMPTY;
 }
 
-function timelineNote(locale: Locale): TemplateResult {
+function timelineNote(locale: ViewerLocale): TemplateResult {
     return html`<div class="dock timeline-note">
         <p class="note" data-layout-check="timeline-note">
             <hcm-icon name="timeline"></hcm-icon><span>${translate(locale, 'timeline.empty')}</span>
@@ -177,8 +178,8 @@ export function renderViewer(view: ViewerView, handlers: ViewerHandlers): Templa
             >
                 ${skipLink(view, ready, handlers)} ${leadingPane(view, ready, handlers)}
                 <div class="map-pane">
-                    <div class="map" role="region" aria-label=${mapLabel(view, ready)}></div>
-                    ${statusLayer(view, handlers)} ${ready === null ? nothing : controls(view, ready, handlers)}
+                    <div class="map" dir="ltr" role="region" aria-label=${mapLabel(view, ready)}></div>
+                    ${statusOrCard(view, () => statusLayer(view, handlers))} ${ready === null ? nothing : controls(view, ready, handlers)}
                 </div>
                 ${trailingPane(view, ready, handlers)}
             </div>
@@ -192,7 +193,7 @@ function stylesheet(view: ViewerView): TemplateResult {
 }
 
 function mapLabel(view: ViewerView, ready: Ready | null): string {
-    return translate(view.locale, 'viewer.mapLabel', { city: ready === null ? '' : ready.manifest.city.name[view.locale] });
+    return translate(view.locale, 'viewer.mapLabel', { city: ready === null ? '' : localized(ready.manifest.city.name, view.locale) });
 }
 
 function skipLink(view: ViewerView, ready: Ready | null, handlers: ViewerHandlers): TemplateResult {
@@ -229,7 +230,7 @@ function stateLayer(view: ViewerView, state: ViewerState, handlers: ViewerHandle
  * The boot state: the kit's M3 Expressive loading indicator (a wait of a few seconds). A linear `hcm-progress` has no
  * width of its own and collapsed to nothing in this centred grid, so the screen showed only the static shimmer.
  */
-function skeleton(locale: Locale): TemplateResult {
+function skeleton(locale: ViewerLocale): TemplateResult {
     return html`<div class="status">
         <div class="skeleton" role="status">
             <hcm-loading-indicator .label=${translate(locale, 'viewer.loading')}></hcm-loading-indicator>
@@ -239,7 +240,7 @@ function skeleton(locale: Locale): TemplateResult {
     </div>`;
 }
 
-function errorLayer(error: ViewerError, locale: Locale, handlers: ViewerHandlers): TemplateResult {
+function errorLayer(error: ViewerError, locale: ViewerLocale, handlers: ViewerHandlers): TemplateResult {
     return html`<div class="status">
         <hcm-error-card .error=${error} .locale=${locale} @hcm-retry=${handlers.onRetry}></hcm-error-card>
     </div>`;

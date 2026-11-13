@@ -6,7 +6,7 @@
  * every field it waits for: "Cannot save: add a title in Romanian; choose a category." The editors of places, photos,
  * layers and the city settings (categories, texts) all say their problems through here.
  */
-import { translate, type AdminContentKey, type Locale, type ValidationCode, type ValidationIssue } from '@hcm/shared';
+import { translate, type AdminContentKey, type UiLocale, type ValidationCode, type ValidationIssue } from '@hcm/shared';
 
 import { contentText } from '../shell/text.js';
 import { fieldName } from './field-names.js';
@@ -45,13 +45,13 @@ function ownKey(issue: ValidationIssue): AdminContentKey | null {
 }
 
 /** A field's problem as its form says it under the field. */
-export function issueText(locale: Locale, issue: ValidationIssue): string {
+export function issueText(locale: UiLocale, issue: ValidationIssue): string {
     const key = ownKey(issue);
     return key === null ? translate(locale, issue.code) : contentText(locale, key);
 }
 
 /** `text` with its first letter in lower case and no closing full stop: a part of a longer sentence. */
-function inSentence(locale: Locale, text: string): string {
+function inSentence(locale: UiLocale, text: string): string {
     const bare = text.endsWith('.') ? text.slice(0, -1) : text;
     return bare.charAt(0).toLocaleLowerCase(locale) + bare.slice(1);
 }
@@ -63,7 +63,7 @@ function topField(path: string): string {
 }
 
 /** One problem as Save's note lists it: the field's own words, or its name and the validation words. */
-function noteItem(locale: Locale, issue: ValidationIssue): string {
+function noteItem(locale: UiLocale, issue: ValidationIssue): string {
     const key = ownKey(issue);
     if (key !== null) {
         return inSentence(locale, contentText(locale, key));
@@ -73,7 +73,7 @@ function noteItem(locale: Locale, issue: ValidationIssue): string {
 }
 
 /** "Cannot save: add a title in Romanian; choose a category.": every problem once, in the order found. */
-export function cannotSaveText(locale: Locale, issues: readonly ValidationIssue[]): string {
+export function cannotSaveText(locale: UiLocale, issues: readonly ValidationIssue[]): string {
     const items = [...new Set(issues.map((issue) => noteItem(locale, issue)))];
     return contentText(locale, 'adminContent.common.cannotSave', { issues: items.join('; ') });
 }

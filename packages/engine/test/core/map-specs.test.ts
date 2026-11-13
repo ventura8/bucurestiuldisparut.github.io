@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
     CONE_LENGTH_M,
-    localized,
     mapOptions,
     photoFeatures,
     poiSpecs,
@@ -22,12 +21,6 @@ function moment(city: Manifest, labels: MapLabels): MapMoment {
 }
 
 describe('map specs', () => {
-    it('happyPath_englishFallsBackToRomanian', () => {
-        expect(localized({ ro: 'Stradă', en: 'Street' }, 'en')).toBe('Street');
-        expect(localized({ ro: 'Stradă' }, 'en')).toBe('Stradă');
-        expect(localized({ ro: 'Stradă', en: 'Street' }, 'ro')).toBe('Stradă');
-    });
-
     it('happyPath_relativeAssetsResolveAgainstTheManifest', () => {
         const base = 'https://storage.example.org/cities/bucuresti/manifest.json';
 

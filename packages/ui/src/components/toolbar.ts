@@ -1,6 +1,6 @@
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
-import { defineOnce } from './internal.js';
+import { defineOnce, logicalKey } from './internal.js';
 import { baseStyles } from './styles.js';
 
 export const HCM_TOOLBAR_TAG = 'hcm-toolbar';
@@ -140,7 +140,7 @@ export class HcmToolbar extends LitElement {
         if (count === 0) {
             return null;
         }
-        const step = MOVE_KEYS[this.orientation][key];
+        const step = MOVE_KEYS[this.orientation][logicalKey(key, this)];
         if (step !== undefined) {
             return (this.active + step + count) % count;
         }

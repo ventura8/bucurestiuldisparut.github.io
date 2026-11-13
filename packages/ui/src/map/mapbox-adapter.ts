@@ -9,7 +9,7 @@
  * map per mount, counted in `mapLoadCount` (every map is a billed map load); paint property names only from
  * `overlayOpacityPaint` and `rasterAdjustmentPaint`.
  */
-import { wrapBearing, type BBox, type LngLat, type Locale, type MapView, type RasterAdjustmentPaint } from '@hcm/shared';
+import { wrapBearing, type BBox, type LngLat, type ViewerLocale, type MapView, type RasterAdjustmentPaint } from '@hcm/shared';
 
 import { Basemap3dObjects } from './basemap.js';
 import { animates, fitCamera, moveCamera } from './camera.js';
@@ -29,7 +29,7 @@ import {
     type Unsubscribe,
     type VectorOverlaySpec,
 } from './map-port.js';
-import { classifyError, mapboxOptions, relabelMapbox, whenLoaded } from './lifecycle.js';
+import { classifyError, mapboxLanguage, mapboxOptions, relabelMapbox, whenLoaded } from './lifecycle.js';
 import type { MapboxEvent, MapboxGl, MapboxMap } from './mapbox-types.js';
 import { OverlayRegistry } from './overlay-registry.js';
 import {
@@ -375,13 +375,13 @@ class MapboxPort implements MapPort {
         return this.#events.on(event, handler);
     }
 
-    setLocale(locale: Locale): void {
+    setLocale(locale: ViewerLocale): void {
         const session = this.#session;
         if (session === null) {
             return;
         }
         relabelMapbox(session.container, locale);
-        session.map.setLanguage(locale);
+        session.map.setLanguage(mapboxLanguage(locale));
     }
 
     resize(): void {

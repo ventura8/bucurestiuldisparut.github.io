@@ -3,7 +3,7 @@
  * `city-budget-<hash>.js`, its budget in `scripts/ci/check_bundle_budget.py`): fetched the first time its section opens,
  * Loading until then, a failed fetch with Try again; the page renders again when a fetch settles (`refresh`).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { errorTemplate, loadingTemplate } from '../editing/states.js';
@@ -25,7 +25,7 @@ export interface LazyBudgetContext extends BudgetCardContext {
 
 /** What a lazy card of Settings needs of its section: the language, and a way to render the page again. */
 interface LazyCardContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly refresh: () => void;
 }
 

@@ -1,5 +1,5 @@
 /** A leaf module (M8, `docs/research/M8-join-interfaces.md` §6): the Work list, the version page and the join's chunk all ask this. */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 
 import { contentText } from '../../shell/text.js';
 import type { VersionItemPort } from '../imagery-port.js';
@@ -17,7 +17,7 @@ export function frameName(entityId: string): string {
  * What tells a version of a date from the others of that date, which share its label: a join's "Joined frames", a frame's name;
  * nothing for an upload.
  */
-export function versionMark(locale: Locale, origin: VersionItemPort['origin'], entityId: string | undefined): string | null {
+export function versionMark(locale: UiLocale, origin: VersionItemPort['origin'], entityId: string | undefined): string | null {
     if (origin === 'join') {
         return contentText(locale, 'adminContent.imagery.origin.join');
     }

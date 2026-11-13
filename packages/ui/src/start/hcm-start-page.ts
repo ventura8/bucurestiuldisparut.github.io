@@ -3,7 +3,7 @@
  * Google's consent, the city and the project, the run, and the one console click no API can do. Every word comes from the
  * `start.*` catalogue, in logical CSS, with no kit element: this page loads before anything exists, and stays small.
  */
-import { translateStart, type Locale, type StartKey } from '@hcm/shared';
+import { directionOf, familyLanguage, translateStart, type UiLocale, type StartKey } from '@hcm/shared';
 import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
 import { defineOnce } from '../components/internal.js';
@@ -24,7 +24,7 @@ export type StartPageFailure = RunFailure;
 
 export interface StartPageView extends RunView {
     readonly screen: 'closed' | 'intro' | 'plan' | 'work' | 'provider' | 'done';
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly form: {
         readonly nameRo: string;
         readonly nameEn: string;
@@ -44,7 +44,7 @@ export interface StartPagePort {
     readonly view: StartPageView;
     subscribe(listener: () => void): () => void;
     readonly intents: {
-        setLocale(locale: Locale): void;
+        setLocale(locale: UiLocale): void;
         signIn(): void;
         setName(name: string): void;
         setNameEn(name: string): void;
@@ -136,16 +136,20 @@ export class HcmStartPage extends LitElement {
             return html``;
         }
         document.documentElement.lang = view.locale;
+        document.documentElement.dir = directionOf(view.locale);
+        // Until a language's file holds the start page's texts they show in English, and say so (WCAG 3.1.2).
+        const shown = familyLanguage(view.locale, 'start.');
         return html`<header>
-                <p class="brand" lang=${view.locale}>${this.#t('start.title')}</p>
+                <p class="brand" lang=${shown}>${this.#t('start.title')}</p>
                 <hcm-start-language
+                    lang=${shown}
                     .locale=${view.locale}
-                    .choose=${(locale: Locale) => {
+                    .choose=${(locale: UiLocale) => {
                         this.port?.intents.setLocale(locale);
                     }}
                 ></hcm-start-language>
             </header>
-            <main>${this.#screen(view)}</main>`;
+            <main lang=${shown}>${this.#screen(view)}</main>`;
     }
 
     #screen(view: StartPageView): TemplateResult {

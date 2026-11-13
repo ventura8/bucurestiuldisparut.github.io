@@ -40,7 +40,7 @@ describe('buildAdminSite', () => {
             photos: 57,
             originals: 56,
             warnings: 1,
-            fonts: 3,
+            fonts: 4,
             // The legacy bundle's corrections.json (the old site's later directions) included.
             files: 68,
         });
@@ -61,6 +61,7 @@ describe('buildAdminSite', () => {
         expect(files.listFiles(`${OUT}/${FONTS_FOLDER}`)).toEqual([
             'LICENSES.md',
             'material-symbols-rounded.woff2',
+            'roboto-flex-cyrillic-wght.woff2',
             'roboto-flex-latin-ext-wght.woff2',
             'roboto-flex-latin-wght.woff2',
         ]);
