@@ -1,5 +1,5 @@
 /**
- * The engine's extras, loaded on demand (docs/ENGINE_API.md → *Extras on demand*, DECISIONS-for-review.md §181): code
+ * The engine's extras, loaded on demand (docs/ENGINE_API.md → *Extras on demand*, DECISIONS-for-review.md §183): code
  * no first paint needs (swipe compare, the gamepad, the consented Firebase SDK and field chunk) is its own classic script
  * beside the engine, `extra-<name>-<hash>.js`. The build (`scripts/site/src/engine-extras.ts`) writes each file's
  * Subresource Integrity into the engine, so a page that pins the engine with `integrity` covers its extras too.

@@ -373,7 +373,7 @@ image (no download: every package is already in the lockfile); `scripts/ci/check
 | Use | Address | Integrity |
 | --- | --- | --- |
 | A pinned page (the kit, every city that copies it) | `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.0.0/cdn/engine/engine.iife.js` and `engine.css` | yes: `release.json`'s values |
-| The fonts, chunks and extras | the same folder (`engineBase` is the script's folder) | not needed on the page: the IIFE carried the chunks inline until 2026-11-12, and since loads them as its extras with the integrity the build wrote into it (`DECISIONS-for-review.md` §181); fonts are not scripts |
+| The fonts, chunks and extras | the same folder (`engineBase` is the script's folder) | not needed on the page: the IIFE carried the chunks inline until 2026-11-12, and since loads them as its extras with the integrity the build wrote into it (`DECISIONS-for-review.md` §183); fonts are not scripts |
 | A page that follows the 1.x line | `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@1/cdn/engine/engine.iife.js` (`engineMajorBase`) | never (the file changes under it) |
 
 Helpers (done): `engineCdnBase`, `engineCdnUrl`, `engineMajorBase`, `releaseTag`, `versionOfTag`, `releaseIntegrity`.

@@ -938,7 +938,7 @@
             "area": "viewer",
             "name": "The IIFE loads its extras (swipe compare, the gamepad, the consented Firebase SDK and field chunk) beside it on first use, each with its integrity, and says to try again when one does not arrive",
             "milestone": "M5",
-            "source": "the owner, 2026-11-12: the IIFE at 124.9 KB of its 125 KB budget left no room for photo versions, the map's context menu and numbered dots; DECISIONS-for-review.md §181, docs/ENGINE_API.md → Extras on demand"
+            "source": "the owner, 2026-11-12: the IIFE at 124.9 KB of its 125 KB budget left no room for photo versions, the map's context menu and numbered dots; DECISIONS-for-review.md §183, docs/ENGINE_API.md → Extras on demand"
         },
         {
             "id": "A100",
@@ -16391,7 +16391,7 @@
             "asserts": "a page with engine.iife.js mounts the viewer and requests no extra-*.js; openCompare(null) adds one head script extra-compare-<hash>.js with integrity sha384-… and crossorigin anonymous, the compare bar shows and the second map is created (2 made, 0 removed); closing and comparing again requests nothing more",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §181. Tests: e2e/specs/viewer/extras.spec.ts; the loader in packages/engine/test/extras/loader.test.ts, the build in scripts/site/test/engine-extras.test.ts."
+            "notes": "DECISIONS-for-review.md §183. Tests: e2e/specs/viewer/extras.spec.ts; the loader in packages/engine/test/extras/loader.test.ts, the build in scripts/site/test/engine-extras.test.ts."
         },
         {
             "id": "S-V63-HAPPY-EXTRAS-CONSENT-AND-PAD",
@@ -16402,7 +16402,7 @@
             "asserts": "a page with engine.iife.js and a city with GA4 requests no extra-*.js before an answer; after Accept it requests extra-firebase-sdk-<hash>.js and extra-field-sdk-<hash>.js once each, as head scripts with integrity sha384-… and crossorigin anonymous, and GA4 receives viewer_timing; a connected pad adds extra-gamepad-<hash>.js once the same way and the toast 'gamepad.ready' shows",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §181. Tests: e2e/specs/viewer/extras.spec.ts; a release's own entry on the host and the ready mark in packages/engine/test/extras/."
+            "notes": "DECISIONS-for-review.md §183. Tests: e2e/specs/viewer/extras.spec.ts; a release's own entry on the host and the ready mark in packages/engine/test/extras/."
         },
         {
             "id": "S-V63-BAD-EXTRAS-CHUNK-FAILS",
@@ -16413,7 +16413,7 @@
             "asserts": "extra-compare-<hash>.js refused -> a toast 'error.extraLoad', no compare bar, no extra script left in head, one map only and the map still shown; once the file is served again, Compare requests it a second time and opens with the second map",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §181. Tests: e2e/specs/viewer/extras.spec.ts; packages/engine/test/extras/loader.test.ts (a failing chunk is logged, removed and retried) and packages/engine/test/compare/session.test.ts."
+            "notes": "DECISIONS-for-review.md §183. Tests: e2e/specs/viewer/extras.spec.ts; packages/engine/test/extras/loader.test.ts (a failing chunk is logged, removed and retried) and packages/engine/test/compare/session.test.ts."
         },
         {
             "id": "S-A100-BAD-REVIEW-EMPTY",
