@@ -73,6 +73,11 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
                 font-weight: var(--md-sys-typescale-title-small-weight);
             }
 
+            /* Pause all and Resume all keep the filter chips' 48 px reach (M3's target size on a phone). */
+            [data-pause-all] {
+                margin-block-start: 16px;
+            }
+
             hcm-worker-panel {
                 display: block;
                 padding: 0 16px 16px;

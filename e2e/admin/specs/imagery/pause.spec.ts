@@ -82,12 +82,18 @@ test(
         await expect.poll(async () => (await imagery.job('pause-1'))?.['paused'], { timeout: FUNCTIONS_TIMEOUT_MS }).toBeUndefined();
 
         // Jobs: Pause all says how many and the row reads Paused; Resume all puts it back.
-        await page.goto(adminPath(lang, 'jobs/pause-1'));
+        // The list (on a phone the open job replaces it), where Pause all is.
+        await page.goto(adminPath(lang, 'jobs'));
         await page.getByRole('button', { name: contentText(lang, 'adminContent.jobs.pauseAll') }).click();
-        await expect(page.locator('hcm-jobs-page [data-paused]')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(page.getByText(contentText(lang, 'adminContent.jobs.status.paused'), { exact: false }).first()).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await page.goto(adminPath(lang, 'jobs/pause-1'));
+        await expect(page.locator('hcm-jobs-page span[data-paused]')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         await expectStateSound(page, adminVisit('worker.jobs-pause-all', lang));
+        await page.goto(adminPath(lang, 'jobs'));
         await page.getByRole('button', { name: contentText(lang, 'adminContent.jobs.resumeAll') }).click();
-        await expect(page.locator('hcm-jobs-page [data-paused]')).toHaveCount(0, { timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect.poll(async () => (await imagery.job('pause-1'))?.['paused'], { timeout: FUNCTIONS_TIMEOUT_MS }).toBeUndefined();
 
         // The computer: For 1 hour, then who paused it and until when, and Resume.
         const card = page.locator('hcm-worker-panel');
