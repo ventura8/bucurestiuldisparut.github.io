@@ -246,4 +246,9 @@ export const dockStyles = css`
     .dock.menu:has(> [open]) ~ :is(.dock.zoom, .dock.compass) {
         visibility: hidden;
     }
+
+    /* The year chip shows where the photos chip docks: that one steps aside meanwhile (last: it outranks every chip rule). */
+    .frame:has(hcm-timeline[tipping]) .dock.chip {
+        visibility: hidden;
+    }
 `;

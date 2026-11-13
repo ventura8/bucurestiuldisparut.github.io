@@ -1,4 +1,4 @@
-"""Segments in the film's order, whichever way it was scanned (lesson 641 of docs/LESSONS.md).
+"""Segments in the film's order, whichever way it was scanned (lesson 643 of docs/LESSONS.md).
 
 The 1966 KH-7 strip's delivery letters its two segments right to left, each with the scanner's bright edge band at the frame's
 outer end. Joined left to right, the two bands matched each other and the frame ended at the seam: the city's south half was lost.

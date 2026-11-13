@@ -69,7 +69,7 @@ class SceneSpec:
     entity_id: str = "DS1035-1057DA023"
     # Where the frame's centre lies from the world's (east, north, EPSG:3857 metres): several frames of one date over one world.
     centre_offset_m: tuple[float, float] = (0.0, 0.0)
-    # The film scanned right to left with the scanner's bright edges, as the 1966 KH-7 strip's delivery (lesson 641).
+    # The film scanned right to left with the scanner's bright edges, as the 1966 KH-7 strip's delivery (lesson 643).
     right_to_left: bool = False
 
 
@@ -240,14 +240,14 @@ def split_segments(frame: UInt8Array, count: int) -> list[UInt8Array]:
 
 def scanner_edges(frame: UInt8Array, width: int = 9) -> UInt8Array:
     """`frame` with the scanner's bright edge band at both its outer ends (white fading to light grey inwards), as the 1966 KH-7
-    strip's scan holds them (lesson 641: the band runs about 240 px of 35 596)."""
+    strip's scan holds them (lesson 643: the band runs about 240 px of 35 596)."""
     ramp = numpy.linspace(KH7_EDGE_VALUES[0], KH7_EDGE_VALUES[1], width)
     band = numpy.broadcast_to(ramp, (frame.shape[0], width))
     return numpy.ascontiguousarray(numpy.hstack((band, frame, band[:, ::-1])).astype(numpy.uint8))
 
 
 def kh7_segments(frame: UInt8Array) -> list[UInt8Array]:
-    """The 1966 KH-7 strip's delivery (lesson 641): two overlapping halves lettered in the film's order, right to left: `_a` is
+    """The 1966 KH-7 strip's delivery (lesson 643): two overlapping halves lettered in the film's order, right to left: `_a` is
     the right half, `_b` the left one."""
     return [numpy.ascontiguousarray(part) for part in split_segments(frame, 2)[::-1]]
 

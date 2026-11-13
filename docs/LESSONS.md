@@ -3763,14 +3763,26 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: the viewer's least height is 240 px (`viewer-styles.ts`), so a 270 px window shows it whole; the kit state reads the new advice in both languages; cdn/engine rebuilt.
     - **After merging tracks, run the tour on the merged tree before calling it green: a track's own green tour never saw the other track's states or copy.**
 
-641. **A strip scanned right to left was joined left to right, and the layer ended at the seam: half the city.**
+641. **A coalesced scrub lost its last year: the viewer wrote the store's year back into the timeline before the frame sent the newer one.**
+    - Seen: 2026-11-13, track/timeline, `S-V04-HAPPY-TOUCH-SCRUB` at every functional project: a finger moved from 1968 over 1969 to 1970 and held left the slider at 1969.
+    - Cause: during a press `hcm-timeline` sends its first new year at once and the next one at the following animation frame; meanwhile the store's 1969 re-rendered the viewer, whose `.value=${state.year}` set the timeline back to 1969, and the frame then sent `this.value`, 1969, so 1970 was never sent.
+    - Fix and pin: `YearSends` keeps the year it was given and sends that (`timeline-sends.ts`); `hcm-timeline-tip.test.ts` rewrites the value mid-scrub as the viewer does and expects the last year.
+    - **A deferred send must carry the value chosen when it was deferred, never re-read a property the parent may rewrite in between.**
+
+642. **A finger on the timeline's track panned the page instead of scrubbing: the card's `touch-action: none` stopped at its scroller.**
+    - Seen: 2026-11-13, track/timeline, the first Playwright runs with Chromium's own touch events (`S-V04-HAPPY-TOUCH-SCRUB`): one `pointermove`, then `pointercancel`, so every scrub ended a year short; the unit tests' synthetic pointer events never asked the browser.
+    - Cause: a browser computes a touch's allowed gestures from the target up to the nearest scroll container; the card's `.scroller` is one (`overflow: auto`), so the host's `touch-action: none` never applied to the track inside it.
+    - Fix and pin: `.scroller` and `.track` inherit the card's touch-action (`timeline-styles.ts`); `hcm-timeline-tip.test.ts` reads it on the track, roomy and scrolling.
+    - **Set touch-action inside the nearest scroll container of the element a finger lands on, and test a gesture with the browser's own touch events, never only with synthetic pointer events.**
+
+643. **A strip scanned right to left was joined left to right, and the layer ended at the seam: half the city.**
     - Seen: 2026-11-13, live: the KH-7 GAMBIT frame DZB00403000026H017001 (12 July 1966) covers all of Bucharest, but its layer `kh-7-gambit-12-iulie-1966` covered 49 % (lat 44.437 to 44.55); the crop stopped at a white edge.
     - Cause: USGS letters the strip's two segments in the film's order, right to left (`_b` lies left of `_a`), and `stitch` always put `_b` right of `_a`. Its match strip was the segment's first 160 px, the scanner's bright edge band, and it matched the other segment's band at 0.90, so the wrong join looked sure; `locate` then proved the city on `_a` alone.
     - Found by: the rehearsal's own copies on the NUC (`frame.json` placed `_b` at x 36 046 of `_a`'s 36 346) and the preview, where the city lay at `_a`'s left edge and `_b`'s right one; the first pair matched both ways on every real multi-segment frame.
     - Fix and pin: the matched strip starts `EDGE_SKIP_SHARE` in from the edge; the first pair is matched both ways and the better way holds for the frame; a pair under `MIN_PAIR_SCORE` either way is a segment of another frame and fails the step (S-P01-HAPPY-KH7-TWO-SEGMENTS, S-P01-BAD-SEGMENT-OTHER-FRAME; the generator's `kh7_segments`).
     - **A delivery's file order is the film's, not the image's: find the order from the pixels, and never match on a scan's own edge.**
 
-642. **A search that outgrew its timeout told the owner only "Something went wrong on the server".**
+644. **A search that outgrew its timeout told the owner only "Something went wrong on the server".**
     - Seen: 2026-11-13, live: Search USGS again on the scene page failed; `imagery-search` logged Cloud Run's "maximum request timeout" while the harvest went on for over 7 minutes (five datasets, two at the 500 cap and searched again per target year, ten years).
     - Cause: every dataset, target year and scene write ran one after another, with nothing to stop it before the 300 s timeout; the cut-off reached the browser without the callable's details, which reads as `apiError.internal`.
     - Found by: the function's logs (`mcp__firebase__functions_get_logs`, read only).

@@ -436,7 +436,7 @@ describe('<hcm-timeline> many years under a finger', () => {
         expect(element.value).toBe(1924);
     });
 
-    it('happyPath_aFingerOnTheThumbDragsAScrollingTrack', async () => {
+    it('happyPath_aFingerOnTheThumbScrubsAScrollingTrackSelectingLive', async () => {
         const element = await timeline({ stops: VERY_MANY, value: 1924 }, { inline: 320, block: 300 });
         const thumb = shadowQuery(element, '.thumb').getBoundingClientRect();
 
@@ -444,11 +444,11 @@ describe('<hcm-timeline> many years under a finger', () => {
         touch(window, 'pointermove', thumb.left + thumb.width / 2 + 40, thumb.top + 20);
         await element.updateComplete;
 
-        expect(element.hasAttribute('dragging')).toBe(true);
-        expect(element.value).not.toBe(1924);
+        expect(element.value, 'selected while the finger is down').not.toBe(1924);
+        expect(shadowQuery(element, '.tip').textContent).toBe(String(element.value));
         touch(window, 'pointerup', thumb.left + thumb.width / 2 + 40, thumb.top + 20);
         await element.updateComplete;
-        expect(element.hasAttribute('dragging')).toBe(false);
+        expect(element.shadowRoot?.querySelector('.tip')).toBeNull();
     });
 
     it('badPath_aResizedCardChangesItsDensity', async () => {

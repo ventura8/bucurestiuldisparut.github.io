@@ -24,7 +24,7 @@ type Env = Readonly<Record<string, string | undefined>>;
 /**
  * Callables that may run longer than the default 60 s (`docs/research/M3-interfaces.md` §3.5, CR-M3-22): the first
  * harvest searches five datasets, up to five pages each and once more per target year at the cap, and copies the best browse
- * images ahead; it stops asking USGS after `SEARCH_BUDGET_MS` (lesson 642). The admin asks with a timeout just over it (`IMAGERY_SEARCH_TIMEOUT_MS` of `packages/admin/src/imagery/search.ts`).
+ * images ahead; it stops asking USGS after `SEARCH_BUDGET_MS` (lesson 644). The admin asks with a timeout just over it (`IMAGERY_SEARCH_TIMEOUT_MS` of `packages/admin/src/imagery/search.ts`).
  */
 const CALLABLE_TIMEOUT_SECONDS: Readonly<Partial<Record<CallableName, number>>> = { 'imagery.search': 540 };
 
