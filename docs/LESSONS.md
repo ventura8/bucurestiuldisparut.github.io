@@ -3759,3 +3759,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: `admin.shell.language-rtl` once its leak check used the page's real language.
     - Fix and pin: the check walks up through shadow hosts (`markedOf` in `e2e/support/i18n.ts`); the same state and `admin.start.language-rtl` pass read as Arabic and Urdu. The start page's footer marks its Romanian link texts `lang="ro"` too.
     - **A checker that reads the DOM must read it as assistive technology does: across shadow boundaries.**
+
+640. **A visually hidden caption far down a scrolled page made the whole admin scroll into blank space.**
+    - Seen: 2026-11-12, the tour's new `no-blank-scroll` checker: the Historical imagery, orders and georeferencer pages and the overlays settings scrolled 639 to 900 px of nothing under the shell (the owner's black area of 2026-11-09).
+    - Cause: an absolutely positioned element is clipped only by ancestors between it and its containing block; the page's scroller is not positioned, so the `.visually-hidden` captions and labels took the frame as their containing block, escaped the scroller and stretched the document.
+    - Fix and pin: the page's scroller is positioned, so it is their containing block and clips them (an `overflow: clip` on the frame, then the root's own `overflow: hidden`, cut the bottom bar's focus rings at the window's edge: the bar's rings are drawn inside their items, as the rail's were), the framed admin's root hides its overflow and overscroll (`<hcm-admin-shell data-frame>`), and every tour state runs `no-blank-scroll` (S-A31-HAPPY/BAD-NO-BLANK-SCROLL).
+    - **An app shell hides the root's overflow, and a scroller that holds absolute elements is positioned, so it clips them.**
+641. **A sticky strip in a short sheet hid the controls scrolled under it.**
+    - Seen: 2026-11-12, the viewer tour at 360 × 800 and 915 × 412: the Layers strip pinned on 2026-11-10 covered the overlay switches and sliders the list scrolled under it (focus obscured, targets of 52 × 32 and 4 × 44), and at peek height Tab reached the strip's switches where nobody could see them; the overlay rows' 48 px rings also overlapped one another (52 × 40).
+    - Fix and pin: the strip is sticky in the docked pane only; the overlay rows and the map-label rows are 48 px each (`packages/ui/test/viewer/hcm-layer-panel.test.ts`, the tour's Layers states).
+    - **Pin a strip only where the pane is tall enough; a modal sheet's content scrolls whole, and rows of 48 px targets are 48 px apart.**

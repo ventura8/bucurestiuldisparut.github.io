@@ -2508,6 +2508,28 @@
             "notes": "The Pixel 9 Pro review, 2026-11-12 (P1: at 884 x 322 with Chrome's bars seven items lay in one row, 263 px off the screen). Tests: e2e/tour/viewer.tour.ts (e2e/tour/settings-states.ts); packages/ui/test/viewer/landscape-menu.test.ts."
         },
         {
+            "id": "S-V15-HAPPY-NO-BLANK-SCROLL",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The city page is an app shell: the window never scrolls into blank space",
+            "asserts": "a city page on a phone, the wheel turned down -> the window stays at 0, the root hides its overflow with no overscroll, and the no-blank-scroll checker finds nothing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request for beta.1 (2026-11-12): never scroll past the app into blank space, on any screen, desktop or phone. The tour's no-blank-scroll checker (e2e/support/blank-scroll-probe.ts, docs/TESTING.md, The tour's checkers) runs on every state of e2e/tour/states.ts. Test: e2e/specs/viewer/responsive.spec.ts."
+        },
+        {
+            "id": "S-V15-BAD-NO-BLANK-SCROLL",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A blank area under the map is found by the no-blank-scroll checker",
+            "asserts": "400 px of nothing added under the map -> the checker names the shell taller than the window and moved by the window's scroll",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request for beta.1 (2026-11-12): never scroll past the app into blank space, on any screen, desktop or phone. The tour's no-blank-scroll checker (e2e/support/blank-scroll-probe.ts, docs/TESTING.md, The tour's checkers) runs on every state of e2e/tour/states.ts. Test: e2e/specs/viewer/responsive.spec.ts; the probe's own fixtures with a trailing blank area: e2e/test/blank-scroll-probe.test.ts."
+        },
+        {
             "id": "S-V16-HAPPY",
             "behaviour": "V16",
             "area": "viewer",
@@ -3557,11 +3579,11 @@
             "behaviour": "V03",
             "area": "viewer",
             "path": "happy",
-            "title": "Compare, Street names and POIs stay pinned at the top of Layers",
-            "asserts": "Layers open with Compare and map-label switches -> they sit in .pinned above hcm-overlay-list; scrolling the list leaves them in place",
+            "title": "Compare, Street names and POIs stay pinned at the top of the docked Layers pane",
+            "asserts": "Layers open in the docked pane with Compare and map-label switches -> they sit in .pinned above hcm-overlay-list; scrolling the list leaves them in place; in a modal sheet the strip scrolls with the list, so no focused switch hides under it",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Owner 2026-11-10. Tests: e2e/specs/viewer/layers-pinned.spec.ts, packages/ui/test/viewer/hcm-layer-panel.test.ts."
+            "notes": "Owner 2026-11-10; docked pane only since 2026-11-12 (the tour's focus-obscured and target-size findings in the compact sheets). Tests: e2e/specs/viewer/layers-pinned.spec.ts, packages/ui/test/viewer/hcm-layer-panel.test.ts."
         },
         {
             "id": "S-V03-BAD-LAYERS-NO-PINNED",
@@ -7973,6 +7995,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 22 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/setup-layout.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A31-HAPPY-NO-BLANK-SCROLL",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "happy",
+            "title": "The framed admin is an app shell: the window never scrolls into blank space",
+            "asserts": "a Setup page, the wheel turned down -> the window stays at 0, the root has no overscroll, and the no-blank-scroll checker finds nothing (the positioned page scroller clips its absolute elements)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request for beta.1 (2026-11-12): never scroll past the app into blank space, on any screen, desktop or phone. The tour's no-blank-scroll checker (e2e/support/blank-scroll-probe.ts, docs/TESTING.md, The tour's checkers) runs on every state of e2e/tour/states.ts. Test: e2e/admin/specs/shell/setup-layout.spec.ts."
+        },
+        {
+            "id": "S-A31-BAD-NO-BLANK-SCROLL",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "bad",
+            "title": "A blank area under the framed admin is found by the no-blank-scroll checker",
+            "asserts": "400 px of nothing added under the shell -> the checker names the shell taller than the window and moved 400 px by the window's scroll",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request for beta.1 (2026-11-12): never scroll past the app into blank space, on any screen, desktop or phone. The tour's no-blank-scroll checker (e2e/support/blank-scroll-probe.ts, docs/TESTING.md, The tour's checkers) runs on every state of e2e/tour/states.ts. Test: e2e/admin/specs/shell/setup-layout.spec.ts."
         },
         {
             "id": "S-A30-HAPPY",

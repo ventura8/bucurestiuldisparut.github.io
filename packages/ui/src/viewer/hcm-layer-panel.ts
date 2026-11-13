@@ -5,8 +5,9 @@
  * layer. It is presentational: the list's `hcm-overlay-visibility` and `hcm-overlay-opacity` events bubble to
  * `<hcm-map-viewer>`, which updates the store (the map follows live, the hash on release). A city without historical
  * layers yet gets a note at the top, where the layers will be (below the photos and places it read as a footnote).
- * With historical layers and a map, a Compare button and the Map labels group (Street names, POIs; V31) sit pinned at the
- * top of the panel (the owner, 2026-11-10): they stay while the overlay list scrolls. Compare opens swipe compare (M4, V06)
+ * With historical layers and a map, a Compare button and the Map labels group (Street names, POIs; V31) sit at the top of
+ * the panel (the owner, 2026-11-10), pinned in the docked pane while the overlay list scrolls; a modal sheet scrolls them
+ * with the list (2026-11-12: the list scrolled under them there hid a focused switch). Compare opens swipe compare (M4, V06)
  * or closes it while the visitor compares (`hcm-compare-toggle`). Each map-label switch fires `hcm-map-label`; its note
  * tells them from the city's own Places below.
  *
@@ -136,9 +137,6 @@ export class HcmLayerPanel extends LitElement {
             }
 
             .pinned {
-                position: sticky;
-                inset-block-start: 0;
-                z-index: 1;
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
@@ -150,14 +148,25 @@ export class HcmLayerPanel extends LitElement {
             }
 
             /*
-             * Only a large window's tall pane has room for a pinned strip: at half height on a 360 x 800 phone it took 170
-             * of 310 px, and in a 1024 x 768 side sheet a switch the focus scrolled back to sat under it (the tour's
+             * Pinned while the list scrolls in the docked pane of a large window only: in a modal sheet (a phone's bottom
+             * sheet, a short window's side sheet) the pane is too short, and the list scrolled under it hid a focused switch
+             * (WCAG 2.4.11) and cut the targets' 48 px (track/layout, 2026-11-12); at half height on a 360 x 800 phone it
+             * took 170 of 310 px, and in a 1024 x 768 side sheet a switch the focus scrolled back to sat under it (the tour's
              * focus-obscured and target-size checks, docs/LESSONS.md 618). Below 1200 x 700 the strip scrolls with the list.
              */
+            .body .pinned {
+                position: sticky;
+                inset-block-start: 0;
+                z-index: 1;
+            }
+
             @media (width < 1200px), (height < 700px) {
                 .pinned {
-                    position: static;
                     box-shadow: none;
+                }
+
+                .body .pinned {
+                    position: static;
                 }
             }
 
@@ -182,17 +191,10 @@ export class HcmLayerPanel extends LitElement {
                 align-self: flex-start;
             }
 
-            /* The size and weight are baseStyles' h3 (title small). */
+            /* The size, weight and margins are baseStyles' h3 (title small); a list and a paragraph have no margin there. */
             .labels h3 {
-                margin-block-end: 0;
                 color: var(--md-sys-color-primary);
                 line-height: var(--md-sys-typescale-title-small-line-height);
-            }
-
-            .labels ul {
-                padding: 0;
-                margin: 0;
-                list-style: none;
             }
 
             .labels li {
@@ -206,7 +208,6 @@ export class HcmLayerPanel extends LitElement {
             }
 
             .labels p {
-                margin: 0;
                 color: var(--md-sys-color-on-surface-variant);
                 font-size: var(--md-sys-typescale-body-small-size);
                 line-height: var(--md-sys-typescale-body-small-line-height);

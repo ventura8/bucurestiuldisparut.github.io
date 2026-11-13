@@ -197,8 +197,12 @@ export class HcmAdminNav extends LitElement {
                 padding-block-end: 16px;
             }
 
-            /* An item as wide as the scrolling rail would lose the sides of a ring drawn outside it. */
-            :host([variant='rail']) .item:focus-visible {
+            /*
+             * An item as wide as the scrolling rail would lose the sides of a ring drawn outside it; the bar's items touch
+             * the window's bottom and side edges, where the app shell's root (overflow hidden) cuts a ring drawn outside.
+             */
+            :host([variant='rail']) .item:focus-visible,
+            :host([variant='bar']) .item:focus-visible {
                 outline-offset: calc(-1 * var(--md-sys-state-focus-indicator-thickness, 3px));
             }
         `,

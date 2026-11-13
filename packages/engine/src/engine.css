@@ -36,9 +36,19 @@
     color: CanvasText;
 }
 
+/* A flow root: the kit's note's margin stays inside the window-tall element, never below it (no blank to scroll into). */
 .hcm-fullpage hcm-map-viewer {
-    display: block;
+    display: flow-root;
     block-size: 100dvh;
+}
+
+/*
+ * An app shell (the tour's no-blank-scroll check): once the viewer is defined, the page never scrolls nor rubber-bands
+ * past the map; the kit's notes (an engine refused) still scroll.
+ */
+:root:has(> .hcm-fullpage hcm-map-viewer:defined) {
+    overflow: hidden;
+    overscroll-behavior: none;
 }
 
 /*

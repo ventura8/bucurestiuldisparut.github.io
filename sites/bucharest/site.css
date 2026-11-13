@@ -1,6 +1,11 @@
-/* Page frame of a city site: the viewer fills the window; everything inside it is styled by the engine. */
+/*
+ * Page frame of a city site: the viewer fills the window; everything inside it is styled by the engine. An app shell: the
+ * page never scrolls nor rubber-bands past the map (iOS's and Android's overscroll, pull to refresh), only the viewer's
+ * own panes scroll (the tour's no-blank-scroll check).
+ */
 :root {
     color-scheme: light dark;
+    overscroll-behavior: none;
 }
 
 html,
@@ -11,8 +16,16 @@ body {
     color: CanvasText;
 }
 
-#historic-city-map {
-    block-size: 100dvh;
+/* Without JavaScript the page is its bilingual note, which may scroll. */
+@media (scripting: enabled) {
+    html,
+    body {
+        overflow: hidden;
+    }
+
+    #historic-city-map {
+        block-size: 100dvh;
+    }
 }
 
 /* Shown only without JavaScript (<noscript>). */
