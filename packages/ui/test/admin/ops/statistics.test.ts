@@ -37,7 +37,7 @@ describe('the Statistics view', () => {
         await updated(element);
 
         expect(deepAll(element, '[data-wizard]').map((item) => item.dataset['wizard'])).toEqual([...WIZARD_IDS]);
-        expect(deepText(deep(element, '[data-wizard="new_city"]'))).toMatch(/The area on the map \( ?area ?\)/);
+        expect(deepText(deep(element, '[data-wizard="new_city"]'))).toMatch(/The area on the map ?area/);
         expect(deepText(deep(element, '[data-wizard="setup"]'))).toContain('One step per Setup card');
         expect(deepAll(element, 'a.external').some((link) => link.getAttribute('href') === GA_HOME_URL)).toBe(true);
         expect(deepAll(element, '[data-statistics-off]')).toEqual([]);
@@ -101,15 +101,18 @@ describe('the Statistics view with the numbers', () => {
         expect(text).toContain('The admin: the owner');
         expect(text).toContain('Before this release');
         expect(text).toContain('Not measured: the start page loads no statistics.');
-        expect(text).toContain('Year changed: 50');
-        expect(text).toContain('Phone: 4');
+        expect(text).toMatch(/Year changed ?50 ?100\s?%/);
+        expect(text).toMatch(/Phone ?4 ?80\s?%/);
+        expect(text).toMatch(/The public map ?\/ ?300/);
+        expect(text).toMatch(/Home ?12/);
+        expect(text).toContain('Visits per visitor');
         const funnel = deepText(deep(element, '[data-funnel="new_city"]'));
         expect(funnel).toMatch(/The city’s names/);
         expect(funnel).toContain('3 (30 %)');
         expect(funnel).toContain('2.5 min');
         expect(funnel).toContain('30 s');
         expect(funnel).toContain('(apiError.invalidRequest)');
-        expect(funnel).toMatch(/e2e_unknown_code ?: 1/);
+        expect(funnel).toContain('e2e_unknown_code');
         expect(deepAll(element, 'svg.daily').length).toBeGreaterThan(0);
         expect(deepAll(element, '[data-surface="start"]')).toHaveLength(1);
         deepAll(element, '[data-statistics-numbers] hcm-button')[0]?.click();

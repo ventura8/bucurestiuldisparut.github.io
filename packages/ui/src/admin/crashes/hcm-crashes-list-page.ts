@@ -18,7 +18,8 @@ import { formatWhen, loadingTemplate } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type { CrashesIntentsPort, CrashesViewState, CrashGroupPort, CrashPeriodPort } from './crashes-port.js';
-import { loadStatisticsLive, statisticsLiveReady, statisticsStyles, statisticsView } from './statistics-view.js';
+import { statisticsStyles } from './statistics-styles.js';
+import { loadStatisticsLive, statisticsLiveReady, statisticsView } from './statistics-view.js';
 
 export const HCM_CRASHES_LIST_PAGE_TAG = 'hcm-crashes-list-page';
 

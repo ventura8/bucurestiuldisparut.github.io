@@ -5,29 +5,26 @@
  * the average time, the most frequent errors). Every failure says what happened and the fix, with a link to it.
  */
 import type { Locale } from '@hcm/shared';
-import { WIZARD_IDS, type WizardId } from '@hcm/shared/funnels';
+import type { WizardId } from '@hcm/shared/funnels';
 import { html, type TemplateResult } from 'lit';
 
-import { loadingTemplate } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type {
     CrashesIntentsPort,
-    NamedCountPort,
     StatisticsDaysPort,
     StatisticsNumbersPort,
     StatisticsProblemPort,
     StatisticsViewState,
-    StepNumbersPort,
     SurfaceNumbersPort,
 } from './crashes-port.js';
-import { dailyLine, deviceName, errorName, eventName, formatCount, formatDuration, surfaceName } from './statistics-format.js';
+import { barCard, pageName, screenName, statCards } from './statistics-bars.js';
+import { dailyLine, deviceName, eventName, formatCount, surfaceName } from './statistics-format.js';
+import { funnelsSection } from './statistics-funnels.js';
 
 /** Google Analytics' home: where an account's access to the property is managed. */
 const GA_HOME = 'https://analytics.google.com/analytics/web/';
 const DAYS: readonly StatisticsDaysPort[] = [7, 28, 90];
-/** The errors shown per step. */
-const TOP_ERRORS = 3;
 
 export interface NumbersContext {
     readonly locale: Locale;
@@ -106,6 +103,21 @@ function problemTemplate(context: NumbersContext): TemplateResult {
         ${FIXES[problem](context.projectId).map((link) => fixLink(locale, link))}`;
 }
 
+/** Google's note about the read-only permission, until the numbers are there. */
+function consentNote(context: NumbersContext): TemplateResult {
+    const { locale } = context;
+    return html`<div class="consent">
+        <hcm-consent-note
+            .locale=${locale}
+            scope="analyticsRead"
+            .projectId=${context.projectId}
+            .domain=${context.authDomain}
+        ></hcm-consent-note>
+        <p class="note">${contentText(locale, 'adminContent.statistics.numbers.remove')}</p>
+    </div>`;
+}
+
+/** The period (a segmented button) and the one action beside it: Show the numbers here, then Refresh. */
 function controls(context: NumbersContext): TemplateResult {
     const { locale, state, intents } = context;
     const choose = (event: CustomEvent<{ readonly value: string }>): void => {
@@ -123,24 +135,13 @@ function controls(context: NumbersContext): TemplateResult {
             intents?.showNumbers();
         }
     };
-    return html`<hcm-segmented-button
-            .label=${contentText(locale, 'adminContent.statistics.numbers.period')}
-            .options=${options}
-            .value=${String(state.days)}
-            @hcm-change=${choose}
-        ></hcm-segmented-button>
-        ${
-            ready
-                ? EMPTY
-                : html`<hcm-consent-note
-                          .locale=${locale}
-                          scope="analyticsRead"
-                          .projectId=${context.projectId}
-                          .domain=${context.authDomain}
-                      ></hcm-consent-note>
-                      <p class="note">${contentText(locale, 'adminContent.statistics.numbers.remove')}</p>`
-        }
-        <div class="actions">
+    return html`<div class="toolbar">
+            <hcm-segmented-button
+                .label=${contentText(locale, 'adminContent.statistics.numbers.period')}
+                .options=${options}
+                .value=${String(state.days)}
+                @hcm-change=${choose}
+            ></hcm-segmented-button>
             <hcm-button
                 variant=${ready ? 'tonal' : 'filled'}
                 icon=${ready ? 'refresh' : 'visibility'}
@@ -148,160 +149,95 @@ function controls(context: NumbersContext): TemplateResult {
                 @click=${show}
                 >${contentText(locale, ready ? 'adminContent.statistics.numbers.refresh' : 'adminContent.statistics.numbers.show')}</hcm-button
             >
-        </div>`;
+        </div>
+        ${ready ? EMPTY : consentNote(context)}`;
 }
 
-function countList(
-    locale: Locale,
-    titleKey: 'pages' | 'screens' | 'events' | 'devices' | 'countries',
-    items: readonly NamedCountPort[],
-    name: (value: string) => string,
-): TemplateResult {
-    const title = contentText(locale, `adminContent.statistics.numbers.${titleKey}`);
-    const body =
-        items.length === 0
-            ? html`<p class="note">${contentText(locale, 'adminContent.statistics.numbers.none')}</p>`
-            : html`<ol aria-label=${title}>
-                  ${items.map(
-                      (item) =>
-                          html`<li>
-                              ${contentText(locale, 'adminContent.statistics.numbers.count', { name: name(item.name), count: formatCount(locale, item.count) })}
-                          </li>`,
-                  )}
-              </ol>`;
-    return html`<h4>${title}</h4>
-        ${body}`;
-}
-
-function surfaceRow(locale: Locale, surface: SurfaceNumbersPort): TemplateResult {
+function appRow(locale: Locale, surface: SurfaceNumbersPort): TemplateResult {
     const name = surfaceName(locale, surface.surface);
     const max = formatCount(locale, Math.max(0, ...surface.daily.map((day) => day.visitors)));
     return html`<tr>
         <th scope="row">${name}</th>
-        <td>${formatCount(locale, surface.visitors)}</td>
-        <td>${formatCount(locale, surface.sessions)}</td>
+        <td class="num">${formatCount(locale, surface.visitors)}</td>
+        <td class="num">${formatCount(locale, surface.sessions)}</td>
         <td>${dailyLine(contentText(locale, 'adminContent.statistics.numbers.dailyLabel', { app: name, max }), surface.daily)}</td>
     </tr>`;
 }
 
-function appsTable(locale: Locale, numbers: StatisticsNumbersPort): TemplateResult {
+function appsCard(locale: Locale, numbers: StatisticsNumbersPort): TemplateResult {
     const title = contentText(locale, 'adminContent.statistics.numbers.apps');
-    return html`<h4>${title}</h4>
+    return html`<section class="card">
+        <h4>${title}</h4>
         <div class="table-wrap" tabindex="0" role="region" aria-label=${title}>
             <table>
                 <thead>
                     <tr>
                         <th scope="col">${contentText(locale, 'adminContent.statistics.numbers.app')}</th>
-                        <th scope="col">${contentText(locale, 'adminContent.statistics.numbers.visitors')}</th>
-                        <th scope="col">${contentText(locale, 'adminContent.statistics.numbers.sessions')}</th>
+                        <th scope="col" class="num">${contentText(locale, 'adminContent.statistics.numbers.visitors')}</th>
+                        <th scope="col" class="num">${contentText(locale, 'adminContent.statistics.numbers.sessions')}</th>
                         <th scope="col">${contentText(locale, 'adminContent.statistics.numbers.daily')}</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${numbers.surfaces.map((surface) => surfaceRow(locale, surface))}
+                    ${numbers.surfaces.map((surface) => appRow(locale, surface))}
                     <tr data-surface="start">
                         <th scope="row">${contentText(locale, 'adminContent.statistics.numbers.surface.start')}</th>
-                        <td colspan="3">${contentText(locale, 'adminContent.statistics.numbers.notMeasured')}</td>
+                        <td colspan="3" class="note">${contentText(locale, 'adminContent.statistics.numbers.notMeasured')}</td>
                     </tr>
                 </tbody>
             </table>
-        </div>`;
+        </div>
+    </section>`;
 }
 
-/** The steps of one wizard in the page's order, then any other step by its people. */
-function ordered(context: NumbersContext, numbers: StatisticsNumbersPort, wizard: WizardId): readonly StepNumbersPort[] {
-    const own = numbers.steps.filter((step) => step.wizard === wizard);
-    const order = context.order(wizard);
-    const rank = (step: StepNumbersPort): number => {
-        const index = order.indexOf(step.step);
-        return index === -1 ? order.length : index;
-    };
-    return [...own].sort((left, right) => rank(left) - rank(right) || right.visitors - left.visitors);
-}
-
-/** Who left between the step before and this one: the count and its share; a dash for the first step. */
-function leftText(locale: Locale, before: StepNumbersPort | undefined, step: StepNumbersPort): string {
-    if (before === undefined || before.visitors === 0) {
-        return '—';
-    }
-    const left = Math.max(0, before.visitors - step.visitors);
-    return contentText(locale, 'adminContent.statistics.numbers.percent', {
-        count: formatCount(locale, left),
-        percent: formatCount(locale, (left / before.visitors) * 100),
-    });
-}
-
-function stepRow(context: NumbersContext, step: StepNumbersPort, before: StepNumbersPort | undefined): TemplateResult {
-    const { locale } = context;
-    const errors = step.errors.slice(0, TOP_ERRORS);
-    return html`<tr>
-        <th scope="row">${context.stepName(step.step)} (<code>${step.step}</code>)</th>
-        <td>${formatCount(locale, step.visitors)}</td>
-        <td>${leftText(locale, before, step)}</td>
-        <td>${formatDuration(locale, step.averageMs)}</td>
-        <td>
-            ${
-                errors.length === 0
-                    ? '—'
-                    : html`<ul>
-                          ${errors.map((error) => html`<li>${errorName(locale, error.name)}: ${formatCount(locale, error.count)}</li>`)}
-                      </ul>`
-            }
-        </td>
-    </tr>`;
-}
-
-function wizardTable(context: NumbersContext, numbers: StatisticsNumbersPort, wizard: WizardId): TemplateResult {
-    const { locale } = context;
-    const name = context.wizardName(wizard);
-    const steps = ordered(context, numbers, wizard);
-    if (steps.length === 0) {
-        return html`<h5>${name}</h5>
-            <p class="note">${contentText(locale, 'adminContent.statistics.numbers.noWizard')}</p>`;
-    }
-    const label = contentText(locale, 'adminContent.statistics.numbers.tableLabel', { name });
-    return html`<h5>${name}</h5>
-        <div class="table-wrap" tabindex="0" role="region" aria-label=${label} data-funnel=${wizard}>
-            <table>
-                <thead>
-                    <tr>
-                        <th scope="col">${contentText(locale, 'adminContent.statistics.numbers.step')}</th>
-                        <th scope="col">${contentText(locale, 'adminContent.statistics.numbers.people')}</th>
-                        <th scope="col">${contentText(locale, 'adminContent.statistics.numbers.left')}</th>
-                        <th scope="col">${contentText(locale, 'adminContent.statistics.numbers.time')}</th>
-                        <th scope="col">${contentText(locale, 'adminContent.statistics.numbers.errors')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${steps.map((step, index) => stepRow(context, step, steps[index - 1]))}
-                </tbody>
-            </table>
-        </div>`;
+/** The key numbers: visitors, visits, visits per visitor and the map's key actions in all. */
+function overview(locale: Locale, numbers: StatisticsNumbersPort): TemplateResult {
+    const text = (key: 'visitors' | 'sessions' | 'perVisitor' | 'keyActions'): string =>
+        contentText(locale, `adminContent.statistics.numbers.${key}`);
+    const perVisitor = numbers.visitors === 0 ? 0 : numbers.sessions / numbers.visitors;
+    const actions = numbers.events.reduce((sum, item) => sum + item.count, 0);
+    return statCards(contentText(locale, 'adminContent.statistics.numbers.overview'), [
+        { label: text('visitors'), value: formatCount(locale, numbers.visitors), hook: 'visitors' },
+        { label: text('sessions'), value: formatCount(locale, numbers.sessions) },
+        { label: text('perVisitor'), value: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(perVisitor) },
+        { label: text('keyActions'), value: formatCount(locale, actions) },
+    ]);
 }
 
 function numbersTemplate(context: NumbersContext, numbers: StatisticsNumbersPort): TemplateResult {
     const { locale } = context;
-    const identity = (value: string): string => value;
-    return html`<h4>${contentText(locale, 'adminContent.statistics.numbers.overview')}</h4>
-        <dl class="facts">
-            <dt>${contentText(locale, 'adminContent.statistics.numbers.visitors')}</dt>
-            <dd data-statistics-visitors>${formatCount(locale, numbers.visitors)}</dd>
-            <dt>${contentText(locale, 'adminContent.statistics.numbers.sessions')}</dt>
-            <dd>${formatCount(locale, numbers.sessions)}</dd>
-        </dl>
-        ${appsTable(locale, numbers)} ${countList(locale, 'pages', numbers.pages, identity)}
-        ${countList(locale, 'screens', numbers.screens, identity)}
-        ${countList(locale, 'events', numbers.events, (value) => eventName(locale, value))}
-        ${countList(locale, 'devices', numbers.devices, (value) => deviceName(locale, value))}
-        ${countList(locale, 'countries', numbers.countries, identity)}
-        <h4>${contentText(locale, 'adminContent.statistics.numbers.wizards')}</h4>
-        ${WIZARD_IDS.map((wizard) => wizardTable(context, numbers, wizard))}`;
+    const title = (key: 'pages' | 'screens' | 'events' | 'devices' | 'countries'): string =>
+        contentText(locale, `adminContent.statistics.numbers.${key}`);
+    const identity = { name: (value: string): string => value };
+    const period = contentText(locale, `adminContent.statistics.numbers.days.${String(context.state.days) as '7'}`);
+    const funnels = { locale, period, order: context.order, stepName: context.stepName, wizardName: context.wizardName };
+    return html`${overview(locale, numbers)} ${appsCard(locale, numbers)}
+        <div class="grid">
+            ${barCard(locale, title('pages'), numbers.pages, { name: (value) => pageName(locale, value), raw: true })}
+            ${barCard(locale, title('screens'), numbers.screens, { name: (value) => screenName(locale, value) })}
+            ${barCard(locale, title('events'), numbers.events, { name: (value) => eventName(locale, value) })}
+            ${barCard(locale, title('devices'), numbers.devices, { name: (value) => deviceName(locale, value) })}
+            ${barCard(locale, title('countries'), numbers.countries, identity)}
+        </div>
+        ${funnelsSection(funnels, numbers)}`;
+}
+
+/** The numbers' placeholder while Google answers: the cards' shapes, and the words for a screen reader. */
+function skeleton(locale: Locale): TemplateResult {
+    const text = contentText(locale, 'adminContent.common.loading');
+    const blocks = (count: number, kind: string): TemplateResult[] =>
+        Array.from({ length: count }, () => html`<span class="skeleton ${kind}"></span>`);
+    return html`<div class="skeletons" role="status" data-statistics-loading>
+        <span class="visually-hidden">${text}</span>
+        <div class="stats" aria-hidden="true">${blocks(4, 'stat')}</div>
+        <div class="grid" aria-hidden="true">${blocks(3, 'block')}</div>
+    </div>`;
 }
 
 function bodyOf(context: NumbersContext): TemplateResult {
     const { state } = context;
     if (state.status === 'loading') {
-        return loadingTemplate(context.locale);
+        return skeleton(context.locale);
     }
     if (state.status === 'error') {
         return problemTemplate(context);
@@ -313,8 +249,10 @@ function bodyOf(context: NumbersContext): TemplateResult {
 export function numbersSection(context: NumbersContext): TemplateResult {
     const { locale } = context;
     return html`<section class="numbers" data-statistics-numbers>
-        <h3>${contentText(locale, 'adminContent.statistics.numbers.title')}</h3>
-        <p>${contentText(locale, 'adminContent.statistics.numbers.intro')}</p>
+        <div class="section-head">
+            <h3>${contentText(locale, 'adminContent.statistics.numbers.title')}</h3>
+            <p class="note">${contentText(locale, 'adminContent.statistics.numbers.intro')}</p>
+        </div>
         ${controls(context)} ${bodyOf(context)}
     </section>`;
 }
