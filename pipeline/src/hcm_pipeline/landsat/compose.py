@@ -1,7 +1,8 @@
 """`warp` for a Landsat scene: the colour image on the tile grid, checked against Sentinel-2 (docs/research/M25-landsat.md §3).
 
 The bands `extract` kept are reprojected by GDAL straight onto the city window's tile grid at the camera's zoom (`SENSOR_SPECS`: z13 for
-Landsat 4 and 5 TM's 30 m, z14 for Landsat 7 ETM+'s 15 m): the colour bands cubic, the quality band nearest. `colour.py` masks, sharpens
+Landsat 4 and 5 TM's 30 m,
+z14 for Landsat 7 ETM+'s and Landsat 8 and 9 OLI's 15 m): the colour bands cubic, the quality band nearest. `colour.py` masks, sharpens
 and stretches them into the RGBA `warped.tif` the shared tail (`export`, `pyramid`, `register`) reads, as a declassified frame's `warp`
 writes it. No georeferencing: the product is on the ground already. One check instead: the image's rigid shift from the window's
 Sentinel-2 (`offset.py`, the reference `reference` cached), in the camera's own pixels, and the share of the city its quality band calls
@@ -22,7 +23,7 @@ from hcm_pipeline.documents import city_bounds
 from hcm_pipeline.geo import FloatArray, Grid, MercatorBox, ground_scale
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult
 from hcm_pipeline.join.canvas import aligned_box, level_grid
-from hcm_pipeline.landsat.bands import PANCHROMATIC, QUALITY, band_file, needed_bands
+from hcm_pipeline.landsat.bands import PANCHROMATIC, QUALITY, band_file, needed_bands, true_colour
 from hcm_pipeline.landsat.colour import FILL_BIT, Bands, Composite, cloud_pct, compose
 from hcm_pipeline.landsat.offset import Shift, shift_of
 from hcm_pipeline.model import UsgsImportParams
@@ -72,13 +73,14 @@ def _colour(source: Path, grid: Grid) -> FloatArray:
     return numpy.asarray(on_grid(source, grid, COLOUR_RESAMPLING), numpy.float64)
 
 
-def bands_on(staged: Mapping[str, Path], grid: Grid) -> Bands:
-    """The scene's bands on the grid: red, green and blue (B3, B2, B1), the quality band, and ETM+'s panchromatic band."""
+def bands_on(staged: Mapping[str, Path], grid: Grid, sensor: str = "L5-TM") -> Bands:
+    """The scene's bands on the grid: red, green and blue (`true_colour`), the quality band, and ETM+'s or OLI's panchromatic band."""
     pan = staged.get(PANCHROMATIC)
+    red, green, blue = true_colour(sensor)
     return Bands(
-        red=_colour(staged["B3"], grid),
-        green=_colour(staged["B2"], grid),
-        blue=_colour(staged["B1"], grid),
+        red=_colour(staged[red], grid),
+        green=_colour(staged[green], grid),
+        blue=_colour(staged[blue], grid),
         quality=numpy.asarray(on_grid(staged[QUALITY], grid, QUALITY_RESAMPLING, FILL_BIT), numpy.uint16),
         pan=None if pan is None else _colour(pan, grid),
     )
@@ -153,7 +155,7 @@ class LandsatComposeStep:
         window = city_window(ctx)
         grid = level_grid(aligned_box(window), spec.maxzoom)
         staged = staged_bands(ctx, params.sensor)
-        bands = gdal_step(ctx, lambda: bands_on(staged, grid), "reproject the Landsat bands")
+        bands = gdal_step(ctx, lambda: bands_on(staged, grid, params.sensor), "reproject the Landsat bands")
         composite = compose(bands)
         warped = gdal_step(
             ctx,

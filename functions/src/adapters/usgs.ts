@@ -63,14 +63,24 @@ export interface UsgsOptions {
     readonly log: Logger;
 }
 
+/** One M2M request: its endpoint, its body, and (lesson 676) how long it may take. */
+interface M2mRequest {
+    readonly endpoint: string;
+    readonly body: unknown;
+    readonly timeoutMs?: number | undefined;
+}
+
 /** One M2M call: the `data` of a successful answer, else the failure of the table above. */
-async function m2mCall(options: UsgsOptions, endpoint: string, body: unknown, apiKey?: string): Promise<unknown> {
+async function m2mCall(options: UsgsOptions, call: M2mRequest, apiKey?: string): Promise<unknown> {
+    const { endpoint, body } = call;
     const json = { 'content-type': 'application/json' };
     const headers = apiKey === undefined ? json : { ...json, 'x-auth-token': apiKey };
+    const timeout = call.timeoutMs === undefined ? {} : { timeoutMs: call.timeoutMs };
     const response = await send(options.fetch, SERVICE, `${USGS_M2M_API}/${endpoint}`, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
+        ...timeout,
     });
     const answer = await readJson(response);
     const failure = m2mFailure(response, answer);
@@ -82,7 +92,7 @@ async function m2mCall(options: UsgsOptions, endpoint: string, body: unknown, ap
 }
 
 export function createUsgsApi(options: UsgsOptions): UsgsApi {
-    const m2m = (endpoint: string, body: unknown, apiKey?: string): Promise<unknown> => m2mCall(options, endpoint, body, apiKey);
+    const m2m = (endpoint: string, body: unknown, apiKey?: string): Promise<unknown> => m2mCall(options, { endpoint, body }, apiKey);
 
     return {
         login: async (username, applicationToken) => {
@@ -251,7 +261,11 @@ function toDatasets(data: unknown): DatasetIds[] {
 export function createUsgsScenes(options: UsgsOptions): UsgsScenes {
     return {
         search: async (apiKey, request) => {
-            const data = await m2mCall(options, 'scene-search', sceneSearchBody(request), apiKey);
+            const data = await m2mCall(
+                options,
+                { endpoint: 'scene-search', body: sceneSearchBody(request), timeoutMs: request.timeoutMs },
+                apiKey,
+            );
             const records = list(at(data, 'results')).flatMap(toSceneRecord);
             const totalHits = at(data, 'totalHits');
             const next = nextOf(data, records.length);
@@ -260,9 +274,10 @@ export function createUsgsScenes(options: UsgsOptions): UsgsScenes {
         },
         downloadOptions: async (apiKey, dataset, entityIds) =>
             toDownloadOptions(
-                await m2mCall(options, 'download-options', { datasetName: dataset, entityIds: [...entityIds] }, apiKey),
+                await m2mCall(options, { endpoint: 'download-options', body: { datasetName: dataset, entityIds: [...entityIds] } }, apiKey),
                 entityIds,
             ),
-        datasets: async (apiKey) => toDatasets(await m2mCall(options, 'dataset-search', { datasetName: 'declass' }, apiKey)),
+        datasets: async (apiKey) =>
+            toDatasets(await m2mCall(options, { endpoint: 'dataset-search', body: { datasetName: 'declass' } }, apiKey)),
     };
 }

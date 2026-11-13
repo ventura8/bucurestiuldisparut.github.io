@@ -1013,7 +1013,7 @@
         {
             "id": "P30",
             "area": "pipeline",
-            "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
+            "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+ and OLI, and checked against Sentinel-2 instead of georeferenced",
             "milestone": "M25",
             "source": "the owner, 2026-11-09: import Landsat for 1984-2000, added to the sources and automated like USGS; docs/research/M25-landsat.md"
         },
@@ -5365,6 +5365,50 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Lesson 646 (live 2026-11-13: the harvest ran over 7 minutes, past the 300 s timeout, and the admin read 'Something went wrong on the server'). Tests: functions/test/imagery/search.test.ts, packages/admin/test/imagery/search.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-REQUEST-TIMED-OUT",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A USGS request that takes too long is recorded, and what its dataset found is stored",
+            "asserts": "corona2's page from record 101 is aborted at its own timeout -> corona2 is recorded partial (found 100, next 101, reason requestTimedOut), its first 100 scenes are stored, the run is recorded partial and due again in 15 minutes; the admin's line says what it kept and that the rest comes by itself",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: functions/test/imagery/harvest-partial.test.ts, functions/test/adapters/upstream-http.test.ts, packages/ui/test/admin/imagery/search-parts.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-HARVEST-PARTIAL-STORED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A harvest out of time stores every dataset it finished and records the rest partial",
+            "asserts": "corona2's first page uses up the search's time -> declassii is stored and done, corona2 partial with next 101 and reason outOfTime, ops/harvest-{city} partial; the admin's Search shows each dataset's part live, then the answer's",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: functions/test/imagery/harvest-partial.test.ts, packages/admin/test/imagery/search.test.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-HARVEST-RESUME",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "The next harvest resumes only the unfinished dataset, where it stopped",
+            "asserts": "after a partial run (corona2 stopped at 101) -> the next run asks corona2 from 101 and 201 only, stores the rest and records ok",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-HARVEST-KILLED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A harvest the server stopped is found, logged and resumed",
+            "asserts": "ops/harvest-{city} still running 10 minutes after it started -> the next run logs harvest.killed as an error, searches only the dataset that was not done, keeps the done one's part and records ok",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
         },
         {
             "id": "S-A11-BAD-BROWSE-HOST-REFUSED",
@@ -18220,7 +18264,7 @@
             "area": "admin",
             "path": "happy",
             "title": "Landsat scenes are listed beside the declassified ones and Import publishes one credited to NASA and USGS",
-            "asserts": "usgs.landsatScenes -> the page's own search lists nine free scenes; the Landsat chip leaves the three Landsat 5 TM scenes, each Free; Import (free) on the clear 1989 scene -> the stand-in skips stitch, locate and georef, warp writes the landsat report within a pixel -> the policy publishes it; the layer is satellite, Landsat 5 TM, credited 'Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey'",
+            "asserts": "usgs.landsatScenes -> the page's own search lists eleven free scenes; the Landsat chip leaves the three Landsat 5 TM scenes and the two Landsat 8 and 9 OLI ones, each Free; Import (free) on the clear 1989 scene -> the stand-in skips stitch, locate and georef, warp writes the landsat report within a pixel -> the policy publishes it; the layer is satellite, Landsat 5 TM, credited 'Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey'",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
@@ -18231,10 +18275,54 @@
             "area": "admin",
             "path": "happy",
             "title": "The tick imports the clearest scene of a wanted year on its own",
-            "asserts": "Landsat harvested, the city's default 1984-2000 and its switch on -> imagery.tick imports the clear 1989 scene (the oldest wanted year), one a tick, as an ordinary usgs-import the daily cap counts",
+            "asserts": "Landsat harvested, the city's default 1984 to the current year and its switch on -> imagery.tick imports the clear 1989 scene (the oldest wanted year), one a tick, as an ordinary usgs-import the daily cap counts",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
+        },
+        {
+            "id": "S-A130-HAPPY-OLI",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "happy",
+            "title": "Landsat 8 and 9 OLI scenes are harvested and listed beside TM",
+            "asserts": "the fake USGS answers landsat_ot_c2_l1 -> two scenes stored as L8-OLI and L9-OLI at 15 m, searched in summer months under the cloud cap with a per-request timeout; the Landsat chip lists them, each Free",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/harvest-partial.test.ts, packages/ui/test/admin/imagery/search-parts.test.ts."
+        },
+        {
+            "id": "S-A130-BAD-OLI-UNKNOWN",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "bad",
+            "title": "An OLI record whose satellite is not named is Landsat 8",
+            "asserts": "entity ids LX8… and LO9… -> L8-OLI and L9-OLI",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+        },
+        {
+            "id": "S-A130-HAPPY-WORKERS-PACE",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "happy",
+            "title": "While the city's computers run the worker, the tick imports one Landsat scene per online worker, on the computer",
+            "asserts": "two workers seen 10 s ago -> imagery.tick's Landsat part starts the 1989 and 1990 imports, both runOn local (never counted by the daily cap)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+        },
+        {
+            "id": "S-A130-BAD-NO-WORKER-PACE",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "bad",
+            "title": "With no worker online the tick keeps one cloud Landsat import a run",
+            "asserts": "the workers were last seen an hour ago -> one import, placed in the cloud (the daily cap counts it)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
         },
         {
             "id": "S-A130-BAD-CLOUDY",
@@ -18301,6 +18389,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-HAPPY-OLI",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A Landsat 8 or 9 OLI scene takes B4, B3, B2 and is pan-sharpened to 15 m at z14",
+            "asserts": "an OLI bundle (B1 to B4, B8, QA_PIXEL) -> red, green and blue from B4, B3, B2, Brovey with B8, output maxzoom 14, report pansharpened and resolution 15",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-BAD-OLI-MISSING-BAND",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An OLI bundle without its red band B4 fails naming it",
+            "asserts": "an OLI bundle without B4 -> the job fails apiError.imagery.missingBand with band B4",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: pipeline/tests/integration/test_landsat_job.py (pipeline-pytest)."
         },
         {
             "id": "S-P30-BAD-MISSING-BAND",
@@ -20710,6 +20820,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "docs/research/M7-local-worker.md, Household computers (macOS). Tests: functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-OLD-ADDRESS-INSTALL",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "A build submitted from the old address reads its files from the admin's own site",
+            "asserts": "the bundle URL on the public map's /admin/ answers 301 to the project's admin site -> fetch follows that one redirect and unpacks the checked files; a redirect anywhere else stops the step naming where it went",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/fetch-script.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-FOREIGN-REDIRECT",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "A bundle redirected anywhere but the project's admin site stops the build",
+            "asserts": "the bundle URL answers 301 to another origin -> fetch fails naming where it was sent; nothing is unpacked",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/fetch-script.test.ts."
         }
     ]
 }

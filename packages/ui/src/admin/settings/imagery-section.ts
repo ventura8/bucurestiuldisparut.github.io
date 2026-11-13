@@ -126,7 +126,17 @@ function mapsGroup(context: SectionContext, city: CityDoc, issues: readonly Vali
     </section>`;
 }
 
-/** M25 (`docs/research/M25-landsat.md` §4): a year field of the Landsat range (empty is NaN: the document refuses it on Save). */
+/** The city's imagery with `landsatTo` set to `year`, or without it (up to the current year) when the field is emptied. */
+function withLandsatTo(imagery: CityImagery | undefined, text: string): CityImagery {
+    const rest: CityImagery = { ...imagery };
+    delete rest.landsatTo;
+    return text.trim() === '' ? rest : { ...rest, landsatTo: thresholdOf(text) };
+}
+
+/**
+ * M25 (`docs/research/M25-landsat.md` §4): a year field of the Landsat range. An empty From is NaN (the document refuses it on Save);
+ * an empty To is the default, up to the current year.
+ */
 function landsatYearField(
     context: SectionContext,
     city: CityDoc,
@@ -137,11 +147,15 @@ function landsatYearField(
     return field(locale, {
         id: `imagery-${key}`,
         label: contentText(locale, `adminContent.imagery.settings.${key}`),
-        value: shown(imagerySettingsOf(city.imagery)[key]),
+        value: shown(imagerySettingsOf(city.imagery)[key] ?? Number.NaN),
         issue: issueAt(issues, `imagery.${key}`),
         inputMode: 'numeric',
         readOnly: context.readOnly,
         onInput: (text) => {
+            if (key === 'landsatTo') {
+                context.intents?.editCity({ imagery: withLandsatTo(city.imagery, text) });
+                return;
+            }
             edit(context, city.imagery, { [key]: thresholdOf(text) });
         },
     });

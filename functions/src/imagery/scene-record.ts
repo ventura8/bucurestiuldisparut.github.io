@@ -82,6 +82,12 @@ const CAMERAS: Readonly<
         fallback: 'L5-TM',
     },
     landsat_etm_c2_l1: { patterns: [], ids: [], fallback: 'L7-ETM' },
+    // Landsat 8 and 9 (`LC81830292014196LGN01`, `LC09_L1TP_...`): OLI, pan-sharpened to 15 m as ETM+.
+    landsat_ot_c2_l1: {
+        patterns: [],
+        ids: [[/^L[CO]0?9/i, 'L9-OLI']],
+        fallback: 'L8-OLI',
+    },
 };
 
 const CORNERS = ['nw', 'ne', 'se', 'sw'] as const;

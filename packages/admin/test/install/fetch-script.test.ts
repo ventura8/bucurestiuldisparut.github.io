@@ -138,6 +138,12 @@ beforeEach(async () => {
     asked = [];
     server = createServer((request, response) => {
         const name = (request.url ?? '').split('/').pop() ?? '';
+        if ((request.url ?? '').startsWith('/old/')) {
+            // §210: the public map's `/admin/…` answering 301 to the admin's own site (here the same server's `/new/`).
+            response.writeHead(301, { location: `${origin}/new/${name}` });
+            response.end();
+            return;
+        }
         asked.push(name);
         const failure = failing.get(name);
         if (failure !== undefined && failure.count > 0) {
@@ -191,6 +197,20 @@ describe('the fetch step', () => {
 
         expect(unnamed.code).toBe(0);
         expect(existsSync(join(work, 'server', 'functions', 'dist', '.env'))).toBe(false);
+    });
+
+    it('happyPath_aBundleOnTheOldAddressIsReadFromTheAdminsSite_badPath_aRedirectAnywhereElseStopsTheBuild', async () => {
+        const found = bundle();
+        served = found.files;
+        const old = { HCM_BUNDLE_URL: `${origin}/old/admin/install/1-0-0-abc1234/` };
+
+        const followed = await run(envOf(found, { ...old, HCM_REDIRECT_ORIGIN: origin }));
+        rmSync(join(work, 'server'), { recursive: true, force: true });
+        const refused = await run(envOf(found, { ...old, HCM_REDIRECT_ORIGIN: 'https://demo-hcm-admin.web.app' }));
+
+        expect(followed).toMatchObject({ code: 0, stderr: '' });
+        expect(refused.code).toBe(1);
+        expect(refused.stderr).toContain(`manifest.json: redirected to ${origin}`);
     });
 
     it('happyPath_theSiteKeepsTheWholeBundleInItsTree', async () => {

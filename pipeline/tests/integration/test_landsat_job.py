@@ -10,7 +10,7 @@ from hcm_pipeline.raster import gdal
 from hcm_pipeline.runner import RunOutcome
 
 from tests.fakes.world import CITY, ENTITY_ID, JOB_ID, LAYER_ID, NOW, OWNER_UID, PipelineWorld, dig, stamp_of
-from tests.synthetic.landsat import ETM_PRODUCT, Bundle, landsat_bundle
+from tests.synthetic.landsat import ETM_PRODUCT, OLI_PRODUCT, Bundle, landsat_bundle
 from tests.synthetic.scenes import CENTRE
 
 STEPS: Final = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "pyramid", "register")
@@ -94,6 +94,28 @@ def test_happy_path_an_etm_scene_is_pan_sharpened_to_15_m_at_z14(world: Pipeline
     report = landsat_report(world)
     assert (report["pansharpened"], report["resolutionM"]) == (True, 15)
     assert report["checked"] is True
+
+
+def test_happy_path_an_oli_scene_takes_b4_b3_b2_and_is_pan_sharpened_to_15_m(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P30-HAPPY-OLI"""
+    seed_landsat(world, "L9-OLI", "landsat_ot_c2_l1")
+    deliver(world, tmp_path / "bundle", Bundle(product=OLI_PRODUCT, bands=("B1", "B2", "B3", "B4", "B8", "QA_PIXEL")))
+
+    assert world.run() is RunOutcome.DONE
+
+    assert dig(world.version(), "output", "maxzoom") == 14
+    report = landsat_report(world)
+    assert (report["pansharpened"], report["resolutionM"]) == (True, 15)
+
+
+def test_bad_path_an_oli_bundle_without_its_red_band_b4_fails_with_the_missing_band(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P30-BAD-OLI-MISSING-BAND"""
+    seed_landsat(world, "L8-OLI", "landsat_ot_c2_l1")
+    deliver(world, tmp_path / "bundle", Bundle(product=OLI_PRODUCT, bands=("B1", "B2", "B3", "B8", "QA_PIXEL")))
+
+    world.run()
+
+    assert dig(world.job(), "error", "params", "band") == "B4"
 
 
 def test_bad_path_a_bundle_without_its_red_band_fails_with_the_missing_band(world: PipelineWorld, tmp_path: Path) -> None:

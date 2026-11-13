@@ -29,6 +29,7 @@
                 "HCM_RELEASE_TIME=${_RELEASE_TIME}",
                 "HCM_FILES=site,server,pipeline",
                 "HCM_OUT=/workspace/site",
+                "HCM_REDIRECT_ORIGIN=https://demo-hcm-admin.web.app",
                 "HCM_KEEP_BUNDLE=public${_BASE}install/${_SLUG}"
             ]
         },

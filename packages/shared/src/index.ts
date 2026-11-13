@@ -127,7 +127,6 @@ export {
     FINISHED_JOB_STATUSES,
     GUARD_REASONS,
     GUARD_STATES,
-    HARVEST_OUTCOMES,
     JOB_LOG_LEVELS,
     JOB_MACHINES,
     JOB_STATUSES,
@@ -150,7 +149,6 @@ export {
     WORKER_ID_PATTERN,
     adminDocSchema,
     provisionDue,
-    harvestStateDocSchema,
     inviteDocSchema,
     jobDocSchema,
     jobLogDocSchema,
@@ -163,10 +161,17 @@ export {
     usageDocSchema,
     usgsSceneDocSchema,
 } from './schemas/firestore-ops.js';
+export {
+    HARVEST_DATASET_STATES,
+    HARVEST_OUTCOMES,
+    HARVEST_STOP_REASONS,
+    harvestDatasetSchema,
+    harvestStateDocSchema,
+} from './schemas/harvest-state.js';
+export type { HarvestDataset, HarvestDatasets, HarvestStateDoc } from './schemas/harvest-state.js';
 export type {
     AdminDoc,
     AdminRole,
-    HarvestStateDoc,
     InviteDoc,
     JobDoc,
     JobLogDoc,
@@ -199,7 +204,7 @@ export { AUTO_MIN_MEASURED_PCT, CITY_MIN_COVERAGE_PCT, DEFAULT_RMSE_THRESHOLD_M,
 export { MAX_TARGET_YEARS, RMSE_THRESHOLD_RANGE, cityImagerySchema, imagerySettingsOf } from './schemas/imagery-settings.js';
 // M25 (docs/research/M25-landsat.md): named, never `export *` (a star re-export costs the engine bytes: docs/LESSONS.md 532).
 export { DECLASS_DATASETS, DEFAULT_LANDSAT_YEARS, ETM_SLC_OFF_DATE, LANDSAT_ATTRIBUTION } from './schemas/landsat.js';
-export { LANDSAT_AUTO_MAX_CLOUD, LANDSAT_AUTO_PER_TICK, LANDSAT_DATASETS } from './schemas/landsat.js';
+export { LANDSAT_AUTO_MAX_CLOUD, LANDSAT_AUTO_MAX_PER_TICK, LANDSAT_AUTO_PER_TICK, LANDSAT_DATASETS } from './schemas/landsat.js';
 export { LANDSAT_MAX_CITY_CLOUD_PCT, LANDSAT_MAX_OFFSET_PX, landsatClear } from './schemas/landsat-verdict.js';
 export { LANDSAT_MONTHS, LANDSAT_SEARCH_MAX_CLOUD, LEAF_ON_MONTHS, USGS_DATASETS } from './schemas/landsat.js';
 export { isLandsatDataset, landsatReportSchema, landsatYearsOf } from './schemas/landsat.js';

@@ -15,6 +15,7 @@ import type { SceneItemPort } from './imagery-port.js';
 import { datasetText, dayText, reasonText } from './imagery-text.js';
 import { lazyJoin } from './join/lazy-card.js';
 import { orderTag } from './orders/order-list.js';
+import { searchParts } from './search-parts.js';
 import { importable, importButton, importRefusal } from './scene-detail.js';
 import { usgsSetupLink } from './scene-refusal.js';
 import { usefulnessTags } from './scene-tags.js';
@@ -157,7 +158,7 @@ function searchStatus(context: ImageryContext): TemplateResult {
         </div>`;
     }
     return html`<p class="note status" role="status">${searchLine(locale, search)}</p>
-        ${failedDatasets(locale, search)}`;
+        ${searchParts(locale, search.datasets)} ${failedDatasets(locale, search)}`;
 }
 
 function sceneTags(locale: Locale, scene: SceneItemPort): TemplateResult {
