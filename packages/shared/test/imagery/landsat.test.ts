@@ -71,16 +71,18 @@ describe('the season in a Landsat rank', () => {
 });
 
 describe('the settings of the tick’s Landsat imports', () => {
-    it('happyPath_aCityThatSetNothingImports1984To2000 @S-A130-HAPPY-AUTO', () => {
+    it('happyPath_aCityThatSetNothingImports1984ToTheCurrentYear @S-A130-HAPPY-AUTO', () => {
         const settings = imagerySettingsOf(undefined);
 
-        expect([settings.landsatAuto, settings.landsatFrom, settings.landsatTo]).toEqual([true, DEFAULT_LANDSAT_YEARS.from, 2000]);
-        expect(landsatYearsOf(settings)).toHaveLength(17);
-        expect(landsatYearsOf({ landsatFrom: 1990, landsatTo: 1992 })).toEqual([1990, 1991, 1992]);
+        expect([settings.landsatAuto, settings.landsatFrom, settings.landsatTo]).toEqual([true, DEFAULT_LANDSAT_YEARS.from, undefined]);
+        expect(landsatYearsOf(settings, 2026)).toHaveLength(43);
+        expect(landsatYearsOf(settings, 2026).at(-1)).toBe(2026);
+        expect(landsatYearsOf({ landsatFrom: 1990, landsatTo: 1992 }, 2026)).toEqual([1990, 1991, 1992]);
     });
 
-    it('badPath_aReversedRangeHasNoYearAndANonYearIsRefused @S-A130-BAD-AUTO-OFF', () => {
-        expect(landsatYearsOf({ landsatFrom: 2000, landsatTo: 1990 })).toEqual([]);
+    it('badPath_aReversedRangeHasNoYearAndAYearPastTheCurrentOneIsNotWanted @S-A130-BAD-AUTO-OFF', () => {
+        expect(landsatYearsOf({ landsatFrom: 2000, landsatTo: 1990 }, 2026)).toEqual([]);
+        expect(landsatYearsOf({ landsatFrom: 2025, landsatTo: 2030 }, 2026)).toEqual([2025, 2026]);
         expect(cityImagerySchema.safeParse({ landsatFrom: 1700 }).success).toBe(false);
         expect(cityImagerySchema.safeParse({ landsatAuto: false, landsatFrom: 1985, landsatTo: 1995 }).success).toBe(true);
     });

@@ -43,12 +43,18 @@ interface MatcherWorld {
 
 const NEW_AI_IMAGE = `pytorch/pytorch:2.16.0@sha256:${'d'.repeat(64)}`;
 
+/** The worker's whole `/state` around its `ai` record: its own `image` and the starter's come after it, as the worker writes them. */
+function stateWith(ai: string): string {
+    const own = `"image": "sha256:${'e'.repeat(64)}", "starter": {"version": "aaaaaaaaaaaa", "wanted": "aaaaaaaaaaaa", "update": "current"}`;
+    return `{"workerId": "w-1", "state": "busy", "ai": ${ai}, "machine": null, ${own}}`;
+}
+
 function wantedOf(image: string): string {
-    return `{"ai": {"state": "preparing", "wanted": true, "image": "${image}", "files": true}}`;
+    return stateWith(`{"state": "preparing", "wanted": true, "image": "${image}", "files": true}`);
 }
 
 const WANTED = wantedOf(AI_IMAGE);
-const IDLE = `{"ai": {"state": "ready", "wanted": false, "image": "${AI_IMAGE}", "files": true}}`;
+const IDLE = stateWith(`{"state": "ready", "wanted": false, "image": "${AI_IMAGE}", "files": true}`);
 
 /** `sh hcm-worker.sh matcher` over stand-ins of `curl`, `docker` and `sleep`, until its second pass. Every docker call goes to the log. */
 async function matcherLoop(
@@ -248,10 +254,12 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
     it('happyPath_theRemovalTakesTheVolumesAndOnlyTheImageItPulled', async () => {
         const text = (await file('linux', 'uninstall')).body;
 
-        expect(text).toContain('docker volume rm "$NAME" "$AI_FILES" "$AI_BOX"');
+        expect(text).toContain('docker volume rm "$AI_FILES" "$AI_BOX"');
+        expect(text).toContain('docker volume rm "$NAME"');
         expect(text).toContain('done <"$(home_dir)/ai-image"');
         const windows = (await file('windows', 'uninstall')).body;
-        expect(windows).toContain('docker volume rm $Name $AiFiles $AiBox');
+        expect(windows).toContain('& docker volume rm $AiFiles $AiBox *> $null');
+        expect(windows).toContain('& docker volume rm $Name *> $null');
         expect(windows).toContain('foreach ($each in Get-Content -LiteralPath $AiImageNote)');
     });
 });
@@ -379,7 +387,9 @@ describe('the sidecar lives only while a frame wants it', () => {
         spawnSync('/bin/sh', [script, 'run'], { encoding: 'utf8', env: { PATH: `${bin}:/usr/bin:/bin`, HOME: folder }, timeout: 20_000 });
 
         expect(readFileSync(log, 'utf8')).toMatch(
-            new RegExp(`-e HCM_DOCKER_ARCH=${said} -e HCM_AI_VARIANT=(cpu|gpu) ${pipeline.replaceAll('.', '\\.')} worker`),
+            new RegExp(
+                `-e HCM_DOCKER_ARCH=${said} -e HCM_AI_VARIANT=(cpu|gpu) -e HCM_HOST_NAME=\\S* -e HCM_HOST_OS=linux -e HCM_REMOVABLE=1 ${pipeline.replaceAll('.', '\\.')} worker`,
+            ),
         );
     });
 });

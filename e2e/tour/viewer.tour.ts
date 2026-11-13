@@ -203,6 +203,14 @@ test(
 );
 
 test(
+    'Disappeared streets: pinned in Layers, switched on, one street open',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V14-HAPPY-EVERY-STATE', '@S-V71-HAPPY-PINNED'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('lost-streets'));
+    },
+);
+
+test(
     'Photos with no place yet, and the Contribute link',
     {
         tag: [

@@ -14,6 +14,8 @@
  * its own label under the mouse and the stop under a finger, which scrubs along the track and selects on lift
  * (`timeline-scrub.ts`); never a year of several dates, whose date menu names them. V13: selecting a year with several dates (a tap, a click,
  * the end of a drag or a scrub, Enter, the gamepad's A) asks for its date menu (`hcm-dates-open`); its badge is a hint only.
+ * A mouse resting on such a year, or a scrubbing finger resting on it, shows the menu without selecting the year
+ * (`hcm-dates-peek`, `timeline-peek.ts`).
  */
 import { DEFAULT_LOCALE, translate, type ViewerLocale } from '@hcm/shared';
 import { LitElement, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
@@ -23,6 +25,7 @@ import { cssProperties } from '../components/css-properties.js';
 import { countOf, dateBadge, datesOpenEvent, datesValueText } from './timeline-dates.js';
 import { labelShown, SCROLL_GAP_PX, stopIndex, timelineDensity, type TimelineDensity, type TimelineStop } from './timeline-model.js';
 import { TimelinePointer } from './timeline-pointer.js';
+import { DatesPeek, datesPeekEvent, peekDates, peekPlace } from './timeline-peek.js';
 import { YearSends } from './timeline-sends.js';
 import { timelineStyles } from './timeline-styles.js';
 import { placeTip, tipText, tipWanted, type TimelineTip } from './timeline-tip.js';
@@ -127,15 +130,33 @@ export class HcmTimeline extends LitElement {
         },
         dragging: (dragging) => {
             this.dragging = dragging;
+            if (dragging) {
+                this.#peek.stop(true);
+            }
         },
         touchTip: (index) => {
             this.tip = index === null || this.#severalDates(index) ? null : { index, touch: true };
+            if (index !== null) {
+                this.#peek.rest(index, 'touch');
+            }
         },
         hint: (index) => {
             this.#hintAt(index);
+            if (!this.dragging) {
+                this.#peek.rest(index, 'mouse');
+            }
         },
         hideHint: () => {
             this.#hideHint();
+            this.#peek.away();
+        },
+        peek: (event, lifted) => peekPlace(this, this.#peek.shown(), event, lifted),
+    });
+    /** V13's peek: the dates of the year a pointer rests on, the year not selected (`timeline-peek.ts`). */
+    readonly #peek = new DatesPeek({
+        datesAt: (index) => (this.#severalDates(index) ? peekDates(this, this.stops[index] ?? null, index) : null),
+        send: (detail) => {
+            this.dispatchEvent(datesPeekEvent(detail));
         },
     });
     readonly #resize = new ResizeObserver(() => {
@@ -167,6 +188,7 @@ export class HcmTimeline extends LitElement {
         this.#resize.disconnect();
         this.#sends.drop();
         this.#pointer.end();
+        this.#peek.stop(false);
         super.disconnectedCallback();
     }
 
@@ -461,6 +483,7 @@ export class HcmTimeline extends LitElement {
      * years a drag passes never do.
      */
     #settle(released: boolean): void {
+        this.#peek.stop(!released);
         if (this.#sends.settle()) {
             this.said = this.#valueText(this.value);
         }

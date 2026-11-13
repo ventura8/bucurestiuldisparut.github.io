@@ -18,6 +18,7 @@ import {
     shownLanguage,
     streetViewUrl,
     translate,
+    type Layer,
     type ViewerLocale,
     type Photo,
     type PhotoView,
@@ -80,6 +81,7 @@ export class HcmPhotoSheet extends LitElement {
         photo: { attribute: false },
         poi: { attribute: false },
         category: { attribute: false },
+        layers: { attribute: false },
         photos: { attribute: false },
         locale: { type: String },
         mode: { type: String },
@@ -136,6 +138,8 @@ export class HcmPhotoSheet extends LitElement {
     declare photo: Photo | null;
     declare poi: Poi | null;
     declare category: PoiCategory | null;
+    /** M27: the manifest's layers (a place's `sourceLayer` is named from them). */
+    declare layers: readonly Layer[];
     /** Every manifest photo (a POI's linked thumbnails are looked up here). */
     declare photos: readonly Photo[];
     declare locale: ViewerLocale;
@@ -159,6 +163,7 @@ export class HcmPhotoSheet extends LitElement {
         this.photo = null;
         this.poi = null;
         this.category = null;
+        this.layers = [];
         this.photos = [];
         this.locale = DEFAULT_LOCALE;
         this.mode = 'bottom';
@@ -203,6 +208,7 @@ export class HcmPhotoSheet extends LitElement {
             return html`<hcm-poi-detail
                     .poi=${this.poi}
                     .category=${this.category}
+                    .layers=${this.layers}
                     .photos=${this.photos}
                     .locale=${this.locale}
                     .manifestUrl=${this.manifestUrl}

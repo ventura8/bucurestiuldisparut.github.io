@@ -122,12 +122,22 @@ export interface JobProgressPort {
     readonly attempt: number;
 }
 
+/** Lesson 676: one dataset's part of the USGS search, live while it runs and in its answer. */
+export interface SearchPartPort {
+    readonly dataset: UsgsDataset;
+    readonly state: 'searching' | 'done' | 'partial' | 'failed';
+    readonly found: number;
+    readonly reason?: 'outOfTime' | 'requestTimedOut' | 'usgsFailed';
+}
+
 interface SearchStatePort {
     readonly phase: 'idle' | 'searching' | 'done' | 'failed';
     readonly found: number | null;
     readonly added: number | null;
     readonly failedDatasets: readonly UsgsDataset[];
     readonly error: AdminNoticeInputPort | null;
+    /** Each dataset's part (absent before a search, and from a server before lesson 676). */
+    readonly datasets?: readonly SearchPartPort[];
 }
 
 export interface UploadStatePort {
@@ -204,6 +214,8 @@ export interface VersionViewPort {
     readonly archive?: ArchiveReport | null;
     /** An archive series waiting with `layout-check`: its tiles wait for the tile-import wizard (`#/help/<id>/tiles`). */
     readonly layoutCheck?: boolean;
+    /** M20 (§216): published with pieces left out of its overview mosaic: offered Locate again (a new version). */
+    readonly restitchable?: boolean;
     /**
      * M20 (§7): rights summary for the approval card (null: none). Approve stays off until `allowPublish`; Confirm when
      * `state` is `needs-confirmation`.

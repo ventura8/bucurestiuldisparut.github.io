@@ -41,7 +41,17 @@ export interface CategoryEditorState {
     readonly proposedColor: string | null;
 }
 
-export type CategoryPatch = Partial<Pick<PoiCategoryDoc, 'label' | 'icon' | 'color' | 'defaultOpacity'>>;
+/** `undefined` removes an optional field (M27: an emptied credit). */
+/** A new category's value without the fields a patch removed (Firestore refuses an `undefined` field). */
+function withoutUndefined<T extends object>(value: T): T {
+    return Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined)) as T;
+}
+
+export type CategoryPatch = Partial<Pick<PoiCategoryDoc, 'label' | 'icon' | 'color' | 'defaultOpacity'>> & {
+    readonly defaultVisible?: boolean | undefined;
+    readonly pinned?: boolean | undefined;
+    readonly attribution?: string | undefined;
+};
 
 /** The colour proposal of a value: the nearest tone that reads, when the colour does not. */
 function proposalOf(value: NewCategory | null): string | null {
@@ -135,7 +145,7 @@ export class CategoryEditor {
         const value = this.#state.value;
         if (value !== null) {
             this.#iconPicked ||= patch.icon !== undefined;
-            const edited = { ...value, ...patch };
+            const edited = withoutUndefined({ ...value, ...patch });
             const next = this.#iconPicked ? edited : { ...edited, icon: guessCategoryIcon(edited.label) };
             this.#set({ ...this.#state, value: next, dirty: true, issues: newIssues(next), proposedColor: proposalOf(next) });
         }

@@ -358,3 +358,42 @@ describe('<hcm-icon-picker>', () => {
         expect(picker.value).toBe('account_balance');
     });
 });
+
+describe('<hcm-settings-page> a category in the Layers panel (M27)', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_hiddenAtStartPinnedAndCreditedForTheDisappearedStreets @S-A155-HAPPY-DISPLAY', async () => {
+        const settings = area(categoriesState({ category: editor({ dirty: true }) }));
+        const { element } = await page('settings', settings, { params: ['categories', 'cladiri'] });
+        const [shown, pinned] = deepAll(element, '.switch-row hcm-switch');
+
+        expect((shown as HTMLElement & { checked: boolean }).checked).toBe(true);
+        expect((pinned as HTMLElement & { checked: boolean }).checked).toBe(false);
+        for (const [toggle, checked] of [
+            [shown, false],
+            [pinned, true],
+        ] as const) {
+            toggle?.dispatchEvent(new CustomEvent('hcm-change', { detail: { checked }, bubbles: true, composed: true }));
+        }
+        await userEvent.type(deep(element, '#category-attribution'), 'OSM');
+        await updated(element);
+
+        expect(calls(settings).slice(0, 2)).toEqual(['editCategory {"defaultVisible":false}', 'editCategory {"pinned":true}']);
+        expect(calls(settings).at(-1)).toMatch(/^editCategory \{"attribution":"\S+"\}$/u);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_anEmptiedCreditIsRemovedNotSavedBlank @S-A155-BAD-BLANK-CREDIT', async () => {
+        const value = { ...editor().value, defaultVisible: false, pinned: true, attribution: ' ' } as CategoryEditorPort['value'];
+        const settings = area(categoriesState({ category: editor({ value, dirty: true }) }));
+        const { element } = await page('settings', settings, { params: ['categories', 'cladiri'] });
+        const input = deep(element, '#category-attribution') as HTMLInputElement;
+
+        await userEvent.clear(input);
+        await updated(element);
+
+        expect(calls(settings).at(-1)).toBe('editCategory {}');
+        expect(deepText(element)).toContain(translateAdminContent('en', 'adminContent.settings.categoryPinned'));
+    });
+});

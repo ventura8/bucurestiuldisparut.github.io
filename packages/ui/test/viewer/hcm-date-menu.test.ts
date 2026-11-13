@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 
-import { HCM_DATE_MENU_TAG, HcmDateMenu, dateMenuOrigin, defineHcmDateMenu } from '../../src/viewer/hcm-date-menu.js';
+import { HCM_DATE_MENU_TAG, HcmDateMenu, dateMenuOrigin, defineHcmDateMenu, sideRoom } from '../../src/viewer/hcm-date-menu.js';
 import { recordEvents, shadowQuery, shadowQueryAll } from './doubles.js';
 
 const ITEMS = [
@@ -112,10 +112,88 @@ describe('<hcm-date-menu>', () => {
         });
     });
 
+    it('happyPath_besideAStandingTimelineItIsNoWiderThanTheRoomPastIt', () => {
+        const card = { x: 16, y: 16, width: 68, height: 600 };
+
+        expect(sideRoom(card, 360, 'end')).toBe(360 - 84 - 16);
+        expect(sideRoom({ ...card, x: 276 }, 360, 'start')).toBe(260);
+        expect(sideRoom(card, 1024, 'above')).toBe(280);
+        expect(sideRoom({ ...card, x: 200 }, 300, 'end')).toBe(112);
+    });
+
     it('badPath_definingTwiceKeepsTheFirstRegistration', () => {
         defineHcmDateMenu();
         defineHcmDateMenu();
 
         expect(customElements.get(HCM_DATE_MENU_TAG)).toBe(HcmDateMenu);
+    });
+});
+
+describe('<hcm-date-menu> as a peek (a pointer resting on the year)', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    function centre(element: Element): { readonly x: number; readonly y: number } {
+        const box = element.getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    }
+
+    it('happyPath_noScrimAndTheFocusStaysWhereItWas', async () => {
+        const element = await menu({ peek: true });
+
+        expect(element.shadowRoot?.querySelector('.scrim')).toBeNull();
+        expect(focusedItem(element)).toBeUndefined();
+        await expect.element(page.getByRole('menu', { name: 'Datele din 1966' })).toBeVisible();
+    });
+
+    it('happyPath_aFingerSlidingOverItMarksTheDateAndLiftingPicksIt', async () => {
+        const element = await menu({ peek: true });
+        const events = recordEvents(element, 'hcm-date-pick');
+        const item = shadowQuery(element, '[data-item="c"]');
+        const at = centre(item);
+
+        expect(element.touchAt(at.x, at.y, false)).toBe(true);
+        expect(item.hasAttribute('data-armed')).toBe(true);
+        expect(element.touchAt(at.x, at.y, true)).toBe(true);
+
+        expect(events).toEqual([{ type: 'hcm-date-pick', detail: { layerId: 'c' } }]);
+    });
+
+    it('badPath_aFingerOffTheMenuMarksNothingAndPicksNothing', async () => {
+        const element = await menu({ peek: true });
+        const events = recordEvents(element, 'hcm-date-pick');
+        const at = centre(shadowQuery(element, '[data-item="a"]'));
+        element.touchAt(at.x, at.y, false);
+
+        expect(element.touchAt(1, 1, true)).toBe(false);
+        expect(shadowQueryAll(element, '[data-armed]')).toHaveLength(0);
+        expect(events).toEqual([]);
+        const closed = await menu({ anchor: null });
+        expect(closed.touchAt(1, 1, true)).toBe(false);
+    });
+
+    it('happyPath_itKeepsClearOfTheControlsItIsGiven', async () => {
+        const control = { x: 180, y: 380, width: 140, height: 120 };
+        const element = await menu({ peek: true, avoid: () => [control] });
+        const box = shadowQuery(element, '.menu').getBoundingClientRect();
+        const host = element.getBoundingClientRect();
+        const at = control;
+
+        const meets = box.left < at.x + control.width && at.x < box.right && box.top < at.y + control.height && at.y < box.bottom;
+        expect(meets).toBe(false);
+        expect(box.bottom).toBeLessThanOrEqual(ANCHOR.y + host.y - 8);
+    });
+
+    it('happyPath_theMouseEnteringAndLeavingSaysSoAFingerDoesNot', async () => {
+        const element = await menu({ peek: true });
+        const events = recordEvents(element, 'hcm-date-menu-pointer');
+        const box = shadowQuery(element, '.menu');
+
+        box.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+        box.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+        box.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch' }));
+
+        expect(events.map((event) => event.detail)).toEqual([{ inside: true }, { inside: false }]);
     });
 });

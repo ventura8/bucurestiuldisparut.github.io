@@ -143,7 +143,9 @@ const EXPORTS = {
         'timestampToDate',
         'GUARD_REASONS',
         'GUARD_STATES',
+        'HARVEST_DATASET_STATES',
         'HARVEST_OUTCOMES',
+        'HARVEST_STOP_REASONS',
         'JOB_LOG_LEVELS',
         'JOB_MACHINES',
         'JOB_STEP_STATES',
@@ -153,6 +155,7 @@ const EXPORTS = {
         'PROVISION_ITEMS',
         'SETUP_AREAS',
         'USGS_ROLES',
+        'harvestDatasetSchema',
         'harvestStateDocSchema',
         'inviteDocSchema',
         'jobLogDocSchema',
@@ -407,6 +410,7 @@ const EXPORTS = {
         'BROWSE_PREFETCH',
         'CLOUD_RUN_JOBS',
         'HARVEST_EVERY_DAYS',
+        'HARVEST_RESUME_MINUTES',
         'HARVEST_RETRY_HOURS',
         'HEARTBEAT_SECONDS',
         'IMAGERY_PUBLISH_QUEUE',
@@ -494,6 +498,15 @@ const EXPORTS = {
     m22: M22_EXPORTS,
     /** M25 (docs/research/M25-landsat.md): Landsat. */
     m25: M25_EXPORTS,
+    adminSite: [
+        'ADMIN_SITE_MAX_LENGTH',
+        'ADMIN_SITE_SUFFIX',
+        'SITE_ID_PATTERN',
+        'adminSiteId',
+        'adminSiteUrl',
+        'siteDomains',
+        'siteOrigins',
+    ],
     migration: MIGRATION_EXPORTS,
 };
 

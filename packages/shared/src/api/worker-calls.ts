@@ -8,14 +8,17 @@ import { z } from 'zod';
 
 import { idSchema } from '../schemas/primitives.js';
 import { cityIdSchema } from '../schemas/paths.js';
-import { workerAiSchema } from '../schemas/worker.js';
+import { WORKER_HOST_PATTERN, WORKER_REMOVAL_WHYS, workerAiSchema, workerShareSchema } from '../schemas/worker.js';
 import { JOB_STATUSES, WORKER_ID_PATTERN } from '../schemas/firestore-ops.js';
+import { ARCHIVE_ID_PATTERN } from '../schemas/imagery-archive.js';
 import { workerArchiveReportRequestSchema, workerArchiveReportResponseSchema } from './archive.js';
 import { isoTimeSchema } from './common.js';
 import type { CallableSpec, WorkerCallableName } from './registry.js';
 import { WORKER_PAIR_CODE_PATTERN, WORKER_PAIR_ID_PATTERN, WORKER_URLS_MAX, WORKER_USGS_ENDPOINTS } from './worker.js';
 
 const workerIdSchema = z.string().regex(WORKER_ID_PATTERN);
+/** The most local archives a claim names (the worker sends its newest ones first). */
+const WORKER_ARCHIVES_MAX = 200;
 const versionSchema = z.string().regex(/^[0-9A-Za-z.+-]{1,40}$/);
 /** A Firestore path the worker names (checked against the job's allow-list on the server, §2.5). */
 const documentPathSchema = z.string().regex(/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+){1,5}$/);
@@ -45,6 +48,17 @@ export const workerHelloRequestSchema = z.strictObject({
     image: digestSchema.optional(),
     /** Its local AI's state (M10): said again whenever it changes. */
     ai: workerAiSchema.optional(),
+    /** W5 (household computers): the computer's own name and the starter's version, as the starter passed them on. */
+    host: z
+        .strictObject({
+            name: z.string().regex(WORKER_HOST_PATTERN).optional(),
+            os: z.enum(['linux', 'mac', 'windows']).optional(),
+            starter: z
+                .string()
+                .regex(/^[0-9a-f]{12}$/)
+                .optional(),
+        })
+        .optional(),
 });
 export const workerHelloResponseSchema = z.strictObject({
     pollSeconds: z.number().int().min(1),
@@ -61,6 +75,8 @@ export const workerHelloResponseSchema = z.strictObject({
  * `worker.claim`: the oldest due local job of the city, leased to this worker, or none. `types`: the job types the worker's
  * pipeline runs (an older image leaves a newer type queued for an updated one); absent, every type (a worker before it).
  * Free text of a type's shape, not the enum: a newer worker may name a type this server does not know yet.
+ * `archives` (M20, 2026-11-13): the local archives this computer holds whole (its own scans, not copies of a few sheets): a
+ * series another worker waits for comes back as `copy`, so this computer sends its sheets through the bucket.
  */
 export const workerClaimRequestSchema = z.strictObject({
     cityId: cityIdSchema,
@@ -69,9 +85,33 @@ export const workerClaimRequestSchema = z.strictObject({
         .array(z.string().regex(/^[a-z][a-z-]{0,39}$/))
         .max(20)
         .optional(),
+    archives: z.array(z.string().regex(ARCHIVE_ID_PATTERN)).max(WORKER_ARCHIVES_MAX).optional(),
+    /** W5: the computer's share as its governor says it now; a computer whose person is busy leaves jobs to a calm one. */
+    share: workerShareSchema.optional(),
+    /**
+     * W5, Remove this computer: the worker's word on the removal its last claim gave it (`accepted`; `done` once its supervisor
+     * cleaned the computer up, after which the server disconnects it; `failed` and why). Such a claim takes no job.
+     */
+    removal: z
+        .strictObject({
+            step: z.enum(['accepted', 'done', 'failed']),
+            why: z.enum(WORKER_REMOVAL_WHYS).optional(),
+            dockerLeft: z.boolean().optional(),
+        })
+        .optional(),
+    /** 2026-11-13: the jobs whose stitched film is on this computer: a job waiting for its film (`film-copy`) is given to it. */
+    films: z.array(idSchema).max(WORKER_ARCHIVES_MAX).optional(),
 });
 export const workerClaimResponseSchema = z.strictObject({
     job: z.strictObject({ jobId: idSchema }).nullable(),
+    /** M20 (2026-11-13): a series another worker waits for, whose archive this worker holds: send a copy of its sheets first. */
+    copy: z.strictObject({ jobId: idSchema, archiveId: z.string().regex(ARCHIVE_ID_PATTERN), seriesId: z.string().max(40) }).optional(),
+    /** W5: Remove this computer was asked: clean up (with Docker when `docker`, keeping the scanned maps when `keep`), then say done. */
+    remove: z.strictObject({ docker: z.boolean(), keep: z.boolean() }).optional(),
+    /** W5: paused in the admin's list of computers (no job until Resume). */
+    paused: z.boolean().optional(),
+    /** W5: this computer's person is busy (or it runs hot) and another computer of the city is free: the job is left to it. */
+    yielded: z.boolean().optional(),
     /** True when the worker's image is not the installed one (no job is given to it). */
     outdated: z.boolean().optional(),
 });
@@ -164,13 +204,51 @@ export const workerUrlsResponseSchema = z.strictObject({
     usgs: z.unknown().optional(),
 });
 
-/** `worker.end`: the run is over; a crash outside a step fails the job the worker still holds. */
+/**
+ * `worker.end`: the run is over; a crash outside a step fails the job the worker still holds. `returned` (M20, 2026-11-13): the
+ * worker does not hold the job's local archive and hands the job back, queued, without spending an attempt.
+ */
 export const workerEndRequestSchema = z.strictObject({
     ...workerJobFields,
-    outcome: z.enum(['done', 'failed']),
+    outcome: z.enum(['done', 'failed', 'returned']),
     error: z.strictObject({ code: z.string().max(64), message: z.string().max(2000) }).optional(),
 });
 export const workerEndResponseSchema = z.strictObject({ status: z.enum(JOB_STATUSES) });
+
+/** The most bytes one archive series' copy may put in the bucket (a guard on the bucket's traffic, not a limit of the scans). */
+export const ARCHIVE_COPY_MAX_BYTES = 8 * 1024 ** 3;
+
+/**
+ * `worker.archiveCopy` (M20, live report of 2026-11-13): the computer holding an archive sends a series' sheets for a job another
+ * worker waits on. `objects`: signed PUTs (and GETs, to see what is there) of `tmp/archive-copies/{city}/{job}/` files, each
+ * a sheet by its SHA-256 or `manifest.json`; `done`: the copy is complete, `bytes` sent, and the job may be claimed again.
+ */
+export const workerArchiveCopyRequestSchema = z.strictObject({
+    ...workerJobFields,
+    copy: z.discriminatedUnion('kind', [
+        z.strictObject({
+            kind: z.literal('objects'),
+            objects: z
+                .array(
+                    z.strictObject({
+                        path: objectPathSchema,
+                        method: z.enum(['GET', 'PUT']),
+                        contentType: z
+                            .string()
+                            .regex(/^[a-z]+\/[a-z0-9.+-]+$/)
+                            .optional(),
+                    }),
+                )
+                .min(1)
+                .max(WORKER_URLS_MAX),
+        }),
+        z.strictObject({ kind: z.literal('done'), bytes: z.number().int().min(0).max(ARCHIVE_COPY_MAX_BYTES) }),
+    ]),
+});
+export const workerArchiveCopyResponseSchema = z.strictObject({
+    objects: z.array(workerSignedObjectSchema).max(WORKER_URLS_MAX).optional(),
+    status: z.enum(JOB_STATUSES).optional(),
+});
 
 /**
  * A local worker's callable (M7): a city editor's ID token, or the token of a worker paired for the city (`workerToken`),
@@ -189,6 +267,8 @@ export const WORKER_CALLABLES = {
     'worker.end': workerCallable(workerEndRequestSchema, workerEndResponseSchema),
     // M20 (docs/research/M20-import-local.md §2.4): a local archive's scan report; bound to the worker, not to a job.
     'worker.archiveReport': workerCallable(workerArchiveReportRequestSchema, workerArchiveReportResponseSchema),
+    // M20 (2026-11-13): a series' sheets copied through the bucket for another worker; bound to a job the computer does not hold.
+    'worker.archiveCopy': workerCallable(workerArchiveCopyRequestSchema, workerArchiveCopyResponseSchema),
     // Finding 67: no sign-in; the one-time code is the credential, the attempts are limited per city.
     'worker.pair': {
         access: 'none',

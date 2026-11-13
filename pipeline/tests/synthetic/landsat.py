@@ -1,8 +1,9 @@
 """A synthetic Landsat Collection 2 Level-1 bundle of the synthetic world (docs/research/M25-landsat.md §8).
 
 The world's pixels, warped from EPSG:3857 to UTM zone 35N (where the synthetic city lies, as Bucharest does) at Landsat's 30 m (15 m for
-ETM+'s panchromatic band), one GeoTIFF a band, named as USGS names them, with the quality band (`QA_PIXEL`: fill outside the scene, a
-cloud box where a test asks for one) and the metadata text, packed in a plain tar as USGS delivers it. A test may leave a band out.
+the panchromatic band of ETM+ and OLI), one GeoTIFF a band, named as USGS names them, with the quality band (`QA_PIXEL`: fill outside
+the scene, a cloud box where a test asks for one) and the metadata text, packed in a plain tar as USGS delivers it. A test may leave a
+band out.
 """
 
 import io
@@ -21,6 +22,7 @@ from tests.synthetic.scenes import World
 
 PRODUCT: Final = "LT05_L1TP_183029_19890712_20200916_02_T1"
 ETM_PRODUCT: Final = "LE07_L1TP_183029_20000715_20200918_02_T1"
+OLI_PRODUCT: Final = "LC09_L1TP_183029_20230718_20230718_02_T1"
 UTM_35N: Final = "EPSG:32635"
 CLOUD: Final = 1 << 3
 FILL: Final = 1

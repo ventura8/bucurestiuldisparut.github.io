@@ -12,13 +12,15 @@ import { css, html, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
+import { visuallyHidden } from '../../components/styles.js';
 import { AreaPage } from '../editing/area-page.js';
 import { editingStyles } from '../editing/editing-styles.js';
 import { formatWhen, loadingTemplate } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type { CrashesIntentsPort, CrashesViewState, CrashGroupPort, CrashPeriodPort } from './crashes-port.js';
-import { loadStatisticsLive, statisticsLiveReady, statisticsStyles, statisticsView } from './statistics-view.js';
+import { statisticsStyles } from './statistics-styles.js';
+import { loadStatisticsLive, statisticsLiveReady, statisticsLiveSheet, statisticsView } from './statistics-view.js';
 
 export const HCM_CRASHES_LIST_PAGE_TAG = 'hcm-crashes-list-page';
 
@@ -90,7 +92,7 @@ const crashStyles = css`
 `;
 
 export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntentsPort> {
-    static override readonly styles = [...editingStyles, crashStyles, statisticsStyles];
+    static override readonly styles = [...editingStyles, crashStyles, statisticsStyles, visuallyHidden];
 
     protected readonly route: AdminRouteIdPort = 'crashes';
 
@@ -131,11 +133,22 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
                 this.requestUpdate();
             });
         }
+        this.#adoptLiveStyles();
         const { analytics, projectId, authDomain } = this.state ?? NO_SHELL;
         return statisticsView(this.locale, {
             ...{ analytics, projectId, authDomain, view, intents: this.intents },
             groupUrl: (groupId) => errorGroupUrl(projectId, groupId),
         });
+    }
+
+    /** The live sections' styles, adopted once their chunk is there (§203: they travel with it, not with this chunk). */
+    #adoptLiveStyles(): void {
+        const sheet = statisticsLiveSheet();
+        const root = this.renderRoot as ShadowRoot;
+        if (sheet === null || root.adoptedStyleSheets.includes(sheet)) {
+            return;
+        }
+        root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
     }
 
     #list(locale: UiLocale, view: CrashesViewState): TemplateResult {

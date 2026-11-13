@@ -38,6 +38,7 @@ import { refusalOf } from '../imagery/api.js';
 import { Store } from '../state/store.js';
 import type { NoticeInput } from '../state/state.js';
 import { estimateCloudRun, type CloudRunUse } from './estimate.js';
+import type { Household } from './household.js';
 import type { LocalComputer } from './local.js';
 
 export interface WorkerSeen {
@@ -103,6 +104,8 @@ export interface WorkerIntents {
     disconnect(): Promise<boolean>;
     /** Finding 72: the computer the admin is open on, for `project` (the `worker-local` chunk, its element registered). */
     local(project: string): Promise<LocalComputer>;
+    /** W5: the city's computers, Add another computer and Remove this computer (the `worker-household` chunk, its element registered). */
+    household(project: string): Promise<Household>;
 }
 
 const NO_USE: CloudRunUse = { vcpuSeconds: 0, gibSeconds: 0 };
@@ -220,6 +223,11 @@ export class WorkerFeed {
                 const chunk = await import('./worker-local.js');
                 chunk.defineWorkerLocal();
                 return chunk.createLocal(this.#services, project);
+            },
+            household: async (project) => {
+                const chunk = await import('./worker-household.js');
+                chunk.defineWorkerHousehold();
+                return chunk.createHousehold(this.#services, project);
             },
         };
     }

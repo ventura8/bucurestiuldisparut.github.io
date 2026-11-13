@@ -65,6 +65,18 @@ def _said(reading: Reading) -> tuple[str, str, int]:
     return reading.budget.profile, reading.why, reading.budget.threads
 
 
+# The threads the heat and others' load leave move by a degree's worth almost every tick (the laptop, 2026-11-13: 1, 2, 3, 4 threads
+# in turn, a log line and a `docker update` each): within one profile a change of fewer than `THREAD_STEP` threads is not made.
+THREAD_STEP: Final = 2
+
+
+def steady(before: Budget | None, budget: Budget) -> Budget:
+    """`budget`, keeping the last budget's threads while the profile is the same and they moved by less than `THREAD_STEP`."""
+    if before is None or before.profile != budget.profile or abs(budget.threads - before.threads) >= THREAD_STEP:
+        return budget
+    return replace(budget, threads=before.threads, tile_processes=min(budget.tile_processes, before.threads))
+
+
 def headroom_of(reading: Reading) -> float:
     """0 to 1: how much room this computer has for another job now, by its heat and other programs' load (0 while paused)."""
     if reading.budget.profile == "paused":
@@ -129,11 +141,11 @@ class Governor:
             return budget
         return replace(budget, threads=cap, tile_processes=min(budget.tile_processes, cap))
 
-    def _read(self, before: PolicyState) -> Reading:
+    def _read(self, before: Reading | None) -> Reading:
         signals = self._capped(self._probe.read())
-        policy = decide(signals, self.choice, before, self._clock())
+        policy = decide(signals, self.choice, PolicyState() if before is None else before.policy, self._clock())
         profile, why = effective(policy)
-        budget = self._owners(budget_for(profile, signals))
+        budget = steady(None if before is None else before.budget, self._owners(budget_for(profile, signals)))
         backend = choose(signals, budget, self.images)
         return Reading(signals, policy, "gpu-busy" if why == "idle" and backend.why == "gpu-busy" else why, budget, backend)
 
@@ -141,7 +153,7 @@ class Governor:
         """One reading, applied."""
         with self._lock:
             before = self._reading
-        reading = self._read(PolicyState() if before is None else before.policy)
+        reading = self._read(before)
         self._changed(before, reading)
         self._gate(reading.budget.profile == "paused")
         with self._lock:

@@ -9,6 +9,8 @@ import {
     defineHcmLayerPanel,
     overlayGroups,
     overlayItems,
+    pinnedIds,
+    splitPinned,
 } from '../../src/viewer/hcm-layer-panel.js';
 import { defineKitDoubles, fireKitEvent, mountElement, recordEvents, shadowQuery, shadowText } from './doubles.js';
 import { testManifest } from './fixtures.js';
@@ -310,5 +312,87 @@ describe('<hcm-layer-panel> pinned Compare and map labels', () => {
         const element = await panel({ mode: 'docked', canCompare: false, labels: null });
 
         expect(element.shadowRoot?.querySelector('.pinned')).toBeNull();
+    });
+});
+
+/** M27: the fixture city with a pinned, hidden-at-start Disappeared streets category and its credit. */
+function lostStreetsManifest(): ReturnType<typeof testManifest> {
+    return testManifest((raw) => {
+        (raw['poiCategories'] as unknown[]).push({
+            id: 'strazi-disparute',
+            label: { ro: 'Străzi dispărute', en: 'Disappeared streets' },
+            icon: 'add_road',
+            color: '#B3261E',
+            defaultOpacity: 0.9,
+            defaultVisible: false,
+            pinned: true,
+            attribution: 'OpenHistoricalMap (CC0)',
+        });
+    });
+}
+
+describe('<hcm-layer-panel> M27 pinned Disappeared streets', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmLayerPanel();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_thePinnedCategoryIsBelowTheExistingPinnedItemsAndAboveEveryLayer @S-V71-HAPPY-PINNED', async () => {
+        const manifest = lostStreetsManifest();
+        const element = await panel({
+            manifest,
+            overlays: overlaysFromManifest(manifest),
+            mode: 'docked',
+            canCompare: true,
+            labels: { shown: { streets: true, pois: true }, available: ['streets', 'pois'] },
+        });
+        const strip = element.shadowRoot?.querySelector('.pinned');
+        const children = [...(strip?.children ?? [])].map((child) => child.className || child.tagName.toLowerCase());
+        const lists = [...(element.shadowRoot?.querySelectorAll('hcm-overlay-list') ?? [])] as unknown as OverlayListProps[];
+
+        // Compare, then Map labels, then the pinned category: the existing pinned items keep their place.
+        expect(children).toEqual(['compare', 'labels', 'pinned-overlays']);
+        expect(lists[0]?.items.map((item) => item.id)).toEqual(['strazi-disparute']);
+        expect(lists[0]?.groups).toEqual([]);
+        // The list below starts with the historical layers and no longer holds it.
+        expect(lists[1]?.items.map((item) => item.id)).toEqual(['kh4-1966', 'kh9-1977', 'photos', 'cladiri', 'evenimente']);
+        expect(overlaysFromManifest(manifest).find((overlay) => overlay.id === 'strazi-disparute')?.visible).toBe(false);
+    });
+
+    it('happyPath_itsCreditShowsOnlyWhileItIsVisible', () => {
+        const manifest = lostStreetsManifest();
+        const overlays = overlaysFromManifest(manifest);
+
+        expect(attributionLines(overlays, manifest, 'ro')).not.toContain('Sursa: OpenHistoricalMap (CC0)');
+        expect(attributionLines(withOverlayVisibility(overlays, 'strazi-disparute', true), manifest, 'ro')).toContain(
+            'Sursa: OpenHistoricalMap (CC0)',
+        );
+    });
+
+    it('badPath_aPinnedCategoryAloneStillMakesTheStripWithoutCompareOrLabels @S-V71-BAD-NOTHING-ELSE-PINNED', async () => {
+        const manifest = lostStreetsManifest();
+        const element = await panel({
+            manifest,
+            overlays: overlaysFromManifest(manifest),
+            mode: 'docked',
+            canCompare: false,
+            labels: null,
+        });
+        const strip = element.shadowRoot?.querySelector('.pinned');
+
+        expect(strip?.querySelector('.compare')).toBeNull();
+        expect(strip?.querySelector('.pinned-overlays')).not.toBeNull();
+        await expect.element(page.getByRole('group', { name: 'Straturi fixate sus' })).toBeInTheDocument();
+    });
+
+    it('badPath_noPinnedCategoryLeavesTheListWhole', () => {
+        const manifest = testManifest();
+
+        expect(splitPinned(overlaysFromManifest(manifest), manifest, true)).toEqual([]);
+        expect(pinnedIds(manifest).size).toBe(0);
     });
 });

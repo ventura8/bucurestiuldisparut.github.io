@@ -35,6 +35,8 @@ const WAITS = {
     mapbox: 'adminContent.imagery.wait.mapbox',
     parts: 'adminContent.imagery.wait.parts',
     daily: 'adminContent.imagery.wait.daily',
+    'archive-copy': 'adminContent.imagery.wait.archiveCopy',
+    'film-copy': 'adminContent.imagery.wait.filmCopy',
 } as const satisfies Readonly<Record<WordedWait, string>>;
 
 /**
@@ -48,20 +50,13 @@ export function wordedWait(reason: JobWaitReason | null): WordedWait | null {
     return reason === null || reason === 'worker' || reason === 'free-tier' ? null : reason;
 }
 
-const DATASETS = {
-    corona2: 'adminContent.imagery.dataset.corona2',
-    declassii: 'adminContent.imagery.dataset.declassii',
-    declassiii: 'adminContent.imagery.dataset.declassiii',
-    landsat_tm_c2_l1: 'adminContent.imagery.dataset.landsat_tm_c2_l1',
-    landsat_etm_c2_l1: 'adminContent.imagery.dataset.landsat_etm_c2_l1',
-} as const satisfies Readonly<Record<UsgsDataset, string>>;
-
 export function versionStateText(locale: UiLocale, state: LayerVersionState): string {
     return contentText(locale, VERSION_STATES[state]);
 }
 
 export function datasetText(locale: UiLocale, dataset: UsgsDataset): string {
-    return contentText(locale, DATASETS[dataset]);
+    // Every dataset has its key (`adminContent.imagery.dataset.<dataset>`; the type checks each one exists in the catalogue).
+    return contentText(locale, `adminContent.imagery.dataset.${dataset}`);
 }
 
 /** A day in the admin's language. */

@@ -82,6 +82,12 @@ const CAMERAS: Readonly<
         fallback: 'L5-TM',
     },
     landsat_etm_c2_l1: { patterns: [], ids: [], fallback: 'L7-ETM' },
+    // Landsat 8 and 9 (`LC81830292014196LGN01`, `LC09_L1TP_...`): OLI, pan-sharpened to 15 m as ETM+.
+    landsat_ot_c2_l1: {
+        patterns: [],
+        ids: [[/^L[CO]0?9/i, 'L9-OLI']],
+        fallback: 'L8-OLI',
+    },
 };
 
 const CORNERS = ['nw', 'ne', 'se', 'sw'] as const;
@@ -92,6 +98,19 @@ function sensorOf(dataset: UsgsDataset, record: Pick<SceneRecord, 'entityId' | '
     const named =
         cameras.patterns.find(([pattern]) => pattern.test(camera)) ?? cameras.ids.find(([pattern]) => pattern.test(record.entityId));
     return named?.[1] ?? cameras.fallback;
+}
+
+/**
+ * The camera of a stored scene: the one its id names when the record holds only its dataset's fallback. A scene harvested before
+ * the id rules keeps the fallback until the next harvest (live 2026-11-13: every `corona2` scene harvested on 2026-10-25 said KH-4A,
+ * and the Argon frame DS09065A073MC043, 550 km square, was imported and searched as a Corona strip).
+ */
+export function trueSensor(scene: Pick<UsgsSceneDoc, 'dataset' | 'entityId' | 'sensor'>): Sensor {
+    const cameras = CAMERAS[scene.dataset];
+    if (scene.sensor !== cameras.fallback) {
+        return scene.sensor;
+    }
+    return cameras.ids.find(([pattern]) => pattern.test(scene.entityId))?.[1] ?? scene.sensor;
 }
 
 /** A metadata number, or undefined when the field is missing or not a number in range. */

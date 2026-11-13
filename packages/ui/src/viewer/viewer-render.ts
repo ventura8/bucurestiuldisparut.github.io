@@ -177,7 +177,7 @@ function timelineNote(locale: ViewerLocale): TemplateResult {
 
 /** A modal surface is over the frame: a modal sheet, About, the lightbox or the timeline's date picker. */
 function frameInert(view: ViewerView): boolean {
-    return modalOpen(view.state, view.layout.sheetMode) || view.dock.dates !== null;
+    return modalOpen(view.state, view.layout.sheetMode) || view.dock.modal();
 }
 
 /** The lift as the properties the styles move Mapbox's bottom corners by (`viewer-styles.ts`); none without a sheet. */
@@ -393,6 +393,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .photo=${photo}
         .poi=${poi}
         .category=${category}
+        .layers=${ready.manifest.layers}
         .photos=${ready.manifest.photos}
         .locale=${view.locale}
         .mode=${placement.mode}

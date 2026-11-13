@@ -23,6 +23,7 @@ from tests.fakes.world import FakeClock
 
 IDS = {"cityId": "bucharest", "workerId": "w-0123456789abcdef"}
 REFRESH = "AMf-vB" + "r" * 40
+COPY_DUTY = {"jobId": "ar-series", "archiveId": "ar-0123456789abcdef", "seriesId": "s-0123456789ab"}
 
 
 class Server:
@@ -44,6 +45,8 @@ class Server:
         claim = self.claims.pop(0) if self.claims else None
         if claim == "outdated":
             return httpx.Response(200, json={"result": {"job": None, "outdated": True}})
+        if claim == "copy":
+            return httpx.Response(200, json={"result": {"job": None, "copy": COPY_DUTY}})
         return self._job(claim)
 
     @staticmethod
@@ -305,3 +308,28 @@ def test_happy_path_an_idle_worker_waits_its_poll_interval_in_short_looks() -> N
     assert isinstance(loop, CountingLoop)
     assert loop.passes == [Pass.IDLE, Pass.IDLE]
     assert [name for name, _data in server.calls] == ["worker-claim", "worker-claim"]
+
+
+def test_happy_path_a_claim_names_the_archives_held_and_a_copy_is_sent_before_any_job() -> None:
+    """M20 (2026-11-13): the holder of an archive sends a series' copy when the claim asks. Scenarios: S-P20-HAPPY-ARCHIVE-COPY"""
+    server, runtime = Server("copy"), Runtime()
+    sent: list[object] = []
+    loop, _state, _session = loop_with(server, runtime)
+    loop.archives = lambda: ["ar-0123456789abcdef"]
+    loop.copier = sent.append
+    loop.films = lambda: ["job-film"]
+
+    assert loop.run_once() is Pass.RAN
+    assert (sent, runtime.jobs) == ([COPY_DUTY], [])
+    assert server.calls[0][1]["archives"] == ["ar-0123456789abcdef"]
+    # 2026-11-13: the films this computer holds go with every claim. Scenarios: S-P20-HAPPY-FILM-HOST
+    assert server.calls[0][1]["films"] == ["job-film"]
+
+
+def test_bad_path_a_run_without_the_sheets_is_reported_returned() -> None:
+    """M20 (2026-11-13): no sheets and no copy: the server queues the job again unspent. Scenarios: S-P20-BAD-ARCHIVE-COPY"""
+    server, runtime = Server("job-1"), Runtime(RunOutcome.RETURNED)
+    loop, _state, _session = loop_with(server, runtime)
+
+    assert loop.run_once() is Pass.RAN
+    assert server.ends() == [{**IDS, "jobId": "job-1", "outcome": "returned"}]

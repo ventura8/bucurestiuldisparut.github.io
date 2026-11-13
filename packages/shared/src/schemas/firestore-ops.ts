@@ -82,6 +82,10 @@ export const JOB_WAIT_REASONS = [
     'free-tier',
     'parts',
     'daily',
+    // M20 (2026-11-13): an archive series waiting for the computer that has its scanned maps to send a copy of its sheets.
+    'archive-copy',
+    // 2026-11-13: a job whose stitched film is on the computer that stitched it, waiting for that computer to claim it.
+    'film-copy',
 ] as const;
 /** M7 (`docs/research/M7-local-worker.md` §3): where a raster job runs, the owner's computer or Cloud Run. */
 export const RUN_PLACES = ['local', 'cloud'] as const;
@@ -131,6 +135,8 @@ export const PROVISION_ITEMS = [
     'org-policies',
     'crash-alerts',
     'api-key',
+    // §210: the admin's own Hosting site and its Firebase Auth domains.
+    'admin-site',
 ] as const;
 /**
  * Finding 65 of 2026-11-02: the version of Provision's item set, and the set version in which each item's definition last
@@ -139,26 +145,28 @@ export const PROVISION_ITEMS = [
  * records, in the same click. Version 2 (M7): `artifact-registry`'s public pull of the pipeline image and
  * `bucket-lifecycle`'s 7-day `usgs-raw/`. Version 3 (finding 74 of 2026-11-03): `iam`'s `roles/run.viewer` for
  * `fn-admin@`, whose worker callables read the image the job `raster-pipeline` runs. Version 4 (§203): `apis` turns on
- * `analyticsdata.googleapis.com` for the Statistics view.
+ * `analyticsdata.googleapis.com` for the Statistics view. Version 5 (§210, the admin on its own site): `admin-site` makes
+ * the site and its Firebase Auth domains, `app-check`'s key and `api-key`'s referrers allow it, `bucket-cors` its origins.
  */
-export const PROVISION_SET_VERSION = 4;
+export const PROVISION_SET_VERSION = 5;
 export const PROVISION_CHANGED_IN: Readonly<Record<(typeof PROVISION_ITEMS)[number], number>> = {
     apis: 4,
     'service-accounts': 1,
     iam: 3,
     buckets: 1,
     'artifact-registry': 2,
-    'bucket-cors': 1,
+    'bucket-cors': 5,
     'bucket-lifecycle': 2,
     secrets: 1,
     'task-queues': 1,
     scheduler: 1,
     'workload-identity': 1,
-    'app-check': 1,
+    'app-check': 5,
     'budget-alerts': 1,
     'org-policies': 1,
     'crash-alerts': 1,
-    'api-key': 1,
+    'api-key': 5,
+    'admin-site': 5,
 };
 
 /** The items whose definition changed since the set version `recorded` (absent: 1, before the set had versions). */
@@ -279,6 +287,16 @@ export const jobDocSchema = z.strictObject({
      * born waiting (`daily`) counts on the day `imagery.tick` releases it; one still waiting has none and counts nothing yet.
      */
     countedAt: timestampSchema.optional(),
+    /**
+     * M20 (live report of 2026-11-13; `docs/research/M20-import-local.md` §4.1): the copy of the series' sheets that the computer
+     * holding the archive put in the bucket for another worker (`tmp/archive-copies/`, deleted after a day): who sent it, when,
+     * how many bytes.
+     */
+    archiveCopy: z
+        .strictObject({ by: z.string().regex(WORKER_ID_PATTERN), at: timestampSchema, bytes: z.number().int().min(0) })
+        .optional(),
+    /** M20: how often a worker without the sheets handed the job back (no attempt spent); at `ARCHIVE_RETURNS_MAX` it fails. */
+    archiveReturns: z.number().int().min(0).optional(),
     ...stamp,
 });
 
@@ -540,24 +558,6 @@ export const opsProbeDocSchema = z.strictObject({
 });
 // [end server-bugs probe]
 
-/** How a city's last USGS harvest went: found scenes, found none, or USGS did not answer (every dataset failed). */
-export const HARVEST_OUTCOMES = ['ok', 'empty', 'failed'] as const;
-
-/**
- * `ops/harvest-{city}`: the city's last harvest attempt (CR-M3-47), written on every attempt, so the monthly harvest of
- * `imagery.tick` is keyed on what the harvest itself wrote: the next one is due at `nextAt` (a month after a harvest that
- * answered, an hour after a failure, doubled after each further one), never every five minutes.
- */
-export const harvestStateDocSchema = z.strictObject({
-    attemptedAt: timestampSchema,
-    outcome: z.enum(HARVEST_OUTCOMES),
-    /** Failures in a row (0 after a harvest that answered). */
-    failures: z.number().int().min(0).max(1000),
-    nextAt: timestampSchema,
-    error: apiErrorCodeSchema.optional(),
-    ...stamp,
-});
-
 const skippedDocumentSchema = z.strictObject({
     entity: z.enum(MANIFEST_ENTITIES),
     id: idSchema,
@@ -603,7 +603,6 @@ export type UsageDoc = z.infer<typeof usageDocSchema>;
 export type OpsGuardDoc = z.infer<typeof opsGuardDocSchema>;
 export type OpsDispatchDoc = z.infer<typeof opsDispatchDocSchema>;
 export type OpsProbeDoc = z.infer<typeof opsProbeDocSchema>;
-export type HarvestStateDoc = z.infer<typeof harvestStateDocSchema>;
 export type ManifestStateDoc = z.infer<typeof manifestStateDocSchema>;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 export type JobType = (typeof JOB_TYPES)[number];

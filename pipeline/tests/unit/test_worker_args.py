@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from hcm_pipeline.config import DEFAULT_OVERPASS_URL, DEFAULT_STAC_URL, ConfigError
-from hcm_pipeline.worker.args import DEFAULT_PORT, Endpoints, parse_worker_args
+from hcm_pipeline.worker.args import DEFAULT_PORT, Endpoints, admin_site_id, parse_worker_args
 
 LOOPBACK = {
     "FIREBASE_AUTH_EMULATOR_HOST": "127.0.0.1:9099",
@@ -26,7 +26,12 @@ def test_happy_path_the_city_and_the_project_are_all_the_cloud_worker_needs() ->
         init_json="https://demo-hcm.web.app/__/firebase/init.json",
         custom_token="https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken",
         referer="https://demo-hcm.web.app/",
-        hosting_origins=("https://demo-hcm.web.app", "https://demo-hcm.firebaseapp.com"),
+        hosting_origins=(
+            "https://demo-hcm.web.app",
+            "https://demo-hcm.firebaseapp.com",
+            "https://demo-hcm-admin.web.app",
+            "https://demo-hcm-admin.firebaseapp.com",
+        ),
     )
     assert args.pair is None
     assert (args.supervised, args.image) == (False, None)
@@ -105,3 +110,19 @@ def test_bad_path_a_malformed_or_mapbox_reference_is_refused() -> None:
 
     assert "HCM_STAC_URL must be a loopback address under the emulators" in caught.value.problems
     assert any("Mapbox" in problem for problem in caught.value.problems)
+
+
+@pytest.mark.parametrize(
+    ("project", "site"),
+    [
+        ("bucurestiul-disparut", "bucurestiul-disparut-admin"),
+        ("demo-hcm", "demo-hcm-admin"),
+        ("a-project-id-of-24-chars", "a-project-id-of-24-chars-admin"),
+        ("a-project-id-of-twenty-five", "a-project-id-of-twenty-f-admin"),
+        ("project-with-hyphen-at-24-x", "project-with-hyphen-at-2-admin"),
+        ("abcdefghijklmnopqrstuvw--xyz0", "abcdefghijklmnopqrstuvw-admin"),
+    ],
+)
+def test_admin_site_id_names_the_same_site_as_the_admin(project: str, site: str) -> None:
+    """§210: the twin of `adminSiteId` (`packages/shared/test/schemas/admin-site.test.ts`), case for case."""
+    assert admin_site_id(project) == site

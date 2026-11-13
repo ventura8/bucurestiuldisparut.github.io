@@ -72,8 +72,8 @@ export const MANIFEST_FIELDS: Readonly<Record<HistoryEntity, readonly string[]>>
         'versionCredits',
         'processing',
     ],
-    poi: ['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'links', 'photoIds', 'credit'],
-    poiCategory: ['label', 'icon', 'color', 'defaultOpacity', 'order'],
+    poi: ['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'links', 'photoIds', 'credit', 'sourceLayer'],
+    poiCategory: ['label', 'icon', 'color', 'defaultOpacity', 'order', 'defaultVisible', 'pinned', 'attribution'],
     // M17: a story without a body is not listed, so its body decides as well as shows.
     story: ['title', 'body', 'yearStart', 'yearEnd', 'photoIds', 'poiIds', 'credit'],
 };

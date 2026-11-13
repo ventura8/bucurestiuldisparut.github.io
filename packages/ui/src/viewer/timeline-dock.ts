@@ -10,7 +10,10 @@
  *
  * V13: a year with several dates carries a badge (`timeline-dates.ts`), a hint only; selecting that year (a tap, a click,
  * the end of a drag or a scrub, Enter, the gamepad's A) opens `<hcm-date-menu>` beside the thumb, and the date picked comes
- * to the front (the store's `pickLayer`, V15's mechanism); Esc, a press outside it or the gamepad's B close it.
+ * to the front (the store's `pickLayer`, V15's mechanism); Esc, a press outside it or the gamepad's B close it. A pointer
+ * resting on such a year shows the menu as a peek (`hcm-dates-peek`, `timeline-peek.ts`): not modal, the year not selected;
+ * a menu opened by selecting the year is never replaced by one. A mouse's peek closes `PEEK_LEAVE_MS` after the mouse left
+ * both the year and the menu; Esc or a press elsewhere closes it at once.
  */
 import { translate, type Layer, type ViewerLocale } from '@hcm/shared';
 import { html, type ReactiveController, type ReactiveControllerHost, type TemplateResult } from 'lit';
@@ -19,6 +22,10 @@ import { EMPTY } from './empty.js';
 import type { HcmTimeline, TimelineOrientation } from './hcm-timeline.js';
 import { dateCounts, dateItems, datesOpenEvent, frontOfYear, type DatesOpenDetail } from './timeline-dates.js';
 import type { TimelineStop } from './timeline-model.js';
+import { PEEK_LEAVE_MS, type DatesPeekDetail } from './timeline-peek.js';
+
+/** The floating controls the date menu keeps clear of (`date-menu-clear.ts`). */
+const AVOIDED = '#timeline, [data-layout-check="compass"], [data-layout-check="zoom"], hcm-fab-menu, [data-layout-check="near-year"]';
 
 /** What the dock needs from the viewer element. */
 export type DockHost = ReactiveControllerHost & HTMLElement & { readonly renderRoot: HTMLElement | DocumentFragment };
@@ -29,8 +36,12 @@ export class TimelineDock implements ReactiveController {
     expanded = false;
     /** The open date picker's year and anchor; null: closed. */
     dates: DatesOpenDetail | null = null;
+    /** The menu open is a peek (a pointer resting on its year), not modal. */
+    peek = false;
 
     readonly #host: DockHost;
+    /** The gentle close of a mouse's peek, waiting. */
+    #closing: ReturnType<typeof setTimeout> | undefined;
 
     constructor(host: DockHost) {
         this.#host = host;
@@ -39,11 +50,66 @@ export class TimelineDock implements ReactiveController {
 
     hostConnected(): void {
         this.#host.addEventListener('pointerdown', this.#outside, true);
+        window.addEventListener('keydown', this.#escPeek);
     }
 
     hostDisconnected(): void {
         this.#host.removeEventListener('pointerdown', this.#outside, true);
+        window.removeEventListener('keydown', this.#escPeek);
+        clearTimeout(this.#closing);
     }
+
+    /** Whether a modal menu is open (the frame under it inert); a peek is not. */
+    modal(): boolean {
+        return this.dates !== null && !this.peek;
+    }
+
+    /** A pointer rests on a year of several dates, or left it: its peek opens, or closes (gently: after `PEEK_LEAVE_MS`). */
+    readonly onDatesPeek = (event: CustomEvent<DatesPeekDetail>): void => {
+        event.stopPropagation();
+        if (this.modal()) {
+            return;
+        }
+        clearTimeout(this.#closing);
+        const { dates, gently } = event.detail;
+        if (dates !== null) {
+            this.dates = dates;
+            this.peek = true;
+            this.#host.requestUpdate();
+        } else if (gently) {
+            this.#closeLater();
+        } else {
+            this.closePeek();
+        }
+    };
+
+    /** The mouse entered the peek (it stays) or left it (it closes after `PEEK_LEAVE_MS` unless the mouse comes back). */
+    readonly onMenuPointer = (event: CustomEvent<{ readonly inside: boolean }>): void => {
+        clearTimeout(this.#closing);
+        if (this.peek && !event.detail.inside) {
+            this.#closeLater();
+        }
+    };
+
+    /** Closes a peek, the focus left where it is. */
+    readonly closePeek = (): void => {
+        clearTimeout(this.#closing);
+        if (this.peek) {
+            this.peek = false;
+            this.dates = null;
+            this.#host.requestUpdate();
+        }
+    };
+
+    #closeLater(): void {
+        this.#closing = setTimeout(this.closePeek, PEEK_LEAVE_MS);
+    }
+
+    readonly #escPeek = (event: KeyboardEvent): void => {
+        if (event.key === 'Escape' && this.peek) {
+            this.closePeek();
+        }
+    };
 
     /** Whether the card shows as its pill now: a phone's timeline (`phone`) that is not open. */
     collapsed(phone: boolean): boolean {
@@ -95,6 +161,8 @@ export class TimelineDock implements ReactiveController {
     };
 
     #openDates(detail: DatesOpenDetail): void {
+        clearTimeout(this.#closing);
+        this.peek = false;
         this.dates = detail;
         this.#host.requestUpdate();
     }
@@ -110,6 +178,8 @@ export class TimelineDock implements ReactiveController {
 
     /** Closes the date picker; the focus goes back to the slider once the frame is no longer inert. */
     readonly closeDates = (): void => {
+        clearTimeout(this.#closing);
+        this.peek = false;
         this.dates = null;
         this.#host.requestUpdate();
         void this.#host.updateComplete.then(() => {
@@ -121,10 +191,20 @@ export class TimelineDock implements ReactiveController {
     readonly #outside = (event: Event): void => {
         const path = event.composedPath();
         const dock = this.#host.renderRoot.querySelector('.dock.timeline');
+        const onMenu = path.some((target) => target instanceof Element && target.localName === 'hcm-date-menu');
+        if (!onMenu) {
+            this.closePeek();
+        }
         const inside = path.some((target) => target instanceof Element && (target === dock || target.localName === 'hcm-date-menu'));
         if (this.expanded && !inside) {
             this.#set(false);
         }
+    };
+
+    /** The boxes of what the date menu keeps clear of now: the card, the compass, the zoom, the menu button, the photos chip. */
+    readonly controls = (): DOMRect[] => {
+        const shown = [...this.#host.renderRoot.querySelectorAll(AVOIDED)].map((element) => element.getBoundingClientRect());
+        return shown.filter((box) => box.width > 0 && box.height > 0);
     };
 
     #timeline(): HcmTimeline | null {
@@ -163,6 +243,7 @@ export function timelineDock(view: DockView, dock: TimelineDock, onYearChange: (
             .dateCounts=${dateCounts(view.layers)}
             @hcm-year-change=${onYearChange}
             @hcm-dates-open=${dock.onDatesOpen}
+            @hcm-dates-peek=${dock.onDatesPeek}
         ></hcm-timeline>
     </div>`;
 }
@@ -182,8 +263,11 @@ export function dateMenu(
         .selected=${frontOfYear(view.layers, dates.year, view.front)}
         .label=${translate(view.locale, 'timeline.dates', { year: String(dates.year) })}
         .anchor=${dates.anchor}
+        .avoid=${dock.controls}
         .vertical=${view.orientation === 'vertical'}
+        .peek=${dock.peek}
         @hcm-date-pick=${onPick}
+        @hcm-date-menu-pointer=${dock.onMenuPointer}
         @hcm-close=${dock.closeDates}
     ></hcm-date-menu>`;
 }

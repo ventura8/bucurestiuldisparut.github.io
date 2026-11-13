@@ -5,6 +5,7 @@ the film, the film is cut around them with the city window's larger side as marg
 window in), at full resolution, out of the segments `stitch` made of the kept delivery, and the points move into the crop. The version's
 scan is the crop from then on, and `georef` goes on with it as with any scan. Points off the scan are refused; segments no longer stored
 (they live 14 days, the delivery 7) end the step with what to do: **Locate again** makes them from a kept delivery, else import again.
+On a worker (2026-11-13) a film not stored here may be on the computer that stitched it: `FilmElsewhereError` hands the job back.
 """
 
 from dataclasses import replace
@@ -18,7 +19,7 @@ from hcm_pipeline.frames import FRAME_JSON, FrameLayout
 from hcm_pipeline.geo import to_mercator
 from hcm_pipeline.georef.corners import Crop
 from hcm_pipeline.georef.transforms import Gcp
-from hcm_pipeline.jobs import JobContext, StepFailedError
+from hcm_pipeline.jobs import FilmElsewhereError, JobContext, StepFailedError
 from hcm_pipeline.model import UsgsImportParams
 from hcm_pipeline.steps.common import city_window, gdal_step, publish_scan
 from hcm_pipeline.steps.locate import camera_of, film_limits, within_limits, write_crop
@@ -56,14 +57,21 @@ def _on_film(gcps: tuple[Gcp, ...], scan: ScanInfo, whole: WholeFrame) -> list[t
     return [whole.to_film(gcp.x, gcp.y) for gcp in gcps]
 
 
+def _gone(ctx: JobContext) -> Exception:
+    """A film not stored here: on a worker it may be on the computer that stitched it (the job goes back), in the cloud it is gone."""
+    if ctx.services.archive_root is not None:
+        return FilmElsewhereError(f"the film of job {ctx.job.id} is not on this computer")
+    return StepFailedError(Errors.PROCESSING_FAILED, FILM_GONE)
+
+
 def _layout(ctx: JobContext) -> FrameLayout:
     """The frame's layout, with every segment still stored."""
     stored = ctx.services.objects.stat
     if stored(ctx.work_file(FRAME_JSON)) is None:
-        raise StepFailedError(Errors.PROCESSING_FAILED, FILM_GONE)
+        raise _gone(ctx)
     layout = FrameLayout.from_json(ctx.stage(ctx.work_file(FRAME_JSON), FRAME_JSON).read_text(encoding="utf-8"))
     if any(stored(each.path) is None for each in layout.placements):
-        raise StepFailedError(Errors.PROCESSING_FAILED, FILM_GONE)
+        raise _gone(ctx)
     return layout
 
 

@@ -125,11 +125,13 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'worker.pair': 'fn-admin',
     'worker.pairCode': 'fn-admin',
     'worker.revoke': 'fn-admin',
+    'worker.manage': 'fn-admin',
     // Finding 72: the starter's supervisor asks the installed image (finding 74: the job's, run.jobs.get, else setup/status).
     'worker.image': 'fn-admin',
     // Finding 73: the starter file itself, filled from the templates beside the bundle (no Google call).
     'worker.starter': 'fn-admin',
     'worker.archiveReport': 'fn-admin',
+    'worker.archiveCopy': 'fn-admin',
 };
 
 /** What firebase-tools and Cloud Run set to the project while the code loads (discovery, the emulator, a cold start). */

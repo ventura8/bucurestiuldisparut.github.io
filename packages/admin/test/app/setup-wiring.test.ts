@@ -50,6 +50,7 @@ function wiring(city: unknown = SEED_CITY, project: ProjectConfig = PROJECT) {
         release: '1.0.0+abc1234',
         releaseTime: 1_761_955_200,
         installOrigins: ['https://demo-hcm.web.app'],
+        adminSite: null,
         newerAdmin: () => Promise.resolve(null),
     };
     return { deps, fetcher, callables };

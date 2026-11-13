@@ -26,7 +26,9 @@
         "worker",
         "free-tier",
         "parts",
-        "daily"
+        "daily",
+        "archive-copy",
+        "film-copy"
     ],
     "JOB_STEP_STATES": ["pending", "running", "done", "failed", "skipped"],
     "PIPELINE_STEPS": [
@@ -209,6 +211,22 @@
         "L7-ETM": {
             "dataset": "landsat_etm_c2_l1",
             "name": "Landsat 7 ETM+",
+            "resolutionM": 15,
+            "minzoom": 8,
+            "maxzoom": 14,
+            "machine": "std"
+        },
+        "L8-OLI": {
+            "dataset": "landsat_ot_c2_l1",
+            "name": "Landsat 8 OLI",
+            "resolutionM": 15,
+            "minzoom": 8,
+            "maxzoom": 14,
+            "machine": "std"
+        },
+        "L9-OLI": {
+            "dataset": "landsat_ot_c2_l1",
+            "name": "Landsat 9 OLI-2",
             "resolutionM": 15,
             "minzoom": 8,
             "maxzoom": 14,

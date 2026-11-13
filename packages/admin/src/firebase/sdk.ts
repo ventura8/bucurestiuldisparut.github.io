@@ -8,9 +8,11 @@ import { initializeApp } from 'firebase/app';
 import { ReCaptchaEnterpriseProvider, initializeAppCheck } from 'firebase/app-check';
 import {
     GoogleAuthProvider,
+    browserLocalPersistence,
     browserPopupRedirectResolver,
     browserSessionPersistence,
     connectAuthEmulator,
+    indexedDBLocalPersistence,
     initializeAuth,
     onAuthStateChanged,
     reauthenticateWithCredential,
@@ -63,6 +65,8 @@ export const firebaseSdk = {
     ReCaptchaEnterpriseProvider,
     initializeAuth,
     browserSessionPersistence,
+    indexedDBLocalPersistence,
+    browserLocalPersistence,
     browserPopupRedirectResolver,
     onAuthStateChanged,
     signOut,

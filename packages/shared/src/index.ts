@@ -128,7 +128,6 @@ export {
     FINISHED_JOB_STATUSES,
     GUARD_REASONS,
     GUARD_STATES,
-    HARVEST_OUTCOMES,
     JOB_LOG_LEVELS,
     JOB_MACHINES,
     JOB_STATUSES,
@@ -151,7 +150,6 @@ export {
     WORKER_ID_PATTERN,
     adminDocSchema,
     provisionDue,
-    harvestStateDocSchema,
     inviteDocSchema,
     jobDocSchema,
     jobLogDocSchema,
@@ -164,10 +162,17 @@ export {
     usageDocSchema,
     usgsSceneDocSchema,
 } from './schemas/firestore-ops.js';
+export {
+    HARVEST_DATASET_STATES,
+    HARVEST_OUTCOMES,
+    HARVEST_STOP_REASONS,
+    harvestDatasetSchema,
+    harvestStateDocSchema,
+} from './schemas/harvest-state.js';
+export type { HarvestDataset, HarvestDatasets, HarvestStateDoc } from './schemas/harvest-state.js';
 export type {
     AdminDoc,
     AdminRole,
-    HarvestStateDoc,
     InviteDoc,
     JobDoc,
     JobLogDoc,
@@ -200,7 +205,7 @@ export { AUTO_MIN_MEASURED_PCT, CITY_MIN_COVERAGE_PCT, DEFAULT_RMSE_THRESHOLD_M,
 export { MAX_TARGET_YEARS, RMSE_THRESHOLD_RANGE, cityImagerySchema, imagerySettingsOf } from './schemas/imagery-settings.js';
 // M25 (docs/research/M25-landsat.md): named, never `export *` (a star re-export costs the engine bytes: docs/LESSONS.md 532).
 export { DECLASS_DATASETS, DEFAULT_LANDSAT_YEARS, ETM_SLC_OFF_DATE, LANDSAT_ATTRIBUTION } from './schemas/landsat.js';
-export { LANDSAT_AUTO_MAX_CLOUD, LANDSAT_AUTO_PER_TICK, LANDSAT_DATASETS } from './schemas/landsat.js';
+export { LANDSAT_AUTO_MAX_CLOUD, LANDSAT_AUTO_MAX_PER_TICK, LANDSAT_AUTO_PER_TICK, LANDSAT_DATASETS } from './schemas/landsat.js';
 export { LANDSAT_MAX_CITY_CLOUD_PCT, LANDSAT_MAX_OFFSET_PX, landsatClear } from './schemas/landsat-verdict.js';
 export { LANDSAT_MONTHS, LANDSAT_SEARCH_MAX_CLOUD, LEAF_ON_MONTHS, USGS_DATASETS } from './schemas/landsat.js';
 export { isLandsatDataset, landsatReportSchema, landsatYearsOf } from './schemas/landsat.js';
@@ -307,7 +312,15 @@ export { archiveIssueSchema, archiveReportSchema, archiveSeriesParamsSchema, arc
 export { archiveSourceSchema, creditLine, gridDocSchema, helpItemSchema, layerRightsOf } from './schemas/imagery-archive.js';
 export { layerRightsSchema, mapThresholdM, opsDailyDocSchema, rightsAllowPublish, rightsSchema } from './schemas/imagery-archive.js';
 export type * from './schemas/imagery-archive.js';
-export { STITCH_METHODS, STITCHED_PREVIEW_MAX_PX, stitchedSchema, type Stitched } from './schemas/imagery-help.js';
+export {
+    helpFlagsOf,
+    restitchable,
+    STITCH_METHODS,
+    STITCHED_PREVIEW_MAX_PX,
+    stitchedSchema,
+    type RestitchInput,
+    type Stitched,
+} from './schemas/imagery-help.js';
 export * from './schemas/imagery-tiles.js';
 // M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every
 // export of these modules is public; `test/index.test.ts` lists them).
@@ -316,6 +329,8 @@ export * from './schemas/city-export.js';
 export * from './schemas/engine-release.js';
 // M6 installer (docs/research/M6-interfaces.md §1): the install bundle, the build log's events, each target's state.
 export * from './schemas/install.js';
+// The admin on its own Hosting site (the owner's decision of 2026-11-13, DECISIONS-for-review.md §210).
+export * from './schemas/admin-site.js';
 export * from './schemas/start-release.js';
 // M5 kit-cli (§3.2): the one CSP table of every engine page, and the starter kit's page (`fillKitPage`).
 export * from './kit/csp.js';

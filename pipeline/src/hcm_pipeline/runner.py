@@ -17,6 +17,7 @@ How a run ends:
 | SIGTERM (or SIGINT: a local worker's Ctrl-C), no cancel | `queued` with `retryAt` + 1 minute; the step `pending` | 0 |
 | the download phase done on the small `fetch` job | `queued`, lease released: dispatched again on `std` or `xl` | 0 |
 | another live owner holds the lease, or the job is not runnable | untouched | 0 |
+| M20: an archive series without its sheets here nor a copy (`ArchiveElsewhereError`) | untouched; `returned` queues it | 0 |
 
 A side job works beside its version and never decides its state: its failure or its cancellation leaves the version where it stands.
 
@@ -42,6 +43,7 @@ from types import FrameType
 from typing import Final, Protocol
 
 from hcm_pipeline import paths
+from hcm_pipeline.archive.copy import ensure_series
 from hcm_pipeline.config import Config
 from hcm_pipeline.contract import (
     DEFAULT_STEP_LIMIT_SECONDS,
@@ -56,6 +58,7 @@ from hcm_pipeline.contract import (
 from hcm_pipeline.documents import Version
 from hcm_pipeline.joblog import JobLog, scrub
 from hcm_pipeline.jobs import (
+    ArchiveElsewhereError,
     CancelledRunError,
     DeclinedError,
     Done,
@@ -86,6 +89,8 @@ class RunOutcome(enum.Enum):
     REQUEUED = "requeued"
     UNTOUCHED = "untouched"
     FAILED = "failed"
+    # M20 (2026-11-13): the job's archive is on another computer; the worker hands it back.
+    RETURNED = "returned"
 
 
 class JobStep(Protocol):
@@ -187,7 +192,7 @@ class JobRunner:
 
     def _guarded(self, ctx: JobContext, only: str | None) -> RunOutcome:
         try:
-            return self._walk(ctx, only)
+            return self._walk_here(ctx, only)
         except RunStoppedError as stop:
             return self._stopped(ctx, stop)
         except StepFailedError as error:
@@ -202,6 +207,16 @@ class JobRunner:
             return RunOutcome.UNTOUCHED
         cancel = isinstance(stop, CancelledRunError) or self._cancel_requested(ctx)
         return self._cancel(ctx) if cancel else self._requeue(ctx)
+
+    def _walk_here(self, ctx: JobContext, only: str | None) -> RunOutcome:
+        """M20 (2026-11-13): an archive series' sheets on this computer first (or their copy); without them the job goes back."""
+        try:
+            ensure_series(ctx)
+            return self._walk(ctx, only)
+        except ArchiveElsewhereError as elsewhere:
+            # Also a stitched film on another computer (`FilmElsewhereError`, 2026-11-13), raised from inside a step.
+            self._log.warn(f"{elsewhere}; the job goes back for the computer that has the files", None)
+            return RunOutcome.RETURNED
 
     def _context(self, job: Job, flags: RunFlags, scratch: Path) -> JobContext:
         params_of(job)

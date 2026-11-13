@@ -1013,7 +1013,7 @@
         {
             "id": "P30",
             "area": "pipeline",
-            "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
+            "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+ and OLI, and checked against Sentinel-2 instead of georeferenced",
             "milestone": "M25",
             "source": "the owner, 2026-11-09: import Landsat for 1984-2000, added to the sources and automated like USGS; docs/research/M25-landsat.md"
         },
@@ -1177,6 +1177,41 @@
             "name": "Not useful on a scene, and a scene its preview shows cloudy over the city is ranked down and warned",
             "milestone": "M4",
             "source": "the owner, 2026-11-13: \"This scan is useless (too many clouds!!!)\", DS09066A047MC019, a 1964 scan the whole-city plan kept offering to buy; docs/research/M4-interfaces.md, Not useful and the cloud estimate"
+        },
+        {
+            "id": "V71",
+            "area": "viewer",
+            "name": "Disappeared streets: a pinned POI category, hidden at start, whose streets name their sources",
+            "milestone": "M27",
+            "source": "the owner, 2026-11-13: a Disappeared streets layer rebuilt from open data and our own maps, pinned below the items already pinned; docs/research/M27-lost-streets.md"
+        },
+        {
+            "id": "A154",
+            "area": "admin",
+            "name": "Trace a street on a historical layer: the place editor shows the chosen old map under the drawing and saves it as the place's source",
+            "milestone": "M27",
+            "source": "the owner, 2026-11-13: a Disappeared streets layer rebuilt from open data and our own maps, pinned below the items already pinned; docs/research/M27-lost-streets.md"
+        },
+        {
+            "id": "A155",
+            "area": "admin",
+            "name": "A POI category's place in the Layers panel: shown at start, pinned to the top, its data credit",
+            "milestone": "M27",
+            "source": "the owner, 2026-11-13: a Disappeared streets layer rebuilt from open data and our own maps, pinned below the items already pinned; docs/research/M27-lost-streets.md"
+        },
+        {
+            "id": "A160",
+            "area": "admin",
+            "name": "The admin on its own web address: one sign-in for every tab, the old /admin/ links forwarded",
+            "milestone": "post-M8",
+            "source": "the owner's decision of 2026-11-13; DECISIONS-for-review.md §210; docs/research/M6-interfaces.md addendum \"The admin on its own site\""
+        },
+        {
+            "id": "A143",
+            "area": "admin",
+            "name": "The household's computers: a list, Add another computer with minimum input, Remove this computer that cleans up first, and the jobs left to a calm computer",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1, W5 household computers); DECISIONS-for-review.md §216"
         }
     ],
     "scenarios": [
@@ -5460,6 +5495,50 @@
             "notes": "Lesson 646 (live 2026-11-13: the harvest ran over 7 minutes, past the 300 s timeout, and the admin read 'Something went wrong on the server'). Tests: functions/test/imagery/search.test.ts, packages/admin/test/imagery/search.test.ts."
         },
         {
+            "id": "S-A11-BAD-REQUEST-TIMED-OUT",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A USGS request that takes too long is recorded, and what its dataset found is stored",
+            "asserts": "corona2's page from record 101 is aborted at its own timeout -> corona2 is recorded partial (found 100, next 101, reason requestTimedOut), its first 100 scenes are stored, the run is recorded partial and due again in 15 minutes; the admin's line says what it kept and that the rest comes by itself",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: functions/test/imagery/harvest-partial.test.ts, functions/test/adapters/upstream-http.test.ts, packages/ui/test/admin/imagery/search-parts.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-HARVEST-PARTIAL-STORED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A harvest out of time stores every dataset it finished and records the rest partial",
+            "asserts": "corona2's first page uses up the search's time -> declassii is stored and done, corona2 partial with next 101 and reason outOfTime, ops/harvest-{city} partial; the admin's Search shows each dataset's part live, then the answer's",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: functions/test/imagery/harvest-partial.test.ts, packages/admin/test/imagery/search.test.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-HARVEST-RESUME",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "The next harvest resumes only the unfinished dataset, where it stopped",
+            "asserts": "after a partial run (corona2 stopped at 101) -> the next run asks corona2 from 101 and 201 only, stores the rest and records ok",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-HARVEST-KILLED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A harvest the server stopped is found, logged and resumed",
+            "asserts": "ops/harvest-{city} still running 10 minutes after it started -> the next run logs harvest.killed as an error, searches only the dataset that was not done, keeps the done one's part and records ok",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+        },
+        {
             "id": "S-A11-BAD-BROWSE-HOST-REFUSED",
             "behaviour": "A11",
             "area": "admin",
@@ -5568,6 +5647,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "docs/research/M9-calibration.md §14. In functions/test/imagery/scene-record.test.ts."
+        },
+        {
+            "id": "S-A12-HAPPY-STALE-CAMERA",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A scene harvested before the id rules is imported as the camera its id names",
+            "asserts": "DS09065A073MC043 stored as KH-4A (the corona2 fallback) imports as KH-5: the job's params, the version's sensor and label, the reserved layer id and the scene say KH-5 Argon; DS1103 reads KH-4B",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §209, LESSONS 667. In functions/test/imagery/{scene-record,import}.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-STALE-CAMERA-KEPT",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A stored camera other than the fallback, or an id of no known form, is kept",
+            "asserts": "a stored KH-4B stays KH-4B whatever the id; an unknown id keeps the stored KH-4A",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §209. In functions/test/imagery/scene-record.test.ts."
         },
         {
             "id": "S-A11-HAPPY-SAME-DATE-RANK",
@@ -11111,7 +11212,7 @@
             "asserts": "the owner signed in on /admin/ -> a reload keeps the session; Firebase Auth's user is in the tab's sessionStorage only, never in localStorage or IndexedDB",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review (DECISIONS-for-review.md §73a). Test: e2e/admin/specs/shell/admin-path.spec.ts."
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review (DECISIONS-for-review.md §73a). Test: e2e/admin/specs/shell/admin-path.spec.ts. Since §210 this is the fallback without the admin's own site (S-A160-BAD-NO-ADMIN-SITE); on that site the sign-in is the origin's (S-A160-HAPPY-ONE-SIGN-IN)."
         },
         {
             "id": "S-A58-BAD-VIEWER-READS-NO-SIGN-IN",
@@ -11122,7 +11223,7 @@
             "asserts": "the owner signed in on /admin/ -> the viewer opened at / in another tab of the same browser boots, and its localStorage, sessionStorage and IndexedDB hold no Firebase Auth user",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review. Test: e2e/admin/specs/shell/admin-path.spec.ts."
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review. Test: e2e/admin/specs/shell/admin-path.spec.ts. Since §210 this is the fallback without the admin's own site (S-A160-BAD-NO-ADMIN-SITE); on that site the sign-in is the origin's (S-A160-HAPPY-ONE-SIGN-IN)."
         },
         {
             "id": "S-A59-HAPPY",
@@ -11378,6 +11479,17 @@
             "notes": "Lesson 645 (the 1966 KH-7 strip DZB00403000026H017001 covered 49 % of Bucharest: its two segments were joined the wrong way). In pipeline/tests/unit/test_stitch_order.py; the generator is pipeline/tests/synthetic/scenes.py (`kh7_segments`, `scanner_edges`, `SceneSpec.right_to_left`)."
         },
         {
+            "id": "S-P01-HAPPY-CORONA-WIDE-OVERLAP",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A wide Corona segment's overlap is found however far it reaches",
+            "asserts": "two segments 3.2 times as wide as tall overlapping by 7 % or 29 % of their width (past the former fixed reach of 1200 px) -> the coarse match finds the true offset with a score over 0.9; an overlap wider than the overlap share is not searched",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 674 (the 1968 Corona DS1103-1058DF026 repeated a third of itself: a fixed reach of 1200 shrunk pixels stopped short of its 23 % overlaps). In pipeline/tests/unit/test_stitch_order.py."
+        },
+        {
             "id": "S-P01-BAD-SEGMENT-OTHER-FRAME",
             "behaviour": "P01",
             "area": "pipeline",
@@ -11420,6 +11532,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Finding 57 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82h). Test: pipeline/tests/unit/test_frames.py."
+        },
+        {
+            "id": "S-P01-HAPPY-RECROP-RIGHT-TO-LEFT",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A point on a whole strip shrunk crops the same place at full resolution, whichever way the film was scanned",
+            "asserts": "a 3-segment strip lettered right to left (and left to right), read whole shrunk 8 times: a point on the city at 73 % along maps to 73 % of the film, and the crop around it is the film's own pixels holding the city",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS §209 (DS1103-1058DF026, 1968). Test: pipeline/tests/unit/test_recrop_order.py."
+        },
+        {
+            "id": "S-P01-BAD-RECROP-MIRRORED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The mirror place of the city is never cropped",
+            "asserts": "on the same strips a decoy at 27 % (the city's mirror place) stays out of the crop around the point on the city",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS §209. Test: pipeline/tests/unit/test_recrop_order.py."
         },
         {
             "id": "S-P01-HAPPY-KH9-STRIP",
@@ -12883,6 +13017,17 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-dates.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A66-BAD-REWRITES-AT-ONCE",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "bad",
+            "title": "Frames that end together keep the whole-city dates up to date without running the function out of memory",
+            "asserts": "three rewrites of one city's plan asked at once -> the city is read twice, not three times, and the plan lists the frame written while the first ran; a rewrite that fails fails its waiters and the next call reads again; another city is not held behind it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Cloud Error Reporting, 2026-11-13: imagery-onJobWrite over its 256 MiB (docs/LESSONS.md 663). Test: functions/test/imagery/join-plan-flight.test.ts."
         },
         {
             "id": "S-A66-BAD-NO-NEIGHBOUR",
@@ -17318,6 +17463,50 @@
             "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: functions/test/imagery/archive-import.test.ts, packages/ui/test/admin/archive/archive.test.ts."
         },
         {
+            "id": "S-A120-HAPPY-ARCHIVE-COPY",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "Any computer runs an archive series; the computer with the archive sends a copy of its sheets",
+            "asserts": "a second worker claims an archive series; one waiting archive-copy is claimed by nobody, the holder's claim (archives names it) is answered copy, worker.archiveCopy signs only the job's copy files and done puts it back to worker with archiveCopy {by, bytes}; the job's worker reads its copy through worker.urls",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 §20 (live report of 2026-11-13; DECISIONS §204). Tests: functions/test/worker/archive-host.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-ARCHIVE-COPY",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "A computer without the sheets hands the series back without failing it or spending an attempt",
+            "asserts": "worker.end returned -> queued, attempt - 1, archiveReturns + 1, waitReason archive-copy, no lease, worker or error; the dispatcher keeps archive-copy; a copy is refused for a job not waiting, another job's folder, a name that is no SHA-256, a PUT without a type, the guard red; the archive's own computer and the fifth return fail archiveMissing",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 §20 (live report of 2026-11-13; DECISIONS §204). Tests: functions/test/worker/archive-host.test.ts."
+        },
+        {
+            "id": "S-A120-HAPPY-FILM-HOST",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "A job whose stitched film is on another computer waits for that computer",
+            "asserts": "a worker without the film returns the job: queued, attempt given back, waitReason film-copy; a claim keeps its films on the worker document; only a claim naming the job in films takes it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live report of 2026-11-13 (1968 Corona F026, film no longer stored); M20 §21, DECISIONS §217. Tests: functions/test/worker/film-host.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-FILM-GONE",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "A film no computer holds fails the job with what to do",
+            "asserts": "no other worker names the film, or only a disconnected one or one unseen for more than 14 days -> failed apiError.imagery.filmMissing (Locate again, or import the frame again); the dispatcher keeps the film-copy wait",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live report of 2026-11-13 (1968 Corona F026, film no longer stored); M20 §21, DECISIONS §217. Tests: functions/test/worker/film-host.test.ts."
+        },
+        {
             "id": "S-A121-HAPPY-PANEL",
             "behaviour": "A121",
             "area": "admin",
@@ -17978,6 +18167,28 @@
             "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_scale.py."
         },
         {
+            "id": "S-P20-HAPPY-OVERVIEW-HOLES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A piece the overview's features left out is found again in the overview's holes",
+            "asserts": "refit_in_holes places a left-out piece (as scanned, or upside down) where the placed pieces leave the overview uncovered, by correlation at the series' scale and turn refined by its features, within 2 px of its true place; the placed pieces are unchanged",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899: 3 of 60 pieces left out (img366, img390, img418, no-join) were the published layer's three white patches (2026-11-13). Tests: pipeline/tests/unit/test_placing_overview_holes.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-HOLES-NOT-FOUND",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A piece the overview does not show stays left out and listed, never forced into a hole",
+            "asserts": "refit_in_holes leaves a piece of another map, a blank piece and a piece whose best place is not clearly better than the next (a repeating pattern) unplaced, so it stays in help.stitched.leftOut",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Real data only: nothing is drawn into a hole the archive's own pieces do not fill. Tests: pipeline/tests/unit/test_placing_overview_holes.py."
+        },
+        {
             "id": "S-P20-HAPPY-OVERVIEW-COLOUR",
             "behaviour": "P20",
             "area": "pipeline",
@@ -18181,7 +18392,7 @@
             "area": "admin",
             "path": "happy",
             "title": "Landsat scenes are listed beside the declassified ones and Import publishes one credited to NASA and USGS",
-            "asserts": "usgs.landsatScenes -> the page's own search lists nine free scenes; the Landsat chip leaves the three Landsat 5 TM scenes, each Free; Import (free) on the clear 1989 scene -> the stand-in skips stitch, locate and georef, warp writes the landsat report within a pixel -> the policy publishes it; the layer is satellite, Landsat 5 TM, credited 'Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey'",
+            "asserts": "usgs.landsatScenes -> the page's own search lists eleven free scenes; the Landsat chip leaves the three Landsat 5 TM scenes and the two Landsat 8 and 9 OLI ones, each Free; Import (free) on the clear 1989 scene -> the stand-in skips stitch, locate and georef, warp writes the landsat report within a pixel -> the policy publishes it; the layer is satellite, Landsat 5 TM, credited 'Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey'",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
@@ -18192,10 +18403,54 @@
             "area": "admin",
             "path": "happy",
             "title": "The tick imports the clearest scene of a wanted year on its own",
-            "asserts": "Landsat harvested, the city's default 1984-2000 and its switch on -> imagery.tick imports the clear 1989 scene (the oldest wanted year), one a tick, as an ordinary usgs-import the daily cap counts",
+            "asserts": "Landsat harvested, the city's default 1984 to the current year and its switch on -> imagery.tick imports the clear 1989 scene (the oldest wanted year), one a tick, as an ordinary usgs-import the daily cap counts",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
+        },
+        {
+            "id": "S-A130-HAPPY-OLI",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "happy",
+            "title": "Landsat 8 and 9 OLI scenes are harvested and listed beside TM",
+            "asserts": "the fake USGS answers landsat_ot_c2_l1 -> two scenes stored as L8-OLI and L9-OLI at 15 m, searched in summer months under the cloud cap with a per-request timeout; the Landsat chip lists them, each Free",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/harvest-partial.test.ts, packages/ui/test/admin/imagery/search-parts.test.ts."
+        },
+        {
+            "id": "S-A130-BAD-OLI-UNKNOWN",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "bad",
+            "title": "An OLI record whose satellite is not named is Landsat 8",
+            "asserts": "entity ids LX8… and LO9… -> L8-OLI and L9-OLI",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+        },
+        {
+            "id": "S-A130-HAPPY-WORKERS-PACE",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "happy",
+            "title": "While the city's computers run the worker, the tick imports one Landsat scene per online worker, on the computer",
+            "asserts": "two workers seen 10 s ago -> imagery.tick's Landsat part starts the 1989 and 1990 imports, both runOn local (never counted by the daily cap)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+        },
+        {
+            "id": "S-A130-BAD-NO-WORKER-PACE",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "bad",
+            "title": "With no worker online the tick keeps one cloud Landsat import a run",
+            "asserts": "the workers were last seen an hour ago -> one import, placed in the cloud (the daily cap counts it)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
         },
         {
             "id": "S-A130-BAD-CLOUDY",
@@ -18262,6 +18517,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-HAPPY-OLI",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A Landsat 8 or 9 OLI scene takes B4, B3, B2 and is pan-sharpened to 15 m at z14",
+            "asserts": "an OLI bundle (B1 to B4, B8, QA_PIXEL) -> red, green and blue from B4, B3, B2, Brovey with B8, output maxzoom 14, report pansharpened and resolution 15",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-BAD-OLI-MISSING-BAND",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An OLI bundle without its red band B4 fails naming it",
+            "asserts": "an OLI bundle without B4 -> the job fails apiError.imagery.missingBand with band B4",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: pipeline/tests/integration/test_landsat_job.py (pipeline-pytest)."
         },
         {
             "id": "S-P30-BAD-MISSING-BAND",
@@ -18363,6 +18640,50 @@
             "notes": "M22 §13.2. Tests: functions/test/imagery/locate-again-archive.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
         },
         {
+            "id": "S-A122-HAPPY-RESTITCH",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "happy",
+            "title": "A placed series with pieces left out of its overview mosaic offers Locate again, which lays it on the overview again in a new version",
+            "asserts": "the version view marks a published series with pieces left out of its overview mosaic restitchable; the button calls imagery.locateAgain; a new archive-series job (restitch, runOn local) and its processing version on the same layer carry the base's pairs, scan, rights and help; the layer marks it pending and keeps the published version",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §216, layer 1895-1899. Tests: functions/test/imagery/restitch.test.ts, packages/shared/test/restitchable.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+        },
+        {
+            "id": "S-A122-BAD-RESTITCH-NOTHING-LEFT",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "bad",
+            "title": "A series with nothing left out, not stitched on an overview, not published or on a busy layer is not stitched again",
+            "asserts": "no Locate again button; imagery.locateAgain answers apiError.imagery.versionState (or apiError.layers.busy for a layer with a version on its way) and writes nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §216. Tests: functions/test/imagery/restitch.test.ts, packages/shared/test/restitchable.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+        },
+        {
+            "id": "S-P20-HAPPY-RESTITCH",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A series stitched again is laid on its overview and warped through the base's pairs",
+            "asserts": "place with restitch publishes the new mosaic as help.stitched and the scan, then warps it through the owner's pairs scaled from the base's scan, landing within 15 m",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §216. Tests: pipeline/tests/unit/test_placing_restitch.py."
+        },
+        {
+            "id": "S-P20-BAD-RESTITCH-NO-OVERVIEW",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A series stitched again that its overview no longer places waits for points with its pairs",
+            "asserts": "place answers Waiting, the version needs_gcps with help low-confidence and the note saying so; nothing is warped",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §216. Tests: pipeline/tests/unit/test_placing_restitch.py."
+        },
+        {
             "id": "S-A122-HAPPY-GEOREF-FULL-SCREEN",
             "behaviour": "A122",
             "area": "admin",
@@ -18383,6 +18704,17 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M22 §13.2. Tests: packages/ui/test/admin/georef/georef-page.test.ts."
+        },
+        {
+            "id": "S-A122-BAD-GEOREF-PANES-MISALIGNED",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "bad",
+            "title": "The map's list of what it shows does not push the map below the scan (panes misaligned)",
+            "asserts": "the scan's and the map's views share their top and height within 1 px, and the turn rows under them their top, in the page and in full screen, side by side and on a compact window's switch",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (lesson in docs/LESSONS.md). Tests: e2e/admin/specs/imagery/georeferencer.spec.ts, e2e/admin/specs/imagery/layer-geometry.spec.ts."
         },
         {
             "id": "S-A125-HAPPY-DELETE-VERSION",
@@ -18489,7 +18821,7 @@
             "area": "admin",
             "path": "bad",
             "title": "On a low battery the worker pauses; a hot computer steps down; the user at the keyboard gets the computer back",
-            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; from 80 C on the processor the threads shrink in proportion to the degrees left to 95 C (at least one), and other programs' busy cores come off the top; at 95 C on the processor or 83 C on the card one level down, back 5 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test); the log says a change of profile, reason, threads or memory step only, never every tick",
+            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; from 80 C on the processor the threads shrink in proportion to the degrees left to 95 C (at least one), and other programs' busy cores come off the top; at 95 C on the processor or 83 C on the card one level down for at least two minutes, back 5 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test); the log says a change of profile, reason, threads or memory step only, never every tick",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_governor_budget.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
@@ -18504,6 +18836,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The NUC's /state of 2026-11-13 listed nvidia-smi's failure as a card's name (and an empty one, which made the whole card read as an older worker). Tests: functions/test/worker/starter-governor.test.ts, pipeline/tests/unit/test_governor_probe.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
+            "id": "S-A141-HAPPY-WSL-IDLE",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "A worker in WSL reads the Windows user's idle time, so Automatic leaves Quiet when the owner is away",
+            "asserts": "under WSL (/proc/version names microsoft) the POSIX starter skips GNOME, xprintidle and logind and writes GetLastInputInfo's seconds from powershell.exe into host-hints.json; a socket Windows refuses (1_interop) and one whose process runs in session 0 (sshd's wsl.exe, which reads the uptime) are passed over; powershell.exe runs at most once per 30 s, the socket that answered is tried first next time",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's PC (WSL Ubuntu, systemd user service hcm-worker) wrote idleS 0 every 5 s on 2026-11-13: logind's IdleHint is always no without a desktop session, and the governor held Quiet forever. Tests: functions/test/worker/starter-governor.test.ts."
+        },
+        {
+            "id": "S-A141-BAD-WSL-NO-INTEROP",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker in WSL that cannot reach Windows says nothing about the owner's activity, never that they are typing",
+            "asserts": "under WSL with no powershell.exe, or with only sockets Windows refuses or whose process runs in session 0, the hints say idleS null (the governor never claims activity it cannot see), never logind's 0",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Tests: functions/test/worker/starter-governor.test.ts."
         },
         {
             "id": "S-A142-HAPPY-VERSIONS",
@@ -18713,6 +19067,50 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-HAPPY-ARCHIVE-COPY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Another computer runs a series from the copy of its sheets",
+            "asserts": "the holder puts each sheet by its SHA-256 and the manifest, then says done with the bytes; the other worker downloads, checks every SHA-256, keeps the sheets as a partial record (never named as held whole) and gather runs; a claim names the whole archives and a copy duty is sent before any job",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §20 (live report of 2026-11-13). Tests: pipeline/tests/unit/test_archive_copy.py, test_worker_copying.py, test_worker_loop.py."
+        },
+        {
+            "id": "S-P20-BAD-ARCHIVE-COPY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "No copy, or a copy that is not the scan's bytes, hands the job back",
+            "asserts": "no manifest, a sheet whose SHA-256 differs or a manifest that is not JSON -> ArchiveElsewhereError, nothing kept; the run ends RETURNED without a write and worker.end says returned",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §20 (live report of 2026-11-13). Tests: pipeline/tests/unit/test_archive_copy.py, test_worker_loop.py."
+        },
+        {
+            "id": "S-P20-HAPPY-FILM-HOST",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A worker names the films it holds in every claim",
+            "asserts": "held_films lists the jobs with work/{city}/{job}/frame.json, newest first; the claim sends them as films",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live report of 2026-11-13 (1968 Corona F026, film no longer stored); M20 §21, DECISIONS §217. Tests: pipeline/tests/unit/test_film_host.py, test_worker_loop.py."
+        },
+        {
+            "id": "S-P20-BAD-FILM-GONE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A film not on this computer hands the job back on a worker, and fails in the cloud",
+            "asserts": "recrop on a worker without frame.json or a segment raises FilmElsewhereError and the run ends RETURNED; in Cloud Run it fails processingFailed with Locate again",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live report of 2026-11-13 (1968 Corona F026, film no longer stored); M20 §21, DECISIONS §217. Tests: pipeline/tests/unit/test_film_host.py."
         },
         {
             "id": "S-A65-HAPPY-JOINED-FRAME",
@@ -19474,6 +19872,61 @@
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195g). packages/ui/src/viewer/hcm-timeline.ts (#settle, #offerDates), timeline-pointer.ts, timeline-scrub.ts; unit tests in packages/ui/test/viewer/hcm-timeline-dates.test.ts (a drag, a finger scrub, a cancelled press, the arrows). Test: e2e/specs/viewer/timeline-dates.spec.ts."
         },
         {
+            "id": "S-V68-HAPPY-HOVER-PEEK",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Hovering a multi-date year opens its date menu without selecting",
+            "asserts": "at 1440x900 and at 1024x768 with touch, a city whose 1980 has two dates, the timeline on today, the page's clock paused: the mouse resting on 1980's point opens 'Dates in 1980' after 300 ms (none at 250 ms), the slider still on today and the focus not in the menu, the menu inside the window and clear of the compass, the zoom group and the menu button; the mouse moving up into the menu keeps it a second later; a click on March brings it to the front (layers= names it last) and closes the menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-HOVER-SWEEP",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Sweeping across years doesn't open menus",
+            "asserts": "at 1440x900 and 1024x768: the mouse swept from today across 1980 and back opens nothing after a second; a menu opened by resting on 1980 closes 300 ms after the mouse left the year and the menu, and on Esc, the year still today; unit: a held button's drag, a sweep and a modal menu opened by Enter are never turned into a peek",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-HOVER-TOUCH",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Touch doesn't open on hover",
+            "asserts": "at 360x800 (a phone) and 768x1024 (a tablet): a tap on today and a second's wait open no menu; unit: a touch pointer over the track never counts as a hover (hcm-timeline-peek.test.ts)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-HAPPY-DWELL-PICK",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A finger resting on a multi-date year opens its dates; sliding onto one and lifting picks it",
+            "asserts": "at 360x800 and 768x1024: a finger scrubbing from today onto 1980 and resting 400 ms opens the menu (none at 350 ms) beside it and clear of the controls; slid off the card onto March and lifted, March is picked (the slider on 1980, layers= names it last); lifting on the year instead keeps the menu open, the checked date focused, for a tap; unit: a haptic tick when it opens",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-DWELL-SWEEP",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A quick finger sweep opens nothing, and moving on closes the menu",
+            "asserts": "at 360x800 and 768x1024: a finger sweeping from today across 1980 and back opens nothing after a second; resting on 1980 opens it, moving on to today closes it while the scrub goes on (the slider on today), and lifting there opens nothing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
             "id": "S-V68-HAPPY-TOUR",
             "behaviour": "V68",
             "area": "viewer",
@@ -19980,6 +20433,72 @@
             "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-problem); Vitest packages/ui/test/admin/ops/statistics.test.ts."
         },
         {
+            "id": "S-A153-HAPPY-PARTIAL",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "happy",
+            "title": "The numbers GA4 can answer show even when some measurement names cannot be used",
+            "asserts": "the property's metadata lacks the custom names -> visitors, pages, devices and countries still show; no report naming a missing name is sent (no 400), no alert",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Fix of 2026-11-13 (a 400 for the whole batch was said as 'Google Analytics does not know the names'). Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-pending); Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-HAPPY-DATA-ARRIVES",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "happy",
+            "title": "Once values arrive, Refresh shows the steps and the no-values note goes",
+            "asserts": "after the noData note, the property gets rows -> Refresh shows the new_city funnel, no pending note, and the guide's codes line says Google Analytics knows the codes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-NOT-REGISTERED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "A measurement name not registered on the property: said with Setup step g as the fix",
+            "asserts": "the Admin API lists none of the view's names -> the note says some names are unknown and the apps and steps are incomplete, links #/setup/analytics; ui_error statistics_notRegistered; the log names the missing names",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-NOT-READY",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "Names registered but not usable in reports yet: said with when to look again",
+            "asserts": "every name is registered on the Admin API but missing from the Data API metadata -> the note says Google Analytics cannot report on them yet and to look again tomorrow (up to 48 hours); no Setup link; ui_error statistics_notReady",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-pending); Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-NO-DATA",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "Names usable but no values yet: said with when to look again",
+            "asserts": "no step, no admin screen and only '(not set)' apps -> the note says no values yet and that Google shows them 24 to 48 hours after use; the guide's codes line says the same; ui_error statistics_noData",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-REFUSED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "A report request Google refuses (400) is the admin's fault, not missing names",
+            "asserts": "batchRunReports answers 400 INVALID_ARGUMENT -> the alert says Google Analytics refused the way the admin asked, that it is in the logs, and links Google Analytics; ui_error statistics_refused",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
             "id": "S-V70-HAPPY-KEY-ACTIONS",
             "behaviour": "V70",
             "area": "viewer",
@@ -20088,6 +20607,424 @@
             "tier": "functions",
             "status": "exists",
             "notes": "The owner's report of 2026-11-13. Tests: functions/test/imagery/browse.test.ts."
+        },
+        {
+            "id": "S-V71-HAPPY-PINNED",
+            "behaviour": "V71",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Disappeared streets sit in the pinned strip below Compare and Map labels and above every historical layer, hidden until switched on",
+            "asserts": "the strip's children are compare, labels, pinned-overlays in that order; the category's switch is above the first historical layer and off; no street feature is rendered until it is switched on, then the line renders and its credit joins the attribution lines",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-V71-HAPPY-SOURCES",
+            "behaviour": "V71",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A tapped disappeared street names the map it was traced on and its data's credit",
+            "asserts": "the sheet shows 'Se vede pe: <layer label>' / 'Seen on: <layer label>' and 'Sursa: OpenHistoricalMap (CC0)' as text",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-V71-BAD-UNKNOWN-LAYER",
+            "behaviour": "V71",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A street traced on a layer the manifest does not list",
+            "asserts": "the manifest is refused with validation.reference at pois[i].sourceLayer (the error card names the field); the builder drops an unlisted layer instead, keeping the street; the sheet says nothing for an unknown id",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-V71-BAD-NOTHING-ELSE-PINNED",
+            "behaviour": "V71",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without Compare or Map labels a pinned category still makes the strip; without one the strip holds only Compare and Map labels",
+            "asserts": "the strip exists with only the pinned list (unit); a manifest without a pinned category has no pinned list and no such switch (e2e)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-A154-HAPPY-TRACE",
+            "behaviour": "A154",
+            "area": "admin",
+            "path": "happy",
+            "title": "Choose an old map, trace a street over it, save it with its source",
+            "asserts": "the select lists the city's layers by year; choosing one draws hcm-source-<layer> under the drawing with an opacity slider; the saved place has sourceLayer and a LineString",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-A154-BAD-GONE-LAYER",
+            "behaviour": "A154",
+            "area": "admin",
+            "path": "bad",
+            "title": "A place traced on a map the city no longer has",
+            "asserts": "the select shows 'A map that no longer exists' with the fix in plain words; choosing another map saves it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-A155-HAPPY-DISPLAY",
+            "behaviour": "A155",
+            "area": "admin",
+            "path": "happy",
+            "title": "A category set hidden at start, pinned and credited",
+            "asserts": "the two switches and the credit field send their edits; a new category is saved with defaultVisible false, pinned true and its attribution; rules allow the fields",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-A155-BAD-BLANK-CREDIT",
+            "behaviour": "A155",
+            "area": "admin",
+            "path": "bad",
+            "title": "An emptied credit",
+            "asserts": "the field removes attribution instead of saving a blank (never an undefined field); rules refuse a non-boolean pinned or defaultVisible and a credit over 500 characters",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-A160-HAPPY-ONE-SIGN-IN",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "Signed in once on the admin's own site, a new tab is signed in too",
+            "asserts": "the admin on its own origin (runtime.json naming it) -> the sign-in lives in the origin's IndexedDB; a second tab opens Home signed in with nothing seeded in it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-BAD-VIEWER-READS-NOTHING",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "A public map page, on its own origin, reads nothing of the admin's sign-in",
+            "asserts": "the owner signed in on the admin's own origin -> a public map page on the map's origin finds no sign-in in localStorage, sessionStorage or IndexedDB",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Keeps the intent of S-A58-BAD-VIEWER-READS-NO-SIGN-IN across the two origins. Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-BAD-NO-ADMIN-SITE",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without the admin's own site the sign-in stays in the admin's tab",
+            "asserts": "the admin served under the public map's /admin/ (runtime.json naming another origin, or none) -> the sign-in is in the tab's sessionStorage only, as since M6",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). The fallback of a self-hosted copy, a starter-kit city or a project whose site could not be made. Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-OLD-LINK-FORWARDS",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "An old admin address forwards to the admin's own site with its route",
+            "asserts": "/admin/?lang=en#/settings on the public map's origin -> 301 (the site build's rule) to the admin's site, the same query and hash, Settings shown",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Tests: e2e/admin/specs/shell/admin-site.spec.ts, scripts/site/test/hosting-admin-site.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-NOT-FORWARDED",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "The starter list and the public map's own pages are never forwarded to the admin's site",
+            "asserts": "/, a city's page and /admin/starter.json (read by a Linux starter's curl without -L) match no forward; the map opens on its own origin",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-ADMIN-TOKEN",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin's Mapbox token follows the server's admin origins",
+            "asserts": "setup/status.mapbox.adminAllowedUrls without the admin site -> ops.tick mints an admin token for the server origins and queues the old one for retirement",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: functions/test/ops/admin-token.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-ADMIN-TOKEN-REFUSED",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused admin token mint keeps the old token for the next tick",
+            "asserts": "Mapbox refuses the mint -> the stored admin token and its addresses stay, the step goes on",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: functions/test/ops/admin-token.test.ts."
+        },
+        {
+            "id": "S-A143-HAPPY-LIST",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Jobs page lists the city's computers with their names, state, share and versions",
+            "asserts": "each worker of the city: its owner's name else its own (hostname from the starter), on (seen within 3 minutes) or off with when, waiting or working on a job or paused, its governor's share and why (someone at it, others busy, battery, hot), the helper's version and whether it is current; a computer disconnected over a day ago is no longer listed; ro and en; axe and layout checkers clean",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: e2e/admin/specs/imagery/household.spec.ts (tour states worker.household-*), functions/test/worker/household.test.ts, pipeline/tests/unit/test_worker_household.py, packages/admin/test/worker/household.test.ts, packages/ui/test/admin/worker/household.test.ts."
+        },
+        {
+            "id": "S-A143-HAPPY-MANAGE",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "Rename, Pause and Resume a computer from the list",
+            "asserts": "Rename saves the owner's name (trimmed, 1-40 characters, no markup); Pause makes worker.claim answer paused and give no job until Resume; the list follows the document",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: e2e/admin/specs/imagery/household.spec.ts (tour states worker.household-*), functions/test/worker/household.test.ts, packages/admin/test/worker/household.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-MANAGE-REMOVED",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "A removed or unknown computer is left alone, and a bad name is refused",
+            "asserts": "worker.manage on a disconnected or unknown worker answers changed false and writes nothing; an empty or markup name is refused (invalid-argument); a refused action is said under the list and one action runs at a time",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/household.test.ts, packages/admin/test/worker/household.test.ts."
+        },
+        {
+            "id": "S-A143-HAPPY-HEADLESS-PAIR",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "A computer without a screen joins with one pasted line",
+            "asserts": "Add another computer, No screen: one line, curl of the starter then echo <code> | sh (the code on standard input, never an argument or a file); worker.pairCode household mints a 45-minute one-use code; the starter installs, enables linger with no screen, waits for the worker, posts the code to its own page with the project's origin, and says it is connected and its name; Copy; New line mints another",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: e2e/admin/specs/imagery/household.spec.ts (tour states worker.household-*), functions/test/worker/household.test.ts, functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-HEADLESS-EXPIRED",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "An expired, reused or refused code is said with the fix",
+            "asserts": "a household code past 45 minutes or used once is refused (apiError.worker.pairCode); the starter then says the map refused the code and that Add another computer gives a new line which skips the download; a line that is not a code is ignored and nothing is posted; a line the admin could not make says so with Try again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/household.test.ts, functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-HEADLESS-WRONG-CITY",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "A code minted for one city is refused in another",
+            "asserts": "worker.pair with another city's id finds no pairing (refused, the same answer as any bad code) and the code stays unspent",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/household.test.ts."
+        },
+        {
+            "id": "S-A143-HAPPY-INSTALL-DOCKER",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "Docker is installed from the system's own signed packages when it is missing",
+            "asserts": "Linux without Docker: the disk checked (10 GB), each step said with its time and size, apt/dnf/zypper/pacman with one sudo (never a downloaded script), the service started and the account in the docker group (the service runs under sg until a new login), a note that the helper installed Docker; re-running keeps what is there",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-INSTALL-DOCKER",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "Too little disk, a refused password, a blocked computer or an unknown Linux are said in plain words with the fix",
+            "asserts": "under 10 GB free: how much there is and what to free, nothing installed; a refused password or a blocked work computer: who to ask and Docker's install page; no known package manager: the link to install Docker by hand",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A143-HAPPY-GOVERNOR",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "A computer whose person is busy leaves the next job to a calm computer",
+            "asserts": "each claim carries the governor's share; a claim whose share is quiet for user-active, others-busy, battery, thermal or gpu-busy answers yielded while another computer of the city is on, idle, not paused and at full share, which then takes the job; the owner's own Quiet is no pressure",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/household.test.ts, pipeline/tests/unit/test_worker_household.py, pipeline/tests/unit/test_worker_loop.py."
+        },
+        {
+            "id": "S-A143-BAD-GOVERNOR-ALONE",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "With no calm computer the busy one still takes the job",
+            "asserts": "another computer that is off, paused, busy, quiet or removed is no reason to wait: the busy computer takes the job at its quiet pace",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/household.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-PAUSED",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "A paused computer takes no job",
+            "asserts": "worker.claim of a paused worker answers paused and no job, whatever its share",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/household.test.ts."
+        },
+        {
+            "id": "S-A143-HAPPY-REMOVE",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "Remove this computer cleans the computer up first, then disconnects it",
+            "asserts": "Remove this computer with keep the scanned maps and also remove Docker: worker.manage remove; the next claim answers remove; the worker says accepted and exits 76-79; the starter removes the sidecar, its volumes and images, runs the worker once more to say done (the server then revokes the worker and its pairing), then the worker's container, volume (or only its sign-in when the maps are kept), the pipeline's images, its folder and the service; Docker only where the helper installed it, and when that needs a password the admin says Docker stays and how to remove it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: e2e/admin/specs/imagery/household.spec.ts (tour states worker.household-*), functions/test/worker/household.test.ts, functions/test/worker/starter-household.test.ts, pipeline/tests/unit/test_worker_household.py, pipeline/tests/unit/test_worker_loop.py, pipeline/tests/unit/test_worker_app.py."
+        },
+        {
+            "id": "S-A143-HAPPY-REMOVE-OFFLINE",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "A computer that is off is removed when it next comes on",
+            "asserts": "the removal stays asked; the list says it cleans itself up the next time it starts; its next claim, an hour later, is answered remove",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: e2e/admin/specs/imagery/household.spec.ts (tour states worker.household-*), functions/test/worker/household.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-REMOVE-FORCED",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "Disconnect now anyway, and only then the line that cleans the computer by hand",
+            "asserts": "for a removal that waits on a computer that is off, or failed: Disconnect now anyway revokes the worker (its claims are refused), and the list then shows the line for its system (curl ... && sh, or Invoke-WebRequest on Windows) with Copy and the removal file",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: e2e/admin/specs/imagery/household.spec.ts (tour states worker.household-*), functions/test/worker/household.test.ts, packages/admin/test/worker/household.test.ts, packages/ui/test/admin/worker/household.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-REMOVE-NO-STARTER",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "A computer started by a command says it cannot clean itself up",
+            "asserts": "a worker with no cleaning starter (no HCM_REMOVABLE) answers the order with failed no-starter and keeps working; the list says why and offers Disconnect now anyway",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/household.test.ts, pipeline/tests/unit/test_worker_household.py, pipeline/tests/unit/test_worker_loop.py."
+        },
+        {
+            "id": "S-A143-BAD-REMOVE-DOCKER",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "Docker the owner already had is never removed",
+            "asserts": "also remove Docker without the helper's note leaves Docker alone and says nothing is left behind; with the note but no password the worker's done says Docker stays",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A143-HAPPY-WINDOWS-WSL",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "Windows without Docker Desktop: WSL turned on, the helper's own Linux and Docker Engine installed by the starter",
+            "asserts": "Docker Desktop is used when it runs; else WSL is turned on with one Windows permission prompt (wsl --install --no-distribution) and the setup resumes by itself after the restart (RunOnce of the user); the helper's own Ubuntu 24.04 (wsl --install --name hcm-worker --no-launch, systemd on); Docker Engine from Docker's apt repository, its key checked by fingerprint, the version pinned and held; nothing else elevates; no script from the internet is run",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers (Windows). Tests: functions/test/worker/starter-windows.test.ts (structure: the quality image has no PowerShell)."
+        },
+        {
+            "id": "S-A143-BAD-WINDOWS-WSL",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "Windows: virtualization off, too little disk, a refused prompt or an old WSL are said with the fix",
+            "asserts": "virtualization off in the firmware: how to turn it on and Microsoft's page; under 20 GB free on the system drive: how much and what to free; a refused permission or a blocked work computer: who to ask and the WSL install page; a Linux that will not install: wsl --update; Docker Engine that will not install: check the internet, re-running goes on where it stopped",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers (Windows). Tests: functions/test/worker/starter-windows.test.ts (structure: the quality image has no PowerShell)."
+        },
+        {
+            "id": "S-A143-HAPPY-WINDOWS-KEEPALIVE",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "Windows: the helper keeps its Linux awake, is listed in Settings > Apps, and takes a headless code",
+            "asserts": "the supervisor starts one hidden wsl -d hcm-worker -e sleep infinity (WSL stops when no Windows program uses it); Settings > Apps lists Historic City Map Maker helper with Uninstall (the current user's list, no administrator); HCM_PAIR_CODE is read, cleared at once and posted to the worker's own /pair with the project's origin",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers (Windows). Tests: functions/test/worker/starter-windows.test.ts (structure: the quality image has no PowerShell)."
+        },
+        {
+            "id": "S-A143-HAPPY-MAC-COLIMA",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "macOS without Docker: Colima installed with Homebrew and started at each login",
+            "asserts": "with Homebrew: the disk checked, brew install colima docker (Homebrew checks each download), the note colima, colima start with Rosetta on Apple silicon (vz) and its size, brew services start colima (Homebrew's launchd agent); the removal takes Colima only by the note, with no password",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers (macOS). Tests: functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-MAC-COLIMA",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "macOS without Homebrew: why the helper does not install Docker itself, and where to get it",
+            "asserts": "no Homebrew: the helper says it installs Colima with Homebrew, which this Mac lacks, opens brew.sh and names Docker Desktop's page; it never runs Homebrew's installer script itself",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers (macOS). Tests: functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-OLD-ADDRESS-INSTALL",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "A build submitted from the old address reads its files from the admin's own site",
+            "asserts": "the bundle URL on the public map's /admin/ answers 301 to the project's admin site -> fetch follows that one redirect and unpacks the checked files; a redirect anywhere else stops the step naming where it went",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/fetch-script.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-FOREIGN-REDIRECT",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "A bundle redirected anywhere but the project's admin site stops the build",
+            "asserts": "the bundle URL answers 301 to another origin -> fetch fails naming where it was sent; nothing is unpacked",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/fetch-script.test.ts."
         }
     ]
 }

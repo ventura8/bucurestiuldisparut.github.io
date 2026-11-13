@@ -162,7 +162,7 @@ def _laid_out(ctx: JobContext, series: SeriesJob, method: str, legacy: Callable[
     answer = owner_layout.answer_of(ctx)
     if answer is not None:
         return owner_layout.place(ctx, series, answer, method)
-    overviewed = _try_overview(ctx, series)
+    overviewed = overview_mosaic(ctx, series)
     if overviewed is not None:
         return _assembled(ctx, series, overviewed)
     proposal = autoplace.proposed(ctx, series)
@@ -231,7 +231,7 @@ def _series_overview(ctx: JobContext, series: SeriesJob) -> Path | None:
     return find_overview(root, [sheet.path for sheet in series.sheets])
 
 
-def _try_overview(ctx: JobContext, series: SeriesJob) -> Assembled | None:
+def overview_mosaic(ctx: JobContext, series: SeriesJob) -> Assembled | None:
     """The series' mosaic on its archive overview, or None when no overview is found or too few tiles match."""
     overview = _series_overview(ctx, series)
     if overview is None:

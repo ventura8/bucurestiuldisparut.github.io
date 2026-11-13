@@ -6,7 +6,7 @@
  * the open place out meanwhile (`MapPreview`). Nothing here writes: finished shapes go to the editor's draft.
  */
 import { bboxCenter, bboxOf, geometryPositions, poiIcon, type Geometry, type LngLat, type UiLocale, type Logger } from '@hcm/shared';
-import type { VectorOverlaySpec } from '@hcm/ui/map';
+import type { RasterLayerSpec, VectorOverlaySpec } from '@hcm/ui/map';
 import type { DrawChange, DrawRefusal, MapDrawPort } from '@hcm/ui/map/draw';
 
 import type { Unsubscribe } from '../app/ports.js';
@@ -71,6 +71,8 @@ export class PoisMap {
     /** Bumped by every attach and detach: a slower create of an older one is dropped. */
     #generation = 0;
     #overlays: readonly VectorOverlaySpec[] = [];
+    /** M27: the old map the open place is traced on, under the drawing (null: none). */
+    #layer: RasterLayerSpec | null = null;
     #target: EditTarget | null = null;
     /** The target the tools were last set up for (its id and colour). */
     #shown: { readonly id: string; readonly color: string } | null = null;
@@ -151,7 +153,7 @@ export class PoisMap {
                 this.#deps.clicked(id);
             }),
         );
-        handle.preview.show({ categories: this.#overlays });
+        this.#showContent();
         const draw = await handle.draw();
         if (generation !== this.#generation) {
             return;
@@ -182,7 +184,26 @@ export class PoisMap {
     /** Every category's overlay with its loaded places. */
     showPlaces(overlays: readonly VectorOverlaySpec[]): void {
         this.#overlays = overlays;
-        this.#handle?.preview.show({ categories: overlays });
+        this.#showContent();
+    }
+
+    /** M27: the old map a street is traced on, under the drawing, at its spec's opacity (null: none). */
+    showLayer(spec: RasterLayerSpec | null): void {
+        this.#layer = spec;
+        this.#showContent();
+    }
+
+    /** M27: the traced-on map's opacity, 0..1 (the admin fades it to compare with today's streets). */
+    setLayerOpacity(opacity: number): void {
+        const layer = this.#layer;
+        if (layer !== null) {
+            this.#layer = { ...layer, opacity };
+            this.#handle?.preview.preview({ kind: 'layer', id: layer.id, opacity });
+        }
+    }
+
+    #showContent(): void {
+        this.#handle?.preview.show({ categories: this.#overlays, layers: this.#layer === null ? [] : [this.#layer] });
     }
 
     /** The open place (null: none): drawn with the tools, left out of its category's overlay. */

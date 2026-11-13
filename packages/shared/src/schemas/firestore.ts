@@ -62,10 +62,11 @@ export const LAYER_STATUSES = ['draft', 'processing', 'awaiting_approval', 'read
 /** The declassified datasets (Declass 1, 2 and 3): scans of film, georeferenced by the pipeline. */
 export const DECLASS_DATASETS = ['corona2', 'declassii', 'declassiii'] as const;
 /**
- * M25 (`docs/research/M25-landsat.md`): Landsat Collection 2 Level-1 over the same M2M API: Landsat 4-5 TM (30 m, 1982-2013) and
- * Landsat 7 ETM+ (15 m panchromatic, from 1999), already georeferenced and public domain.
+ * M25 (`docs/research/M25-landsat.md`): Landsat Collection 2 Level-1 over the same M2M API: Landsat 4-5 TM (30 m, 1982-2013),
+ * Landsat 7 ETM+ (15 m panchromatic, from 1999) and Landsat 8-9 OLI (`landsat_ot_c2_l1`, 15 m panchromatic, from 2013), already
+ * georeferenced and public domain.
  */
-export const LANDSAT_DATASETS = ['landsat_tm_c2_l1', 'landsat_etm_c2_l1'] as const;
+export const LANDSAT_DATASETS = ['landsat_tm_c2_l1', 'landsat_etm_c2_l1', 'landsat_ot_c2_l1'] as const;
 export const USGS_DATASETS = [...DECLASS_DATASETS, ...LANDSAT_DATASETS] as const;
 /** How a layer was georeferenced: the scene's corners, the admin's points, the automatic matcher, or an upload's own (M3). */
 export const GEOREF_METHODS = ['corners', 'gcps', 'auto', 'embedded'] as const;
@@ -326,6 +327,10 @@ export const poiCategoryDocSchema = z.strictObject({
     icon: iconNameSchema,
     color: hexColorSchema,
     defaultOpacity: opacitySchema,
+    /** M27 (`docs/research/M27-lost-streets.md`): the manifest's `defaultVisible`, `pinned` and `attribution`. */
+    defaultVisible: z.boolean().optional(),
+    pinned: z.boolean().optional(),
+    attribution: plainText(500).optional(),
     order: z.number().int(),
     createdAt: timestampSchema.optional(),
     ...stamp,
@@ -342,6 +347,8 @@ export const poiDocSchema = z
         yearEnd: yearSchema.optional(),
         links: z.array(linkSchema).max(MAX_LINKS).optional(),
         photoIds: z.array(idSchema).max(MAX_POI_PHOTOS).optional(),
+        /** M27: the layer the place was traced on (the manifest drops it when that layer is not listed). */
+        sourceLayer: idSchema.optional(),
         published: z.boolean(),
         ...reviewFields,
         createdAt: timestampSchema.optional(),

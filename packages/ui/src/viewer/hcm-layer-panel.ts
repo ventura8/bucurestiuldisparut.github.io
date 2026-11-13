@@ -9,7 +9,9 @@
  * the panel (the owner, 2026-11-10), pinned in the docked pane while the overlay list scrolls; a modal sheet scrolls them
  * with the list (2026-11-12: the list scrolled under them there hid a focused switch). Compare opens swipe compare (M4, V06)
  * or closes it while the visitor compares (`hcm-compare-toggle`). Each map-label switch fires `hcm-map-label`; its note
- * tells them from the city's own Places below.
+ * tells them from the city's own Places below. M27 (`docs/research/M27-lost-streets.md`): a POI category marked `pinned` (the
+ * Disappeared streets) is listed in that strip, directly below Compare and Map labels and above every historical layer,
+ * with its own switch and slider; the list below leaves it out.
  *
  * The extra-large pane that is always there is `minimizable` (the owner, 2026-11-08): its close button ("Restrânge
  * straturile", a chevron, `aria-expanded="true"`) turns it into one floating button on the map's leading edge ("Straturi",
@@ -18,15 +20,15 @@
  * re-created when the window comes back to extra-large is still minimized. The switches and sliders are the store's, so
  * minimizing loses none of them. The focus follows: to the rail's button, then back to the panel's close button.
  */
-import { DEFAULT_LOCALE, overlayLabel, poiIcon, translate, type ViewerLocale, type Manifest, type Overlay } from '@hcm/shared';
-import { creditParts } from '@hcm/shared/credits';
+import { DEFAULT_LOCALE, translate, type ViewerLocale, type Manifest, type Overlay } from '@hcm/shared';
 import { translateMapLabels, type MapLabelKind, type MapLabels, type MapLabelsKey } from '@hcm/shared/map-labels';
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
 import { tabbableElements } from '../components/focus.js';
 import { stateLayer } from '../components/styles.js';
 import { EMPTY } from './empty.js';
-import type { OverlayListGroup, OverlayListItem } from '../components/overlay-list.js';
+import type { OverlayListGroup } from '../components/overlay-list.js';
+import { labelsNote, overlayGroups, overlayItems, pinnedIds, splitPinned, attributionLines } from './layer-panel-model.js';
 import type { SheetMode } from './layout.js';
 import { closeEvent, renderSheetFrame } from './sheet-frame.js';
 import { baseStyles, sheetStyles } from './shared-styles.js';
@@ -47,46 +49,7 @@ export interface LayerPanelLabels {
 
 const LABEL_NAMES: Readonly<Record<MapLabelKind, MapLabelsKey>> = { streets: 'mapLabels.streets', pois: 'mapLabels.pois' };
 
-/** The list rows: overlay labels in `locale`; a POI category also gets its colour and its bundled icon. */
-export function overlayItems(overlays: readonly Overlay[], manifest: Manifest, locale: ViewerLocale): readonly OverlayListItem[] {
-    const categories = new Map((manifest.poiCategories ?? []).map((category) => [category.id, category]));
-    return overlays.map((overlay) => {
-        const item = {
-            id: overlay.id,
-            kind: overlay.kind,
-            label: overlayLabel(overlay, locale),
-            visible: overlay.visible,
-            opacity: overlay.opacity,
-        };
-        const category = overlay.kind === 'poi' ? categories.get(overlay.id) : undefined;
-        return category === undefined ? item : { ...item, color: category.color, icon: poiIcon(category.icon) };
-    });
-}
-
-/** The group headings: historical layers always, places only when the manifest has POI categories. */
-export function overlayGroups(manifest: Manifest, locale: ViewerLocale): readonly OverlayListGroup[] {
-    const historical: OverlayListGroup = { kind: 'raster', label: translate(locale, 'layers.group.historical') };
-    const hasPlaces = (manifest.poiCategories ?? []).length > 0;
-    return hasPlaces ? [historical, { kind: 'poi', label: translate(locale, 'layers.group.places') }] : [historical];
-}
-
-/**
- * `Sursa: USGS EROS, …` once per credit of the visible historical layers, in list order and in `locale` (the Pixel Tablet
- * found the same English line once per layer: `creditParts`).
- */
-export function attributionLines(overlays: readonly Overlay[], manifest: Manifest, locale: ViewerLocale): readonly string[] {
-    const layers = new Map(manifest.layers.map((layer) => [layer.id, layer]));
-    const credits = overlays
-        .filter((overlay) => overlay.kind === 'raster' && overlay.visible)
-        .flatMap((overlay) => layers.get(overlay.id)?.attribution ?? []);
-    return creditParts(credits, locale).map((attribution) => translate(locale, 'layers.attribution', { attribution }));
-}
-
-/** The note below the switches: what they are, and how they differ from the city's own places when it has some. */
-function labelsNote(manifest: Manifest, locale: ViewerLocale): string {
-    const note = translateMapLabels(locale, 'mapLabels.note');
-    return (manifest.poiCategories ?? []).length > 0 ? `${note} ${translateMapLabels(locale, 'mapLabels.notePlaces')}` : note;
-}
+export { attributionLines, overlayGroups, overlayItems, pinnedIds, splitPinned } from './layer-panel-model.js';
 
 export class HcmLayerPanel extends LitElement {
     static override readonly properties = {
@@ -288,8 +251,12 @@ export class HcmLayerPanel extends LitElement {
         </button>`;
     }
 
-    #hasPinned(): boolean {
-        return this.canCompare || (this.labels?.available?.length ?? 0) > 0;
+    #hasPinned(manifest: Manifest): boolean {
+        return this.canCompare || this.#hasLabels() || pinnedIds(manifest).size > 0;
+    }
+
+    #hasLabels(): boolean {
+        return (this.labels?.available?.length ?? 0) > 0;
     }
 
     #content(): TemplateResult {
@@ -299,25 +266,48 @@ export class HcmLayerPanel extends LitElement {
         }
         const locale = this.locale;
         return html`<div class="content">
-            ${this.#hasPinned() ? html`<div class="pinned">${this.#compareButton(locale)}${this.#mapLabels(manifest, locale)}</div>` : nothing}
+            ${
+                this.#hasPinned(manifest)
+                    ? html`<div class="pinned">
+                          ${this.#compareButton(locale)}${this.#mapLabels(manifest, locale)}${this.#pinnedList(manifest, locale)}
+                      </div>`
+                    : nothing
+            }
             ${
                 manifest.layers.length > 0
                     ? nothing
                     : html`<p class="empty"><hcm-icon name="timeline"></hcm-icon>${translate(locale, 'layers.empty')}</p>`
             }
-            <hcm-overlay-list
-                .items=${overlayItems(this.overlays, manifest, locale)}
-                .groups=${overlayGroups(manifest, locale)}
-                .toggleLabel=${translate(locale, 'layers.toggle')}
-                .opacityLabel=${translate(locale, 'layers.opacity')}
-                .valueText=${translate(locale, 'layers.opacityValue')}
-                .changedText=${translate(locale, 'layers.opacityChanged')}
-                .shownText=${translate(locale, 'layers.shown')}
-                .hiddenText=${translate(locale, 'layers.hidden')}
-            ></hcm-overlay-list>
+            ${this.#list(splitPinned(this.overlays, manifest, false), manifest, overlayGroups(manifest, locale))}
             <ul class="attribution">
                 ${attributionLines(this.overlays, manifest, locale).map((line) => html`<li>${line}</li>`)}
             </ul>
+        </div>`;
+    }
+
+    /** One overlay list; the pinned one has no group heading (the strip is its own group). */
+    #list(overlays: readonly Overlay[], manifest: Manifest, groups: readonly OverlayListGroup[]): TemplateResult {
+        const locale = this.locale;
+        return html`<hcm-overlay-list
+            .items=${overlayItems(overlays, manifest, locale)}
+            .groups=${groups}
+            .toggleLabel=${translate(locale, 'layers.toggle')}
+            .opacityLabel=${translate(locale, 'layers.opacity')}
+            .valueText=${translate(locale, 'layers.opacityValue')}
+            .changedText=${translate(locale, 'layers.opacityChanged')}
+            .shownText=${translate(locale, 'layers.shown')}
+            .hiddenText=${translate(locale, 'layers.hidden')}
+        ></hcm-overlay-list>`;
+    }
+
+    /** M27: the pinned categories, below Compare and Map labels; nothing when the manifest pins none. */
+    #pinnedList(manifest: Manifest, locale: ViewerLocale): TemplateResult {
+        const pinned = splitPinned(this.overlays, manifest, true);
+        if (pinned.length === 0) {
+            return EMPTY;
+        }
+        return html`<div class="pinned-overlays" role="group" aria-label=${translate(locale, 'layers.group.pinned')}>
+            ${this.#list(pinned, manifest, [])}
         </div>`;
     }
 

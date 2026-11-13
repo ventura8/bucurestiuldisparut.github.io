@@ -91,10 +91,15 @@ describe('readStatistics', () => {
         expect(fakes.state.analyticsData.periods.every((days) => days === 7)).toBe(true);
     });
 
-    it('badPath_anUnregisteredMeasurementNameIsGooglesInvalidArgument', async () => {
-        const { read } = await world({ reports: false });
+    it('badPath_anUnregisteredMeasurementNameIsNotAsked_andTheNumbersSayWhichAreMissing', async () => {
+        const { fakes, read } = await world({ reports: false });
 
-        await expect(read()).rejects.toMatchObject({ kind: 'invalid' });
+        const numbers = await read();
+
+        expect(numbers.pending).toMatchObject({ reason: 'notRegistered' });
+        expect(numbers.pending?.names).toContain('app_surface');
+        expect(numbers.visitors).toBe(120);
+        expect(fakes.callsTo('analytics-data.batchRunReports')).toHaveLength(2);
     });
 
     it('badPath_noPropertyAtAllIsNoAccess_andAnotherPropertyIsNoProperty', async () => {
@@ -130,7 +135,7 @@ describe('readStatistics', () => {
             reports: [{ rows: [{}] }, { rows: [{ dimensionValues: [{ value: 'other' }], metricValues: [{ value: 'x' }] }] }, {}, {}, {}],
         };
         const fetcher: typeof fetch = (input, init) =>
-            urlOf(input).includes('analyticsdata')
+            urlOf(input).includes(':batchRunReports')
                 ? Promise.resolve(new Response(JSON.stringify(bare), { status: 200, headers: { 'content-type': 'application/json' } }))
                 : fakes.fetch(input, init);
         const options = {
@@ -143,6 +148,45 @@ describe('readStatistics', () => {
         const numbers = await readStatistics(options, MEASUREMENT_ID, 28);
 
         expect(numbers.steps).toEqual([{ wizard: '', step: '', visitors: 0, averageMs: null, errors: [] }]);
-        expect(numbers).toMatchObject({ visitors: 0, sessions: 0 });
+        expect(numbers).toMatchObject({ visitors: 0, sessions: 0, pending: null });
+    });
+});
+
+describe('readStatistics: names GA4 cannot use yet', () => {
+    it('happyPath_everyNameUsableAndValuesThere_nothingPending_andScreensWithoutANameAreLeftOut', async () => {
+        const { fakes, read } = await world();
+
+        const numbers = await read();
+
+        expect(numbers.pending).toBeNull();
+        expect(numbers.screens.map((screen) => screen.name)).not.toContain('(not set)');
+        expect(fakes.callsTo('analytics-data.getMetadata')).toHaveLength(1);
+    });
+
+    it('badPath_registeredButNotReady_asksOnlyTheReportsGa4CanAnswer_andSaysNotReady', async () => {
+        const { fakes, read } = await world({ reports: false });
+        fakes.scenario('analytics-data.notReady');
+
+        const numbers = await read();
+
+        expect(numbers.pending).toEqual({
+            reason: 'notReady',
+            names: ['wizard_id', 'step_id', 'error_code', 'duration_ms', 'app_surface', 'route'],
+        });
+        expect(numbers).toMatchObject({ visitors: 120, steps: [], surfaces: [], screens: [] });
+        expect(fakes.callsTo('analytics-data.batchRunReports')).toHaveLength(2);
+    });
+
+    it('badPath_noValuesYet_isNoData', async () => {
+        const { read } = await world({ sample: false });
+
+        expect((await read()).pending).toEqual({ reason: 'noData', names: [] });
+    });
+
+    it('badPath_aRefusedRequestIsGooglesInvalidArgument', async () => {
+        const { fakes, read } = await world();
+        fakes.scenario('analytics-data.refuse');
+
+        await expect(read()).rejects.toMatchObject({ kind: 'invalid', status: 400 });
     });
 });

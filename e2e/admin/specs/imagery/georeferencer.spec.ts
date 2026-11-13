@@ -5,6 +5,8 @@ import { ADMIN_LOCK, expect, test } from '../../support/test.js';
 import {
     addPair,
     errorsLine,
+    expectPanesAligned,
+    expectPanesAlignedAtSizes,
     georeferencerReady,
     georefText,
     landmark,
@@ -386,7 +388,7 @@ test(
 
 test(
     'The georeferencer goes full screen and back (M22 §13.2)',
-    { tag: ['@S-A122-HAPPY-GEOREF-FULL-SCREEN', '@S-A122-BAD-GEOREF-FULL-SCREEN-LEFT'] },
+    { tag: ['@S-A122-HAPPY-GEOREF-FULL-SCREEN', '@S-A122-BAD-GEOREF-FULL-SCREEN-LEFT', '@S-A122-BAD-GEOREF-PANES-MISALIGNED'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
         const imagery = await readyImagery(
             { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
@@ -397,12 +399,17 @@ test(
         const enter = page.getByRole('button', { name: georefText(lang, 'adminContent.georef.fullScreen') });
         const viewport = page.viewportSize()?.height ?? 0;
         expect((await page.locator('.panes').boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(Math.min(420, 0.7 * viewport) - 1);
+        // The map's list of what it shows sits in a header row both panes share: neither view is pushed down (S-A122-BAD-GEOREF-PANES-MISALIGNED).
+        await expectPanesAligned(page, lang);
 
         await enter.click();
         const leave = page.getByRole('button', { name: georefText(lang, 'adminContent.georef.leaveFullScreen') });
         await expect(leave).toBeVisible();
         await expect(page.getByRole('button', { name: georefText(lang, 'adminContent.georef.save') })).toBeVisible();
+        await expectPanesAligned(page, lang);
         await expectStateSound(page, adminVisit('georef.full-screen', lang));
+        // A tablet on its side, a wide screen and the owner's (about 2000 × 1125): the panes still line up in full screen.
+        await expectPanesAlignedAtSizes(page, lang);
 
         // Its own button leaves it; Esc does too.
         await leave.click();

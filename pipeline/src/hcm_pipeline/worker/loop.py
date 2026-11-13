@@ -13,6 +13,11 @@ Finding 67 of 2026-11-02: without a session each pass first lets the connector t
 session kept in the work folder); a call answered `apiError.worker.revoked` (Disconnect this computer) ends the session
 and deletes the kept one; a claim answered `outdated` (the pipeline was updated in the admin) is said on the page.
 A claim names the job types this image runs (`RUN_JOB_TYPES`): a newer type stays queued for an updated worker, not failed here.
+W5 (household computers): a claim also says the governor's share (`share`), so the server leaves a job to a calmer computer.
+M20 (2026-11-13): a claim also names the local archives this computer holds whole (`archives`); its answer may instead be
+`copy`, a series another worker waits for, whose sheets this computer sends through the bucket (`copier`, `archive/copy.py`)
+before its next claim; a run that finds neither the sheets nor their copy ends `returned`, and the server queues the job again
+unspent, waiting for that copy.
 Finding 72 (the starter file, M7 §1.5): under the starter's supervisor (`supervised`) an outdated claim ends the loop
 instead (`outdated_exit`), and the command exits with `ExitCode.OUTDATED`, so the supervisor pulls the installed image.
 Each pass that holds a session sweeps the work folder after its claim (`sweep`, `runtime.py`), told the job it claimed.
@@ -36,6 +41,7 @@ from hcm_pipeline.model import RUN_JOB_TYPES
 from hcm_pipeline.paths import ID
 from hcm_pipeline.runner import STOP_SIGNALS, RunOutcome
 from hcm_pipeline.worker.api import CLAIM, END, REVOKED, RevokedError, WorkerApi, WorkerApiError
+from hcm_pipeline.worker.household import Removal
 from hcm_pipeline.worker.session import RefreshUnavailableError, Session
 from hcm_pipeline.worker.state import WorkerState
 
@@ -95,6 +101,10 @@ class Ending:
 
 
 DONE: Final = Ending("done")
+# M20 (2026-11-13): the job's archive is on another computer: the server queues it again without spending an attempt.
+RETURNED: Final = Ending("returned")
+# The most local archives a claim names (`WORKER_ARCHIVES_MAX` on the server).
+CLAIM_ARCHIVES_MAX: Final = 200
 
 
 def _job_of(answer: Mapping[str, object]) -> str | None:
@@ -102,6 +112,12 @@ def _job_of(answer: Mapping[str, object]) -> str | None:
     job = answer.get("job")
     job_id = job.get("jobId") if isinstance(job, dict) else None
     return job_id if isinstance(job_id, str) and ID.fullmatch(job_id) else None
+
+
+def _copy_of(answer: Mapping[str, object]) -> Mapping[str, object] | None:
+    """M20: the series the claim asks this computer to copy for another worker, when the answer names one."""
+    copy = answer.get("copy")
+    return copy if isinstance(copy, dict) and ID.fullmatch(str(copy.get("jobId", ""))) else None
 
 
 class WorkerLoop:
@@ -118,9 +134,20 @@ class WorkerLoop:
         self.no_session_seconds = NO_SESSION_SECONDS
         # What each pass with a session does to the work folder, told the job it just claimed (`WorkerRuntime.sweep`).
         self.sweep: Callable[[str | None], None] = lambda _claimed: None
+        # M20 (2026-11-13): the local archives this computer holds whole (`ArchiveStore.held`): it sends their series' copies.
+        self.archives: Callable[[], list[str]] = list
+        # 2026-11-13: the jobs whose stitched film is in this work folder (`held_films`): a job waiting for its film comes here.
+        self.films: Callable[[], list[str]] = list
+        # M20: the copy of a series another worker waits for, sent before any job (`CopySender.send`).
+        self.copier: Callable[[Mapping[str, object]], None] = lambda _duty: None
         # Finding 72: under the starter's supervisor an outdated image ends the loop (the supervisor updates it).
         self.supervised = False
         self.outdated_exit = False
+        # W5 (household computers): the governor's share, said with each claim (None: not known yet, nothing said).
+        self.share: Callable[[], Mapping[str, object] | None] = lambda: None
+        # W5, Remove this computer: whether the starter cleans the computer up (`HCM_REMOVABLE`), and the order once accepted.
+        self.removable = False
+        self.removal: Removal | None = None
 
     def connect_with(self, connector: Connecting) -> None:
         """The connector each pass without a session lets try first (finding 67: pairing, the kept session)."""
@@ -190,20 +217,65 @@ class WorkerLoop:
             self._connector.attempt()
         if not self._session.active:
             return Pass.NO_SESSION
-        job_id = self._claim()
+        job_id, duty = self._claim()
         self.sweep(job_id)
+        if duty is not None:
+            self.copier(duty)
+            return Pass.RAN
         return Pass.IDLE if job_id is None else self._work(job_id)
 
-    def _claim(self) -> str | None:
+    def _claim(self) -> tuple[str | None, Mapping[str, object] | None]:
         try:
             # Only the types this image runs: a newer type stays queued for an updated worker, never failed here.
-            answer = self._api.call(CLAIM, {**self._ids, "types": list(RUN_JOB_TYPES)})
+            share = self.share()
+            said = {} if share is None else {"share": share}
+            claim = {**self._ids, "types": list(RUN_JOB_TYPES), "archives": self.archives()[:CLAIM_ARCHIVES_MAX], **said}
+            claim["films"] = self.films()[:CLAIM_ARCHIVES_MAX]
+            answer = self._api.call(CLAIM, claim)
         except CALL_ERRORS as error:
             LOG.warning("worker.claim failed: %s", error)
             self._refused(error)
-            return None
+            return None, None
+        removal = Removal.of(answer)
+        if removal is not None:
+            self._remove(removal)
+            return None, None
         self._state.outdated(answer.get("outdated") is True)
-        return None if self._ends_outdated() else _job_of(answer)
+        return (None, None) if self._ends_outdated() else (_job_of(answer), _copy_of(answer))
+
+    def _remove(self, removal: Removal) -> None:
+        """W5: Remove this computer. Under a starter that cleans up, `accepted` and the loop ends (the command exits with the order's
+        code); a worker with no such starter says it cannot (`no-starter`), and the admin offers Disconnect now anyway."""
+        word = {"step": "accepted"} if self.removable else {"step": "failed", "why": "no-starter"}
+        LOG.warning("the admin asked to remove this computer: %s", word["step"])
+        self.say_removal(word)
+        if self.removable:
+            self.removal = removal
+            self.stop()
+
+    def remove_here(self) -> str | None:
+        """W5: Stop using this computer from its own page: the loop ends with an order of no Docker, keeping nothing (the
+        starter's last run says done, which disconnects it); `no-starter` when no starter cleans up."""
+        if not self.removable:
+            return "no-starter"
+        LOG.warning("stop using this computer was pressed on its page: the starter cleans it up")
+        self.removal = Removal(docker=False, keep=False)
+        self.stop()
+        return None
+
+    def say_removal(self, word: Mapping[str, object]) -> bool:
+        """The worker's word on its removal (a claim that takes no job); the starter's last run says `done` with the kept session."""
+        if not self._session.active:
+            self._connector.attempt()
+        if not self._session.active:
+            LOG.warning("the removal's word cannot be sent: no session")
+            return False
+        try:
+            self._api.call(CLAIM, {**self._ids, "removal": dict(word)})
+        except CALL_ERRORS as error:
+            LOG.warning("the removal's word was not taken: %s", error)
+            return False
+        return True
 
     def _ends_outdated(self) -> bool:
         """Under the starter's supervisor, an outdated image ends the loop (finding 72); true when it did."""
@@ -224,7 +296,8 @@ class WorkerLoop:
 
     def _run(self, job_id: str) -> tuple[RunOutcome, Ending]:
         try:
-            return self._runtime.run(job_id, self._asked_to_stop), DONE
+            outcome = self._runtime.run(job_id, self._asked_to_stop)
+            return outcome, RETURNED if outcome is RunOutcome.RETURNED else DONE
         except RunStoppedError as stop:
             LOG.warning("job %s stopped without another write: %s", job_id, stop)
             return RunOutcome.UNTOUCHED, DONE

@@ -3,7 +3,8 @@
 A Collection 2 Level-1 product bundle is a tar of one GeoTIFF a band (`LT05_L1TP_183029_19890712_20200916_02_T1_B3.TIF`), the quality
 band (`..._QA_PIXEL.TIF`) and text files. It is streamed front to back (`tarfile` `r|*`: plain or compressed, never extracted to paths);
 each needed band becomes `work/{city}/{job}/bands/{band}.tif`: blue, green and red (B1, B2, B3) and the quality band for Landsat 4 and
-5 TM, and the 15 m panchromatic band (B8) besides for Landsat 7 ETM+. A bundle without one of them fails with
+5 TM, and the 15 m panchromatic band (B8) besides for Landsat 7 ETM+; Landsat 8 and 9 OLI number them one higher (blue B2, green B3,
+red B4; B1 is its coastal band) and have the same B8. A bundle without one of them fails with
 `apiError.imagery.missingBand {band}` (the first missing one; the delivery stays: it is what USGS has); an unreadable bundle fails with
 `apiError.imagery.archiveCorrupt` and is deleted, so a retry fetches it again.
 """
@@ -22,10 +23,18 @@ from hcm_pipeline.objects import READ_BYTES, ObjectInfo
 BAND_FILE: Final = re.compile(r"_(B[1-8]|QA_PIXEL)\.TIF$", re.IGNORECASE)
 QUALITY: Final = "QA_PIXEL"
 TRUE_COLOUR: Final = ("B3", "B2", "B1")
+OLI_TRUE_COLOUR: Final = ("B4", "B3", "B2")
 PANCHROMATIC: Final = "B8"
 TM_BANDS: Final = (*TRUE_COLOUR, QUALITY)
 ETM_BANDS: Final = (*TRUE_COLOUR, PANCHROMATIC, QUALITY)
-BANDS_OF: Final[Mapping[str, tuple[str, ...]]] = {"L4-TM": TM_BANDS, "L5-TM": TM_BANDS, "L7-ETM": ETM_BANDS}
+OLI_BANDS: Final = (*OLI_TRUE_COLOUR, PANCHROMATIC, QUALITY)
+BANDS_OF: Final[Mapping[str, tuple[str, ...]]] = {
+    "L4-TM": TM_BANDS,
+    "L5-TM": TM_BANDS,
+    "L7-ETM": ETM_BANDS,
+    "L8-OLI": OLI_BANDS,
+    "L9-OLI": OLI_BANDS,
+}
 _CORRUPT: Final = (tarfile.TarError, zlib.error, EOFError)
 
 
@@ -43,6 +52,11 @@ def band_of(name: str) -> str | None:
 def needed_bands(sensor: str) -> tuple[str, ...]:
     """The bands `sensor`'s true colour needs (a TM's by default)."""
     return BANDS_OF.get(sensor, TM_BANDS)
+
+
+def true_colour(sensor: str) -> tuple[str, str, str]:
+    """`sensor`'s red, green and blue bands (B3, B2, B1; Landsat 8 and 9 OLI's B4, B3, B2)."""
+    return OLI_TRUE_COLOUR if BANDS_OF.get(sensor) == OLI_BANDS else TRUE_COLOUR
 
 
 def _keep(ctx: JobContext, band: str, data: IO[bytes]) -> ObjectInfo:
