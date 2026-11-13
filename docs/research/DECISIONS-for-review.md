@@ -6797,3 +6797,11 @@ The design of automatic tile stitching and the tile-import wizard (docs/research
 - **182j** One pointer and no drag (WCAG 2.5.7): **Move** then a tap on the cell; a touch never starts a drag, so the grid pans. A
   live region says each change; the seam's strips take a keyboard cross (WCAG 2.1.1). A stale refusal still drops the owner's
   unsent edits, and its alert already says so; re-applying them to the newer revision is left for later.
+
+## 183. The tile wizard's `help` chunk gets its own bundle budget, 14 KB (2026-11-13) — APPLIED, pre-approved class (a new chunk's budget; no row rose)
+
+- **What**: the merge of track/tilewizard into feat/engine-rewrite built a new lazy admin chunk, `help` (the route
+  `#/help/<versionId>/tiles`, M20 §19.11), which `scripts/ci/check_bundle_budget.py` refused as a chunk without a budget. It
+  measured 11.6 KB gzip; `ADMIN_CHUNK_BUDGETS["help"]` is 14 KB (the measurement plus about 15 %, rounded up). The admin's total
+  budget is unchanged and still met.
+- **Verify**: `PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh` (bundle-budget).
