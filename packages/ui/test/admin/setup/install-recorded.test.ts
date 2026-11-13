@@ -84,16 +84,16 @@ describe('a recorded build at work, before the card looks', () => {
         expect(shadowPart(ended, '.install-state').dataset['state']).toBe('installed');
     });
 
-    it('badPath_aRecordedBuildThatMayStillRunHoldsBackUpdateTheMapUntilALookSettlesIt', async () => {
-        // Review of 6858f8a, finding (b): Update the map beside a target only recorded at work skipped that target, so
-        // Provision's record could go in before the server's build settled (the race finding 71 fixed).
+    it('badPath_aBuildOnlyARecordSaysIsAtWorkNeverHidesUpdateTheMap_aBuildALookSawAtWorkDoes @S-A55-BAD-UPDATE-STALE-RECORD', async () => {
+        // 2026-11-14: the pipeline's record of 23:20 hid Update the map with no word why; the click now looks at such a build
+        // first (the admin's updateMap), so the race finding 71 fixed stays closed.
         const update = { state: 'updateAvailable', checkedAt: SEEN } as const;
         await card('deploy', { server: update, pipeline: { state: 'working', recorded: true, checkedAt: SEEN } });
-        await expect.element(page.getByRole('button', { name: 'Update the map' })).not.toBeInTheDocument();
+        await expect.element(page.getByRole('button', { name: 'Update the map' })).toBeVisible();
         cleanup();
 
-        await card('deploy', { server: update, pipeline: { state: 'installed', checkedAt: SEEN } });
-        await expect.element(page.getByRole('button', { name: 'Update the map' })).toBeVisible();
+        await card('deploy', { server: update, pipeline: { state: 'working', checkedAt: SEEN } });
+        await expect.element(page.getByRole('button', { name: 'Update the map' })).not.toBeInTheDocument();
     });
 });
 

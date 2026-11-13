@@ -166,15 +166,27 @@ class Cards implements InstallCards {
         this.#ctx.count(step, 'inputs');
         await this.#checkPipeline();
         // What the cards show: a target recorded behind (`setup/status.install`) counts before its flow has looked.
-        const { install } = this.#ctx.state();
-        const behind = INSTALL_TARGETS.filter((target) => updates(install[target], install.pipelineOff !== null));
-        if (behind.length === 0 && install.provisionDue.length === 0) {
+        if (this.#due().length === 0 && this.#ctx.state().install.provisionDue.length === 0) {
             return;
         }
         const access = await googleAccess(this.#ctx, step, 'cloudPlatform', true);
-        if (access !== null) {
-            await this.#update(behind, install.provisionDue.length > 0, access);
+        // 2026-11-14: a build only a record says is at work no longer hides the update; the click looks at it with its token
+        // first and goes on only when no build is at work (finding 71: Provision's record waits for the server's build).
+        if (access !== null && (await this.#settledRecords())) {
+            await this.#update(this.#due(), this.#ctx.state().install.provisionDue.length > 0, access);
         }
+    }
+
+    #due(): readonly InstallTarget[] {
+        const { install } = this.#ctx.state();
+        return INSTALL_TARGETS.filter((target) => updates(install[target], install.pipelineOff !== null));
+    }
+
+    async #settledRecords(): Promise<boolean> {
+        const atWork = (target: InstallTarget): boolean => isRunning(this.#ctx.state().install[target].state);
+        const stale = INSTALL_TARGETS.filter((target) => this.#ctx.state().install[target].recorded && atWork(target));
+        await Promise.all(stale.map((target) => this.#flows[target].refresh()));
+        return !INSTALL_TARGETS.some(atWork);
     }
 
     /**

@@ -11027,6 +11027,28 @@
             "notes": "Findings 70 and 59 of docs/research/manual-test-2026-10-25.md (2026-11-02); DECISIONS-for-review.md §86. Test: e2e/admin/steps/install/update.spec.ts; packages/ui/test/admin/setup/install-cards.test.ts, packages/admin/test/setup/install.test.ts. The review of the stale fixes (2026-11-08): one failed read made the card Unavailable now, which settled the server's wait, so Provision's record went to the old server mid-build; test: the same spec, packages/admin/test/setup/install.test.ts, packages/admin/test/install/install-flow.test.ts."
         },
         {
+            "id": "S-A55-HAPPY-UPDATE-STALE-RECORD",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "Update the map beside a build only a record says is at work: the click looks at it first, then updates",
+            "asserts": "the server behind and the pipeline recorded at work with no token to look with -> step d shows Update the map; its click asks one consent, looks at the recorded build with that token (ended: installed), then submits the server's build",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live admin of 2026-11-13 23:45: the pipeline's record of 23:20 hid Update the map with no word why; the owner had to find Check again on step d3. Tests: e2e/admin/steps/install/stale-record.spec.ts, packages/admin/test/setup/install-stale.test.ts, packages/ui/test/admin/setup/install-recorded.test.ts."
+        },
+        {
+            "id": "S-A55-BAD-UPDATE-STALE-RECORD",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "A recorded build the click's look finds still at work holds the update; one a look saw at work hides it",
+            "asserts": "the click's look finds the recorded pipeline build still WORKING -> nothing is submitted and the card shows the build at work (finding 71's race stays closed); a build a look saw at work hides Update the map",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Tests: e2e/admin/steps/install/stale-record.spec.ts, packages/admin/test/setup/install-stale.test.ts, packages/ui/test/admin/setup/install-recorded.test.ts."
+        },
+        {
             "id": "S-A56-HAPPY",
             "behaviour": "A56",
             "area": "admin",
