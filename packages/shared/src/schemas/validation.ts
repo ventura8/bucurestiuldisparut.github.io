@@ -24,7 +24,7 @@ type Issue = z.core.$ZodIssue;
 
 /**
  * Every `validation.*` code, the catalogues' keys of that family by name (`validation.test.ts` checks they are the same):
- * not read from `ro.ts`, which the engine's build leaves empty (its texts are fetched, DECISIONS-for-review.md §196).
+ * not read from `ro.ts`, which the engine's build leaves empty (its texts are fetched, DECISIONS-for-review.md §204).
  */
 const CODES = new Set<string>(
     [

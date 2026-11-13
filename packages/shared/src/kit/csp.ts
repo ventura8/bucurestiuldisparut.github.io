@@ -75,7 +75,7 @@ function directives(extra: ExtraSources, engine: string, analytics: boolean): re
         ['script-src', [engine, MAPBOX_GL_CDN, "'wasm-unsafe-eval'", ...telemetry.script]],
         ['style-src', [engine, MAPBOX_GL_CDN]],
         ['img-src', [SELF_SOURCE, 'data:', 'blob:', 'https://api.mapbox.com', ...telemetry.images, ...extra.images]],
-        // The engine's own folder too: it fetches the visitor's language from `<engine>i18n/` (DECISIONS-for-review.md §196).
+        // The engine's own folder too: it fetches the visitor's language from `<engine>i18n/` (DECISIONS-for-review.md §204).
         ['connect-src', [SELF_SOURCE, engine, ...MAPBOX_CONNECT_SOURCES, ...telemetry.connect, ...extra.connect]],
         // The engine's self-hosted fonts (FontFace from `engineBase`, the folder of its script).
         ['font-src', [engine]],

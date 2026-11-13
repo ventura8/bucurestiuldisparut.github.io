@@ -1,7 +1,7 @@
 import type { Plugin } from 'vite';
 
 /**
- * The viewer's catalogues out of the engine's bundle (`docs/research/DECISIONS-for-review.md` §196, docs/ENGINE_API.md →
+ * The viewer's catalogues out of the engine's bundle (`docs/research/DECISIONS-for-review.md` §204, docs/ENGINE_API.md →
  * Language). The engine's build:
  *
  * - resolves the two catalogues `@hcm/shared` imports (`packages/shared/src/i18n/ro.ts`, `en.ts` and their `map-labels/`
