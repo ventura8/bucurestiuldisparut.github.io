@@ -28,10 +28,10 @@ export const pl: Messages = {
     'validation.ringClosed': 'Pierścień wielokąta musi kończyć się tam, gdzie się zaczyna.',
     'validation.reference': 'Wartość odwołuje się do nieistniejącego elementu.',
     'validation.invalid': 'Wartość jest nieprawidłowa.',
-    'error.generic': 'Wystąpił nieoczekiwany błąd.',
+    'error.generic': 'Mapa nie załadowała się z powodu błędu strony (został zgłoszony). Prosimy odświeżyć stronę.',
     'error.manifest.notFound': 'Nie znaleziono mapy. Spróbuj ponownie później.',
     'error.manifest.network': 'Nie udało się wczytać mapy. Sprawdź połączenie i spróbuj ponownie.',
-    'error.manifest.timeout': 'Wczytywanie mapy trwa zbyt długo.',
+    'error.manifest.timeout': 'Ładowanie mapy trwa zbyt długo, prawdopodobnie z powodu wolnego połączenia. Spróbuj ponownie.',
     'error.manifest.invalid': 'Dane mapy są nieprawidłowe (liczba problemów: {count}).',
     'error.manifest.version': 'Ta wersja danych mapy nie jest obsługiwana.',
     'error.manifest.engineTooOld': 'Ta mapa wymaga nowszej wersji tej strony ({version}). Odśwież stronę później.',
@@ -39,13 +39,16 @@ export const pl: Messages = {
     'error.config.invalid': 'config.js jest nieprawidłowy: {detail}',
     'error.config.cityMismatch': 'Identyfikator miasta w pliku config.js ({cityId}) nie odpowiada mapie ({manifestCityId}).',
     'error.config.container': 'Element mapy „{selector}” nie istnieje na stronie.',
-    'error.webgl': 'Twoja przeglądarka nie może wyświetlić interaktywnej mapy. Lista zdjęć jest nadal dostępna.',
+    'error.webgl':
+        'Ta przeglądarka nie może wyświetlić mapy. Włącz przyspieszenie sprzętowe lub spróbuj innej przeglądarki; lista zdjęć nadal działa.',
     'error.webglConsole':
         'Przeglądarka tej konsoli nie ma grafiki 3D potrzebnej mapie. Obejrzyj zdjęcia poniżej lub otwórz mapę na telefonie.',
     'error.extraLoad': 'Nie udało się wczytać tej części mapy. Sprawdź połączenie i spróbuj ponownie.',
     'error.mapLoad': 'Nie udało się wczytać mapy bazowej. Sprawdź połączenie i spróbuj ponownie.',
-    'error.tiles': 'Niektóre fragmenty mapy się nie wczytują.',
-    'error.layer': 'Nie udało się wczytać warstwy „{name}”.',
+    'error.tiles':
+        'Niektóre fragmenty mapy nie są ładowane, prawdopodobnie z powodu wolnego połączenia. Przesuń mapę, aby spróbować ponownie.',
+    'error.layer':
+        'Warstwa „{name}” nie została załadowana. Sprawdź połączenie, a następnie wyłącz ją i włącz ponownie w zakładce Warstwy.',
     'error.photoImage': 'Nie udało się wczytać obrazu.',
     'error.unknownPhoto': 'Zdjęcie z linku nie istnieje.',
     'error.unknownStory': 'Opowieść z linku nie istnieje.',

@@ -28,10 +28,10 @@ export const it: Messages = {
     'validation.ringClosed': 'Un anello del poligono deve terminare dove inizia.',
     'validation.reference': 'Il valore fa riferimento a un elemento che non esiste.',
     'validation.invalid': 'Il valore non è valido.',
-    'error.generic': 'Si è verificato un errore imprevisto.',
+    'error.generic': 'La mappa non si è caricata a causa di un errore nella pagina (è stato segnalato). Ricarichi la pagina.',
     'error.manifest.notFound': 'La mappa non è stata trovata. Riprova più tardi.',
     'error.manifest.network': 'Impossibile caricare la mappa. Controlla la connessione e riprova.',
-    'error.manifest.timeout': 'Il caricamento della mappa sta richiedendo troppo tempo.',
+    'error.manifest.timeout': 'Caricamento della mappa troppo lento, probabilmente a causa di una connessione lenta. Riprovi.',
     'error.manifest.invalid': 'I dati della mappa non sono validi (problemi rilevati: {count}).',
     'error.manifest.version': 'Questa versione dei dati della mappa non è supportata.',
     'error.manifest.engineTooOld': 'Questa mappa richiede una versione più nuova della pagina ({version}). Ricarica la pagina più tardi.',
@@ -39,13 +39,16 @@ export const it: Messages = {
     'error.config.invalid': 'config.js non è valido: {detail}',
     'error.config.cityMismatch': 'Il cityId in config.js ({cityId}) non corrisponde alla mappa ({manifestCityId}).',
     'error.config.container': 'L’elemento della mappa «{selector}» non esiste nella pagina.',
-    'error.webgl': 'Il tuo browser non può mostrare la mappa interattiva. L’elenco delle foto resta disponibile.',
+    'error.webgl':
+        'Questo browser non è in grado di visualizzare la mappa. Attivi l’accelerazione hardware oppure prova un altro browser; l’elenco delle foto rimane disponibile.',
     'error.webglConsole':
         'Il browser di questa console non ha la grafica 3D di cui la mappa ha bisogno. Guarda le foto qui sotto o apri la mappa su un telefono.',
     'error.extraLoad': 'Impossibile caricare questa parte della mappa. Controlla la connessione e riprova.',
     'error.mapLoad': 'Impossibile caricare la mappa di sfondo. Controlla la connessione e riprova.',
-    'error.tiles': 'Alcune parti della mappa non si caricano.',
-    'error.layer': 'Impossibile caricare il livello «{name}».',
+    'error.tiles':
+        'Alcune parti della mappa non vengono caricate, probabilmente a causa di una connessione lenta. Provi a spostare leggermente la mappa.',
+    'error.layer':
+        'Il livello "{name}" non è stato caricato. Verifichi la connessione, quindi lo disattivi e lo riattivi nella sezione Livelli.',
     'error.photoImage': 'Impossibile caricare l’immagine.',
     'error.unknownPhoto': 'La foto del link non esiste.',
     'error.unknownStory': 'La storia del link non esiste.',

@@ -28,10 +28,12 @@ export const de: Messages = {
     'validation.ringClosed': 'Ein Polygonring muss dort enden, wo er beginnt.',
     'validation.reference': 'Der Wert verweist auf ein Element, das nicht existiert.',
     'validation.invalid': 'Der Wert ist ungültig.',
-    'error.generic': 'Etwas Unerwartetes ist schiefgelaufen.',
+    'error.generic':
+        'Die Karte konnte nicht geladen werden, da ein Fehler auf dieser Seite aufgetreten ist (dies wurde gemeldet). Bitte laden Sie die Seite neu.',
     'error.manifest.notFound': 'Die Karte wurde nicht gefunden. Bitte versuchen Sie es später erneut.',
     'error.manifest.network': 'Die Karte konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.',
-    'error.manifest.timeout': 'Das Laden der Karte dauert zu lange.',
+    'error.manifest.timeout':
+        'Die Karte wird zu langsam geladen, wahrscheinlich liegt eine langsame Verbindung vor. Bitte versuchen Sie es erneut.',
     'error.manifest.invalid': 'Die Kartendaten sind ungültig (gefundene Probleme: {count}).',
     'error.manifest.version': 'Diese Version der Kartendaten wird nicht unterstützt.',
     'error.manifest.engineTooOld': 'Diese Karte braucht eine neuere Version dieser Seite ({version}). Bitte laden Sie sie später neu.',
@@ -39,13 +41,16 @@ export const de: Messages = {
     'error.config.invalid': 'config.js ist ungültig: {detail}',
     'error.config.cityMismatch': 'Die cityId in config.js ({cityId}) passt nicht zur Karte ({manifestCityId}).',
     'error.config.container': 'Das Kartenelement „{selector}“ gibt es auf der Seite nicht.',
-    'error.webgl': 'Ihr Browser kann die interaktive Karte nicht anzeigen. Die Fotoliste ist weiterhin verfügbar.',
+    'error.webgl':
+        'Dieser Browser kann die Karte nicht darstellen. Aktivieren Sie die Hardwarebeschleunigung oder versuchen Sie es mit einem anderen Browser; die Fotoliste wird weiterhin angezeigt.',
     'error.webglConsole':
         'Der Browser dieser Konsole hat nicht die 3D-Grafik, die die Karte braucht. Sehen Sie sich die Fotos unten an oder öffnen Sie die Karte auf einem Telefon.',
     'error.extraLoad': 'Dieser Teil der Karte konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.',
     'error.mapLoad': 'Die Hintergrundkarte konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.',
-    'error.tiles': 'Einige Teile der Karte werden nicht geladen.',
-    'error.layer': 'Die Ebene „{name}“ konnte nicht geladen werden.',
+    'error.tiles':
+        'Einige Bereiche der Karte werden nicht geladen, wahrscheinlich aufgrund einer langsamen Verbindung. Verschieben Sie die Karte etwas, um es erneut zu versuchen.',
+    'error.layer':
+        'Die Ebene „{name}“ konnte nicht geladen werden. Bitte überprüfen Sie Ihre Verbindung und deaktivieren Sie die Ebene anschließend in „Ebenen“, um sie erneut zu aktivieren.',
     'error.photoImage': 'Das Bild konnte nicht geladen werden.',
     'error.unknownPhoto': 'Das Foto aus dem Link existiert nicht.',
     'error.unknownStory': 'Die Geschichte aus dem Link existiert nicht.',

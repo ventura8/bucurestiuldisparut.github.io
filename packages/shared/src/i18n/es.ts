@@ -28,10 +28,11 @@ export const es: Messages = {
     'validation.ringClosed': 'Un anillo de polígono debe terminar donde empieza.',
     'validation.reference': 'El valor hace referencia a un elemento que no existe.',
     'validation.invalid': 'El valor no es válido.',
-    'error.generic': 'Se produjo un error inesperado.',
+    'error.generic': 'No se pudo cargar el mapa debido a un error en esta página (se ha notificado). Vuelva a cargar la página.',
     'error.manifest.notFound': 'No se encontró el mapa. Inténtelo de nuevo más tarde.',
     'error.manifest.network': 'No se pudo cargar el mapa. Compruebe su conexión e inténtelo de nuevo.',
-    'error.manifest.timeout': 'La carga del mapa está tardando demasiado.',
+    'error.manifest.timeout':
+        'Cargando… La carga del mapa está tardando demasiado, probablemente debido a una conexión lenta. Inténtelo de nuevo.',
     'error.manifest.invalid': 'Los datos del mapa no son válidos (problemas encontrados: {count}).',
     'error.manifest.version': 'Esta versión de los datos del mapa no es compatible.',
     'error.manifest.engineTooOld': 'Este mapa necesita una versión más reciente de esta página ({version}). Vuelva a cargarla más tarde.',
@@ -39,13 +40,15 @@ export const es: Messages = {
     'error.config.invalid': 'config.js no es válido: {detail}',
     'error.config.cityMismatch': 'El cityId de config.js ({cityId}) no coincide con el del mapa ({manifestCityId}).',
     'error.config.container': 'El elemento del mapa «{selector}» no existe en la página.',
-    'error.webgl': 'Su navegador no puede mostrar el mapa interactivo. La lista de fotos sigue disponible.',
+    'error.webgl':
+        'Este navegador no puede mostrar el mapa. Active la aceleración de hardware o pruebe con otro; la lista de fotos seguirá funcionando.',
     'error.webglConsole':
         'El navegador de esta consola no tiene los gráficos 3D que necesita el mapa. Vea las fotos más abajo o abra el mapa en un teléfono.',
     'error.extraLoad': 'No se pudo cargar esta parte del mapa. Compruebe su conexión e inténtelo de nuevo.',
     'error.mapLoad': 'No se pudo cargar el mapa de fondo. Compruebe su conexión e inténtelo de nuevo.',
-    'error.tiles': 'Algunas partes del mapa no se están cargando.',
-    'error.layer': 'No se pudo cargar la capa «{name}».',
+    'error.tiles':
+        'Algunas partes del mapa no se están cargando, probablemente debido a una conexión lenta. Mueva el mapa un poco e inténtelo de nuevo.',
+    'error.layer': 'La capa “{name}” no se ha cargado. Verifique su conexión y, a continuación, desactívela y vuélvala a activar en Capas.',
     'error.photoImage': 'No se pudo cargar la imagen.',
     'error.unknownPhoto': 'La foto del enlace no existe.',
     'error.unknownStory': 'La historia del enlace no existe.',

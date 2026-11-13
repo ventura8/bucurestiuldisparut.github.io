@@ -32,10 +32,12 @@ export const fr: Messages = {
     'validation.ringClosed': 'Un anneau de polygone doit se terminer là où il commence.',
     'validation.reference': 'La valeur renvoie à un élément qui n’existe pas.',
     'validation.invalid': 'La valeur n’est pas valide.',
-    'error.generic': 'Une erreur inattendue s’est produite.',
+    'error.generic':
+        'La carte n’a pas pu se charger en raison d’un problème avec cette page (le problème a été signalé). Veuillez recharger la page.',
     'error.manifest.notFound': 'La carte est introuvable. Réessayez plus tard.',
     'error.manifest.network': 'Impossible de charger la carte. Vérifiez votre connexion et réessayez.',
-    'error.manifest.timeout': 'Le chargement de la carte prend trop de temps.',
+    'error.manifest.timeout':
+        'Le chargement de la carte prend trop de temps, probablement en raison d’une connexion lente. Veuillez réessayer.',
     'error.manifest.invalid': 'Les données de la carte ne sont pas valides (problèmes trouvés : {count}).',
     'error.manifest.version': 'Cette version des données de la carte n’est pas prise en charge.',
     'error.manifest.engineTooOld': 'Cette carte nécessite une version plus récente de cette page ({version}). Rechargez la page plus tard.',
@@ -43,13 +45,16 @@ export const fr: Messages = {
     'error.config.invalid': 'config.js n’est pas valide : {detail}',
     'error.config.cityMismatch': 'Le cityId de config.js ({cityId}) ne correspond pas à la carte ({manifestCityId}).',
     'error.config.container': 'L’élément de carte « {selector} » n’existe pas sur la page.',
-    'error.webgl': 'Votre navigateur ne peut pas afficher la carte interactive. La liste des photos reste disponible.',
+    'error.webgl':
+        'Ce navigateur ne peut pas afficher la carte. Activez l’accélération matérielle ou essayez un autre navigateur ; la liste des photos reste accessible.',
     'error.webglConsole':
         'Le navigateur de cette console n’a pas les graphismes 3D dont la carte a besoin. Consultez les photos ci-dessous ou ouvrez la carte sur un téléphone.',
     'error.extraLoad': 'Impossible de charger cette partie de la carte. Vérifiez votre connexion et réessayez.',
     'error.mapLoad': 'Impossible de charger le fond de carte. Vérifiez votre connexion et réessayez.',
-    'error.tiles': 'Certaines parties de la carte ne se chargent pas.',
-    'error.layer': 'Le calque « {name} » n’a pas pu être chargé.',
+    'error.tiles':
+        'Certaines parties de la carte ne se chargent pas, probablement en raison d’une connexion lente. Déplacez légèrement la carte pour réessayer.',
+    'error.layer':
+        'Le calque « {name} » n’a pas pu être chargé. Vérifiez votre connexion, puis désactivez-le et réactivez-le dans l’onglet Calques.',
     'error.photoImage': 'Impossible de charger l’image.',
     'error.unknownPhoto': 'La photo du lien n’existe pas.',
     'error.unknownStory': 'Le récit du lien n’existe pas.',
