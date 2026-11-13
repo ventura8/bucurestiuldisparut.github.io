@@ -20,6 +20,7 @@ import { html, type TemplateResult } from 'lit';
 import { EMPTY } from '../../shell/empty.js';
 import { contentText, noticeOf } from '../../shell/text.js';
 import { calibrationCard, calibrationWaits } from '../calibration-card.js';
+import { paidFrameList } from '../orders/order-list.js';
 import type { ImageryContext } from '../context.js';
 import type { ImageryViewState, JobViewPort, SceneItemPort, VersionViewPort } from '../imagery-port.js';
 import { dayText, numberText, versionStateText } from '../imagery-text.js';
@@ -69,10 +70,22 @@ function joinButton(
         ${refusal(context, entityIds)}`;
 }
 
+/** What must be ordered: how many, then every paid frame with its own Buy this scan. */
+function paidFrames(context: ImageryContext, row: DatePlanRow): TemplateResult {
+    const { locale } = context;
+    const count = row.paidFrames.length;
+    const key = count === 1 ? 'adminContent.imagery.join.paidFrameOne' : 'adminContent.imagery.join.paidFrame';
+    return when(
+        count > 0,
+        () =>
+            html`<span class="note" data-state="join-paid">${contentText(locale, key, { count: String(count) })}</span>
+                ${paidFrameList(context, row.paidFrames)}`,
+    );
+}
+
 /** What the row or the offer adds to its figures: what must be downloaded, that snow may need points, what must be ordered. */
 function rowNotes(context: ImageryContext, row: DatePlanRow): TemplateResult {
     const { locale } = context;
-    const [paid] = row.paidFrames;
     return html`${when(
         row.framesToDownload > 0,
         () =>
@@ -81,13 +94,7 @@ function rowNotes(context: ImageryContext, row: DatePlanRow): TemplateResult {
             >`,
     )}
     ${when(row.winter, () => html`<span class="note" data-state="join-winter">${contentText(locale, 'adminContent.imagery.join.winter')}</span>`)}
-    ${withValue(
-        paid,
-        (first) =>
-            html`<a class="external" href=${context.href(['scene', first])} data-state="join-paid"
-                >${contentText(locale, row.paidFrames.length === 1 ? 'adminContent.imagery.join.paidFrameOne' : 'adminContent.imagery.join.paidFrame', { count: String(row.paidFrames.length) })}</a
-            >`,
-    )}`;
+    ${paidFrames(context, row)}`;
 }
 
 /**

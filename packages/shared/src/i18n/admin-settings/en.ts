@@ -122,7 +122,7 @@ export const en: Readonly<Record<AdminSettingsKey, string>> = {
     'adminContent.settings.categoryLabelRo': 'Name (Romanian)',
     'adminContent.settings.categoryLabelEn': 'Name (English, optional)',
     'adminContent.settings.icon': 'Icon',
-    'adminContent.settings.iconUnbundled': 'The icon “{icon}” is not bundled: the map draws it as a pin. Choose one from the list.',
+    'adminContent.settings.iconUnbundled': 'This icon is not available: the map shows a pin. Choose one from the list.',
     'adminContent.settings.color': 'Colour',
     'adminContent.settings.colorLowContrast': 'The white icon does not read on this colour.',
     'adminContent.settings.useColor': 'Use {hex}',

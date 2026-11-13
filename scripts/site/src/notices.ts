@@ -57,6 +57,11 @@ export interface NoticesOptions {
     readonly product: string;
     /** Files copied into the output from npm packages (the self-hosted fonts), each listed under its package. */
     readonly assets?: readonly NoticeAsset[];
+    /**
+     * Modules the build's files carry besides its own chunks: the engine's extras, built apart and emitted as assets
+     * (`engine-extras.ts`), read when each output is generated.
+     */
+    readonly moreModules?: () => Iterable<string>;
     /** Where the assets' packages are looked up from (Node's way: `node_modules` here and upwards); default the working directory. */
     readonly from?: string;
 }
@@ -169,9 +174,9 @@ function renderedFiles(output: BundleChunk | BundleAsset): string[] {
         .map(([id]) => withoutQuery(id));
 }
 
-/** The modules of `bundle` that render code, by their package folder (added to `found`). */
-function addBundledModules(found: Map<string, Set<string>>, bundle: Bundle): void {
-    for (const file of Object.values(bundle).flatMap(renderedFiles)) {
+/** Module files that render code, by their package folder (added to `found`). */
+function addBundledModules(found: Map<string, Set<string>>, files: Iterable<string>): void {
+    for (const file of files) {
         const root = packageRoot(file);
         if (root !== null) {
             found.set(root, (found.get(root) ?? new Set<string>()).add(file));
@@ -341,7 +346,8 @@ export function thirdPartyNoticesPlugin(options: NoticesOptions): NoticesPlugin 
     return {
         name: 'hcm-third-party-notices',
         generateBundle(_output, bundle) {
-            addBundledModules(bundled, bundle);
+            addBundledModules(bundled, Object.values(bundle).flatMap(renderedFiles));
+            addBundledModules(bundled, options.moreModules?.() ?? []);
             this.emitFile({ type: 'asset', fileName: NOTICES_FILE, source: noticesText(options, bundled) });
         },
     };

@@ -30,6 +30,7 @@ import type { ColorSchemeSource, ViewerDeps, ViewerLocation } from './core/deps.
 import type { PreferenceStorage } from './core/preferences.js';
 import { colorSchemeOf, locationOf, storageOf } from './core/page-sources.js';
 import { createViewerStore, type ViewerState, type ViewerStore } from './core/store.js';
+import { extraImports } from './extras/imports.js';
 import { mapboxOf } from './mapbox-global.js';
 import { createTelemetry } from './telemetry/telemetry.js';
 import type { TelemetryPort } from './telemetry/telemetry-port.js';
@@ -485,10 +486,9 @@ export function browserEnvironment(
         installFonts: (engineBase) => {
             installFonts(win.document, `${engineBase ?? release.engineBase}fonts/`, win.FontFace);
         },
-        loadCompare: () => import('./compare/compare.js').then((chunk) => chunk.compareModule),
+        loadCompare: () => extraImports.compare().then((chunk) => chunk.compareModule),
         colorScheme: colorSchemeOf(win),
-        watchGamepads: (surface, map) =>
-            watchGamepads(win, () => import('@hcm/ui/viewer/gamepad'), { surface, map, log: log.child('gamepad') }),
+        watchGamepads: (surface, map) => watchGamepads(win, extraImports.gamepad, { surface, map, log: log.child('gamepad') }),
         loadExtras: (engineBase) =>
             sideLoadExtras(
                 win.document,

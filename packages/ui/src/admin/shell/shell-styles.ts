@@ -120,8 +120,15 @@ export const shellStyles = [
             min-block-size: 0;
         }
 
-        /* The one scrolling region: the page, with the start-up banner above it. */
+        /*
+         * The one scrolling region: the page, with the start-up banner above it. Positioned, so it is the containing
+         * block of a page's absolute elements and clips them: a visually hidden caption or label far down a long page
+         * took the frame as its containing block, escaped the scroller and made the window scroll into blank space
+         * below the shell (the owner's Historical imagery, 2026-11-09: the tour's no-blank-scroll check). The frame
+         * itself does not clip: the bottom bar's focus rings reach its edge.
+         */
         .scroller {
+            position: relative;
             flex: 1 1 auto;
             min-block-size: 0;
             overflow-y: auto;

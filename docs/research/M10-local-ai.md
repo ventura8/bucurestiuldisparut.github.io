@@ -56,7 +56,7 @@ docker run --rm --name hcm-matcher <gpu flags> --network none --cap-drop ALL \
   -v hcm-ai-files:/ai/files:ro -v hcm-ai-box:/ai/box --entrypoint python <image> /ai/files/code/serve.py
 ```
 
-Log lines: `local AI: graphics card through --gpus all` or `local AI: NO GRAPHICS CARD (tried --gpus all, CDI); falling back to the processor`. With `HCM_AI_DEVICE=gpu`, a process that finds no GPU exits 77 and the loop probes again: **a silent CPU run is impossible**. The worker's `docker run` gains both volumes and `-e HCM_STARTER=<version>` (`2` then; the content's version since 2026-11-13: `docs/research/M7-local-worker.md`, *The starter updates itself*) (an old image refuses unknown arguments, not variables). Without it the worker reports `old-starter` and the panel asks for the new starter once. `uninstall` removes both volumes and the image. macOS: Docker gives no GPU; arm64 is unsupported.
+Log lines: `local AI: graphics card found` or `local AI: no usable graphics card; using the processor (slower)`. With `HCM_AI_DEVICE=gpu`, a process that finds no GPU exits 77 and the loop probes again: **a silent CPU run is impossible**. The worker's `docker run` gains both volumes and `-e HCM_STARTER=<version>` (`2` then; the content's version since 2026-11-13: `docs/research/M7-local-worker.md`, *The starter updates itself*) (an old image refuses unknown arguments, not variables). Without it the worker reports `old-starter` and the panel asks for the new starter once. `uninstall` removes both volumes and the image. macOS: Docker gives no GPU; arm64 is unsupported.
 
 ## Cloud Run
 

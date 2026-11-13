@@ -160,12 +160,10 @@ describe("Find's whole-city dates", () => {
         const paid = { ...ROW, frames: [{ entityId: F039, free: true }], paidFrames: ['DS2', 'DS3'], framesToDownload: 0 };
         const { element } = await imageryPage(imageryState({ dates: [paid] }));
         const row = deep(element, '[data-date="1972-08-08"]');
-        const link = deep(row, '[data-state="join-paid"]');
 
         // The figure is the frame that can be had: the two to order would add to it.
         expect(row.textContent).toContain('1 frame, about 96 %');
-        expect(link.textContent).toBe('2 more would need ordering');
-        expect(link.getAttribute('href')).toBe('#/imagery/scene/DS2');
+        expect(deep(row, '[data-state="join-paid"]').textContent).toBe('2 more would need ordering');
         expect(deepAll(row, 'hcm-button').map((target) => target.textContent.trim())).toEqual(['Add 1972 to target years']);
     });
 

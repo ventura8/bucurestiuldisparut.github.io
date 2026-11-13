@@ -118,7 +118,7 @@ export const datePlanRowSchema = z.strictObject({
         entityId: idSchema, displayId: plainText(64).optional(), free: z.boolean(),
         versionId: idSchema.optional(), state: z.enum(LAYER_VERSION_STATES).optional(),
     })).max(JOIN_MAX_PARTS),
-    paidFrames: z.array(idSchema).max(8), // never auto-chosen; the row links the order card
+    paidFrames: z.array(idSchema).max(8), // never auto-chosen; the row gives each its own Buy this scan
     coveragePct: z.number().min(0).max(100), // estimate, worded "about"
     framesToDownload: z.number().int().nonnegative(),
     winter: z.boolean(), // Dec-Feb: sorted lower, "may need points"
@@ -296,7 +296,7 @@ At F039's 51.6 m the join waits for Approve, which is correct.
 
 No new tab or route. A lazy `join-card` chunk follows `orders/lazy-card.ts`.
 
-- **Find, above `sceneRows`:** "Whole-city dates" from the plan doc. A row is date, frames, about N %, and **Join frames**. A row with paid frames links the order card. **Add {year}** appears when the year is not targeted.
+- **Find, above `sceneRows`:** "Whole-city dates" from the plan doc. A row is date, frames, about N %, and **Join frames**. A row with paid frames says how many, then lists every one with its own **Buy this scan: {frame}**, which opens that frame's page and its order card (M4); a paid frame with an open order reads **Your order: {frame}** with its order's chip instead, or **Order it again: {frame}** once that order expired (`paidFrameList`, `packages/ui/src/admin/imagery/orders/order-list.ts`) (2026-11-12: only the first was linked; S-A66-HAPPY-BUY-EVERY-PAID, S-A66-BAD-PAID-ORDERED). **Add {year}** appears when the year is not targeted.
 - **Version page, `outcome()`:** a USGS version awaiting approval with coverage under 90 % shows the offer. This is live F039's path.
 - **Scene page:** the same offer beside Import.
 - **After the call:** `context.go(['version', id])`.
@@ -315,6 +315,8 @@ Input budget: `joinFrames` = 1 in `budgets.ts`, then 1 Approve. Live F039 is Wor
 | `join.offer` | This frame covers about {percent} % of the city. With {frames}: about {total} %. | Acest cadru acoperă circa {percent} % din oraș. Cu {frames}: circa {total} %. |
 | `join.toDownload` | {count} to download | {count} de descărcat |
 | `join.paidFrame` | {count} more would need ordering | Încă {count} ar trebui comandate |
+| `join.buyFrame` | Buy this scan: {frame} | Cumpără această scanare: {frame} |
+| `join.orderedFrame` | Your order: {frame} | Comanda ta: {frame} |
 | `join.winter` | Winter: may need points | Iarnă: poate necesita puncte |
 | `join.addYear` | Add {year} to target years | Adaugă {year} la anii țintă |
 | `join.waiting` | Waiting for its frames | Așteaptă cadrele |
@@ -526,7 +528,7 @@ Where the code differs from §2, §4 and §6, the code holds:
 | `join.waiting`, `origin.join` | `join.waiting` is the note above a join's frames, in place of the version page's own wait line, so it says it once; the Work row keeps `wait.parts`. `origin.join` heads the frames and names the link from a part or a date row to its live join | Each string has one place to appear. |
 | Offer's figure for the frame | The version page reads the frame's scene through the routed read (`ImageryFeeds.showScene`), for its `coverage`; a repeated `showScene` of one path no longer restarts the listener | A version does not store its scene's coverage. |
 | Saving Settings' imagery section | Calls `imagery.search` after every successful Save of that section; a failure is logged, the Save stands | §5 says so. The Imagery page's own Search reports USGS's errors. |
-| Selectors for the e2e and tour states | `[data-join-dates]`, `[data-date]`, `[data-join-offer]`, `[data-join-parts]`, `[data-part]`, `[data-join-report]`, `[data-seam="applied\|not-applied\|unmeasured"]`, `[data-omitted]`, and `data-state` `join-waiting`, `join-holds`, `join-refused`, `join-paid`, `join-winter` | For Workstream E. |
+| Selectors for the e2e and tour states | `[data-join-dates]`, `[data-date]`, `[data-join-offer]`, `[data-join-parts]`, `[data-part]`, `[data-join-report]`, `[data-seam="applied\|not-applied\|unmeasured"]`, `[data-omitted]`, and `data-state` `join-waiting`, `join-holds`, `join-refused`, `join-paid` (the count), `join-buy` (each paid frame's link, in `[data-paid]` of `[data-join-paid-frames]`), `join-winter` | For Workstream E. |
 
 ## 13. The pipeline job as built (Workstream B)
 

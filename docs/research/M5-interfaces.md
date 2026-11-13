@@ -373,7 +373,7 @@ image (no download: every package is already in the lockfile); `scripts/ci/check
 | Use | Address | Integrity |
 | --- | --- | --- |
 | A pinned page (the kit, every city that copies it) | `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.0.0/cdn/engine/engine.iife.js` and `engine.css` | yes: `release.json`'s values |
-| The fonts and chunks | the same folder (`engineBase` is the script's folder) | not needed: the IIFE carries the chunks inline; fonts are not scripts |
+| The fonts, chunks and extras | the same folder (`engineBase` is the script's folder) | not needed on the page: the IIFE carried the chunks inline until 2026-11-12, and since loads them as its extras with the integrity the build wrote into it (`DECISIONS-for-review.md` §186); fonts are not scripts |
 | A page that follows the 1.x line | `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@1/cdn/engine/engine.iife.js` (`engineMajorBase`) | never (the file changes under it) |
 
 Helpers (done): `engineCdnBase`, `engineCdnUrl`, `engineMajorBase`, `releaseTag`, `versionOfTag`, `releaseIntegrity`.
@@ -864,6 +864,16 @@ not only the missing ones (`deriveLegacyCorrections`, `corrections.test.ts`).
   migrated authors line, while untouched, lists them all; an edited one stays and a line of the missing authors is added
   last. Applied once, a photo holds the old site's values and the credits name every author, so a rerun finds nothing to
   do; the step is done only when nothing is left.
+- **Re-checked live (2026-11-12)**, after the owner's *only one photo near Gara Obor has a direction; import them all*:
+  the old site's live `https://bucurestiuldisparut.github.io/geojson/photos.json` (Last-Modified 2023-07-29; 56 points,
+  47 cones; its last data commit is the owner's *added Obor photos*, 2022-12-27) gives a cone to 47 of our 57 photos. Live `cities/bucharest/photos` has 57 photos, 47 with a bearing, each equal to the seed's or the
+  correction's (0 differences); the public manifest has the same 47. `legacy-corrections.mjs` on that file rewrites
+  `corrections.json` byte for byte: corrected 1 (already applied live), had 46, no cone 10. The photos near Gara Obor
+  without a direction (`gara-obor`, `ut3`, the three Realitatea Ilustrată pages, the three Strand Obor pages of July 1936,
+  `caminului-sistematizare-1960`) are 9 of those 10: the old site shows them as plain pins too; its two cones there are
+  *Bulevardul Ferdinand* and *Parc Ferdinand*, both live. And the viewer shows only the photos near the timeline's year,
+  so at the 1930s only Parc Ferdinand's cone is drawn there. Nothing is left to import: those 10 need the owner's aim in
+  the photo editor.
 
 ## Change requests
 

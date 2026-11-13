@@ -306,8 +306,20 @@ describe('swipe compare session: failures', () => {
         store.openCompare(null);
         await settle();
 
-        expect(store.getState()).toMatchObject({ compare: null, toast: { key: 'error.mapLoad' } });
+        expect(store.getState()).toMatchObject({ compare: null, toast: { key: 'error.extraLoad' } });
         expect(compare.uis).toHaveLength(0);
+        expect(log.messages()).toContain('compare could not start');
+    });
+
+    it('badPath_aChunkThatCannotStartClosesCompareWithTheMapMessage', async () => {
+        const compare = new FakeCompare();
+        compare.startError = new Error('start');
+        const { store, log } = await comparing({ compare });
+
+        store.openCompare(null);
+        await settle();
+
+        expect(store.getState()).toMatchObject({ compare: null, toast: { key: 'error.mapLoad' } });
         expect(log.messages()).toContain('compare could not start');
     });
 

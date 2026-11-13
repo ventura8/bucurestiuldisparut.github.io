@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import { horizontalOverflow, isOnTop, overlaps, visibleBoxes } from '../../support/layout.js';
 import { mapIdle } from '../../support/map.js';
 import { sitePath } from '../../support/site.js';
+import { blankScrollOf } from '../../support/state-check.js';
 import { expect, test } from '../../support/test.js';
 import { chooseMenuItem, menuButton, openLayers, t, viewer, visibilitySwitch, waitForEngineEvent } from '../../support/viewer.js';
 
@@ -289,5 +290,35 @@ test(
             await page.keyboard.press('Escape');
             await expect(page.getByRole('dialog', { name: t(lang, 'layers.title'), exact: true }), where).toHaveCount(0);
         }
+    },
+);
+
+test(
+    'The city page is an app shell: the window never scrolls into blank space below the map',
+    { tag: '@S-V15-HAPPY-NO-BLANK-SCROLL' },
+    async ({ page, lang }) => {
+        await boot(page, COMPACT, lang);
+        await page.mouse.wheel(0, 2000);
+
+        expect(await page.evaluate(() => window.scrollY)).toBe(0);
+        expect(await blankScrollOf(page)).toEqual([]);
+    },
+);
+
+test(
+    'A blank area left under the map is found by the no-blank-scroll checker',
+    { tag: '@S-V15-BAD-NO-BLANK-SCROLL' },
+    async ({ page, lang }) => {
+        await boot(page, COMPACT, lang);
+        // A fixture's fault: 400 px of nothing after the body, which clips its own overflow, so the root's scroller grows.
+        await page.evaluate(() => {
+            const blank = document.createElement('div');
+            blank.style.blockSize = '400px';
+            document.documentElement.append(blank);
+        });
+
+        const messages = (await blankScrollOf(page)).map((violation) => violation.message);
+        expect(messages).toContain("the app shell's page is 1200 px tall in a 800 px window");
+        expect(messages).toContain('scrolling the window moves the app shell 400 px');
     },
 );

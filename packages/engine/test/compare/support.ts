@@ -56,6 +56,8 @@ export class FakeCompare {
     mapOptions: FakeMapOptions = {};
     /** When set, `load` rejects with it (the chunk could not be fetched). */
     loadError: Error | null = null;
+    /** When set, the chunk's `startCompare` throws it (the chunk arrived but could not start). */
+    startError: Error | null = null;
     /** The next surfaces' `gate` and `container` (a surface without the second map's container: null). */
     gate: Promise<void> = Promise.resolve();
     /** The next second maps' `mount` waits for this (their style on its way). */
@@ -65,6 +67,9 @@ export class FakeCompare {
 
     readonly module: CompareModule = {
         startCompare: (deps) => {
+            if (this.startError !== null) {
+                throw this.startError;
+            }
             this.started.push(deps);
             const session = startCompare(deps);
             this.sessions.push(session);

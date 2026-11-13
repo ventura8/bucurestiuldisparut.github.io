@@ -151,8 +151,7 @@ function configSource(bucket: string): string {
     const { before, after } = manifestAddressParts(bucket);
     const args = [before, after, CITY_PAGE_FOLDER].map((value) => JSON.stringify(value)).join(', ');
     return [
-        '// Historic City Map Maker: the generic city page of the Hosting site (docs/research/M6-interfaces.md §2.4),',
-        '// from scripts/site/src/hosting/city-page.ts.',
+        "// Historic City Map Maker: the city page's configuration.",
         "'use strict';",
         `(${configureCityPage.toString()})(window, ${args});`,
         tabIconSource(bucket),

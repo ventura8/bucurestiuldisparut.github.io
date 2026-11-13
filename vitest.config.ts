@@ -166,6 +166,7 @@ const SUITES: readonly Suite[] = [
             'e2e/support/layout-probe.ts',
             'e2e/support/layout-rules.ts',
             'e2e/support/scroll-probe.ts',
+            'e2e/support/blank-scroll-probe.ts',
             'e2e/support/a11y-probe.ts',
             'e2e/support/a11y-rules.ts',
             'e2e/support/live-regions.ts',

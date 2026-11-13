@@ -150,7 +150,7 @@ export const CUSTOM_ROLES: readonly CustomRoleEntry[] = [
     {
         id: VERTEX_DRAFTS_ROLE_ID,
         spec: {
-            title: 'Historic City Map: Vertex AI drafts',
+            title: 'Historic City Map Maker: Vertex AI drafts',
             description: 'generateContent and countTokens of the pinned Gemini model, for the RO-EN translation drafts',
             includedPermissions: VERTEX_DRAFTS_PERMISSIONS,
         },
@@ -158,7 +158,7 @@ export const CUSTOM_ROLES: readonly CustomRoleEntry[] = [
     {
         id: INSTALLER_ROLE_ID,
         spec: {
-            title: 'Historic City Map: in-app installer',
+            title: 'Historic City Map Maker: in-app installer',
             description:
                 'Cloud Run invokers and jobs, the project policy read, the pipeline repository: what hcm-installer needs beyond its roles',
             includedPermissions: INSTALLER_PERMISSIONS,

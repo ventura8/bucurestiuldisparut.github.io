@@ -1,18 +1,24 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 
 import { cataloguePackPlugin } from '../../scripts/site/src/catalogue-pack.js';
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
+import { engineExtrasPlugin, hostKeyOf } from '../../scripts/site/src/engine-extras.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
 import { sidePartPlugin } from '../../scripts/site/src/side-part.js';
 import { zodStandInsPlugin } from '../../scripts/site/src/zod-stand-ins.js';
 import { FONT_FILES } from '../ui/src/fonts/font-files.js';
 
 /**
- * Library build of the public viewer engine:
- * - dist/engine.iife.js exposes window.HistoricCityMap for <script> embedding (city starter kit, jsDelivr);
- * - dist/engine.mjs is the ES module build;
+ * Library build of the public viewer engine, two Vite runs into one folder after the side-loaded part's own run
+ * (`npm run build`: `vite build -c vite.part.config.ts`, `vite build`, then `vite build --mode iife`, which keeps the
+ * second run's files):
+ * - dist/engine.mjs is the ES module build, with its lazy chunks (`compare-<hash>.js`, `gamepad-<hash>.js`,
+ *   `firebase-sdk-<hash>.js`, `field-sdk-<hash>.js`);
+ * - dist/engine.iife.js exposes window.HistoricCityMap for <script> embedding (city starter kit, jsDelivr), with its
+ *   extras beside it (`extra-<name>-<hash>.js`, below);
  * - dist/engine.css holds every stylesheet the engine imports.
  * Mapbox GL is never bundled: `mapbox-gl` resolves to the global `mapboxgl` that the page loads
  * from https://api.mapbox.com/mapbox-gl-js/v3.34.1/ (Mapbox terms, CDN caching, bundle budget).
@@ -32,48 +38,104 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  *   `vite.part.config.ts` into .tsbuild/part/; `sidePartPlugin` (scripts/site/src/side-part.ts) writes its Subresource
  *   Integrity into src/extras-part.ts, which both builds load it with, and serves it here (the owner's "Load extras on
  *   demand", 2026-11-09: about 1.5 KB gzip out of the IIFE).
+ * - The IIFE's extras (`engineExtrasPlugin`, scripts/site/src/engine-extras.ts; DECISIONS-for-review.md §186): an IIFE
+ *   cannot split, so it inlined the ES build's lazy chunks (about 24 KB gzip of it). Since §186 they are classic scripts
+ *   beside it, `extra-<name>-<hash>.js`, that it loads with their integrity the first time they are wanted
+ *   (packages/engine/src/extras/), taking Lit and `@hcm/shared` from the engine's host (`src/extras/host-*.ts`), never
+ *   their own copy. A separate run, because one bundle cannot replace `src/extras/imports.ts` for one format only.
  */
-export default defineConfig({
-    plugins: [
-        zodStandInsPlugin({
-            jsonSchema: fileURLToPath(new URL('../admin/src/vendor/zod-json-schema-unsupported.ts', import.meta.url)),
-            messages: fileURLToPath(new URL('../admin/src/vendor/zod-locale-none.ts', import.meta.url)),
-        }),
-        cssLiteralsPlugin(),
-        cataloguePackPlugin(/[\\/]packages[\\/]shared[\\/]src[\\/]i18n[\\/]/),
-        sidePartPlugin({
-            built: fileURLToPath(new URL('.tsbuild/part/engine.extras.js', import.meta.url)),
-            constantModule: fileURLToPath(new URL('src/extras-part.ts', import.meta.url)),
-            fileName: 'engine.extras.js',
-        }),
-        thirdPartyNoticesPlugin({
-            product: 'the Historic City Map Maker engine (engine.mjs, engine.iife.js, their chunks and fonts)',
-            assets: FONT_FILES.map((font) => ({ package: font.source.package, file: `fonts/${font.file}` })),
-        }),
+const here = (path: string): string => fileURLToPath(new URL(path, import.meta.url));
+
+const zodStandIns = (): ReturnType<typeof zodStandInsPlugin> =>
+    zodStandInsPlugin({
+        jsonSchema: here('../admin/src/vendor/zod-json-schema-unsupported.ts'),
+        messages: here('../admin/src/vendor/zod-locale-none.ts'),
+    });
+
+/** ENGINE_VERSION of src/index.ts: the extras register on this release's entry of the host (src/extras/host.ts). */
+function engineVersion(): string {
+    const version = /ENGINE_VERSION = '([^']+)'/.exec(readFileSync(here('src/index.ts'), 'utf8'))?.[1];
+    if (version === undefined) {
+        throw new Error('packages/engine/src/index.ts declares no ENGINE_VERSION');
+    }
+    return version;
+}
+
+const HOST_KEY = hostKeyOf(engineVersion());
+const HOST = `__hcmEngineHost.${HOST_KEY}`;
+
+const extras = engineExtrasPlugin({
+    root: here('.'),
+    importsModule: here('src/extras/imports.ts'),
+    runtimeModule: here('src/extras/runtime.ts'),
+    hostKey: HOST_KEY,
+    registry: `${HOST}.extras`,
+    ready: `${HOST}.ready`,
+    // The keys of src/extras/imports.ts.
+    extras: [
+        { name: 'compare', global: 'compare', entry: here('src/compare/compare.ts') },
+        { name: 'gamepad', global: 'gamepad', entry: here('../ui/src/viewer/gamepad/gamepad.ts') },
+        { name: 'firebase-sdk', global: 'firebaseSdk', entry: here('src/telemetry/firebase-sdk.ts') },
+        { name: 'field-sdk', global: 'fieldSdk', entry: here('src/telemetry/field-sdk.ts') },
     ],
-    build: {
-        outDir: 'dist',
-        emptyOutDir: true,
-        sourcemap: true,
-        lib: {
-            entry: 'src/index.ts',
-            name: 'HistoricCityMap',
-            formats: ['iife', 'es'],
-            fileName: (format) => (format === 'es' ? 'engine.mjs' : `engine.${format}.js`),
-            cssFileName: 'engine',
-        },
-        rolldownOptions: {
-            external: ['mapbox-gl'],
-            // engine.mjs stays the whole entry: what the lazy chunks (swipe compare's `compare-<hash>.js`, the consented
-            // `firebase-sdk-<hash>.js`) share with it, they import from engine.mjs, which may export those bindings too.
-            // Vite's library default ('strict') moved everything shared into a third chunk that engine.mjs imported at
-            // once (`map-sync-<hash>.js`, 44.6 KB: M4 compare, docs/research/M4-interfaces.md §3.2). The IIFE has one chunk.
-            preserveEntrySignatures: 'allow-extension',
-            output: {
-                globals: { 'mapbox-gl': 'mapboxgl' },
-                // engine.mjs is a page script that nothing bundles again: minify it like the IIFE.
-                minify: true,
+    // src/extras/host.ts installs these globals.
+    host: [
+        { specifier: 'lit', global: `${HOST}.lit`, module: here('src/extras/host-lit.ts') },
+        { specifier: '@hcm/shared', global: `${HOST}.shared`, module: here('src/extras/host-shared.ts') },
+        { specifier: '@hcm/shared/credits', global: `${HOST}.shared`, module: here('src/extras/host-shared.ts') },
+    ],
+    forbidden: /[\\/]node_modules[\\/](?:lit|lit-html|lit-element|@lit|zod)[\\/]|[\\/]packages[\\/]shared[\\/]src[\\/]i18n[\\/]/,
+    plugins: () => [zodStandIns(), cssLiteralsPlugin()],
+});
+
+const IIFE_MODE = 'iife';
+
+export default defineConfig(({ mode }) => {
+    const iife = mode === IIFE_MODE;
+    return {
+        plugins: [
+            ...(iife ? [extras] : []),
+            zodStandIns(),
+            cssLiteralsPlugin(),
+            cataloguePackPlugin(/[\\/]packages[\\/]shared[\\/]src[\\/]i18n[\\/]/),
+            // Both runs load the side-loaded part with its integrity; only the ES run emits it.
+            sidePartPlugin({
+                built: here('.tsbuild/part/engine.extras.js'),
+                constantModule: here('src/extras-part.ts'),
+                fileName: 'engine.extras.js',
+            }),
+            thirdPartyNoticesPlugin({
+                product: 'the Historic City Map Maker engine (engine.mjs, engine.iife.js, their chunks and fonts)',
+                assets: FONT_FILES.map((font) => ({ package: font.source.package, file: `fonts/${font.file}` })),
+                ...(iife ? { moreModules: () => extras.modules() } : {}),
+            }),
+        ],
+        build: {
+            outDir: 'dist',
+            // The IIFE run adds its files to the ES run's.
+            emptyOutDir: !iife,
+            sourcemap: true,
+            lib: {
+                entry: 'src/index.ts',
+                name: 'HistoricCityMap',
+                formats: iife ? ['iife'] : ['es'],
+                fileName: (format) => (format === 'es' ? 'engine.mjs' : `engine.${format}.js`),
+                cssFileName: 'engine',
+            },
+            rolldownOptions: {
+                external: ['mapbox-gl'],
+                // engine.mjs stays the whole entry: what the lazy chunks (swipe compare's `compare-<hash>.js`, the consented
+                // `firebase-sdk-<hash>.js`) share with it, they import from engine.mjs, which may export those bindings too.
+                // Vite's library default ('strict') moved everything shared into a third chunk that engine.mjs imported at
+                // once (`map-sync-<hash>.js`, 44.6 KB: M4 compare, docs/research/M4-interfaces.md §3.2). The IIFE has one chunk
+                // and its extras.
+                preserveEntrySignatures: 'allow-extension',
+                output: {
+                    globals: { 'mapbox-gl': 'mapboxgl' },
+                    // engine.mjs is a page script that nothing bundles again: minify it like the IIFE.
+                    minify: true,
+                },
             },
         },
-    },
+    };
 });

@@ -163,6 +163,8 @@ export class HcmAdminShell extends LitElement {
                 welcome === null ? `${shellText(state.locale, 'adminShell.appName')}${cityTitle(state)}` : `${welcome.app}${welcome.city}`;
         }
         this.#keepAccountFocus();
+        // The framed screens are an app shell: the page under them never scrolls (packages/admin/src/admin.css).
+        this.toggleAttribute('data-frame', this.renderRoot.querySelector('.frame') !== null);
     }
 
     #accountMenu(): HcmAccountMenu | null {

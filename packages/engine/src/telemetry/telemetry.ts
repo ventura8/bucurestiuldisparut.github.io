@@ -9,6 +9,7 @@ import type { FieldChunk, Logger } from '@hcm/shared';
 import type { Unsubscribe } from '@hcm/ui/map';
 
 import type { PreferenceStorage } from '../core/preferences.js';
+import { extraImports } from '../extras/imports.js';
 import { AnalyticsLoader, type FirebaseSdk } from './analytics.js';
 import { ConsentStore, type ConsentValue } from './consent.js';
 import { expireAnalyticsCookies, type CookieJar } from './cookies.js';
@@ -43,13 +44,13 @@ export interface TelemetryDeps {
 
 /** The lazy chunk with firebase/app and firebase/analytics (docs/research/M1-interfaces.md CR-10). */
 export async function loadFirebaseSdk(): Promise<FirebaseSdk> {
-    const chunk = await import('./firebase-sdk.js');
+    const chunk = await extraImports.firebaseSdk();
     return chunk.firebaseSdk;
 }
 
 /** The lazy chunk with web-vitals and the event guard (§76), fetched with the Firebase SDK after consent. */
 export async function loadFieldSdk(): Promise<FieldChunk> {
-    const chunk = await import('./field-sdk.js');
+    const chunk = await extraImports.fieldSdk();
     return chunk.fieldSdk;
 }
 

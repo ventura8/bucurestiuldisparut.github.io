@@ -34,12 +34,12 @@
         <link
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.0.0-beta.1/cdn/engine/engine.css"
-            integrity="sha384-oBMM9ZQzsHSB+8G8GNSfiEqnyqFaVpwkEi8zWNkKrp9EuzK5Nvq9YOCrqNVVGzN1"
+            integrity="sha384-CRpPdjzXaxayEUJd7QaGGTEpbrbi1+l7GzlfuObh0Ff16aumTb6HWXwBM5Z/LXEO"
             crossorigin="anonymous"
         />
         <script
             src="https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.0.0-beta.1/cdn/engine/engine.iife.js"
-            integrity="sha384-VOl3X0hVE7g7ItkuzhC+YyJYCqH5FZ/ngUjOrxVYBEi/1VSQNRA9z2cOulKZCVw8"
+            integrity="sha384-0H5pjkmJYhiiS1uX7fwCyFL/I2LzUZsRiIwnJP/2flv10g7gv1rHTHKuJ14WvFlw"
             crossorigin="anonymous"
             defer
         ></script>
@@ -48,20 +48,15 @@
     <body class="hcm-fullpage">
         <main>
             <h1 class="hcm-visually-hidden">Orașul meu</h1>
+            <!-- If the late note shows, the engine was refused: check its version and integrity above (README.md). -->
             <hcm-map-viewer manifest-url="city.json" lang="ro">
                 <p class="hcm-note" lang="ro">
                     Harta se încarcă.
-                    <span class="hcm-note-late"
-                        >Dacă acest mesaj rămâne pe ecran, motorul hărții nu s-a putut încărca: verifică versiunea și integritatea din
-                        index.html (pașii din README.md).</span
-                    >
+                    <span class="hcm-note-late">Dacă mesajul rămâne, harta nu s-a putut încărca. Reîncarcă pagina.</span>
                 </p>
                 <p class="hcm-note" lang="en">
                     The map is loading.
-                    <span class="hcm-note-late"
-                        >If this message stays on screen, the map engine could not load: check the version and the integrity in index.html
-                        (the steps in README.md).</span
-                    >
+                    <span class="hcm-note-late">If this stays, the map could not load. Reload the page.</span>
                 </p>
             </hcm-map-viewer>
             <noscript>

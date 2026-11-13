@@ -20,8 +20,8 @@ import { callController, engineEvents, t, viewer, waitForEngineEvent } from '../
 /**
  * The starter kit's template (behaviour V27; docs/research/M5-interfaces.md §3): its three files as committed, the
  * engine from the pinned jsDelivr folder with Subresource Integrity, Mapbox GL JS from api.mapbox.com. The bilingual note
- * inside `<hcm-map-viewer>` shows until the engine defines the element; when the engine is refused it stays, naming the
- * README's check.
+ * inside `<hcm-map-viewer>` shows until the engine defines the element; when the engine is refused it stays, asking the
+ * visitor to reload (the README's check is an HTML comment for the site's builder, never visitor text).
  */
 
 const NOTES = { ro: 'Harta se încarcă.', en: 'The map is loading.' } as const;
@@ -102,7 +102,9 @@ test('A changed engine file is refused, never run', { tag: '@S-V27-BAD-INTEGRITY
         )
         .toBe(LATE_NOTE_DELAY);
     await revealLateNotes(page);
-    await expect(page.getByText('README.md').first()).toBeVisible();
+    await expect(page.getByText('Reîncarcă pagina.').first()).toBeVisible();
+    await expect(page.getByText('Reload the page.').first()).toBeVisible();
+    await expect(page.getByText('README.md')).toHaveCount(0);
     await expect.poll(() => consoleErrors.takeMatching(/integrity/)).toEqual([expect.stringContaining('engine.iife.js')]);
     expect(await page.evaluate(() => customElements.get('hcm-map-viewer') === undefined)).toBe(true);
     await expect(page.locator('canvas.mapboxgl-canvas')).toHaveCount(0);
