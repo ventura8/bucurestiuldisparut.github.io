@@ -3,13 +3,15 @@
  * worker panel's computer part once it is connected, in the lazy `worker-local` chunk: the computer's size, the owner's
  * choice (Automatic, Quiet, Full: posted to the worker, kept on that computer), the profile in force and why, the budget
  * the governor sets, and where the local AI runs (a line when no graphics card can be reached). A worker older than the
- * governor says nothing of it: the card asks to update it. The live lines are one polite region.
+ * governor says nothing of it: the card asks to update it. The live lines are one polite region. Below, `<hcm-worker-versions>`:
+ * the worker's and its starter file's versions beside the installed release's.
  */
 import { DEFAULT_LOCALE, WORKER_PROFILE_CHOICES, type Locale, type WorkerMachine, type WorkerProfileChoice } from '@hcm/shared';
 import { translateAdminWorkerLocal, type AdminWorkerLocalKey } from '@hcm/shared/admin-worker-local';
 import { css, html, LitElement, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
 import { defineOnce } from '../../components/internal.js';
+import { defineWorkerVersions } from './hcm-worker-versions.js';
 import { workerStyles } from './worker-element.js';
 import type { LocalPort, MachineViewPort } from './worker-port.js';
 
@@ -90,6 +92,7 @@ class HcmWorkerMachine extends LitElement {
         return html`<section aria-labelledby="machine-title">
             <h3 class="title" id="machine-title">${this.#t('adminWorkerLocal.machine.title')}</h3>
             ${body}
+            <hcm-worker-versions .local=${this.local} .locale=${this.locale}></hcm-worker-versions>
         </section>`;
     }
 
@@ -118,6 +121,7 @@ class HcmWorkerMachine extends LitElement {
 
 /** Registers `<hcm-worker-machine>` (the `worker-local` chunk's `defineWorkerLocal` calls it); again, a no-op. */
 export function defineWorkerMachine(registry: CustomElementRegistry = customElements): void {
+    defineWorkerVersions(registry);
     defineOnce(registry, HCM_WORKER_MACHINE_TAG, HcmWorkerMachine);
 }
 

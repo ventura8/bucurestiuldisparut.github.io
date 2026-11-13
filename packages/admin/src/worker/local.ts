@@ -31,7 +31,7 @@ import {
 import type { ContentServices } from '../content/services.js';
 import { Store } from '../state/store.js';
 import { LOCAL_KEY } from './local-key.js';
-import { UNKNOWN_MACHINE, machineOf, postProfile, type MachineView } from './machine.js';
+import { UNKNOWN_MACHINE, machineOf, postProfile, versionsOf, type MachineView, type VersionsView } from './machine.js';
 
 export { LOCAL_KEY } from './local-key.js';
 
@@ -64,6 +64,8 @@ export interface LocalState {
     readonly files: Readonly<Record<WorkerStarterAction, StarterLink>>;
     /** M26: what the worker says of this computer (`machine.ts`). */
     readonly machine: MachineView;
+    /** The worker's and its starter's versions (`machine.ts`); null until it answered. */
+    readonly versions: VersionsView | null;
 }
 
 export interface LocalIntents {
@@ -88,6 +90,7 @@ interface LocalAnswer {
     readonly city: string;
     readonly project: string;
     readonly machine: MachineView;
+    readonly versions: VersionsView;
 }
 
 type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -118,7 +121,9 @@ export function starterLinks(functionsBase: string, city: string, os: WorkerOs):
 function answerOf(value: unknown): LocalAnswer | null {
     const answer = value as Partial<LocalAnswer> | null;
     const fields = [answer?.workerId, answer?.city, answer?.project];
-    return fields.every((field) => typeof field === 'string') ? { ...(answer as LocalAnswer), machine: machineOf(value) } : null;
+    return fields.every((field) => typeof field === 'string')
+        ? { ...(answer as LocalAnswer), machine: machineOf(value), versions: versionsOf(value) }
+        : null;
 }
 
 /** What the class is made with besides the area's services. */
@@ -150,7 +155,15 @@ export class LocalComputer {
         const os = osOf(options.userAgent);
         // After a reload nothing says the file was just saved: it looks, and the first answer says the rest.
         const phase = this.#remembered() ? 'looking' : 'none';
-        const initial: LocalState = { os, phase, code: null, starter: null, files: this.#files(os), machine: UNKNOWN_MACHINE };
+        const initial: LocalState = {
+            os,
+            phase,
+            code: null,
+            starter: null,
+            files: this.#files(os),
+            machine: UNKNOWN_MACHINE,
+            versions: null,
+        };
         this.#cell = new Store<LocalState>(initial, services.log);
         this.intents = {
             setOs: (next) => {
@@ -285,7 +298,7 @@ export class LocalComputer {
         }
         this.#workerId = answer.workerId;
         if (answer.signedIn) {
-            this.#cell.update({ phase: 'connected', machine: answer.machine });
+            this.#cell.update({ phase: 'connected', machine: answer.machine, versions: answer.versions });
             return;
         }
         if (!answer.pairable) {

@@ -674,9 +674,9 @@ A `layer-join` runs here as any pipeline job (`docs/research/M8-join-interfaces.
 
 `docs/research/M10-local-ai.md`. What changes here:
 
-- **The starter file** (`HCM_STARTER=2` on the worker's `docker run`, and the volumes `hcm-ai-files`, `hcm-ai-box`) starts a second loop, `run_matcher`, which polls `/state`. Once `ai.wanted` is true it reads the free space inside a container, pulls `pytorch/pytorch` by digest (any other image is refused), and when `ai.files` is true runs the sidecar beside the loop: `--gpus all`, then CDI, then the processor, probing again at every start. The sidecar goes as soon as no frame wants it, or the worker has not answered twice running. **The worker still gets no Docker socket.** The sidecar has no network and never mounts the volume holding the refresh token.
+- **The starter file** (`HCM_STARTER` on the worker's `docker run`, `2` then, the content's version since 2026-11-13 (*The starter updates itself*), and the volumes `hcm-ai-files`, `hcm-ai-box`) starts a second loop, `run_matcher`, which polls `/state`. Once `ai.wanted` is true it reads the free space inside a container, pulls `pytorch/pytorch` by digest (any other image is refused), and when `ai.files` is true runs the sidecar beside the loop: `--gpus all`, then CDI, then the processor, probing again at every start. The sidecar goes as soon as no frame wants it, or the worker has not answered twice running. **The worker still gets no Docker socket.** The sidecar has no network and never mounts the volume holding the refresh token.
 - **`GET /state`** gains `ai: {state, device?, deviceName?, why?, wanted, image, files}`. The starter reads it with no `Origin`, as any local read; the CORS rules are unchanged.
-- **`worker.hello`** gains an optional `ai`, said again whenever it changes; `cities/{city}/workers/{workerId}.ai` is what `<hcm-worker-panel>` shows. A worker without `HCM_STARTER=2` says `unavailable`, `old-starter`, and the panel asks for the new file: an old image refuses unknown arguments, not variables, so the variable is safe in both directions.
+- **`worker.hello`** gains an optional `ai`, said again whenever it changes; `cities/{city}/workers/{workerId}.ai` is what `<hcm-worker-panel>` shows. A worker whose `HCM_STARTER` is not its release's `STARTER_VERSION` says `unavailable`, `old-starter`, and the panel asks for the new file: an old image refuses unknown arguments, not variables, so the variable is safe in both directions.
 - **`uninstall`** removes both volumes, `hcm-matcher` and only the image this file noted having pulled.
 - **Cloud Run** keeps `NullProposalMatcher`: only `worker/runtime.py` injects `LocalMatcher`, and its image gains a few KB of unimported Python and two empty folders.
 
@@ -741,3 +741,51 @@ worker's `/state` names the AI's image `worker`: the starter runs the sidecar fr
 probe of a card) with `PYTHONPATH=/ai/files/code:/ai/files/lib-cpu`; PyTorch's image keeps `lib`. A starter downloaded
 before this passes no variant, so its worker keeps PyTorch's image as before. Scenarios `S-P07-HAPPY-CPU-IMAGE`,
 `S-P07-BAD-CPU-IMAGE`; details in `docs/research/M26-governor.md` §5.
+
+## Addendum of 2026-11-13: the starter updates itself
+
+The owner's laptop ran the starter installed on 2026-11-08 for days after the hardware governor changed the file (memory cap,
+`HCM_AI_VARIANT`, the host hints): its worker ran with no memory cap and the admin's "This computer" said there was no graphics
+card on a laptop with an RTX 3080. Nothing said the starter was old, because both files still passed `HCM_STARTER=2` and the
+pipeline's `STARTER_VERSION` was `"2"`: a version written by hand was never bumped (`docs/LESSONS.md` 614). Every installed
+starter of every city owner was stuck the same way.
+
+**The version is the content's.** `scripts/site/src/admin/starter.ts` (`starterVersionOf`): the first 12 hex digits of the SHA-256
+of `hcm-worker.sh` and `hcm-worker.bat` (LF line ends), each with its own version line emptied. The same value is written in four
+places: `STARTER_VERSION=` of the POSIX file, `$StarterVersion = '…'` of the Windows file, `WORKER_STARTER_VERSION` of
+`@hcm/shared` (the admin) and `STARTER_VERSION` of `hcm_pipeline/worker/ai_state.py` (the worker).
+`scripts/site/test/starter-version.test.ts` fails, and the admin's build stops, when a template changes and the four are not
+the new value (the error names it).
+
+**The release's list.** The admin's build writes `starter.json` beside `runtime.json` (`/admin/starter.json` on Hosting):
+`{version, sha256: {posix, windows}}`, each the SHA-256 of a template as committed (LF, the marks unfilled). Hosting and the server
+that serves the files (`worker.starter`) are deployed by the same Update the map, so the list and the file come from one release
+by two ways.
+
+**The look.** The installed copy (`~/.local/share/hcm-worker/hcm-worker.sh`, `~/Library/Application Support/hcm-worker/…`,
+`%LOCALAPPDATA%\hcm-worker\hcm-worker.ps1`) looks when the service starts, whenever the worker ends (a new release's image makes
+it end at once: exit 75), and once a day beside the worker (`run_updater`; on Windows inside the governor's loop). It reads
+`https://<project>.web.app/admin/starter.json`; when the version is not its own it fetches
+`worker-starter?city=<city>&os=<linux|mac|windows>&action=install`, puts the three values back as the marks and compares the
+SHA-256 with the list's and the version line with the list's version; only then it writes the file with `HCM_ACTION='run'` (the
+Windows header) beside the old one and renames it over the old one. The service's process then becomes the new file
+(`exec /bin/sh "$0" run` once the loops beside it are stopped; on Windows a new hidden supervisor and this one ends). A newer file the
+daily look wrote waits until the worker's `/state` is not `busy`, then `docker stop hcm-worker` ends the run and the supervisor
+starts the file. Only the installed copy updates itself; a file opened by hand never rewrites itself.
+
+**What the admin sees.** The worker passes on `HCM_STARTER` and `HCM_STARTER_UPDATE` (the last look's word: `unchecked`,
+`current`, `updated`, `not-installed`, `no-list`, `no-file`, `bad-sum`, `read-only`). Its `GET /state` gains `image` (the
+`--image` digest) and `starter` `{version, wanted, update}` (words outside `[a-z0-9-]{1,40}` are dropped). "This computer" shows
+`<hcm-worker-versions>`: the worker's image (`sha256:` and 12 hex digits) and the helper file's version, each "It matches the
+installed release" or not (the image by `outdated`, the helper by `WORKER_STARTER_VERSION`, since the admin is the installed
+release). An out-of-date helper is an alert in plain words: "Your computer's helper is out of date. It updates itself; if it can't,
+run this once:", the why of its last look (a starter older than this addendum passes no word: "it was set up before helpers could
+update themselves"), and the command for the chosen system with Copy: `curl -fsSL '<worker.starter url>' -o ~/hcm-worker.sh && sh
+~/hcm-worker.sh` (macOS: `~/hcm-worker.command`; Windows: `Invoke-WebRequest … -OutFile "$env:TEMP\hcm-worker.bat"; & …`), which
+sets the service up again with the release's file. A worker started by a command has no helper and says so with no command.
+
+**Security.** Nothing new is trusted: the list and the file come from the city's own Hosting and functions over HTTPS, the same
+origin the owner downloaded the first file from; a file whose hash or version is not the list's is refused and the old file stays.
+The file still holds no secret, and the update never runs a downloaded file before it is checked.
+
+Scenarios `S-A142-HAPPY-VERSIONS`, `S-A142-BAD-OLD-STARTER`, `S-A142-HAPPY-SELF-UPDATE`, `S-A142-BAD-SELF-UPDATE`.

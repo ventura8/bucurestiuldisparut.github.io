@@ -72,6 +72,18 @@ export const M7_EXPORTS: readonly string[] = [
     'WORKER_OUTDATED_EXIT',
     'WORKER_STARTER_PLACEHOLDERS',
     'WORKER_STARTER_TEMPLATES',
+    'WORKER_STARTER_VERSION',
+    'WORKER_STARTER_LIST_FILE',
+    'WORKER_STARTER_UPDATES',
+    // M26: what the worker says of its computer, and the owner's profile.
+    'WORKER_ACCELERATOR_VIAS',
+    'WORKER_MATCHERS',
+    'WORKER_POWER_SOURCES',
+    'WORKER_PROFILES',
+    'WORKER_PROFILE_CHOICES',
+    'WORKER_PROFILE_WHYS',
+    'workerMachineSchema',
+    'workerProfileRequestSchema',
     'workerImageRequestSchema',
     'workerImageResponseSchema',
     // Finding 73 of 2026-11-03: the starter file served by `worker.starter`; finding 74: the image a job runs.

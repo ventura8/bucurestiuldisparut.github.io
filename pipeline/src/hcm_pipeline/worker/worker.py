@@ -23,7 +23,7 @@ from hcm_pipeline.governor.probe_linux import LinuxProbe
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.services import default_steps, http
-from hcm_pipeline.worker.ai_state import initial_state
+from hcm_pipeline.worker.ai_state import initial_state, starter_on_state, starter_words
 from hcm_pipeline.worker.api import ARCHIVE_REPORT, WorkerApi
 from hcm_pipeline.worker.app import PageActions
 from hcm_pipeline.worker.args import WorkerArgs
@@ -83,6 +83,9 @@ class Worker:
         api = WorkerApi(client, args.endpoints.function, session.bearer, time.sleep)
         state = WorkerState(args.city, args.project, session, worker_id)
         state.set_ai(initial_state(os.environ))
+        state.image = args.image
+        state.starter = starter_on_state(os.environ)
+        LOG.info("%s", starter_words(state.starter))
         ids = {"cityId": args.city, "workerId": worker_id}
         # Finding 72: the image the starter's supervisor runs, which `worker.hello` compares with the installed one.
         actions = PageActions(session, api, state, web_config, {**ids, **({"image": args.image} if args.image else {})})

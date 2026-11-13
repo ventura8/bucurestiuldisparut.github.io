@@ -3,12 +3,17 @@
 
 import errno
 import platform
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Final
 
-STARTER_VERSION: Final = "2"
+# The starter files' version of this release (scripts/site/src/admin/starter.ts: the SHA-256 of their content; a test holds it equal).
+STARTER_VERSION: Final = "cfa9f3965aa2"
 ENV_STARTER: Final = "HCM_STARTER"
+# What the starter's last look for a newer one said (`WORKER_STARTER_UPDATES` of @hcm/shared).
+ENV_STARTER_UPDATE: Final = "HCM_STARTER_UPDATE"
+STARTER_WORD: Final = re.compile(r"[a-z0-9-]{1,40}")
 # The machine Docker itself runs on, as the starter asks it: an amd64 image under Rosetta or QEMU reads x86_64 from inside.
 ENV_DOCKER_ARCH: Final = "HCM_DOCKER_ARCH"
 UNSUPPORTED_MACHINES: Final = frozenset({"aarch64", "arm64"})
@@ -58,3 +63,29 @@ def never_here(environment: Mapping[str, str], machine: str) -> str | None:
 def why_of_fault(error: BaseException) -> str:
     """What the panel says of a fault no port named: a full disk, in its words; else that the AI gave no answer (the log has it)."""
     return WHY_DISK if isinstance(error, OSError) and error.errno in FULL_DISK else WHY_NO_ANSWER
+
+
+def _word(environment: Mapping[str, str], name: str) -> str | None:
+    value = environment.get(name, "")
+    return value if STARTER_WORD.fullmatch(value) else None
+
+
+def starter_on_state(environment: Mapping[str, str]) -> dict[str, object]:
+    """`GET /state`'s `starter`: the version of the starter that runs this worker (None: none, a worker started by a command), the
+    version this release's starter has, and what the starter's last look for a newer one said (docs/research/M7-local-worker.md,
+    *The starter updates itself*). The admin compares the version with its own release's."""
+    return {
+        "version": _word(environment, ENV_STARTER),
+        "wanted": STARTER_VERSION,
+        "update": _word(environment, ENV_STARTER_UPDATE),
+    }
+
+
+def starter_words(starter: Mapping[str, object]) -> str:
+    """The log's line on the starter file (`starter_on_state`'s fields): current, out of date and why, or none."""
+    version, update = starter.get("version"), starter.get("update") or "none"
+    if version is None:
+        return "starter file: none (this worker was started by a command)"
+    if version == STARTER_VERSION:
+        return f"starter file {version}: current (this release's)"
+    return f"starter file {version}: OUT OF DATE, this release's is {STARTER_VERSION}; it updates itself (its last look said {update})"

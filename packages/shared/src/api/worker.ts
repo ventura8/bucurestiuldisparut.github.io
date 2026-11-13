@@ -67,6 +67,27 @@ export const WORKER_OUTDATED_EXIT = 75;
  * server's bundle (`dist/starter/`) and `worker.starter` fills (finding 73 of 2026-11-03).
  */
 export const WORKER_STARTER_TEMPLATES = { posix: 'hcm-worker.sh', windows: 'hcm-worker.bat' } as const;
+/**
+ * The starter files' version (`docs/research/M7-local-worker.md`, *The starter updates itself*): the first 12 hex digits of the
+ * SHA-256 of both templates with their version lines emptied (`scripts/site/src/admin/starter.ts`, which a test and the admin's
+ * build hold equal to the templates' own lines and to the pipeline's `STARTER_VERSION`). The worker's `/state` says the version of
+ * the starter that runs it; the admin's "This computer" says whether it is this release's.
+ */
+export const WORKER_STARTER_VERSION = 'cfa9f3965aa2';
+/** The release's list of the starter files on Hosting, `<admin>/starter.json`: the version and each template's SHA-256. */
+export const WORKER_STARTER_LIST_FILE = 'starter.json';
+/** What an installed starter's last look for a newer one said (`HCM_STARTER_UPDATE`, the worker's `/state` `starter.update`). */
+export const WORKER_STARTER_UPDATES = [
+    'unchecked',
+    'current',
+    'updated',
+    'not-installed',
+    'no-list',
+    'no-file',
+    'bad-sum',
+    'read-only',
+] as const;
+export type WorkerStarterUpdate = (typeof WORKER_STARTER_UPDATES)[number];
 /** The placeholders a starter template carries, which `worker.starter` fills (the project, the city, install or uninstall). */
 export const WORKER_STARTER_PLACEHOLDERS = { project: '__HCM_PROJECT__', city: '__HCM_CITY__', action: '__HCM_ACTION__' } as const;
 /** The systems a starter file is made for. */

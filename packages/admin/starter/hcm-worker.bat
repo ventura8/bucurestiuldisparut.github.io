@@ -19,6 +19,9 @@ exit /b
 # The PowerShell part (the lines above are cmd's). Its values come from the environment the lines above set, or from
 # the header the installed copy carries (hcm-worker.ps1 under %LOCALAPPDATA%\hcm-worker).
 $Project = $env:HCM_PROJECT
+# This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
+# (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
+$StarterVersion = 'cfa9f3965aa2'
 $City = $env:HCM_CITY
 $Action = $env:HCM_ACTION
 $Name = 'hcm-worker'
@@ -34,6 +37,12 @@ $Folder = Join-Path $env:LOCALAPPDATA $Name
 $Installed = Join-Path $Folder "$Name.ps1"
 $Startup = Join-Path ([Environment]::GetFolderPath('Startup')) "$Name.cmd"
 $Run = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Installed`""
+# The starter the installed release publishes (docs/research/M7-local-worker.md, *The starter updates itself*): the list on the map's
+# Hosting (the version and each template's SHA-256) and the file from the server's worker.starter.
+$StarterList = "https://$Project.web.app/admin/starter.json"
+$StarterApi = "https://us-central1-$Project.cloudfunctions.net/worker-starter"
+$UpdateSeconds = 86400
+$script:UpdateSaid = 'unchecked'
 # The local AI (docs/research/M10-local-ai.md): a sidecar with no network, started here because the worker has no Docker socket.
 $Matcher = 'hcm-matcher'
 $AiFiles = 'hcm-ai-files'
@@ -263,7 +272,12 @@ function Get-HostHints {
 # container) and the budget's threads as its CPU quota (`docker update --cpus`, only when they change; a pause keeps the last quota).
 function Start-GovernorLoop($Supervisor) {
     $quota = 0
+    $looked = Get-Date
     while (Get-Process -Id $Supervisor -ErrorAction SilentlyContinue) {
+        if (((Get-Date) - $looked).TotalSeconds -ge $UpdateSeconds) {
+            $looked = Get-Date
+            Invoke-DailyLook
+        }
         $json = Get-HostHints | ConvertTo-Json -Compress -Depth 4
         $json | & docker exec -i $Name sh -c "cat > $Hints.part && mv $Hints.part $Hints" *> $null
         try {
@@ -307,11 +321,83 @@ function Get-WorkerLimits {
     return $limits
 }
 
+# The version written in the installed copy (once the daily look replaced it).
+function Get-StarterOnDisk {
+    $found = Select-String -LiteralPath $Installed -Pattern '^\$StarterVersion = ''([0-9a-f]+)''$' -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($found) { return $found.Matches[0].Groups[1].Value }
+    return ''
+}
+
+# The template a served file was filled from: LF line ends and its three values put back as the marks (written here in pieces:
+# the server fills every whole mark of this file).
+function ConvertTo-Template($Text) {
+    $u = '_'
+    $text = $Text -replace "`r`n", "`n"
+    foreach ($field in 'PROJECT', 'CITY', 'ACTION') {
+        $text = $text -replace "(?m)^set `"HCM_$field=.*`"$", "set `"HCM_$field=$u${u}HCM_$field$u$u`""
+    }
+    return $text
+}
+
+function Get-TextSha256($Text) {
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    return (($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text)) | ForEach-Object { $_.ToString('x2') }) -join '')
+}
+
+# One look at the starter the installed release publishes: $true when a newer one, whose SHA-256 is the release's list's, replaced the
+# installed copy; else $false, and UpdateSaid says why not: current, not-installed, no-list, no-file, bad-sum, read-only.
+function Update-Starter {
+    if ($PSCommandPath -ne $Installed) { $script:UpdateSaid = 'not-installed'; return $false }
+    try { $listed = Invoke-RestMethod -Uri $StarterList -TimeoutSec 30 -ErrorAction Stop } catch { $listed = $null }
+    $version = [string]$listed.version
+    $sum = [string]$listed.sha256.windows
+    if ($version -notmatch '^[0-9a-f]{12}$' -or $sum -notmatch '^[0-9a-f]{64}$') { $script:UpdateSaid = 'no-list'; return $false }
+    if ($version -eq $StarterVersion) { $script:UpdateSaid = 'current'; return $false }
+    $script:UpdateSaid = Set-NewStarter $version $sum
+    Write-Host "starter: the look for a newer starter said $($script:UpdateSaid)"
+    return $script:UpdateSaid -eq 'updated'
+}
+
+# The newer file fetched, checked against the list (its SHA-256 as a template, its version line), and put in place by a rename.
+function Set-NewStarter($Version, $Sum) {
+    try {
+        $content = (Invoke-WebRequest -UseBasicParsing -Uri "${StarterApi}?city=$City&os=windows&action=install" -TimeoutSec 60 -ErrorAction Stop).Content
+    } catch { return 'no-file' }
+    if ($content -is [byte[]]) { $content = [Text.Encoding]::UTF8.GetString($content) }
+    $template = ConvertTo-Template $content
+    if ((Get-TextSha256 $template) -ne $Sum -or $template -notmatch "(?m)^\`$StarterVersion = '$Version'$") { return 'bad-sum' }
+    $part = ($template -split ('#PS' + '-BEGIN'), 2)[1] -replace "`n", "`r`n"
+    $header = "`$env:HCM_PROJECT = '$Project'`r`n`$env:HCM_CITY = '$City'`r`n`$env:HCM_ACTION = 'run'`r`n"
+    try {
+        Set-Content -LiteralPath "$Installed.new" -Value ($header + $part) -Encoding Ascii -ErrorAction Stop
+        Move-Item -LiteralPath "$Installed.new" -Destination $Installed -Force -ErrorAction Stop
+    } catch { return 'read-only' }
+    return 'updated'
+}
+
+# Once a day beside the worker (the governor's loop): a newer file waits for the worker to be idle, then the worker stops and the
+# supervisor starts the file.
+function Invoke-DailyLook {
+    if (-not (Update-Starter)) { return }
+    while ((Invoke-RestMethod -Uri "http://127.0.0.1:$Port/state" -TimeoutSec 5 -ErrorAction SilentlyContinue).state -eq 'busy') {
+        Start-Sleep -Seconds 60
+    }
+    & docker stop $Name *> $null
+}
+
+# This process gives way to the newer file: a new supervisor of it (which stops the loops beside this one) and this one ends.
+function Restart-Starter {
+    Write-Host 'starter: starting the updated file'
+    Start-Process -FilePath 'powershell.exe' -ArgumentList $Run -WindowStyle Hidden
+    exit 0
+}
+
 # The supervisor: the worker in the foreground, started again whenever it ends: at once after an outdated image (75), else
 # after a wait that grows to five minutes while it keeps failing (and starts small again after a long run). A worker that
 # refuses the supervisor's arguments (usage error 2) three times in a row runs an image older than this starter: that is
 # said once, and the supervisor asks again every five minutes until the map is updated.
 function Start-Supervisor {
+    if (Update-Starter) { Restart-Starter }
     Stop-Processes "*$Name.ps1*matcher*"
     Stop-Processes "*$Name.ps1*governor*"
     Start-Process -FilePath 'powershell.exe' -ArgumentList "$Run matcher $PID" -WindowStyle Hidden
@@ -328,7 +414,8 @@ function Start-Supervisor {
                 $digest = 'sha256:' + $image.Split('@')[1].Substring(7)
                 $arguments = @('run', '--rm', '--name', $Name) + (Get-WorkerLimits) + @('-p', "127.0.0.1:${Port}:${Port}", '-v', "${Name}:/work")
                 $arch = & docker version --format '{{.Server.Arch}}' 2> $null
-                $arguments += @('-v', "${AiFiles}:/ai/files", '-v', "${AiBox}:/ai/box", '-e', 'HCM_STARTER=2', '-e', "HCM_DOCKER_ARCH=$arch")
+                $arguments += @('-v', "${AiFiles}:/ai/files", '-v', "${AiBox}:/ai/box", '-e', "HCM_STARTER=$StarterVersion")
+                $arguments += @('-e', "HCM_STARTER_UPDATE=$($script:UpdateSaid)", '-e', "HCM_DOCKER_ARCH=$arch")
                 $arguments += @('-e', "HCM_AI_VARIANT=$(Get-AiVariant)", $image)
                 $arguments += @('worker', '--city', $City, '--project', $Project, '--supervised', '--image', $digest)
                 & docker @arguments
@@ -343,6 +430,7 @@ function Start-Supervisor {
         }
         if ($refused -ge $Refusals) { $wait = 300 }
         Start-Sleep -Seconds $wait
+        if ((Get-StarterOnDisk) -ne $StarterVersion -or (Update-Starter)) { Restart-Starter }
         $wait = [Math]::Min(300, $wait * 2 + 10)
     }
 }

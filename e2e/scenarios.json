@@ -997,6 +997,13 @@
             "source": "docs/research/M26-governor.md (the owner, 2026-11-12: runs on modest hardware; nobody upgrades for us)"
         },
         {
+            "id": "A142",
+            "area": "admin",
+            "name": "The starter file updates itself, and This computer says the worker's and the helper's versions beside the installed release's",
+            "milestone": "M7",
+            "source": "the owner, 2026-11-13: a laptop ran the starter of 2026-11-08 for days (no memory cap, no graphics card) and nothing said it was old; docs/research/M7-local-worker.md, The starter updates itself"
+        },
+        {
             "id": "P30",
             "area": "pipeline",
             "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
@@ -17819,6 +17826,50 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
+            "id": "S-A142-HAPPY-VERSIONS",
+            "behaviour": "A142",
+            "area": "admin",
+            "path": "happy",
+            "title": "This computer says the worker's image and the helper file's version, each matching the installed release",
+            "asserts": "the starter files' version is their content's (the SHA-256 of both templates with their version lines emptied), written in both templates, WORKER_STARTER_VERSION and the pipeline's STARTER_VERSION (a guard test and the admin's build fail otherwise); the worker's /state says image and starter {version, wanted, update}; the card's Versions says Worker: sha256:<12> and Helper file: <version>, each 'It matches the installed release'; ro and en; axe clean",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself). Tests: e2e/admin/specs/imagery/worker-run.spec.ts (tour state worker.local-machine), scripts/site/test/starter-version.test.ts, packages/admin/test/worker/machine.test.ts, packages/ui/test/admin/worker/versions.test.ts, pipeline/tests/unit/test_worker_app.py."
+        },
+        {
+            "id": "S-A142-BAD-OLD-STARTER",
+            "behaviour": "A142",
+            "area": "admin",
+            "path": "bad",
+            "title": "An out-of-date helper says so in plain words, why it could not update itself, and the one command with Copy",
+            "asserts": "a /state whose starter version is not this release's (the old HCM_STARTER=2 included) -> an alert: the helper is out of date, it updates itself, if it can't run this once; the why of its last look (set up before helpers updated themselves, no list, no file, a refused download, a read-only folder, not the installed copy, not looked since the update); the command for the chosen system (curl ... && sh on Linux and macOS, Invoke-WebRequest on Windows) with Copy, a refused copy says to select it; a worker started by a command says it has no helper and shows no command; an older worker says it does not tell its versions; unknown words and malformed versions are dropped; a template changed without its version stops the build",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself). Tests: packages/ui/test/admin/worker/versions.test.ts, packages/admin/test/worker/machine.test.ts, scripts/site/test/starter-version.test.ts, pipeline/tests/unit/test_worker_app.py."
+        },
+        {
+            "id": "S-A142-HAPPY-SELF-UPDATE",
+            "behaviour": "A142",
+            "area": "admin",
+            "path": "happy",
+            "title": "The installed starter replaces itself with the installed release's newer file and the service runs it",
+            "asserts": "sh hcm-worker.sh update, or the service's start, or the end of a worker run: the release's list on Hosting (admin/starter.json) names a newer version -> the file from worker.starter, checked by its SHA-256 as a template and its version line, replaces the installed copy by a rename (HCM_ACTION run, the city kept, no part file left) and the service's process becomes the new file; a newer file the daily look wrote is started once the worker ends; the release's own version is current and nothing is fetched; the Windows file looks the same way (Update-Starter, Restart-Starter, the governor loop's daily look)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself). Tests: functions/test/worker/starter-update.test.ts."
+        },
+        {
+            "id": "S-A142-BAD-SELF-UPDATE",
+            "behaviour": "A142",
+            "area": "admin",
+            "path": "bad",
+            "title": "A newer starter that cannot be fetched or does not match the release's list is refused and the worker says why",
+            "asserts": "no list, a list with no version or SHA-256 -> no-list; no file -> no-file; a SHA-256 or version line not the list's -> bad-sum; the new name taken -> read-only; run from elsewhere than the installed copy -> not-installed; the installed file stays as it was and the word reaches the worker as HCM_STARTER_UPDATE",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself). Tests: functions/test/worker/starter-update.test.ts, pipeline/tests/unit/test_worker_app.py."
         },
         {
             "id": "S-P20-HAPPY-PDF-ATLAS",

@@ -18,7 +18,15 @@ export function linksOf(os: WorkerOsPort): LocalViewPort['files'] {
 export class FakeLocal implements LocalPort {
     readonly calls: string[] = [];
     readonly #listeners = new Set<(state: LocalViewPort) => void>();
-    state: LocalViewPort = { os: 'linux', phase: 'none', code: null, starter: true, files: linksOf('linux'), machine: { kind: 'unknown' } };
+    state: LocalViewPort = {
+        os: 'linux',
+        phase: 'none',
+        code: null,
+        starter: true,
+        files: linksOf('linux'),
+        machine: { kind: 'unknown' },
+        versions: null,
+    };
 
     readonly intents = {
         setOs: (os: WorkerOsPort): void => {

@@ -1,5 +1,6 @@
 """The worker's sign-in, page, server edges, runtime and command (M7, docs/research/M7-local-worker.md §1, §2)."""
 
+import dataclasses
 import io
 import json
 import re
@@ -16,6 +17,7 @@ from hcm_pipeline.rasters import spare_threads
 from hcm_pipeline.secrets import SecretUnavailableError
 from hcm_pipeline.steps import StepRegistry
 from hcm_pipeline.urlguard import AddressRefusedError
+from hcm_pipeline.worker.ai_state import STARTER_VERSION, starter_on_state, starter_words
 from hcm_pipeline.worker.args import Endpoints, WorkerArgs
 from hcm_pipeline.worker.command import WorkerCommand, yield_processor
 from hcm_pipeline.worker.page import FIREBASE_SDK_VERSION, PageSettings, content_security_policy, render_page
@@ -302,6 +304,41 @@ def test_happy_path_the_page_actions_hand_a_code_to_the_connector_only_while_unp
     assert worker.actions.pair("c" * 26) == "paired"
     assert offered == ["b" * 26]
     assert worker.state.snapshot()["pairable"] is False
+
+
+def test_happy_path_the_state_says_the_image_and_the_starters_version(
+    api: FakeWorkerApi, tmp_path: Path, built: list[Worker], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-A142-HAPPY-VERSIONS"""
+    monkeypatch.setenv("HCM_STARTER", STARTER_VERSION)
+    monkeypatch.setenv("HCM_STARTER_UPDATE", "current")
+    args = args_for(api, tmp_path)
+    digest = "sha256:" + "ab" * 32
+    worker = Worker.build(dataclasses.replace(args, image=digest), "127.0.0.1", api.clock)
+    built.append(worker)
+
+    snapshot = worker.state.snapshot()
+
+    assert snapshot["image"] == digest
+    assert snapshot["starter"] == {"version": STARTER_VERSION, "wanted": STARTER_VERSION, "update": "current"}
+    assert starter_words({"version": STARTER_VERSION, "update": "current"}) == f"starter file {STARTER_VERSION}: current (this release's)"
+
+
+@pytest.mark.parametrize(
+    ("environment", "said", "words"),
+    [
+        ({}, {"version": None, "update": None}, "starter file: none (this worker was started by a command)"),
+        ({"HCM_STARTER": "2"}, {"version": "2", "update": None}, f"starter file 2: OUT OF DATE, this release's is {STARTER_VERSION}"),
+        ({"HCM_STARTER": "2; rm -rf", "HCM_STARTER_UPDATE": "BAD WORD"}, {"version": None, "update": None}, "starter file: none"),
+        ({"HCM_STARTER": "abc", "HCM_STARTER_UPDATE": "no-list"}, {"version": "abc", "update": "no-list"}, "its last look said no-list"),
+    ],
+)
+def test_bad_path_an_old_or_missing_starter_is_said_as_it_is(environment: Mapping[str, str], said: Mapping[str, object], words: str) -> None:
+    """Scenarios: S-A142-BAD-OLD-STARTER"""
+    starter = starter_on_state(environment)
+
+    assert starter == {**said, "wanted": STARTER_VERSION}
+    assert words in starter_words(starter)
 
 
 def test_bad_path_a_disconnected_worker_takes_no_code_from_the_admin(api: FakeWorkerApi, tmp_path: Path, built: list[Worker]) -> None:

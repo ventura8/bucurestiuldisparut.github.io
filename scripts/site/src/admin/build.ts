@@ -6,6 +6,7 @@ import { ADMIN_SCRIPT_FILE, ADMIN_STYLESHEET_FILE, renderAdminPage } from './pag
 import { DEFAULT_PROJECT_FILE, planProjectFile } from './project.js';
 import { planRuntimeFile, type BuildEnvironment } from './runtime.js';
 import { PUSH_SERVICE_WORKER_FILE, PUSH_SERVICE_WORKER_SOURCE } from './service-worker.js';
+import { planStarterList } from './starter.js';
 
 /**
  * Completes the admin's Hosting folder after its Vite build (docs/research/M2b-interfaces.md §4, admin-e2e):
@@ -17,6 +18,8 @@ import { PUSH_SERVICE_WORKER_FILE, PUSH_SERVICE_WORKER_SOURCE } from './service-
  * <outDir>/runtime.json                  the release and, for a start-up deploy, `startUp` (runtime.ts)
  * <outDir>/project.json                  the committed infra/project.json, checked (project.ts, CR-M2b-26)
  * <outDir>/firebase-messaging-sw.js      M4's web push service worker (service-worker.ts)
+ * <outDir>/starter.json                  the release's list of the starter files: their version and SHA-256 (starter.ts), which
+ *                                        an installed starter checks a newer file against before it replaces itself
  * <outDir>/fonts/…                       the kit's self-hosted fonts and their licences (packages/ui/fonts), which the
  *                                        admin loads from `fonts/` next to the page, as the engine's site pages do
  * <outDir>/legacy/bucharest/…            the legacy import bundle (legacy.ts)
@@ -26,7 +29,7 @@ import { PUSH_SERVICE_WORKER_FILE, PUSH_SERVICE_WORKER_SOURCE } from './service-
  * `worker.starter` serves them filled, as a download; a `worker/` folder an earlier build left is removed.
  *
  * Every input is read and validated before anything is written, and only `index.html`, `runtime.json`, `project.json`,
- * the service worker, `fonts/` and `legacy/` are replaced: the Vite output stays. The production folder is `packages/admin/dist` (`firebase.json` → `hosting.public`); a test
+ * the service worker, `starter.json`, `fonts/` and `legacy/` are replaced: the Vite output stays. The production folder is `packages/admin/dist` (`firebase.json` → `hosting.public`); a test
  * writes below `dist/`.
  */
 
@@ -144,7 +147,16 @@ export function buildAdminSite(options: AdminBuildOptions, files: SiteFileSystem
     const runtime = planRuntimeFile(files, inputs.env);
     const page = renderAdminPage(undefined, { mapboxGlIntegrity: mapboxGlIntegrity(files, inputs.mapboxGlDir) });
     const worker: AdminFile = { to: PUSH_SERVICE_WORKER_FILE, content: PUSH_SERVICE_WORKER_SOURCE };
-    const planned: AdminFile[] = [{ to: 'index.html', content: page }, runtime.file, project.file, worker, ...fonts, ...legacy.files];
+    const starter = planStarterList(files);
+    const planned: AdminFile[] = [
+        { to: 'index.html', content: page },
+        runtime.file,
+        project.file,
+        worker,
+        starter,
+        ...fonts,
+        ...legacy.files,
+    ];
     files.remove(`${outDir}/${FONTS_FOLDER}`);
     files.remove(`${outDir}/${STARTER_FOLDER}`);
     files.remove(`${outDir}/${LEGACY_FOLDER}`);
