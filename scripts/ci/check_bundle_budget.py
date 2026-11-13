@@ -109,7 +109,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # The editor areas (packages/admin/src/pages/<area>.ts: the page's elements and the store's module).
     "photos": 25,
     "pois": 25,
-    "settings": 20,
+    # 21 since 2026-11-13 (§222, under the owner's §215 raise): 20.2 KB after the 25 languages' merge.
+    "settings": 21,
     "layers": 10,
     "history": 8,
     "admins": 6,
@@ -307,7 +308,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # an admin waits for.
 # 750 since 2026-11-12, the owner's decision (§168d): the georeferencer's panes and its sharper scan's tiles (`georef-panes`,
 # `scan-tiles`) took the total to 701.8 KB; both load only with the georeferencer, and the entry's 450 KB is unchanged.
-ADMIN_TOTAL_KB = 760  # §215 (the owner's raise, 2026-11-13): 754.8 KB with W5
+# 770 since 2026-11-13 (§222, under the owner's §215 raise): 764.6 KB with the device accent (about 1.5 KB) and the merge.
+ADMIN_TOTAL_KB = 770
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k
