@@ -32,13 +32,35 @@ the starter never mounts the volume). Hints older than 60 s are ignored (a stopp
 
 | Hint | Linux | Windows | macOS |
 | --- | --- | --- | --- |
-| `idleS` (seconds since input) | GNOME's `org.gnome.Mutter.IdleMonitor`, else `xprintidle`, else logind's `IdleHint` / `IdleSinceHint` | `GetLastInputInfo` | `ioreg` `HIDIdleTime` |
+| `idleS` (seconds since input) | GNOME's `org.gnome.Mutter.IdleMonitor`, else `xprintidle`, else logind's `IdleHint` / `IdleSinceHint`; under WSL only Windows' `GetLastInputInfo` through powershell.exe (below) | `GetLastInputInfo` | `ioreg` `HIDIdleTime` |
 | `power` | (read in the container) | `Win32_Battery` | `pmset -g batt` |
-| `gpus` | `nvidia-smi` (memory, use, heat; `via: cuda` when `docker info` names the NVIDIA runtime or CDI); `/sys/class/drm/card*/device/vendor` 0x8086 with `/dev/dri` (`via: openvino`), 0x1002 with `/dev/kfd` (`via: rocm`) | `nvidia-smi` (`via: cuda`: Docker Desktop's WSL2 passes it) | none |
+| `gpus` | `nvidia-smi` (memory, use, heat; `via: cuda` when `docker info` names the NVIDIA runtime or CDI); `/sys/class/drm/card*/device/vendor` 0x8086 with `/dev/dri` (`via: openvino`), 0x1002 with `/dev/kfd` (`via: rocm`), 0x10de when nvidia-smi fails (`why: no-driver`); each card's model from `lspci -mm -s <slot>` | `nvidia-smi` (`via: cuda`: Docker Desktop's WSL2 passes it) | none |
 | `npus` | `/dev/accel/accel0` (`via: openvino`) | none | none |
+
+**Only a command's success is data** (2026-11-13). On the NUC, which has an Intel Arc and NVIDIA's tools but no NVIDIA driver,
+`nvidia-smi` printed its failure on stdout and exited 9; the starter read that sentence as a card's name and the following empty
+line as a second card, and the empty name made the admin read the whole `machine` as an older worker's. Now the starter keeps
+nvidia-smi's rows only when it exits 0 and each row has a name and whole numbers for the memory (use and heat may read `[N/A]`: 0),
+strips quotes and backslashes and cuts the name at 120 characters; Intel's and AMD's cards are named by `lspci` (the NUC: "Arrow
+Lake-P [Arc Pro 130T/140T]", not "Intel graphics"); an NVIDIA card in `/sys/class/drm` that nvidia-smi cannot reach is listed as
+`{vendor: nvidia, via: null, why: no-driver}`, and the admin's card says to install the driver, with a link to NVIDIA's page.
+The worker drops any card whose name is empty, has a line break or is longer than 120 characters (`probe._named`), so an older
+starter's text never reaches `/state`. The Windows file checks `$LASTEXITCODE` and the same shape. The roots are
+`HCM_DRM_ROOT` and `HCM_DEV_ROOT` (tests only). Scenario `S-A141-BAD-NO-DRIVER`.
 
 logind's `IdleHint` turns only after the desktop's own idle delay (GNOME: 5 minutes), so on a desktop without GNOME's
 monitor or `xprintidle` the worker stays quiet longer after the person leaves; it is never less polite.
+
+**Under WSL** (`/proc/version` names `microsoft`; the owner's PC, 2026-11-13) none of those sees the person: logind's `IdleHint`
+is always `no` without a desktop session, so every hint said input and Automatic held Quiet forever. The starter then reads the
+Windows user's `GetLastInputInfo` (the same C# as `hcm-worker.bat`'s `Get-IdleSeconds`) through `powershell.exe -EncodedCommand`,
+at most every 30 s (`WSL_IDLE_SECONDS`; each call costs about half a second, 1.7 s with the sockets that fail) and cached in the
+install folder's `windows-idle`. A systemd service has no `WSL_INTEROP` and Windows refuses `/run/WSL/1_interop`, so it tries
+`/run/WSL/*_interop` (the one that last answered first); a process that sshd's `wsl.exe` started runs in session 0, whose
+reading is the uptime, so only an answer from a session other than 0 counts. With no answer `idleS` is empty, never 0: the
+governor never claims activity it cannot see. The reading reaches the governor up to 30 s late (it goes quiet within 35 s of
+the owner's return, not 5). The roots `HCM_PROC_VERSION`, `HCM_WSL_INTEROP_ROOT` and `HCM_WINDOWS_POWERSHELL` are for tests.
+Scenarios `S-A141-HAPPY-WSL-IDLE`, `S-A141-BAD-WSL-NO-INTEROP`.
 
 ## 2. Signals (`signals.py`)
 
@@ -60,7 +82,12 @@ One pure function, `decide(signals, choice, before, now) -> PolicyState`, and `e
 - On battery under 30 % it **pauses**, unless the owner allowed work on battery (`batteryAllowed` in `POST /profile`).
 - Heat steps **down one level** (full to quiet, quiet to paused) at 95 °C on the processor (90 until 2026-11-13: the
   laptop's package reads 90 with only a local model running, so every mobile processor at work stepped down) or 83 °C on a card, and
-  back up only 10 °C below both (`why: thermal`).
+  back up only 5 °C below both (`why: thermal`; 10 until 2026-11-13: with a local model, pytest and Prettier holding the laptop at
+  88 to 93 °C, a resume at 85 never came and the worker paused for hours); once hot it stays hot at least two minutes, `HOT_HOLD_S`: on battery at 90 to 95 °C the laptop paused and resumed
+  about once a minute).
+- **Before the limit** the budget already gives way (§4): from `WARM_C` (80 °C) the threads shrink in proportion to the degrees
+  left to 95 (14 threads at 80, 9 at 85, 4 at 90, 1 at 93), so the worker's own load seldom takes the processor to the step-down,
+  and a resume at 90 runs on the one or few threads the heat leaves, not on a full profile.
 - A card the matcher must leave (§5) reads `why: gpu-busy` while the profile stays full for the processor.
 
 ## 4. Budget (`budget.py`) and actuators (`actuate.py`)
@@ -68,7 +95,8 @@ One pure function, `decide(signals, choice, before, now) -> PolicyState`, and `e
 | Setting | Full | Quiet | Paused |
 | --- | --- | --- | --- |
 | Threads (reserve 1 core; 2 from 8 cores) | max(1, cores − reserve) | max(1, cores ÷ 4) | 0 |
-| Memory | 60 % of what is free to us | 35 % | 0 |
+| … within heat and others' load | × the heat's share (1 to 80 °C, then down to 0 at 95), at most cores − reserve − others' busy cores; 1 at least | the same | 0 |
+| Memory (whole 256 MB steps) | 60 % of what is free to us | 35 % | 0 |
 | GDAL cache, warp memory | `rasters.gdal_memory` of the budget: a sixteenth and an eighth (128 to 1,024 MB, 256 to 2,048 MB) | the same | unchanged |
 | Tile processes | min(threads, memory ÷ 4 ÷ 256 MB) | the same | 0 |
 | OpenCV's threads | the threads | the threads | unchanged |
@@ -80,6 +108,26 @@ One pure function, `decide(signals, choice, before, now) -> PolicyState`, and `e
 within the container's limit. **Cores** are the host's, within the CPU quota the container **started** with (a shared
 machine's slot, a `--cpus` the owner set): the governor's own `docker update` comes later and only lowers it, so the
 first quota read is the cap, never one of ours.
+
+The memory is counted in 256 MB steps (`MEMORY_STEP_MB`) and the log says a line only when the profile, its reason or the threads
+change (`governor._said`): until 2026-11-13 every tick's few megabytes more or less changed the budget, and the worker logged
+"this computer: quiet (user-active), 4 threads, 5880 MB" every 5 s (up to 720 lines an hour; the laptop's last hour of
+2026-11-13: 173 lines, 56 under the new rule, each a real change between user-active, battery, thermal and others-busy). Within one profile a change of fewer than two threads is not made (`governor.steady`): the heat's share moved quiet's threads
+1, 2, 3, 4 in turn on the laptop, a log line and a `docker update` each.
+
+**Headroom and the claim** (2026-11-13: a city with three workers, the laptop, the NUC and the PC). `Governor.headroom()` is 0 to 1:
+the lesser of the heat's share (above) and 1 − others' load (their share of the machine), 0 while paused. The worker's claim pace (`worker/pace.py`)
+stretches every wait by 1 + 3 × (1 − headroom): a computer with room asks every `pollSeconds` (30 s), a half-busy one every 75 s,
+a hot or paused one every 120 s (240 s when idle), so a queued job goes to the cooler or idler worker; a lone worker still takes
+it, only later. Scenarios `S-P31-HAPPY-CLAIM-HEADROOM`, `S-P31-BAD-CLAIM-HEADROOM-RANGE`.
+
+**The C heap** (`heap.py`, 2026-11-13). GDAL's threads allocate from glibc's per-thread malloc arenas, which keep freed pages for
+later: two 12,000 px colour sheets laid out and mosaicked peaked at 636 MB on one thread and 870 MB on every core, against the
+800 MB budget (about 115 MB of the layout's reads stayed resident). `python -m hcm_pipeline` (the worker and the Cloud Run job)
+now starts with at most two arenas (`limit_arenas`, before any GDAL thread), and the windowed canvas gives the free pages back
+before its first sheet and after each one (`give_back`, `malloc_trim(0)`, and tcmalloc's release in the worker's image): on glibc
+588 MB on one thread and 653 MB on 16, the same pixels, no slower; under tcmalloc 650 to 690 MB either way (the NUC). The budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`). The budget was
+not loosened.
 
 Actuators:
 
@@ -129,7 +177,7 @@ needs static shapes; LightGlue stays on a card or the processor), then the proce
 
 ```text
 {cpu:{cores}, memory:{totalMb, availableMb, limitMb?}, power:{source:'ac'|'battery'|'unknown', percent?},
- gpus:[{vendor, name, vramMb, via:'cuda'|'rocm'|'openvino'|null, why?}], npus:[{vendor, name, via, why?}],
+ gpus:[{vendor, name, vramMb, via:'cuda'|'rocm'|'openvino'|null, why?: 'no-driver'|'no-passthrough'|…}], npus:[{vendor, name, via, why?}],
  backend:{matcher:'cuda'|'rocm'|'openvino-gpu'|'openvino-npu'|'cpu'|'off', why?},
  profile:{chosen:'auto'|'quiet'|'full', active:'full'|'quiet'|'paused',
           why:'idle'|'user-active'|'others-busy'|'battery'|'thermal'|'gpu-busy'|'owner'},

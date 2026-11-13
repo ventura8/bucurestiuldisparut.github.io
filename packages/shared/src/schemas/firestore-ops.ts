@@ -82,6 +82,8 @@ export const JOB_WAIT_REASONS = [
     'free-tier',
     'parts',
     'daily',
+    // M20 (2026-11-13): an archive series waiting for the computer that has its scanned maps to send a copy of its sheets.
+    'archive-copy',
 ] as const;
 /** M7 (`docs/research/M7-local-worker.md` §3): where a raster job runs, the owner's computer or Cloud Run. */
 export const RUN_PLACES = ['local', 'cloud'] as const;
@@ -283,6 +285,16 @@ export const jobDocSchema = z.strictObject({
      * born waiting (`daily`) counts on the day `imagery.tick` releases it; one still waiting has none and counts nothing yet.
      */
     countedAt: timestampSchema.optional(),
+    /**
+     * M20 (live report of 2026-11-13; `docs/research/M20-import-local.md` §4.1): the copy of the series' sheets that the computer
+     * holding the archive put in the bucket for another worker (`tmp/archive-copies/`, deleted after a day): who sent it, when,
+     * how many bytes.
+     */
+    archiveCopy: z
+        .strictObject({ by: z.string().regex(WORKER_ID_PATTERN), at: timestampSchema, bytes: z.number().int().min(0) })
+        .optional(),
+    /** M20: how often a worker without the sheets handed the job back (no attempt spent); at `ARCHIVE_RETURNS_MAX` it fails. */
+    archiveReturns: z.number().int().min(0).optional(),
     ...stamp,
 });
 

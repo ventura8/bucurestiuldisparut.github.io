@@ -6,6 +6,10 @@ looked at it (`GET /state` from a Hosting origin: somebody is there, and may sta
 long as the one before, up to `idlePollSeconds` of `worker.hello` (a minute: a new job never waits longer), a tenth more or less
 so that workers do not ask together. A server that names no `idlePollSeconds` (one older than this image) is asked every
 `pollSeconds` as before. Its admin counts a worker gone after three minutes of silence.
+
+A city may have several workers (2026-11-13: the laptop, the NUC and the PC). A hot or busy computer leaves a queued job to a cooler or
+idler one: each wait is stretched by up to `RELUCTANCE` times by the governor's headroom (`Governor.headroom`: 1 with room, 0 while
+paused), so the computer with room asks first. A lone worker still takes the job, only later.
 """
 
 import secrets
@@ -18,6 +22,8 @@ GROWTH: Final = 2.0
 JITTER: Final = 0.1
 # Doublings counted at most: far past any `idlePollSeconds`, and a float still holds it.
 MAX_PASSES: Final = 16
+# A computer with no headroom waits 1 + RELUCTANCE times as long: four polls, so a cooler worker polling every `pollSeconds` asks first.
+RELUCTANCE: Final = 3.0
 
 
 def _jitter() -> float:
@@ -33,6 +39,8 @@ class Pace:
         self._awake_until = clock() + AWAKE_SECONDS
         self._passes = 0
         self._spread = 0.0
+        # The governor's headroom (`Governor.headroom`; the worker sets it): full room until it says otherwise.
+        self.headroom: Callable[[], float] = lambda: 1.0
 
     def wake(self) -> None:
         """A job ran, or the admin looked: fast again."""
@@ -48,7 +56,9 @@ class Pace:
         self._spread = self._jitter()
 
     def wait(self, poll: float, slowest: float | None) -> float:
-        """Seconds from the pass's end to the next claim: `poll` while awake or with no `slowest`, else grown up to `slowest`."""
+        """Seconds from the pass's end to the next claim: `poll` while awake or with no `slowest`, else grown up to `slowest`; either
+        stretched by the lack of headroom (`headroom`, 0 to 1)."""
+        reluctance = 1 + RELUCTANCE * (1 - min(1.0, max(0.0, self.headroom())))
         if slowest is None or self.awake:
-            return poll
-        return min(max(slowest, poll), poll * GROWTH**self._passes) * (1 + self._spread)
+            return poll * reluctance
+        return min(max(slowest, poll), poll * GROWTH**self._passes) * (1 + self._spread) * reluctance

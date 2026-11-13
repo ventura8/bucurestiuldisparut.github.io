@@ -3871,13 +3871,74 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix: the Statistics view computes the funnel (who left before each step) from `runReport` rows of `step_view` in the page's step order (`packages/admin/src/google/analytics-data.ts`).
     - **Check an API method's version before you design on it; build on the stable one and compute what it lacks.**
 
-659. **Firebase Auth moves a sign-in out of `sessionStorage` into IndexedDB never.**
+659. **The NUC's worker listed nvidia-smi's error sentence as a graphics card, and the admin called the worker out of date.**
+    - Seen: 2026-11-13, the NUC (Intel Arc, NVIDIA's tools installed, no NVIDIA driver): `/state` listed a card named "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver…" and a second with an empty name; the empty name failed `workerMachineSchema`, so "This computer" asked to update a current worker.
+    - Found by: the owner reading `/state`; the starter's test only faked an nvidia-smi that succeeds or is missing, never one that fails on stdout.
+    - Fix and pin: the starter keeps nvidia-smi's rows only on exit 0 and in shape, names cards by `lspci`, says `no-driver` for an NVIDIA card it cannot reach; the worker drops a card with an empty, multi-line or overlong name; the card links to NVIDIA's drivers. `S-A141-BAD-NO-DRIVER` (`starter-governor.test.ts`, `test_governor_probe.py`, `machine.test.ts`).
+    - **A command's output is data only when the command succeeded and the output has the expected shape; never parse a failure's text as a value.**
+
+660. **The worker's governor logged the same line every five seconds, for ever.**
+    - Seen: 2026-11-13, `docker logs hcm-worker` on the laptop: "this computer: quiet (user-active), 4 threads, 5880 MB", then 5881, 5856, … one line a tick.
+    - Cause: the line was written whenever the budget changed, and the memory budget (35 % of what is free) moved by a few megabytes each tick.
+    - Fix and pin: the memory budget counts whole 256 MB steps, and the line is written only when the profile, its reason or the threads change (`test_the_log_says_a_change_of_state_only`).
+    - **Log a state's change, not each reading of a noisy number; quantise a budget that follows a measurement.**
+
+661. **The canvas test passed on one thread and the worker needed 870 MB on sixteen.**
+    - Seen: 2026-11-13, the worker on the laptop and the NUC: two large colour sheets mosaicked past the 800 MB budget that `test_placing_canvas_window.py` held, because the test's child ran GDAL on one thread and the worker runs it on the cores but one.
+    - Cause: GDAL's threads allocate from glibc's per-thread malloc arenas, which keep freed pages; about 115 MB of the layout's reads stayed resident while the canvas read its own.
+    - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
+    - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**
+
+662. **A second worker failed every archive series it took: the scanned maps were on another computer.**
+    - Seen: live, 2026-11-13: after the NUC and the PC joined the laptop, five archive series failed at `gather` with "no record of
+      ar-971b77774eee2871 on this computer", and an atlas used up its attempts on the same cause.
+    - Found by: the owner's Jobs page; every test ran one worker, which always held the archive it imported.
+    - Fix and pin: a worker without the sheets hands the job back unspent and the computer with the archive sends a copy through the
+      bucket (M20 §20; `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/test_archive_copy.py`).
+    - **Data that lives on one machine needs a test with two workers: one that has it and one that does not.**
+
+663. **Every Linux worker refused its own local AI: the starter read the worker's image instead of the AI's.**
+    - Seen: 2026-11-13, the owner's PC (WSL) and the laptop: `local AI: refused an unexpected program image` every 20 s (286 times on the PC), the sidecar never started and every locate waited 30 minutes, then "the sidecar did not come up"; the frames fell to the admin's points.
+    - Cause: `ai_image` in `hcm-worker.sh` took the last `"image": "…"` of the whole `/state` line with a greedy `sed`; since the worker added its own `image` (`sha256:…`, after `ai`), that was the match, and the check refused it. The tests fed `/state` as the `ai` record alone, so they never saw the second field. The Windows starter parses the JSON and was right.
+    - Fix and pin: the starter reads `image` inside `"ai": {…}` only; the sidecar tests now feed the worker's whole `/state` (its own `image` and `starter` after `ai`). Starter version `fae0e8664ab5`.
+    - **A test of a parser feeds the producer's real, whole output, never the one field the parser wants; a shell `sed` over JSON is greedy across fields.**
+
+664. **The Statistics view blamed missing measurement names that Setup had just reported as all there.**
+    - Seen: 2026-11-13, the owner's live test: "Google Analytics does not know the map's measurement names yet", while step g said "0 created, 23 already there"; an hour later the read worked, with no values for the custom names yet.
+    - Cause: every HTTP 400 of `batchRunReports` was mapped to `noReports`. GA4 refuses the whole batch for one field its Data API does not list yet, and a name registered a few hours earlier is not listed yet; the fake answered 400 only for unregistered names, so the case never showed.
+    - Fix and pin: the read asks the property's metadata first, sends only the reports it can answer, and says which of not registered, not ready, or no values yet (`analytics-fields.ts`); another 400 is `refused`. `S-A153-BAD-NOT-READY`, `-NOT-REGISTERED`, `-NO-DATA`, `-REFUSED`.
+    - **Map an error code to a cause only when the code means that cause alone; a generic 400 is "refused", and the specific causes are found by asking, not guessed.**
+
+665. **Under WSL the worker read "someone is typing" every five seconds, forever.**
+    - Seen: 2026-11-13, the owner's PC (`ssh w5090`, WSL Ubuntu, the systemd user service `hcm-worker`): `host-hints.json` said `"idleS":0` on every pass, so the governor read `user-active` and Automatic never left Quiet (4 of 16 threads), whether or not the owner was at the PC.
+    - Cause: the POSIX starter's last idle source, logind's `IdleHint`, is always `no` in WSL (there is no desktop session), and `no` was written as 0 seconds. Reading Windows instead has two traps: a systemd service has no `WSL_INTEROP` (powershell.exe fails with "Invalid argument" through `/run/WSL/1_interop`), and a process that sshd's `wsl.exe` started runs in session 0, whose `GetLastInputInfo` never sees a key and returns the uptime (82209 s, against 1614 s from the console session's socket).
+    - Fix and pin: under WSL the starter reads `GetLastInputInfo` through powershell.exe (`-EncodedCommand`, as `hcm-worker.bat` reads it), trying `/run/WSL/*_interop` until a process in a session other than 0 answers, at most every 30 s, the answering socket first next time; no answer is an empty `idleS`, never 0 (`S-A141-HAPPY-WSL-IDLE`, `S-A141-BAD-WSL-NO-INTEROP`).
+    - **An idle source that cannot see the person must say nothing, not "active"; and on Windows, check which session a reading comes from.**
+
+666. **`imagery-onJobWrite` ran out of its 256 MiB four times in a day: three frames ending together each read the whole city.**
+    - Seen: 2026-11-13, the admin's Statistics page, Cloud Error Reporting: "Memory limit of 256 MiB exceeded" (4 times, revision `imagery-onjobwrite-00043`); the function's log showed three events in one instance within a second, each ending in "date plan rewritten" over about 480 frames.
+    - Cause: `rewriteDatePlan` reads every scene and every layer version of the city, and the trigger takes 80 events at once (`GLOBAL_OPTIONS.concurrency`), so frames ending together held several copies of the city in memory.
+    - Fix and pin: one rewrite per city at a time in an instance; calls that come meanwhile share one more rewrite that starts after them, so the plan still shows their write (`functions/src/imagery/join-plan.ts`; `functions/test/imagery/join-plan-flight.test.ts` reads the city three times without it).
+    - **A trigger with concurrency above one multiplies whatever one event reads: a read of a whole collection is coalesced per key, not repeated per event.**
+
+664. **A label fixed at the source stays wrong in every record written before the fix.**
+    - Seen: 2026-11-13, track/coronacrop: the id rules that name KH-5 Argon frames landed on 2026-11-09, but the 249 `corona2` scenes harvested on 2026-10-25 kept the fallback KH-4A, and the import copied it: an Argon frame, 550 km square, was searched as a Corona strip and shown whole with the city a speck (`DS09065A073MC043`).
+    - Fix: `trueSensor` reads a stored fallback camera again by the frame's id at import (`functions/src/imagery/scene-record.ts`, DECISIONS §209).
+    - **When a rule that derives a stored field changes, correct the stored records too (or read them through the rule), not only new ones.**
+
+667. **The map pane's list pushed the map 80 px below the scan, and no check compared the two panes.**
+    - Seen: 2026-11-13, the owner in full screen at about 2000 × 1125 (`#/georef/…`): "The right screen should be the same size and aligned with the left one, as it was before."
+    - Cause: *The map shows* (§173, track/georefbase) went above the map inside the map pane's own flex column, so the map started under it while the scan started at the pane's top; the turn rows and notes followed at different heights. The tour's checkers look at each element (overlap, edges, targets), never at two elements that must line up, so every state stayed green.
+    - Fix and pin: the panes share one grid's rows by subgrid (header, view, turn row, note, `georef-styles.ts`); on a compact window both panes sit in the same cell and the hidden one is `visibility: hidden`, so the switch keeps the view in place. `expectPanesAligned` (`e2e/admin/specs/imagery/georef.ts`) compares the views' top and height and the turn rows' top within 1 px, in the page and in full screen and on the map-shows state (`S-A122-BAD-GEOREF-PANES-MISALIGNED`).
+    - **Two panes meant to be compared side by side share their rows in the layout itself (one grid, subgrid), and a test measures them as a pair; a control added to one pane goes in a row both have.**
+    - Also found: the map-shows test chose from the list without showing the map pane, so at `admin-c360-ro` it waited for a hidden list until its 480 s ran out (on the base commit too); it now shows the map pane first.
+
+668. **Firebase Auth moves a sign-in out of `sessionStorage` into IndexedDB never.**
     - Seen: 2026-11-13, track/adminsite: the admin's own site uses `[indexedDBLocalPersistence, …]`; a user found in `browserSessionPersistence` stays there, because only persistences with `_shouldAllowMigration` (IndexedDB, `localStorage`) are migrated (`PersistenceUserManager.create` of `@firebase/auth`).
     - Fix: the own site's hierarchy is `[indexedDBLocalPersistence, browserLocalPersistence]`; the e2e puts the test's account into `localStorage` once on that origin, which Firebase moves into IndexedDB, so a second tab proves the shared sign-in (`e2e/admin/specs/shell/admin-site.spec.ts`).
     - **Read the SDK's migration rule before you change a persistence; a test that seeds one store proves nothing about another.**
 
-660. **Hosting's redirects come before its files, and its regex is RE2.**
+669. **Hosting's redirects come before its files, and its regex is RE2.**
     - Seen: 2026-11-13, track/adminsite: forwarding the public map's `/admin/**` to the admin's own site would also have forwarded `/admin/starter.json`, which Linux starters already installed fetch with `curl` and no `-L`; RE2 has no lookahead to leave it out.
     - Fix: the forward's pattern lists every string but that name (`everyStringBut`, `scripts/site/src/hosting/admin-site.ts`) and the file stays in the public tree.
     - **Before a redirect replaces a path, list every client already installed that reads it and whether it follows redirects.**
-

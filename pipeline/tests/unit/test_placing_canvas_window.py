@@ -84,6 +84,8 @@ def test_bad_path_a_window_no_tile_covers_has_no_owner() -> None:
 _CHILD = """
 import sys
 from pathlib import Path
+from hcm_pipeline.heap import limit_arenas
+limit_arenas()
 from hcm_pipeline.placing import autostitch
 from hcm_pipeline.placing.canvas_window import Canvas, render
 named = [(line.split("\\t")[0], Path(line.split("\\t")[1])) for line in Path(sys.argv[1]).read_text().splitlines()]
@@ -95,7 +97,7 @@ print(len(proposal.solved.positions), size[0], size[1], peak)
 """
 
 
-def _mosaicked(tmp_path: Path, spec: SheetsSpec) -> tuple[int, int, int, int]:
+def _mosaicked(tmp_path: Path, spec: SheetsSpec, threads: str = "1") -> tuple[int, int, int, int]:
     """(sheets placed, canvas width, height, the child's peak resident memory in KiB) of laying out and mosaicking `spec`."""
     series = make_series(tmp_path / "scans", spec)
     listing = tmp_path / "named.tsv"
@@ -104,7 +106,8 @@ def _mosaicked(tmp_path: Path, spec: SheetsSpec) -> tuple[int, int, int, int]:
     # GDAL's, OpenCV's and the pipeline's own settings are never inherited: what an earlier test of a full run left in the environment
     # would size the child differently (the colour case passed alone and failed in a full run, 2026-11-13).
     kept = {name: value for name, value in os.environ.items() if not name.startswith(SETTING_PREFIXES)}
-    env = {**kept, "PYTHONPATH": os.pathsep.join(sys.path), "GDAL_CACHEMAX": "256"}
+    # The child starts as `python -m hcm_pipeline` does (`limit_arenas` first), with GDAL's threads as the governor sets them.
+    env = {**kept, "PYTHONPATH": os.pathsep.join(sys.path), "GDAL_CACHEMAX": "256", "GDAL_NUM_THREADS": threads}
     command = [sys.executable, "-c", _CHILD, str(listing), str(tmp_path / "canvas.tif"), spec.style]
     done = subprocess.run(command, env=env, capture_output=True, text=True, check=True)
     placed, width, height, peak_kib = (int(value) for value in done.stdout.split())
@@ -122,12 +125,14 @@ def test_happy_path_a_hundred_large_scans_are_laid_out_and_mosaicked_within_the_
     assert peak_kib * 1024 <= PEAK_RSS_BYTES
 
 
-def test_happy_path_large_colour_scans_cost_their_box_at_the_canvas_scale_never_the_whole_scan(tmp_path: Path) -> None:
-    """Scenarios: S-P20-HAPPY-STITCH-WINDOWED"""
-    # One 12000 x 9000 colour scan is 324 MB as RGB; the old paste read it whole at 1.05 x and copied it three times more.
+@pytest.mark.parametrize("threads", ["1", "ALL_CPUS"])
+def test_happy_path_large_colour_scans_cost_their_box_at_the_canvas_scale_never_the_whole_scan(tmp_path: Path, threads: str) -> None:
+    """Scenarios: S-P20-HAPPY-STITCH-WINDOWED, S-P31-HAPPY-CANVAS-THREADS"""
+    # One 12000 x 9000 colour scan is 324 MB as RGB; the old paste read it whole at 1.05 x and copied it three times more. On every
+    # core (2026-11-13) the threads' malloc arenas kept the layout's reads: 870 MB, until the heap was given back (heap.py).
     spec = SheetsSpec(rows=1, cols=2, overlap=0.06, names="rc", style="colour", out_px=12_000)
 
-    placed, _width, _height, peak_kib = _mosaicked(tmp_path, spec)
+    placed, _width, _height, peak_kib = _mosaicked(tmp_path, spec, threads)
 
     assert placed == 2
     assert peak_kib * 1024 <= COLOUR_PEAK_RSS_BYTES
