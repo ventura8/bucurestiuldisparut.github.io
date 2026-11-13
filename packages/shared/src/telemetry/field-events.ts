@@ -14,8 +14,6 @@
  */
 import { z } from 'zod';
 
-import type { FunnelEventName } from './funnel-hub.js';
-
 export type GaParamValue = string | number | boolean;
 export type GaParams = Readonly<Record<string, GaParamValue>>;
 
@@ -46,7 +44,16 @@ export type FieldEventName =
     | 'editor_save'
     | 'job_done'
     | 'admin_action'
-    | FunnelEventName
+    // The wizard funnels' events (`FUNNEL_EVENT_NAMES` of `funnel-hub.ts`, which imports this module: named here, no cycle).
+    | 'wizard_start'
+    | 'step_view'
+    | 'step_complete'
+    | 'step_back'
+    | 'step_error'
+    | 'step_help_opened'
+    | 'step_action'
+    | 'wizard_abandon'
+    | 'wizard_complete'
     | 'ui_error';
 
 /** A duration or time in whole milliseconds: at most a day (a page left open overnight). */

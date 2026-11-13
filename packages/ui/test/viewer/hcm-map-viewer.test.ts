@@ -97,7 +97,9 @@ describe('<hcm-map-viewer>: boot', () => {
         await element.updateComplete;
         await page.getByRole('button', { name: 'Reîncearcă' }).click();
 
-        await expect.element(page.getByRole('alert')).toHaveTextContent('Încărcarea hărții durează prea mult, probabil o conexiune lentă. Încearcă din nou. Reîncearcă');
+        await expect
+            .element(page.getByRole('alert'))
+            .toHaveTextContent('Încărcarea hărții durează prea mult, probabil o conexiune lentă. Încearcă din nou. Reîncearcă');
         expect(store.callsOf('retry')).toHaveLength(1);
         expect(events).toEqual([{ type: 'hcm-error', detail: { code: 'error.manifest.timeout', retryable: true } }]);
     });
@@ -263,7 +265,9 @@ describe('<hcm-map-viewer>: store wiring', () => {
 
         store.showToast('error.tiles');
         await element.updateComplete;
-        await expect.element(page.getByRole('status')).toHaveTextContent('Unele porțiuni ale hărții nu se încarcă, probabil o conexiune lentă. Mișcă puțin harta ca să reîncerci.');
+        await expect
+            .element(page.getByRole('status'))
+            .toHaveTextContent('Unele porțiuni ale hărții nu se încarcă, probabil o conexiune lentă. Mișcă puțin harta ca să reîncerci.');
         fireKitEvent(part({ element, store }, 'hcm-snackbar'), 'hcm-dismiss', { reason: 'timeout' });
 
         expect(store.getState().toast).toBeNull();
