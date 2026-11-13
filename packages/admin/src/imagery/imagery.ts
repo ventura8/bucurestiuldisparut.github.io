@@ -209,7 +209,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             retry: () => {
                 this.#retry();
             },
-            importScene: (id) => this.#import(id),
+            importScene: (id, again) => this.#import(id, again === true),
             retryBrowse: (id) => {
                 this.#retryBrowse(id);
             },
@@ -392,13 +392,14 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         }
     }
 
-    async #import(id: string): Promise<string | null> {
+    async #import(id: string, again: boolean): Promise<string | null> {
         if (this.#cell.state.importing !== null) {
             return null;
         }
         this.#cell.update({ importing: id, importRefusal: null });
         try {
-            const answer = await callImagery(this.#services.callables, 'imagery.import', { cityId: this.#services.cityId, entityId: id });
+            const request = { cityId: this.#services.cityId, entityId: id, ...(again ? { again: true as const } : {}) };
+            const answer = await callImagery(this.#services.callables, 'imagery.import', request);
             this.#cell.update({ importing: null });
             this.#services.notify({ key: 'adminContent.imagery.notice.imported' });
             return answer.versionId;
