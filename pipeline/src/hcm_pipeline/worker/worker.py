@@ -116,6 +116,11 @@ class Worker:
         state.pace.headroom = governor.headroom
         runtime.matcher_budget = governor.matcher_budget
         actions.choose_profile = governor.choose
+        # Pause this computer (`pausing.py`): the governor frees the computer; a command from the page ends the loop's wait.
+        loop.pausing.target = governor
+        loop.pausing.woken = loop.nudge
+        actions.pausing = loop.pausing
+        state.paused = loop.pausing.snapshot
         loop.connect_with(connector)
         loop.sweep = runtime.sweep
         archives = ArchiveStore(args.work)

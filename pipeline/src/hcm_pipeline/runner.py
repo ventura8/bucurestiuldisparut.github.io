@@ -15,6 +15,8 @@ How a run ends:
 | a step declines (M16: a refine with nothing better, `DeclinedError`) | `cancelled` with its `error`; the version `cancelled` with it | 0 |
 | `cancelRequested` (heartbeat, a checkpoint, or SIGTERM after it) | `cancelled`; the version `cancelled`; its `work/` objects deleted | 0 |
 | SIGTERM (or SIGINT: a local worker's Ctrl-C), no cancel | `queued` with `retryAt` + 1 minute; the step `pending` | 0 |
+| the owner paused the job (`paused`, seen before a step starts) | `queued`, held by its `paused` until Resume; no step changed | 0 |
+| this computer was paused (`releaseRequested`, or the worker's own pause) | untouched but the step `pending`; `released` queues it | 0 |
 | the download phase done on the small `fetch` job | `queued`, lease released: dispatched again on `std` or `xl` | 0 |
 | another live owner holds the lease, or the job is not runnable | untouched | 0 |
 | M20: an archive series without its sheets here nor a copy (`ArchiveElsewhereError`) | untouched; `returned` queues it | 0 |
@@ -64,6 +66,8 @@ from hcm_pipeline.jobs import (
     Done,
     JobContext,
     LeaseLostError,
+    PausedRunError,
+    ReleasedRunError,
     RunFlags,
     RunStoppedError,
     Services,
@@ -91,6 +95,10 @@ class RunOutcome(enum.Enum):
     FAILED = "failed"
     # M20 (2026-11-13): the job's archive is on another computer; the worker hands it back.
     RETURNED = "returned"
+    # Pause (the owner's request of 2026-11-13): the owner paused the job; it waits queued for Resume.
+    PAUSED = "paused"
+    # This computer was paused: the worker hands the job back (`worker.end` `released`), its attempt given back.
+    RELEASED = "released"
 
 
 class JobStep(Protocol):
@@ -150,6 +158,8 @@ class RunSettings:
 
     heartbeat_seconds: float | None = None
     asked_to_stop: Callable[[], bool] = lambda: False
+    # The computer's pause (the local worker): the run stops at its next checkpoint and hands the job back.
+    asked_to_release: Callable[[], bool] = lambda: False
     # Each step's wall-time limit in seconds, over `STEP_LIMIT_SECONDS` (the rest keep `DEFAULT_STEP_LIMIT_SECONDS`).
     step_limits: Mapping[str, float] = field(default_factory=dict)
 
@@ -175,7 +185,7 @@ class JobRunner:
         if not decision.taken:
             LOG.info("job %s not run: %s", self._config.job_id, decision.verdict)
             return RunOutcome.UNTOUCHED
-        flags = RunFlags(self._settings.asked_to_stop)
+        flags = RunFlags(self._settings.asked_to_stop, asked_to_release=self._settings.asked_to_release)
         heartbeat = Heartbeat(self._services.store, self._path, self._config.lease_owner, flags, self._services.clock)
         heartbeat.interval = self._settings.heartbeat_seconds or heartbeat.interval
         with tempfile.TemporaryDirectory(prefix=f"hcm-{self._config.job_id}-") as scratch, heartbeat, sigterm_raises(flags):
@@ -205,6 +215,14 @@ class JobRunner:
         if isinstance(stop, LeaseLostError):
             LOG.warning("job %s: another execution holds the lease; stopping without writing", ctx.job.id)
             return RunOutcome.UNTOUCHED
+        if isinstance(stop, PausedRunError):
+            return self._paused(ctx)
+        if isinstance(stop, ReleasedRunError):
+            return self._released(ctx)
+        return self._ended(ctx, stop)
+
+    def _ended(self, ctx: JobContext, stop: RunStoppedError) -> RunOutcome:
+        """A cancel (asked, or seen now) ends the job; any other stop queues it again from its checkpoint."""
         cancel = isinstance(stop, CancelledRunError) or self._cancel_requested(ctx)
         return self._cancel(ctx) if cancel else self._requeue(ctx)
 
@@ -287,6 +305,8 @@ class JobRunner:
         ctx.job = Job.of(ctx.job.id, self._services.store.get(self._path) or {})
         if ctx.job.cancel_requested:
             raise CancelledRunError("the admin asked to cancel the job")
+        if ctx.job.paused:
+            raise PausedRunError("the owner paused the job")
         ctx.version = self._version(ctx.version.id)
 
     # --- endings ------------------------------------------------------------------------------------------
@@ -334,6 +354,20 @@ class JobRunner:
         self._final({"status": "queued", "retryAt": self._now().plus(REQUEUE_SECONDS), **pending})
         self._log.warn("stopped by Cloud Run (SIGTERM); the job resumes from its checkpoint", ctx.step or None)
         return RunOutcome.REQUEUED
+
+    def _paused(self, ctx: JobContext) -> RunOutcome:
+        """The owner paused the job: back to `queued` between two steps (nothing to undo), held by its `paused` until Resume."""
+        self._final({"status": "queued", "retryAt": DELETE})
+        where = f" after step {ctx.step}" if ctx.step else " before its first step"
+        self._log.info(f"paused by the owner{where}; Resume puts it back in the queue and it goes on from there", ctx.step or None)
+        return RunOutcome.PAUSED
+
+    def _released(self, ctx: JobContext) -> RunOutcome:
+        """This computer was paused: the step it stopped in is `pending` again; the worker hands the job back (`released`)."""
+        if ctx.step and self._current(ctx.step).status == "running":
+            ctx.update_job(self._pending(ctx, ctx.step))
+        self._log.info("this computer was paused; the job goes back to the queue and resumes from this step", ctx.step or None)
+        return RunOutcome.RELEASED
 
     def _cancel(self, ctx: JobContext) -> RunOutcome:
         now = self._now()

@@ -291,6 +291,17 @@ export const jobDocSchema = z.strictObject({
         .optional(),
     /** M20: how often a worker without the sheets handed the job back (no attempt spent); at `ARCHIVE_RETURNS_MAX` it fails. */
     archiveReturns: z.number().int().min(0).optional(),
+    /**
+     * Pause (the owner's request of 2026-11-13; `imagery.pause`): the owner paused the job. A queued one is claimed and dispatched by
+     * nobody; a starting or running one stops at its next step boundary and goes back to `queued` with the step it stopped before
+     * (`runner.py`). `inRun`: it was in a run when paused, so Resume gives back the attempt that run counted.
+     */
+    paused: z.strictObject({ by: uidSchema, at: timestampSchema, inRun: z.literal(true).optional() }).optional(),
+    /**
+     * The computer running this job was paused (`imagery.pause` with a worker): the run stops at its next checkpoint and the worker
+     * hands the job back (`worker.end` `released`), queued again without using an attempt.
+     */
+    releaseRequested: z.literal(true).optional(),
     ...stamp,
 });
 

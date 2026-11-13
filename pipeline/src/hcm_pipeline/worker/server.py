@@ -20,10 +20,14 @@ origins, answer CORS (`Access-Control-Allow-Origin: <origin>`, `Vary: Origin`) a
 | `OPTIONS /state`, `OPTIONS /pair` from a Hosting origin | 204, the CORS preflight (403 from any other origin) |
 | `POST /pair` `{code}` from a Hosting origin | 202 and the state: the worker pairs with the code at its loop's next pass |
 | `POST /profile` `{profile, batteryAllowed?}` from a Hosting origin | 200 and the state; 400 for a profile not `auto`, `quiet`, `full` |
+| `POST /pause` `{action, until?}` from a Hosting origin, or the page with its token | 200 and the state; 400 for another body |
 | `GET /import`, `POST /import/...` | M20's import of a local archive (`imports.py`, docs/research/M20-import-local.md §2.1) |
 | `POST /import/session` `{city}` from a Hosting origin | 201 `{token}` while signed in for that city, else 409 |
 | `OPTIONS /import/...` from a Hosting origin | 204, the preflight of the admin's own import (batch 4) |
 | anything else | 404, or 405 for another method |
+
+`POST /pause` is Pause this computer (`pausing.py`): `{action: 'pause', until?}` or `{action: 'resume'}`; 400 for an `until`
+that is not an ISO time with its zone, is past, or is more than 48 h ahead.
 
 `POST` and `DELETE` answer 403 unless `Origin` is the page's, the body is JSON (`Content-Type: application/json`, which a
 cross-site form cannot send without a preflight nobody answers) and `X-HCM-Worker` is the CSRF token (32 random bytes,
@@ -61,7 +65,7 @@ MAX_BODY_BYTES: Final = 16 * 1024
 JSON_TYPE: Final = "application/json"
 POLL_SECONDS: Final = 0.2
 # The paths the admin reads and posts to from its Hosting origin (auto-pair), and the preflight's fixed answers.
-CORS_PATHS: Final = ("/state", "/pair", "/profile")
+CORS_PATHS: Final = ("/state", "/pair", "/profile", "/pause")
 SESSION_HEADER: Final = "x-hcm-session"
 PREFLIGHT_HEADERS: Final = (
     ("Access-Control-Allow-Methods", "GET, POST"),
@@ -91,6 +95,8 @@ class WorkerApp(Protocol):
     def pair(self, code: object) -> str | None: ...
 
     def profile(self, chosen: object, battery_allowed: object) -> bool: ...
+
+    def pause(self, body: Mapping[str, object]) -> bool: ...
 
 
 Reply = tuple[int, bytes, str]
@@ -355,6 +361,8 @@ class LocalServer:
             return self._import_post(request)
         if request.path == "/profile":
             return self._profile(request)
+        if request.path == "/pause":
+            return self._pause(request)
         return self._pair(request) if request.path == "/pair" else self._guarded(request, self._sign_in)
 
     def _profile(self, request: Request) -> Reply:
@@ -363,6 +371,15 @@ class LocalServer:
             return _json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
         body = _parsed(request.body)
         if not self._app.profile(body.get("profile"), body.get("batteryAllowed")):
+            return _json(HTTPStatus.BAD_REQUEST, {"error": "invalidRequest"})
+        return _json(HTTPStatus.OK, self._app.state())
+
+    def _pause(self, request: Request) -> Reply:
+        """Pause this computer, or resume it: from the admin (a Hosting origin, JSON) or the page itself (its origin, JSON, its token)."""
+        allowed = self._pair_allowed(request) or self._state_change_allowed(request)
+        if not allowed or request.body is None:
+            return _json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
+        if not self._app.pause(_parsed(request.body)):
             return _json(HTTPStatus.BAD_REQUEST, {"error": "invalidRequest"})
         return _json(HTTPStatus.OK, self._app.state())
 

@@ -10,6 +10,7 @@ Finding 72 (auto-pair, M7 §2.7): `pair` takes the admin's one-time code from `P
 and hands it to the connector (`accept_pairing`), which pairs at the loop's next pass.
 """
 
+import time
 from collections.abc import Callable, Mapping
 from typing import Final
 
@@ -19,6 +20,7 @@ from hcm_pipeline.log import get_logger
 from hcm_pipeline.worker.ai_state import AiState
 from hcm_pipeline.worker.api import HELLO, RevokedError, WorkerApi, WorkerApiError
 from hcm_pipeline.worker.args import PAIR_CODE
+from hcm_pipeline.worker.pausing import PauseControl, parse_command
 from hcm_pipeline.worker.session import SIGNED_OUT, RefreshUnavailableError, Session, Tokens
 from hcm_pipeline.worker.state import WorkerState
 from hcm_pipeline.worker.webconfig import WebConfig, WebConfigError
@@ -46,6 +48,9 @@ class PageActions:
         self._offer: Callable[[str], None] | None = None
         # The governor's `choose` (M26): the owner's profile from the admin's card.
         self.choose_profile: Callable[[object, object], bool] = lambda _chosen, _battery: False
+        # Pause this computer (`pausing.py`): the loop's, given by `Worker.build`; the wall clock a timed pause is checked against.
+        self.pausing = PauseControl()
+        self.wall: Callable[[], float] = time.time
 
     def accept_pairing(self, offer: Callable[[str], None]) -> None:
         """Where `pair` hands a code: the connector's `offer` (finding 72)."""
@@ -64,6 +69,15 @@ class PageActions:
     def profile(self, chosen: object, battery_allowed: object) -> bool:
         """The owner's profile for this computer (M26, docs/research/M26-governor.md §6); False when it is not one."""
         return self.choose_profile(chosen, battery_allowed)
+
+    def pause(self, body: Mapping[str, object]) -> bool:
+        """Pause or resume this computer from its page or the admin's card (`POST /pause`); False for a body that is not a command."""
+        command = parse_command(body, self.wall())
+        if command is None:
+            return False
+        self.pausing.local(command)
+        LOG.info("this computer was %s from its page", "paused" if command.action == "pause" else "resumed")
+        return True
 
     def web_config(self) -> Mapping[str, str] | None:
         try:

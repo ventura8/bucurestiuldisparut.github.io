@@ -144,8 +144,10 @@ class WorkerRuntime:
         self._http.close()
         self._ai_client.close()
 
-    def run(self, job_id: str, asked_to_stop: Callable[[], bool]) -> RunOutcome:
-        """The job's run; it stops at its next checkpoint once `asked_to_stop` (the loop's signal) says so."""
+    def run(self, job_id: str, asked_to_stop: Callable[[], bool], asked_to_release: Callable[[], bool] = lambda: False) -> RunOutcome:
+        """The job's run; it stops at its next checkpoint once `asked_to_stop` (the loop's signal) says so, and hands the job back
+        once `asked_to_release` (this computer was paused) does."""
         config = worker_config(self._args, self._worker_id, job_id)
-        settings = RunSettings(heartbeat_seconds=self._state.timing.heartbeat_seconds, asked_to_stop=asked_to_stop)
+        timing = self._state.timing
+        settings = RunSettings(heartbeat_seconds=timing.heartbeat_seconds, asked_to_stop=asked_to_stop, asked_to_release=asked_to_release)
         return JobRunner(config, self.services(config), self._steps(), settings).run()

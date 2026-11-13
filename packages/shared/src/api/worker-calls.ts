@@ -67,9 +67,20 @@ export const workerHelloResponseSchema = z.strictObject({
  * `archives` (M20, 2026-11-13): the local archives this computer holds whole (its own scans, not copies of a few sheets): a
  * series another worker waits for comes back as `copy`, so this computer sends its sheets through the bucket.
  */
+/**
+ * Pause from the computer's own page (`localhost:8765`, the owner's request of 2026-11-13): the person there paused or resumed it;
+ * the worker sends it with its next `worker.claim` or `worker.end`, and the server records it on the worker (`paused`).
+ */
+export const workerPauseCommandSchema = z.discriminatedUnion('action', [
+    z.strictObject({ action: z.literal('pause'), until: isoTimeSchema.optional() }),
+    z.strictObject({ action: z.literal('resume') }),
+]);
+export type WorkerPauseCommand = z.infer<typeof workerPauseCommandSchema>;
+
 export const workerClaimRequestSchema = z.strictObject({
     cityId: cityIdSchema,
     workerId: workerIdSchema,
+    pause: workerPauseCommandSchema.optional(),
     types: z
         .array(z.string().regex(/^[a-z][a-z-]{0,39}$/))
         .max(20)
@@ -82,6 +93,8 @@ export const workerClaimResponseSchema = z.strictObject({
     copy: z.strictObject({ jobId: idSchema, archiveId: z.string().regex(ARCHIVE_ID_PATTERN), seriesId: z.string().max(40) }).optional(),
     /** True when the worker's image is not the installed one (no job is given to it). */
     outdated: z.boolean().optional(),
+    /** The computer is paused (from the admin or its own page): no job is given to it; `until`, when the pause ends on its own. */
+    paused: z.strictObject({ by: z.string().min(1).max(128), at: isoTimeSchema, until: isoTimeSchema.optional() }).optional(),
 });
 
 /**
@@ -174,12 +187,16 @@ export const workerUrlsResponseSchema = z.strictObject({
 
 /**
  * `worker.end`: the run is over; a crash outside a step fails the job the worker still holds. `returned` (M20, 2026-11-13): the
- * worker does not hold the job's local archive and hands the job back, queued, without spending an attempt.
+ * worker does not hold the job's local archive and hands the job back, queued, without spending an attempt. `released` (Pause this
+ * computer, 2026-11-13): the computer was paused; the run stopped at a checkpoint and the job goes back to the queue, its attempt
+ * given back.
  */
 export const workerEndRequestSchema = z.strictObject({
     ...workerJobFields,
-    outcome: z.enum(['done', 'failed', 'returned']),
+    outcome: z.enum(['done', 'failed', 'returned', 'released']),
     error: z.strictObject({ code: z.string().max(64), message: z.string().max(2000) }).optional(),
+    /** The computer's own page paused it during the run (`released` follows): recorded before the job is handed back. */
+    pause: workerPauseCommandSchema.optional(),
 });
 export const workerEndResponseSchema = z.strictObject({ status: z.enum(JOB_STATUSES) });
 

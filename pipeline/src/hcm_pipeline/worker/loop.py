@@ -20,6 +20,10 @@ unspent, waiting for that copy.
 Finding 72 (the starter file, M7 §1.5): under the starter's supervisor (`supervised`) an outdated claim ends the loop
 instead (`outdated_exit`), and the command exits with `ExitCode.OUTDATED`, so the supervisor pulls the installed image.
 Each pass that holds a session sweeps the work folder after its claim (`sweep`, `runtime.py`), told the job it claimed.
+Pause this computer (the owner's request of 2026-11-13, `pausing.py`): a claim carries the command of the computer's own page (`pause`)
+and its answer's `paused` is mirrored into the governor; while paused the loop claims every `pollSeconds`, a running job stops at its
+next checkpoint (`asked_to_release`) and `worker.end` says `released` (the server queues it again, its attempt given back); a job the
+owner paused stops before its next step and ends `done` (the runner queued it, held by its `paused`).
 """
 
 import enum
@@ -40,6 +44,7 @@ from hcm_pipeline.model import RUN_JOB_TYPES
 from hcm_pipeline.paths import ID
 from hcm_pipeline.runner import STOP_SIGNALS, RunOutcome
 from hcm_pipeline.worker.api import CLAIM, END, REVOKED, RevokedError, WorkerApi, WorkerApiError
+from hcm_pipeline.worker.pausing import Command, PauseControl
 from hcm_pipeline.worker.session import RefreshUnavailableError, Session
 from hcm_pipeline.worker.state import WorkerState
 
@@ -64,7 +69,7 @@ class Pass(enum.Enum):
 
 
 class JobRunning(Protocol):
-    def run(self, job_id: str, asked_to_stop: Callable[[], bool]) -> RunOutcome: ...
+    def run(self, job_id: str, asked_to_stop: Callable[[], bool], asked_to_release: Callable[[], bool]) -> RunOutcome: ...
 
 
 class Connecting(Protocol):
@@ -101,6 +106,10 @@ class Ending:
 DONE: Final = Ending("done")
 # M20 (2026-11-13): the job's archive is on another computer: the server queues it again without spending an attempt.
 RETURNED: Final = Ending("returned")
+# Pause this computer: the run stopped at a checkpoint; the server queues the job again without spending an attempt.
+RELEASED: Final = Ending("released")
+# The run's outcomes that end otherwise than `done`.
+ENDINGS: Final[dict[RunOutcome, Ending]] = {RunOutcome.RETURNED: RETURNED, RunOutcome.RELEASED: RELEASED}
 # The most local archives a claim names (`WORKER_ARCHIVES_MAX` on the server).
 CLAIM_ARCHIVES_MAX: Final = 200
 
@@ -139,6 +148,14 @@ class WorkerLoop:
         # Finding 72: under the starter's supervisor an outdated image ends the loop (the supervisor updates it).
         self.supervised = False
         self.outdated_exit = False
+        # Pause this computer (`pausing.py`): the page's command, the server's pause mirrored; `Worker.build` gives it the governor.
+        self.pausing = PauseControl()
+        # Set by `nudge` (a command from the page): the wait ends at its next look. One assignment each: no lock.
+        self._nudged = False
+
+    def nudge(self) -> None:
+        """The page paused or resumed this computer: the loop's wait ends, so the next claim tells the server now."""
+        self._nudged = True
 
     def connect_with(self, connector: Connecting) -> None:
         """The connector each pass without a session lets try first (finding 67: pairing, the kept session)."""
@@ -176,13 +193,20 @@ class WorkerLoop:
     def _idle_seconds(self) -> float:
         """How long this idle pass waits (`pace.py`): asked again at every look, so a wake shortens a long wait to the poll's."""
         timing = self._state.timing
+        if self.pausing.paused:
+            # Paused: no idle growth and no headroom stretch, so a Resume in the admin is seen within one poll.
+            return timing.poll_seconds
         return self._state.pace.wait(timing.poll_seconds, timing.idle_poll_seconds)
 
     def _wait(self, seconds: Callable[[], float]) -> None:
         """Until `seconds` passed or the loop stops, looking at the signal's flag every `SIGNAL_CHECK_SECONDS`."""
         started = time.monotonic()
-        while not self._stopped() and (left := started + seconds() - time.monotonic()) > 0:
+        while not self._stopped() and not self._take_nudge() and (left := started + seconds() - time.monotonic()) > 0:
             self.stopping.wait(min(left, SIGNAL_CHECK_SECONDS))
+
+    def _take_nudge(self) -> bool:
+        nudged, self._nudged = self._nudged, False
+        return nudged
 
     def _on_signal(self, _signum: int, _frame: FrameType | None) -> None:
         """SIGTERM or Ctrl-C. No lock here: Python runs a handler in the main thread between two bytecodes, also while
@@ -218,14 +242,24 @@ class WorkerLoop:
     def _claim(self) -> tuple[str | None, Mapping[str, object] | None]:
         try:
             # Only the types this image runs: a newer type stays queued for an updated worker, never failed here.
-            claim = {**self._ids, "types": list(RUN_JOB_TYPES), "archives": self.archives()[:CLAIM_ARCHIVES_MAX]}
-            answer = self._api.call(CLAIM, claim)
+            sent = self.pausing.pending()
+            answer = self._api.call(CLAIM, self._claim_body(sent))
         except CALL_ERRORS as error:
             LOG.warning("worker.claim failed: %s", error)
             self._refused(error)
             return None, None
+        self.pausing.answered(sent, answer)
         self._state.outdated(answer.get("outdated") is True)
         return (None, None) if self._ends_outdated() else (_job_of(answer), _copy_of(answer))
+
+    def _claim_body(self, sent: Command | None) -> dict[str, object]:
+        """The claim: the types this image runs, the archives it holds whole, and the page's pause command, if any."""
+        claim: dict[str, object] = {**self._ids, "types": list(RUN_JOB_TYPES), "archives": self.archives()[:CLAIM_ARCHIVES_MAX]}
+        return claim if sent is None else {**claim, "pause": sent.wire()}
+
+    def _asked_to_release(self) -> bool:
+        """This computer is paused: the run hands its job back at the next checkpoint (read from the run's threads, no lock here)."""
+        return self.pausing.paused
 
     def _ends_outdated(self) -> bool:
         """Under the starter's supervisor, an outdated image ends the loop (finding 72); true when it did."""
@@ -246,8 +280,8 @@ class WorkerLoop:
 
     def _run(self, job_id: str) -> tuple[RunOutcome, Ending]:
         try:
-            outcome = self._runtime.run(job_id, self._asked_to_stop)
-            return outcome, RETURNED if outcome is RunOutcome.RETURNED else DONE
+            outcome = self._runtime.run(job_id, self._asked_to_stop, self._asked_to_release)
+            return outcome, ENDINGS.get(outcome, DONE)
         except RunStoppedError as stop:
             LOG.warning("job %s stopped without another write: %s", job_id, stop)
             return RunOutcome.UNTOUCHED, DONE
@@ -261,8 +295,11 @@ class WorkerLoop:
             LOG.warning("job %s ended without a session: worker.end cannot be sent", job_id)
             return
         report: dict[str, object] = {**self._ids, "jobId": job_id, "outcome": ending.outcome}
+        sent = self.pausing.pending()
+        extra = {**({"error": ending.error} if ending.error else {}), **({"pause": sent.wire()} if sent else {})}
         try:
-            self._api.call(END, {**report, **({"error": ending.error} if ending.error else {})})
+            self._api.call(END, {**report, **extra})
+            self.pausing.delivered(sent)
         except CALL_ERRORS as error:
             LOG.warning("worker.end failed: %s", error)
             self._refused(error)

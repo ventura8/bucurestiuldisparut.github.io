@@ -316,15 +316,20 @@ export {
     workerStarterQuerySchema,
     imageryRunOnRequestSchema,
     imageryRunOnResponseSchema,
+    PAUSE_ACTIONS,
+    PAUSE_UNTIL_MAX_HOURS,
+    imageryPauseRequestSchema,
+    imageryPauseResponseSchema,
     workerPairCodeRequestSchema,
     workerPairCodeResponseSchema,
     workerRevokeRequestSchema,
     workerRevokeResponseSchema,
 } from './worker.js';
-export type { WorkerOs, WorkerStarterAction, WorkerStarterUpdate } from './worker.js';
+export type { PauseAction, WorkerOs, WorkerStarterAction, WorkerStarterUpdate } from './worker.js';
 // M26: what the worker says of its computer (`machine` on its `/state`), and the owner's profile.
 export {
     WORKER_ACCELERATOR_VIAS,
+    WORKER_CHOSEN,
     WORKER_MATCHERS,
     WORKER_POWER_SOURCES,
     WORKER_PROFILES,
@@ -369,6 +374,7 @@ export {
     workerImageResponseSchema,
     workerPairRequestSchema,
     workerPairResponseSchema,
+    workerPauseCommandSchema,
     workerSignedObjectSchema,
     workerStepOpSchema,
     workerStepRequestSchema,
@@ -376,5 +382,6 @@ export {
     workerUrlsRequestSchema,
     workerUrlsResponseSchema,
 } from './worker-calls.js';
+export type { WorkerPauseCommand } from './worker-calls.js';
 export { CALLABLES } from './callables.js';
 export type { CallableName, CallableRequest, CallableResponse } from './callables.js';

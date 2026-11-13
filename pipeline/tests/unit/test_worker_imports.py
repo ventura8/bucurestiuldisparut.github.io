@@ -66,6 +66,9 @@ class App:
     def profile(self, chosen: object, battery_allowed: object) -> bool:
         return False
 
+    def pause(self, body: Mapping[str, object]) -> bool:
+        return False
+
 
 def probed(path: Path) -> Probe:
     return Probe("jpeg", 4000, 3000, 3, 8, "rgb") if path.suffix == ".jpg" else Probe("unknown")

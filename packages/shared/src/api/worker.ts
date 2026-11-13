@@ -150,6 +150,30 @@ export const imageryRunOnRequestSchema = z
     .refine((request) => request.jobId === undefined || request.runOn !== 'auto', coded('validation.format', ['runOn']));
 export const imageryRunOnResponseSchema = z.strictObject({ choice: z.enum(RUN_CHOICES), runOn: z.enum(RUN_PLACES).optional() });
 
+/**
+ * `imagery.pause` (admin; the owner's request of 2026-11-13): `pause` or `resume` one job (`jobId`), one computer (`workerId`, with
+ * `until` when its pause ends on its own: For 1 hour, Until tomorrow), or, naming neither, every pausable job of the city (Pause all,
+ * Resume all). `changed`: how many jobs or computers it changed (0: nothing was left to change).
+ */
+export const PAUSE_ACTIONS = ['pause', 'resume'] as const;
+export type PauseAction = (typeof PAUSE_ACTIONS)[number];
+/** The longest a timed pause of a computer may last (Until tomorrow at the latest). */
+export const PAUSE_UNTIL_MAX_HOURS = 48;
+export const imageryPauseRequestSchema = z
+    .strictObject({
+        cityId: cityIdSchema,
+        action: z.enum(PAUSE_ACTIONS),
+        jobId: idSchema.optional(),
+        workerId: z.string().regex(WORKER_ID_PATTERN).optional(),
+        until: isoTimeSchema.optional(),
+    })
+    .refine((request) => request.jobId === undefined || request.workerId === undefined, coded('validation.format', ['jobId']))
+    .refine(
+        (request) => request.until === undefined || (request.workerId !== undefined && request.action === 'pause'),
+        coded('validation.format', ['until']),
+    );
+export const imageryPauseResponseSchema = z.strictObject({ changed: z.number().int().min(0) });
+
 /** `worker.pairCode` (admin): a one-time pairing code for the city's worker command, and when it stops working. */
 export const workerPairCodeRequestSchema = z.strictObject({ cityId: cityIdSchema });
 export const workerPairCodeResponseSchema = z.strictObject({ code: z.string().regex(WORKER_PAIR_CODE_PATTERN), expiresAt: isoTimeSchema });

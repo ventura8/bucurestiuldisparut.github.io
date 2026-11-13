@@ -144,6 +144,7 @@ class App:
         self.paired: list[object] = []
         self.pair_refusal: str | None = None
         self.profiles: list[tuple[object, object]] = []
+        self.pauses: list[Mapping[str, object]] = []
 
     def web_config(self) -> Mapping[str, str] | None:
         return None
@@ -165,6 +166,10 @@ class App:
     def profile(self, chosen: object, battery_allowed: object) -> bool:
         self.profiles.append((chosen, battery_allowed))
         return chosen in {"auto", "quiet", "full"}
+
+    def pause(self, body: Mapping[str, object]) -> bool:
+        self.pauses.append(body)
+        return body.get("action") in {"pause", "resume"}
 
 
 HOSTING = f"https://{PROJECT}.web.app"
