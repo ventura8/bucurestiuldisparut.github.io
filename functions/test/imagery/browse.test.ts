@@ -4,6 +4,7 @@
  * into the private bucket and read from there; a failure is recorded on the scene and answered so the card can retry.
  */
 import { RASTER_PATHS } from '@hcm/shared';
+import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 
 import { browseFunction } from '../../src/imagery/browse.js';
@@ -33,7 +34,7 @@ describe('imagery.browse', () => {
         expect(await readScene(world, ENTITY)).toMatchObject({ browse: { state: 'copied', path: COPY, sourceUrl: SOURCE } });
         expect(world.remote.recorder.argsOf('get')[0]?.[1]).toMatchObject({
             allowedHosts: ['ims.cr.usgs.gov', 'landsatlook.usgs.gov'],
-            maxBytes: 5_000_000,
+            maxBytes: 30_000_000,
         });
     });
 
@@ -73,12 +74,6 @@ describe('imagery.browse', () => {
             },
         ],
         [
-            'an HTML page instead of an image',
-            (world: ImageryWorld) => {
-                world.remote.serve(SOURCE, new TextEncoder().encode('<html></html>'), 'text/html');
-            },
-        ],
-        [
             'the bucket refusing the write',
             (world: ImageryWorld) => {
                 world.remote.serve(SOURCE, JPEG_BYTES);
@@ -96,6 +91,58 @@ describe('imagery.browse', () => {
         expect(await readScene(world, ENTITY)).toMatchObject({
             browse: { state: 'failed', sourceUrl: SOURCE, error: 'apiError.imagery.browseUnavailable' },
         });
+    });
+
+    it.each([
+        [
+            'a web page instead of the picture',
+            'apiError.imagery.browseNotImage',
+            (world: ImageryWorld) => {
+                world.remote.serve(SOURCE, new TextEncoder().encode('<html></html>'), 'text/html');
+            },
+        ],
+        [
+            'a preview over the 30 MB USGS may send',
+            'apiError.imagery.browseTooLarge',
+            (world: ImageryWorld) => {
+                world.remote.files.set(SOURCE, new UpstreamError('remote', 'invalid'));
+            },
+        ],
+        [
+            'a large preview that cannot be shrunk',
+            'apiError.imagery.browseTooLarge',
+            (world: ImageryWorld) => {
+                world.remote.serve(SOURCE, new Uint8Array([...JPEG_BYTES, ...new Uint8Array(6_000_000)]));
+            },
+        ],
+    ])('badPath_whatFailedIsSaidAndRecorded_%s @S-A12-BAD-BROWSE-SPECIFIC', async (_case, code, arrange) => {
+        const world = await readyWorld();
+        await seedScene(world, ENTITY);
+        arrange(world);
+
+        expect(await failureOf(browse(world))).toMatchObject({ details: { code } });
+        expect((await readScene(world, ENTITY))?.browse).toMatchObject({ state: 'failed', error: code });
+    });
+
+    it('happyPath_aKh9PanoramicPreviewOver5MbIsFetchedAndStoredShrunk @S-A12-HAPPY-LARGE-BROWSE', async () => {
+        const world = await readyWorld();
+        await seedScene(world, ENTITY);
+        // Noise does not compress: a 1,800 × 1,200 PNG of it is over 5 MB, as USGS's 7 to 13 MB Declass 3 strips are.
+        const noise = Buffer.from(Array.from({ length: 1800 * 1200 * 3 }, (_, index) => (index * 2654435761) % 251));
+        const large = new Uint8Array(
+            await sharp(noise, { raw: { width: 1800, height: 1200, channels: 3 } })
+                .png({ compressionLevel: 0 })
+                .toBuffer(),
+        );
+        expect(large.length).toBeGreaterThan(5_000_000);
+        world.remote.serve(SOURCE, large, 'image/png');
+
+        await expect(browse(world)).resolves.toEqual({ path: COPY, contentType: 'image/jpeg' });
+
+        const stored = world.deps.blobs.object('private', COPY);
+        expect(stored?.options).toMatchObject({ contentType: 'image/jpeg' });
+        expect(world.remote.recorder.argsOf('get')[0]?.[1]).toMatchObject({ maxBytes: 30_000_000, timeoutMs: 30_000 });
+        expect((await sharp(stored?.bytes).metadata()).width).toBe(1800);
     });
 
     it('badPath_aSceneWithoutABrowseAddressFetchesNothing', async () => {

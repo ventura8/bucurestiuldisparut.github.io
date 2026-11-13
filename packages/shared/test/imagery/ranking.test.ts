@@ -125,8 +125,32 @@ describe('rankScene', () => {
         expect(codes(context)).not.toContain('sameDate');
     });
 
-    it('happyPath_theRankingVersionMovedWithTheLandsatSeason', () => {
-        expect(RANKING_VERSION).toBe(4);
+    it('happyPath_theRankingVersionMovedWithTheCloudEstimate', () => {
+        expect(RANKING_VERSION).toBe(5);
+    });
+
+    it('happyPath_aClearEstimateCountsAsCloudAndSaysSo', () => {
+        const rank = rankScene(scene({ cloudEstimate: { percent: 10, version: 1 } }), BUCHAREST);
+
+        // The cloud part is 1 − 10/50 = 0.8 (8 points) in place of the unknown's 5: 96, nothing taken off.
+        expect(rank.score).toBe(96);
+        expect(rank.reasons).toContainEqual({ code: 'cloudCity', params: { percent: '10' } });
+        expect(rank.reasons[0]).toEqual({ code: 'free' });
+    });
+
+    it('badPath_aFrameProbablyCloudyOverTheCityLosesThatShareAndSaysItFirst', () => {
+        const rank = rankScene(scene({ cloudEstimate: { percent: 70, version: 1 } }), BUCHAREST);
+
+        // 30 + 25 + 15 + 10 + 0 + 7.8 = 87.8, of which the clear 30 % is left.
+        expect(rank.score).toBe(26);
+        expect(rank.reasons[0]).toEqual({ code: 'cloudCity', params: { percent: '70' } });
+    });
+
+    it('badPath_usgsCloudCoverWinsOverTheEstimate', () => {
+        const rank = rankScene(scene({ cloudCover: 0, cloudEstimate: { percent: 90, version: 1 } }), BUCHAREST);
+
+        expect(rank.score).toBe(98);
+        expect(rank.reasons.map((entry) => entry.code)).not.toContain('cloudCity');
     });
 
     it('happyPath_aCityWithoutLayersSaysAnyYearIsNew', () => {

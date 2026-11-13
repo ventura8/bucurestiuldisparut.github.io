@@ -142,6 +142,12 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # bought opens, so the Imagery area stays within its budget with the buy flow: 1.7 KB measured on 2026-10-24 plus about
     # 20 % (DECISIONS-for-review.md §56b).
     "order-card": 2,
+    # A scene's page's own parts (`packages/ui/src/admin/imagery/scene-unusable.ts`; the owner's report of 2026-11-13,
+    # DECISIONS-for-review.md §201g): its preview, what USGS says of it, why Import is not offered, Not useful and the cloudy
+    # warning, fetched when a scene's page opens. Imagery was at 18.03 KB on origin and 18.38 KB with Not useful; with these
+    # out it measured 17.94 KB, and this chunk 1.61 KB, on 2026-11-13; the chunk imports no module of the Imagery chunk,
+    # which would put that module in `editor-shared` (12.98 KB, as on origin).
+    "scene-unusable": 2,
     # What two or more areas share and the entry does not (the codeSplitting group `editor-shared`).
     "editor-shared": 13,
     # The editors' words for a field and its problem (the group `editor-texts`: `field-names.ts`, `issue-text.ts`), out of

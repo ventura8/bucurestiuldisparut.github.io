@@ -3848,7 +3848,18 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: the test takes a fresh copy (`vi.resetModules()` and a dynamic `import`) before asserting the unloaded state.
     - **A test of a module's initial state imports a fresh copy; never trust module state left by whoever ran before.**
 
-655. **A second worker failed every archive series it took: the scanned maps were on another computer.**
+655. **Every KH-9 panoramic preview failed with "cannot be fetched right now, try again", and Try again never helped.**
+    - Seen: 2026-11-13, the live admin, D3C1207-300256A038 and D3C1212-300570A079; the logs read `UpstreamError: remote call failed: invalid`.
+    - Cause: USGS's Declass 3 browse images are 7 to 13 MB (`curl -I` on `ims.cr.usgs.gov/browse/declass3/…`); `RemoteFiles` stops at `BROWSE_MAX_BYTES` (5 MB) and calls a longer file `invalid`, which the browse proxy turned into the retryable "unavailable".
+    - Fix and pin: the fetch takes up to 30 MB in 30 s and stores a file over 5 MB shrunk to a 4,096 px JPEG; each failure records what failed (`browseNotImage`, `browseTooLarge`, `browseUnavailable`) and says what to do (`functions/test/imagery/browse.test.ts`, S-A12-HAPPY-LARGE-BROWSE, S-A12-BAD-BROWSE-SPECIFIC).
+    - **Measure a real upstream file before choosing a size cap, and never word a failure that a retry cannot fix as "try again".**
+
+656. **The whole-city plan kept offering to buy a scan that is all cloud over the city.**
+    - Seen: 2026-11-13, the owner on DS09066A047MC019 (1964): "This scan is useless (too many clouds!!!)".
+    - Cause: declassified records carry no cloud cover, so the rank scored every frame's clouds "unknown", and nothing let the owner set a scene aside: the client rule allowed `rejected`, but no screen wrote it and a client write would not rewrite the plan.
+    - Fix and pin: the browse image's clouds over the city are measured (`cloud-estimate.ts`) and rank, card, page and Buy this scan say so; `imagery.markScene` sets a scene aside with why and writes the plan again (S-A152-*).
+    - **When a choice the server makes for the owner can be wrong, give the owner a one-click way to overrule it, and make the server act on it at once.**
+657. **A second worker failed every archive series it took: the scanned maps were on another computer.**
     - Seen: live, 2026-11-13: after the NUC and the PC joined the laptop, five archive series failed at `gather` with "no record of
       ar-971b77774eee2871 on this computer", and an atlas used up its attempts on the same cause.
     - Found by: the owner's Jobs page; every test ran one worker, which always held the archive it imported.

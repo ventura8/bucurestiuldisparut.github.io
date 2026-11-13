@@ -2,7 +2,7 @@ import { PHOTO_LIMITS, type PhotoContentType } from '@hcm/shared';
 import type sharp from 'sharp';
 
 import { UpstreamError } from '../ports/errors.js';
-import type { IconSource, ImageInspection, ImageProcessor } from '../ports/image-processor.js';
+import type { GreyImage, IconSource, ImageInspection, ImageProcessor } from '../ports/image-processor.js';
 import { readExif } from './image-exif.js';
 
 type Sniffer = (bytes: Uint8Array) => boolean;
@@ -88,6 +88,34 @@ async function iconPng(source: IconSource, size: number): Promise<Uint8Array> {
     return new Uint8Array(output);
 }
 
+/** A small grey copy of a browse image (the cloud estimate's input): one channel, fitted inside `longEdge`. */
+async function grey(bytes: Uint8Array, longEdge: number): Promise<GreyImage> {
+    const decoder = await loadSharp();
+    const output = await decoder(bytes, { limitInputPixels: PHOTO_LIMITS.maxInputPixels })
+        .greyscale()
+        .resize({ width: longEdge, height: longEdge, fit: 'inside', withoutEnlargement: true })
+        .extractChannel(0)
+        .raw()
+        .toBuffer({ resolveWithObject: true })
+        .catch(() => {
+            throw unreadable();
+        });
+    return { pixels: new Uint8Array(output.data), width: output.info.width, height: output.info.height };
+}
+
+/** A browse image too large to store, shrunk (a JPEG is decoded at a fraction of its size by libvips' shrink-on-load). */
+async function jpeg(bytes: Uint8Array, longEdge: number): Promise<Uint8Array> {
+    const decoder = await loadSharp();
+    const output = await decoder(bytes, { limitInputPixels: PHOTO_LIMITS.maxInputPixels })
+        .resize({ width: longEdge, height: longEdge, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer()
+        .catch(() => {
+            throw unreadable();
+        });
+    return new Uint8Array(output);
+}
+
 /**
  * sharp (libvips) behind the `ImageProcessor` port. `inspect` sniffs the magic numbers before sharp sees anything and
  * reads only the header, so a decompression bomb is measured, never decoded; `webp` decodes with sharp's
@@ -116,5 +144,7 @@ export function createSharpImageProcessor(): ImageProcessor {
             return { bytes: new Uint8Array(output.data), width: output.info.width, height: output.info.height };
         },
         iconPng,
+        grey,
+        jpeg,
     };
 }

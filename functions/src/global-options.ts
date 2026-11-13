@@ -57,6 +57,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'ops.onProbe': 'fn-events',
     'imagery.search': 'fn-admin',
     'imagery.browse': 'fn-admin',
+    'imagery.markScene': 'fn-admin',
     'imagery.import': 'fn-admin',
     'imagery.approve': 'fn-admin',
     'imagery.reject': 'fn-admin',

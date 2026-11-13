@@ -56,4 +56,22 @@ export interface ImageProcessor {
      * (`limitInputPixels` enforced). Rejects with `UpstreamError('image', 'invalid')` for unreadable bytes.
      */
     iconPng(source: IconSource, size: number): Promise<Uint8Array>;
+    /**
+     * The image in shades of grey, no larger than `longEdge` on its long side (`limitInputPixels` enforced): one byte a pixel, row by
+     * row, what the cloud estimate of a USGS browse image reads (`imagery/cloud-estimate.ts`). Rejects with
+     * `UpstreamError('image', 'invalid')` for unreadable bytes.
+     */
+    grey(bytes: Uint8Array, longEdge: number): Promise<GreyImage>;
+    /**
+     * A JPEG no larger than `longEdge` on its long side, no metadata (`limitInputPixels` enforced): a USGS browse image over the
+     * stored size, shrunk. Rejects with `UpstreamError('image', 'invalid')` for unreadable bytes.
+     */
+    jpeg(bytes: Uint8Array, longEdge: number): Promise<Uint8Array>;
+}
+
+/** A small greyscale raster: `pixels[y * width + x]`, 0 black to 255 white. */
+export interface GreyImage {
+    readonly pixels: Uint8Array;
+    readonly width: number;
+    readonly height: number;
 }
