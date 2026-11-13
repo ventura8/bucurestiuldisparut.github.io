@@ -65,8 +65,7 @@ def paged(ctx: JobContext, series: SeriesJob) -> SeriesJob | str:
     return replace(series, sheets=tuple(sheets))
 
 
-def _drawn(ctx: JobContext, canvas: UInt8Array, name: str) -> Drawn:
-    path = assemble.write_canvas(ctx.local(CANVAS), canvas)
+def _drawn(path: Path, canvas: UInt8Array, name: str) -> Drawn:
     return drawn_of(path, name, max(canvas.shape[:2]), framed=False)
 
 
@@ -89,9 +88,11 @@ def _assembled(ctx: JobContext, series: SeriesJob, made: Assembled) -> StepResul
     """The canvas placed as one map; when it waits for a person, its stitched picture goes with it."""
     layout = made.layout
     ctx.log.info(f"assembled {len(layout.placed)} parts, {len(layout.left_out)} left out, {layout.holes} holes", ctx.step)
-    result = place_map(ctx, series, _drawn(ctx, made.canvas, made.method), made.method, len(layout.placed))
+    # Written once: the placing reads this file, and a series that waits for a person publishes it as its stitched picture.
+    path = assemble.write_canvas(ctx.local(CANVAS), made.canvas)
+    result = place_map(ctx, series, _drawn(path, made.canvas, made.method), made.method, len(layout.placed))
     if isinstance(result, Waiting):
-        ctx.update_version({"help.stitched": publish_stitched(ctx, made.stitched())})
+        ctx.update_version({"help.stitched": publish_stitched(ctx, made.stitched(), path)})
     return result
 
 
@@ -135,20 +136,23 @@ def _atlas(ctx: JobContext, series: SeriesJob, sheets: Sequence[Sheet]) -> StepR
     """The pages cropped to their frames and laid out on their median size by their edges, or by their overlaps when those join
     more pages; assembled and placed."""
     pages, cell = _pages(sheets)
-    layout = assemble.atlas_layout(pages, cell)
+    layout = assemble.atlas_layout(pages.grey, cell)
     names = tuple(sheet.name for sheet in sheets)
     overlapping = _overlapping(sheets, len(layout.placed))
     if overlapping is not None:
         ctx.log.info(f"the pages join better by their overlaps: {len(overlapping.layout.placed)} against {len(layout.placed)}", ctx.step)
         canvas = assemble.compose_canvas(overlapping.images, overlapping.layout)
         return _assembled(ctx, series, Assembled(canvas, overlapping.layout, names, "atlas", overlapping.quality))
-    return _assembled(ctx, series, Assembled(assemble.compose_canvas(pages, layout), layout, names, "atlas"))
+    sizes = [(page.shape[1], page.shape[0]) for page in pages.grey]
+    canvas = assemble.compose_parts(pages.page, sizes, pages.colour, layout)
+    return _assembled(ctx, series, Assembled(canvas, layout, names, "atlas"))
 
 
-def _pages(sheets: Sequence[Sheet]) -> tuple[list[UInt8Array], tuple[int, int]]:
-    """The pages cropped to their frames, and their median size."""
-    pages = [assemble.frame_crop(image) for image in assemble.read_parts([sheet.path for sheet in sheets], page_px(len(sheets)))]
-    return pages, (int(numpy.median([page.shape[1] for page in pages])), int(numpy.median([page.shape[0] for page in pages])))
+def _pages(sheets: Sequence[Sheet]) -> tuple[assemble.Pages, tuple[int, int]]:
+    """The pages cropped to their frames, held grey, and their median size."""
+    pages = assemble.Pages.read([sheet.path for sheet in sheets], page_px(len(sheets)))
+    widths, heights = [page.shape[1] for page in pages.grey], [page.shape[0] for page in pages.grey]
+    return pages, (int(numpy.median(widths)), int(numpy.median(heights)))
 
 
 def _overlapping(sheets: Sequence[Sheet], by_edges: int) -> joins.Joined | None:

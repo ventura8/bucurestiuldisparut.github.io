@@ -71,6 +71,11 @@ export const WORKER_STATES = {
         title: 'Jobs: the admin paired this computer by itself, This computer is connected, no code on screen',
         visit: 'specs/imagery/worker-run.spec.ts',
     },
+    // M26 (docs/research/M26-governor.md §6): the connected computer's card, Quiet chosen.
+    'worker.local-machine': {
+        title: 'Jobs: This computer: its cores and memory, Automatic / Quiet / Full with Quiet chosen, the profile in force and why, where the local AI runs',
+        visit: 'specs/imagery/worker-run.spec.ts',
+    },
     'worker.place-worker': {
         title: 'Historical imagery: a version waiting for your computer, the Jobs link and Run in Google Cloud',
         visit: 'specs/imagery/worker.spec.ts',

@@ -7,6 +7,11 @@ each run hashes them here first: a file altered after the first use is placed ag
 A wheel or the LightGlue tarball is opened as data, never run through pip: only named members leave it, each written under `lib/` by its
 own name, so no path in an archive decides where a file lands. Of LightGlue only `aliked.py`, `lightglue.py`, `utils.py` and `LICENSE`
 leave: upstream's `superpoint.py` is headed confidential, and upstream's `__init__.py`, which imports it, is replaced by ours.
+
+Two kinds of sidecar (M26 item i, `docs/research/M26-governor.md` §5): on a computer with an NVIDIA card the starter runs PyTorch's own
+image (about 10 GB) with `pins.json`'s files in `lib/`; on one without (`HCM_AI_VARIANT=cpu`, set by the starter) it runs the worker's
+own image, and `pins-cpu.json` adds PyTorch for the processor and what it imports, about 0.9 GB unpacked in `lib-cpu/`: a folder of its
+own, so the card's image never imports the processor's PyTorch.
 """
 
 import hashlib
@@ -14,7 +19,7 @@ import json
 import shutil
 import tarfile
 import zipfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -37,14 +42,35 @@ AI_FILE_HOSTS: Final = frozenset(
         "objects.githubusercontent.com",
         "release-assets.githubusercontent.com",
         "files.pythonhosted.org",
+        "download.pytorch.org",
     }
 )
 MATCHER_DIR: Final = Path(__file__).resolve().parent.parent / "matcher"
 PINS: Final = MATCHER_DIR / "pins.json"
+PINS_CPU: Final = MATCHER_DIR / "pins-cpu.json"
+ENV_VARIANT: Final = "HCM_AI_VARIANT"
+LIB: Final = "lib"
+LIB_CPU: Final = "lib-cpu"
 CODE_FILES: Final = ("__init__.py", "box.py", "child.py", "search.py", "serve.py", "torch_backend.py", "pins.json", "NOTICE.md")
 LIGHTGLUE_MEMBERS: Final = ("lightglue/aliked.py", "lightglue/lightglue.py", "lightglue/utils.py", "LICENSE")
 LIGHTGLUE_INIT: Final = "from .aliked import ALIKED\nfrom .lightglue import LightGlue\n"
-WHEEL_TOPS: Final = ("kornia", "kornia_rs", "cv2", "opencv_python_headless.libs")
+WHEEL_TOPS: Final = (
+    "kornia",
+    "kornia_rs",
+    "cv2",
+    "opencv_python_headless.libs",
+    # The processor's sidecar (`pins-cpu.json`): PyTorch and what `import torch, lightglue` needs, nothing more.
+    "torch",
+    "torchgen",
+    "functorch",
+    "torchvision",
+    "torchvision.libs",
+    "PIL",
+    "pillow.libs",
+    "sympy",
+    "mpmath",
+    "typing_extensions.py",
+)
 READY: Final = "ready.json"
 CHUNK: Final = 1024 * 1024
 FETCH_ATTEMPTS: Final = 2
@@ -66,6 +92,11 @@ class Pin:
     kind: str
     url: str
     sha256: str
+
+
+def variant_of(environment: Mapping[str, str]) -> tuple[Path, str]:
+    """The pins and the folder of this computer's sidecar: the processor's when the starter found no NVIDIA card."""
+    return (PINS_CPU, LIB_CPU) if environment.get(ENV_VARIANT) == "cpu" else (PINS, LIB)
 
 
 def load_pins(path: Path = PINS) -> tuple[str, tuple[Pin, ...]]:
@@ -151,10 +182,12 @@ def _matches(path: Path, sha256: str) -> bool:
 
 
 class AiFiles:
-    """Under `root` (`/ai/files`): `dl/` what was fetched, `weights/`, `lib/` what was unpacked, `code/matcher/` ours, then `ready.json`."""
+    """Under `root` (`/ai/files`): `dl/` what was fetched, `weights/`, `lib/` (or `lib-cpu/`) what was unpacked, `code/matcher/` ours, then
+    `ready.json`."""
 
-    def __init__(self, root: Path, client: httpx.Client, pins: Path = PINS) -> None:
+    def __init__(self, root: Path, client: httpx.Client, pins: Path = PINS, lib: str = LIB) -> None:
         self._root = root
+        self._lib = lib
         self._client = client
         self._pins_path = pins
         self.tick: Callable[[], None] = lambda: None
@@ -203,9 +236,9 @@ class AiFiles:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(path, target)
         elif pin.kind == "wheel":
-            unpack_wheel(path, self._root / "lib")
+            unpack_wheel(path, self._root / self._lib)
         else:
-            unpack_lightglue(path, self._root / "lib", self.commit)
+            unpack_lightglue(path, self._root / self._lib, self.commit)
 
     def _fetched(self, pin: Pin) -> Path:
         """The file in `dl/`, its hash its pin's: what is there is kept when it matches, deleted when not."""

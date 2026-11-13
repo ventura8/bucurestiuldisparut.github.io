@@ -44,6 +44,8 @@ class PageActions:
         self._web_config = web_config
         self._hello = {**hello, "version": __version__}
         self._offer: Callable[[str], None] | None = None
+        # The governor's `choose` (M26): the owner's profile from the admin's card.
+        self.choose_profile: Callable[[object, object], bool] = lambda _chosen, _battery: False
 
     def accept_pairing(self, offer: Callable[[str], None]) -> None:
         """Where `pair` hands a code: the connector's `offer` (finding 72)."""
@@ -58,6 +60,10 @@ class PageActions:
         self._offer(code)
         LOG.info("the admin sent a pairing code; pairing now")
         return None
+
+    def profile(self, chosen: object, battery_allowed: object) -> bool:
+        """The owner's profile for this computer (M26, docs/research/M26-governor.md §6); False when it is not one."""
+        return self.choose_profile(chosen, battery_allowed)
 
     def web_config(self) -> Mapping[str, str] | None:
         try:
@@ -77,6 +83,7 @@ class PageActions:
             return refused
         tokens, answer = refused
         self._state.timing.poll_seconds = _seconds(answer, "pollSeconds") or self._state.timing.poll_seconds
+        self._state.timing.idle_poll_seconds = _seconds(answer, "idlePollSeconds")
         self._state.timing.heartbeat_seconds = _seconds(answer, "heartbeatSeconds")
         self._session.begin(tokens, keep)
         self._state.failed(None)

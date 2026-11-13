@@ -3418,7 +3418,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 582. **A KH-5 Argon frame searched an hour with no end.**
     - Seen: 2026-11-12, DS09065A089MC039 (1964-06-18): `locate` ran about an hour with no log line until it was cancelled.
     - Cause: the frame is about 550 km across at 140 m on the ground, so the city is a small patch of it; the vote search had no time bound, and nothing proves a KH-5 frame yet (M9 §14).
-    - Fix and pin: `SensorSpec.search_seconds` (35 min, KH-5 10 min) bounds the search (`SearchBudget`): past it the windows left are not searched and the frame is cropped around the city by its footprint, not proved, so it waits for points (S-P06-HAPPY-SEARCH-BUDGET, S-P06-BAD-SEARCH-BUDGET).
+    - Fix and pin: `SensorSpec.search_seconds` (35 min, KH-5 10 min) bounds the search (`SearchBudget`): past it the windows left are not searched and the frame, not proved, waits for points (S-P06-HAPPY-SEARCH-BUDGET, S-P06-BAD-SEARCH-BUDGET); since lesson 607 as the whole frame shrunk, not as a crop by its footprint.
     - **Every search over an unknown space gets a time budget whose end is a result (not found, ask a person), not a failure.**
 
 583. **The 1895 series offered 26 suggested pairs off its own scan.**
@@ -3556,20 +3556,68 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: rows that stack upwards across the map's width, 48 px items, the card and the chip hidden while the menu is open, a scroll as the last resort (`dock-styles.ts`, `fab-menu.ts`); the tour's journey `short-landscape` resizes every tour project to 884 × 322 and 568 × 270 and opens the menu (`e2e/tour/settings-states.ts`); `packages/ui/test/viewer/landscape-menu.test.ts` at 884 × 290 and 568 × 270.
     - **Test the shortest window a real phone gives, bars included, not only the nominal landscape size.**
 
-606. **A test held a layout at a minimum gap that a real card could not hold: the timeline overflowed and clipped its first year.**
+606. **Points of interest off still drew tram and metro stations.**
+    - Seen: 2026-11-08, the owner on the live map: the Layers panel's Points of interest switch off, the stations stayed.
+    - Cause: Mapbox Standard splits what a visitor calls points of interest across `showPointOfInterestLabels` and `showTransitLabels`; the switch wrote only the first (DECISIONS-for-review.md §92b left transit the city's), and the e2e style draws no text, so every test passed on the property the code wrote.
+    - Fix and pin: the switch drives `showTransitLabels` too, live, in the mount `config` and on swipe compare's map, with an explicit city `basemap.config` value standing (`transitLabels`; DECISIONS §175); `happyPath_transitStationsFollowThePointsOfInterestOffAndOn`, `happyPath_bothSidesHideTransitStationsWithThePointsOfInterest`, `S-V31-HAPPY-TRANSIT`, `S-V31-BAD-TRANSIT-CITY`, `S-V31-BAD-TRANSIT-UNKNOWN`.
+    - **A switch named for what a visitor sees maps to every style property that draws it: read the style's whole configuration list against the switch's name, not only the property whose name matches.**
+
+607. **A Corona strip nothing proved showed the owner farmland.**
+    - Seen: 2026-11-12, DS1103-1058DF027 (1968-05-05, 131,443 px wide): two footprint windows, no AI proposal in either, then `not proved (no-votes): crop 35664 x 8172 px, delivery kept`; the georeferencer showed the first window, countryside, and no point could be placed on București.
+    - Cause: `best_of` kept the best-voted window, the first of equals, and `locate` cut the frame by it: with no votes anywhere the choice was only the order of the list.
+    - Fix and pin: a frame nothing proved is cut by a guess only when it was searched whole, in time, and fits a scan shown whole; else the scan is the whole exposure shrunk (`steps/whole.py`, marked in `scan.tif`), and the owner's rough points crop the film at full resolution (`steps/recrop.py`); the KH-5 cap ends the same way (S-P06-HAPPY-WHOLE-STRIP, S-P06-BAD-WHOLE-STRIP-UNPROVED, S-P06-HAPPY-ROUGH-POINTS-CROP, S-P06-BAD-ROUGH-POINTS-OUTSIDE, S-P06-BAD-ROUGH-POINTS-FILM-GONE).
+    - **When nothing is proved, never let an unproved guess decide what the person sees: show everything, coarser, and let their answer choose.**
+
+608. **The worker's memory was set for a server, not for the computer it runs on.**
+    - Seen: 2026-11-12, `reports/resource-audit.md`: a warp held 4.5 GB and a 60-sheet colour atlas 3.8 GB on a 16 GB laptop that also ran the desktop; tile cutting started one 170 MB process a CPU.
+    - Cause: `GDAL_CACHEMAX` 1,024 MB and `warpMemoryLimit` 2,048 MB were constants; `compose_canvas` warped every sheet onto a whole canvas and resized the owners' grid to it; `num-threads` was `ALL_CPUS`.
+    - Fix and pin: the settings follow the memory the process may use (`rasters.gdal_memory`), each sheet is pasted in its own box, the tile processes are capped (`pyramid.tile_processes`), a city crop is copied by rows and every preview read shrunk (`locate.write_crop`, `common.scan_preview`), an atlas's pages are held grey and read again in colour to paste (`assemble.Pages`); each has a budget test in a process of its own (S-P31-HAPPY-WARP-BUDGET, S-P31-HAPPY-CANVAS-BUDGET, S-P31-HAPPY-TILE-PROCESSES and their bad rows).
+    - **A memory setting is a share of the machine it runs on, read at run time, and every heavy call has a budget test that fails when the memory grows back.**
+
+609. **An idle worker asked for a job 86,400 times a month, and a busy one could take the whole computer.**
+    - Seen: 2026-11-12, `reports/resource-audit.md`: `hcm-worker` ran with no memory limit and nice 0 (an out-of-memory run takes the desktop with it), and `worker.claim` was called every 30 s for ever, each call with its Firestore reads.
+    - Cause: the starter's `docker run` named no limit; the poll interval was one constant, and the admin counted a worker gone after 180 s, which forbade any longer wait.
+    - Fix and pin: the starters cap the container at 60 % of Docker's memory with a low CPU weight, the worker nices itself and leaves a core; `worker/pace.py` backs the claims off to `idlePollSeconds` (60 s: the owner refused a five-minute wait for a new job) and wakes on a job or the admin's look, with `WORKER_FRESH_SECONDS` above the longest wait (S-P31-HAPPY-WORKER-POLITE, S-P31-BAD-WORKER-POLITE-OVERRIDE, S-P31-HAPPY-CLAIM-BACKOFF, S-P31-BAD-CLAIM-BACKOFF-OLD-SERVER).
+    - **A poll's interval and the presence window that reads it change together, and the newer side must work against the older one in either deploy order.**
+
+610. **Every memory probe started from pytest reported 2,105 MB.**
+    - Seen: 2026-11-12, `pipeline/tests/integration/test_memory_budgets.py` in the full pipeline run on the PC: four budgets failed with the same peak, which no probe reached alone.
+    - Cause: `getrusage(RUSAGE_SELF).ru_maxrss` keeps, across `exec`, the peak of the process that forked: a probe started from a pytest that had grown to 2.1 GB inherited its figure. Run alone or from a shell, the probes read right.
+    - Fix and pin: `tests/budget_probe.py` reads its own `VmHWM` from `/proc/self/status`, which starts afresh with the new program.
+    - **A child's own peak memory is `VmHWM`, never `ru_maxrss` read inside a process another large one started.**
+
+611. **A request file's fields read in a new order raised a different error.**
+    - Seen: 2026-11-12, M26: `read_request` read `ground` before `film` once the governor's budget was added, and a request holding a pickle in `film` raised `KeyError` for `ground` instead of the refusal of the pickle (`test_bad_path_a_request_holding_a_pickle_does_not_run`).
+    - Cause: `numpy.load(allow_pickle=False)` refuses lazily, field by field; the order of reads decides which fault is seen first.
+    - Fix and pin: the film's arrays are read first, as before, and the new `budget` only when it is present (an old request reads as the default budget).
+    - **When a file is checked lazily by its reader, read the fields that carry the risk first, and add new fields as optional so an old file keeps its meaning.**
+
+612. **The governor's heat limit sat inside a laptop's normal day.**
+    - Seen: 2026-11-13, M26 measured: the laptop's package read 90 °C with only a local model running, the NUC 82 to 86 °C under a matcher run; the governor stepped down at 90 °C and back up only under 80 °C, and its load test on the NUC read `paused` throughout.
+    - Cause: the limit was chosen from a desktop's habits; mobile processors run at 85 to 95 °C under load and their own trip points are 100 to 110 °C (the NUC's `TCPU` passive at 110).
+    - Fix and pin: `CPU_HOT_C` 95 (back up under 85); `test_heat_steps_down_one_level_and_back_ten_degrees_below` asserts 90 °C is not hot.
+    - **A threshold on a sensor is set from readings of the machines it will run on, never from a round number.**
+
+613. **A faster matcher measured on easy frames lost the hard one.**
+    - Seen: 2026-11-13, M26 h2 on the NUC: half resolution with 1,024 keypoints answered in 38 s against 553 s and still found F007 and F003 on Bucharest, but proposed nothing for F006 on Fetești, which the card finds with 3 pairs; 1,024 keypoints at full resolution also found nothing.
+    - Cause: fewer keypoints a tile leave too few inliers on a frame that only just passes the 12-inlier pair gate.
+    - Fix and pin: the processor searches at half resolution with the budget's 2,048 keypoints (64 s, F006 found), and the governor's quiet profile keeps 2,048 too (slower, never blinder).
+    - **A speed-up of a search is measured on its hardest fixture (the fewest inliers the reference finds), not only on the ones it finds easily.**
+
+614. **A test held a layout at a minimum gap that a real card could not hold: the timeline overflowed and clipped its first year.**
     - Seen: 2026-11-12, the Pixel Tablet: twenty-two stops at 30 px each were wider than the card; 1847 showed as "7".
     - Cause: the scroll test only asked that the selected stop was in view and the labels did not meet; nothing asked that the labels stayed inside the card.
     - Fix and pin: the track fits the card with a density (`timeline-model.ts`); `S-V04-BAD-MANY-YEARS-FIT` checks no label sticks out at five window sizes.
     - **A layout check asks what is cut off as well as what overlaps.**
 
-607. **`touch-action: none` on a control inside a scrolling panel turned every swipe across it into input.**
+615. **`touch-action: none` on a control inside a scrolling panel turned every swipe across it into input.**
     - Seen: 2026-11-12, the Pixel Tablet: a swipe meant to scroll the Layers panel set a layer's opacity to 4 %.
     - Fix and pin: the slider is `pan-y` and waits 8 px for the finger's direction (`slider.ts`); `S-V22-BAD-TOUCH-VERTICAL-SWIPE` swipes with Chromium's own touch events.
     - **A control that moves along one axis leaves the other axis to the browser; test it with real touch events, not mouse ones.**
 
-608. **A module script waits for every deferred script before it: the engine painted nothing until 526 KB of Mapbox GL had arrived.**
+616. **A module script waits for every deferred script before it: the engine painted nothing until 526 KB of Mapbox GL had arrived.**
     - Seen: 2026-11-12, the Pixel Tablet: cold first paint 5,376 ms against 764 ms warm.
     - Found by: a throttled cold load (CDP Fast 4G, 4x CPU) with Mapbox's files given their CDN time: the first paint came after `mapbox-gl.js`'s end every time.
-    - Fix and pin: Mapbox GL loads `async` and the map adapter takes a promise of it (§175f); `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT`.
+    - Fix and pin: Mapbox GL loads `async` and the map adapter takes a promise of it (§178f); `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT`.
     - Then: with Mapbox's CDN two seconds slower the first paint still came at 2.9 s: `mapbox-gl.css` in the page's head was render-blocking, and unused (the viewer links it in its shadow root). The pages link none now.
     - **A third-party script or stylesheet the first paint does not need is `async` or absent, and the code that needs it waits for it, not the page; measure with the third party slow, not only cold.**

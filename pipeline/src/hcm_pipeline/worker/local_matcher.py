@@ -38,6 +38,7 @@ from hcm_pipeline.matcher.box import (
     Answer,
     BadAnswerError,
     Found,
+    MatcherBudget,
     Request,
     SidecarStatus,
     clear_request,
@@ -168,6 +169,8 @@ class Ports:
     machine: str | None = None
     patience: Patience = field(default_factory=Patience)
     run_id: Callable[[], str] = lambda: uuid.uuid4().hex[:8]
+    # The governor's word on each request (docs/research/M26-governor.md §4): threads, keypoints, the card's share or its yield.
+    budget: Callable[[], MatcherBudget] = MatcherBudget
 
 
 class LocalMatcher:
@@ -292,7 +295,8 @@ class LocalMatcher:
         ground = ground_scale(request.grid.box().bounds().middle_lat)
         box = self._ports.box
         try:
-            write_request(box, request_id, Request(warped.film, warped.reference, warped.film_grid, warped.reference_grid, ground))
+            budget = self._ports.budget()
+            write_request(box, request_id, Request(warped.film, warped.reference, warped.film_grid, warped.reference_grid, ground, budget))
             return self._answer(request, request_id, status)
         except BaseException:
             _tell_the_sidecar_to_stop(box, request_id)

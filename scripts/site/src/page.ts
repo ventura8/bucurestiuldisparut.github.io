@@ -73,7 +73,7 @@ export interface PageInputs {
     /**
      * `sha384-…` of the pinned mapbox-gl.js (`subresourceIntegrity`). The page links no mapbox-gl.css: the viewer links it
      * inside its shadow root, where a copy in the page's head cannot reach, and one in the head held back the first paint
-     * until a new origin had answered (the cold load of 2026-11-12, DECISIONS-for-review.md §175f).
+     * until a new origin had answered (the cold load of 2026-11-12, DECISIONS-for-review.md §178f).
      */
     readonly mapboxGlIntegrity: { readonly script: string };
     /** Where the page's files are; `RELATIVE_ASSETS` by default. */

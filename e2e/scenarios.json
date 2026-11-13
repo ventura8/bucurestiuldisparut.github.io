@@ -990,6 +990,13 @@
             "source": "the owner, 2026-11-12: Undo does not keep 50 commands; DECISIONS §143/lesson 547"
         },
         {
+            "id": "A141",
+            "area": "admin",
+            "name": "This computer: the worker says how much of the computer it uses, and the owner chooses Automatic, Quiet or Full",
+            "milestone": "M26",
+            "source": "docs/research/M26-governor.md (the owner, 2026-11-12: runs on modest hardware; nobody upgrades for us)"
+        },
+        {
             "id": "P30",
             "area": "pipeline",
             "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
@@ -1072,6 +1079,13 @@
             "name": "The map's menu (right click, long press, ContextMenu key or Shift+F10) with Open in Google Street View, Copy coordinates and Share a link to this view; a photo's sheet links to Street View",
             "milestone": "M17",
             "source": "the owner, 2026-11-09: go to Google Street View from a right-click panel (hold on a touch screen) on the map, and from a photo's details"
+        },
+        {
+            "id": "P31",
+            "area": "pipeline",
+            "name": "The pipeline and the worker on somebody's own computer stay within a memory and processor budget, and an idle worker asks rarely",
+            "milestone": "M7",
+            "source": "the owner, 2026-11-12: reports/resource-audit.md (the machines are short of memory); docs/research/M7-local-worker.md, Addendum of 2026-11-12"
         }
     ],
     "scenarios": [
@@ -1139,7 +1153,7 @@
             "asserts": "cache off, Chrome DevTools' Fast 4G (CDP Network.emulateNetworkConditions) and a 4x CPU slowdown; Mapbox GL JS's files given a cold CDN fetch's time (three round trips and their gzip bytes at Fast 4G) -> the first contentful paint under 1,800 ms at 412x915 and at 800x1280",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The Pixel Tablet, 2026-11-12: a cold first paint of 5,376 ms against 764 ms warm. DECISIONS-for-review.md §175. scripts/site/src/page.ts (Mapbox GL async), packages/engine/src/mount.ts (mapboxOf), packages/ui/src/map/mapbox-adapter.ts; e2e/specs/viewer/cold-load.spec.ts."
+            "notes": "The Pixel Tablet, 2026-11-12: a cold first paint of 5,376 ms against 764 ms warm. DECISIONS-for-review.md §178. scripts/site/src/page.ts (Mapbox GL async), packages/engine/src/mount.ts (mapboxOf), packages/ui/src/map/mapbox-adapter.ts; e2e/specs/viewer/cold-load.spec.ts."
         },
         {
             "id": "S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT",
@@ -3351,6 +3365,39 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Code review of 2026-11-07. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts."
+        },
+        {
+            "id": "S-V31-HAPPY-TRANSIT",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Points of interest off hide the tram and metro stations too, and a reload keeps them hidden",
+            "asserts": "the points of interest switch off -> Mapbox GL reports showTransitLabels false on the basemap import and the hash names labels=streets; a reload mounts with them hidden; the switch on shows them again; one map",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-08: tram and metro stations stayed after the points of interest were turned off. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts, packages/engine/test/compare/session.test.ts."
+        },
+        {
+            "id": "S-V31-BAD-TRANSIT-CITY",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A city's own transit choice stands when the points of interest come back",
+            "asserts": "basemap.config showTransitLabels false and labels=streets -> the points of interest switch on draws them, and Mapbox GL still reports showTransitLabels false",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-08. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts, packages/shared/test/overlays/map-labels.test.ts."
+        },
+        {
+            "id": "S-V31-BAD-TRANSIT-UNKNOWN",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A custom basemap is sent no transit property",
+            "asserts": "a custom style without the basemap import -> no points of interest switch; setMapLabels({pois: false}) writes nothing (Mapbox GL reports no showTransitLabels) and fires nothing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-08. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts, packages/engine/test/core/map-specs.test.ts."
         },
         {
             "id": "S-V03-HAPPY-LAYERS-PINNED",
@@ -13192,10 +13239,32 @@
             "area": "pipeline",
             "path": "happy",
             "title": "With no graphics card the processor runs, said in plain words; a silent processor run is impossible",
-            "asserts": "--gpus all and CDI both fail the probe -> the starter logs NO GRAPHICS CARD and runs HCM_AI_DEVICE=cpu with the reason; the proposer records `fallback: no-gpu`; the processor looks at the first two orientations, on half the threads; HCM_AI_DEVICE=gpu that finds no card exits 77 (76 under 2 GB) and is probed again, and HCM_AI_DEVICE=cpu with no reason is refused",
+            "asserts": "--gpus all and CDI both fail the probe -> the starter logs NO GRAPHICS CARD and runs HCM_AI_DEVICE=cpu with the reason; the proposer records `fallback: no-gpu`; the processor looks at the first two orientations, on the threads but one, niced; HCM_AI_DEVICE=gpu that finds no card exits 77 (76 under 2 GB) and is probed again, and HCM_AI_DEVICE=cpu with no reason is refused",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_serve.py, test_matcher_torch.py, test_local_matcher.py, functions/test/worker/starter-sidecar.test.ts. PowerShell: starter-windows.test.ts."
+        },
+        {
+            "id": "S-P07-HAPPY-CPU-IMAGE",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A computer with no NVIDIA card runs the local AI in the worker's own image, about 1 GB instead of 10, and searches lighter",
+            "asserts": "no nvidia-smi GPU -> the starter starts the worker with HCM_AI_VARIANT=cpu; the worker fetches pins-cpu.json (PyTorch for the processor) into lib-cpu and names the image `worker`; the starter pulls nothing, says so, and runs the sidecar from the worker's image on the processor with lib-cpu; on the processor the search runs at half resolution (553 s a request before, 64 s after, on the NUC)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M26-governor.md §5 (items h2, i). Tests: pipeline/tests/unit/test_ai_files.py, test_matcher_search.py, test_matcher_torch.py, functions/test/worker/starter-sidecar.test.ts, starter-windows.test.ts."
+        },
+        {
+            "id": "S-P07-BAD-CPU-IMAGE",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Only the worker's own image or PyTorch's by digest is ever run; anything but cpu keeps the card's image",
+            "asserts": "a variant other than exactly cpu keeps pins.json and lib; a /state naming another image is refused; a card that answers nvidia-smi keeps the variant gpu; a wheel keeps only the matcher's packages",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Tests: pipeline/tests/unit/test_ai_files.py, functions/test/worker/starter-sidecar.test.ts."
         },
         {
             "id": "S-P07-HAPPY-SMALL-WINDOW",
@@ -17796,6 +17865,50 @@
             "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard)."
         },
         {
+            "id": "S-A141-HAPPY",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The connected computer's card says its size and profile, and the owner's Quiet is kept by the worker",
+            "asserts": "the worker's /state carries machine (cores, memory, power, cards, the matcher's place, the profile and why, the budget); the card under This computer is connected shows the cores and memory, Automatic / Quiet / Full, the profile in force with its threads and GB and why, and where the local AI runs; choosing Quiet posts POST /profile from the Hosting origin and the worker's state says chosen quiet, why owner; ro and en",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: e2e/admin/specs/imagery/worker-run.spec.ts (tour state worker.local-machine), packages/ui/test/admin/worker/machine.test.ts, packages/admin/test/worker/machine.test.ts, pipeline/tests/unit/test_worker_governor.py, test_governor_loop.py."
+        },
+        {
+            "id": "S-A141-BAD-OLD-WORKER",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker older than the governor asks to be updated; a stranger or a bad profile changes nothing",
+            "asserts": "a /state with no machine -> the card says update the worker and offers no choice; a machine this admin cannot read counts as old; POST /profile from another origin, as a form or too large -> 403, an unknown profile -> 400, and the choice stays; a refused choice is said on the card",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: packages/ui/test/admin/worker/machine.test.ts, packages/admin/test/worker/machine.test.ts, pipeline/tests/unit/test_worker_governor.py."
+        },
+        {
+            "id": "S-A141-BAD-NO-GPU",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "No graphics card reachable, or one other programs hold: the local AI runs on the processor and the card says why",
+            "asserts": "no card (or none this release has a sidecar image for, or one Docker cannot pass in: Windows on ARM, macOS) -> matcher cpu with why no-gpu / no-image / no-passthrough and the card's no-graphics-card line; a card whose free memory after other programs' is under 2 GB -> why gpu-busy, each matcher request runs on the processor with fallback gpu-busy",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: pipeline/tests/unit/test_governor_budget.py, test_matcher_torch.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
+            "id": "S-A141-BAD-BATTERY",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "On a low battery the worker pauses; a hot computer steps down; the user at the keyboard gets the computer back",
+            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; at 90 C on the processor or 83 C on the card one level down, back 10 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
             "id": "S-P20-HAPPY-PDF-ATLAS",
             "behaviour": "P20",
             "area": "pipeline",
@@ -17888,11 +18001,66 @@
             "behaviour": "P06",
             "area": "pipeline",
             "path": "bad",
-            "title": "A frame's search past its budget crops by the footprint and waits for points",
-            "asserts": "a KH-5 Argon search still running after 10 min -> it stops, the windows left are not searched, the frame is not proved and its city crop by the footprint waits for points (never an hour with no end)",
+            "title": "A frame's search past its budget offers the whole frame and waits for points",
+            "asserts": "a KH-5 Argon search still running after 10 min -> it stops, the windows left are not searched, the frame is not proved and waits for points as the whole frame shrunk (never an hour with no end, never a crop by an unproved footprint)",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P06-HAPPY-WHOLE-STRIP",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A strip no window of which is proved is offered whole",
+            "asserts": "a Corona strip whose footprint windows prove nothing -> the scan is the whole exposure shrunk to the preview budget and marked so, no corner pairs, the delivery kept, the job waits for rough points anywhere on the strip",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-BAD-WHOLE-STRIP-UNPROVED",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "No unproved window, timed-out search or oversized frame is cut by a guess",
+            "asserts": "nothing proved and the search held a window, ran out of time or the frame is over the budget -> never the first window's crop; only a small frame searched whole and in time keeps the bounded crop",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-HAPPY-ROUGH-POINTS-CROP",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Rough points on the whole strip crop it at full resolution",
+            "asserts": "the owner's rough points on the shrunk strip -> the film is cut around them with the city window's margin at full resolution, the points move into the crop, and the job goes on to approval",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-BAD-ROUGH-POINTS-OUTSIDE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Rough points outside the strip are refused",
+            "asserts": "a point off the shrunk scan -> gcpOutside naming it, the scan stays the whole strip; points on one place give no scale; points at the strip's end keep the crop on the film",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-BAD-ROUGH-POINTS-FILM-GONE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Rough points on a strip whose film is gone ask for the import again",
+            "asserts": "frame.json or a segment no longer stored -> the step fails saying to use Locate again while the delivery is kept, else to import the frame again; nothing is cropped",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
         },
         {
             "id": "S-P22-HAPPY-PAIRS-IN-SCAN",
@@ -18234,6 +18402,171 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/tour/viewer.tour.ts (e2e/tour/map-menu-states.ts)."
+        },
+        {
+            "id": "S-P31-HAPPY-GDAL-MEMORY",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "GDAL's cache and a warp's memory follow the machine",
+            "asserts": "a process that may use 4 GB -> a 256 MB cache and a 512 MB warp; 16 GB or more, or unknown -> the 1024 and 2048 MB of before; the container's limit and the free memory are read, HCM_GDAL_CACHE_MB and HCM_WARP_MEMORY_MB win",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-GDAL-MEMORY-UNKNOWN",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "No limit, a busy machine, an unreadable one or a bad override still give usable settings",
+            "asserts": "no cgroup file and no /proc/meminfo -> the large machine's settings; a limit of max -> the free memory decides; an override that is no positive number is not taken",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-WARP-BUDGET",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A warp and an export on a 4 GB machine stay within their memory budget",
+            "asserts": "a 20,000 by 5,000 scan warped (thin plate) and exported as a COG in a process of its own with a 4 GB machine's settings -> its peak memory stays under the budget measured between the old and the new settings",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-CANVAS-BUDGET",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas's canvas is composed part by part within its budget, pixel for pixel as before",
+            "asserts": "36 colour sheets composed in a process of its own -> peak memory and CPU under the budget; the canvas equals the one composed on whole canvases (an atlas exactly, turned overlapping parts within two grey levels at under 1 % of the pixels)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-CANVAS-OFF-EDGE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A part off the canvas or over its edge leaves the rest as it was",
+            "asserts": "a part placed wholly outside the canvas is skipped and one over the edge is cut at it -> the same canvas as before, the other parts untouched",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-TILE-PROCESSES",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The tiles are cut by the cores but one, at most what a quarter of the memory holds",
+            "asserts": "16 cores and 31 GB -> 15 processes; 16 cores and 4 GB -> 4; GDAL_NUM_THREADS as a number is a ceiling, never a floor",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-WINDOWED-READS",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A city crop and an upload's preview never hold the raster whole",
+            "asserts": "DS1103-1058DF027's 35,664 by 8,172 crop copied out of two segments 1,024 rows at a time and previewed by a shrunk read, and the preview of a 20,000 px colour upload, each in a process of its own -> peak memory under the budget",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-WINDOWED-READS-SMALL",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A small or grey scan's preview is the scan itself",
+            "asserts": "a scan under the preview's size is not enlarged and a grey one stays grey; a colour scan wider than the preview is averaged down band by band",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-TILE-PROCESSES-SMALL",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A one-core or nearly memoryless machine still cuts its tiles with one process",
+            "asserts": "1 core, an unknown core count or 100 MB of memory -> one process, never none",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-WORKER-POLITE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The worker is capped in memory, light on the processor and leaves a core free",
+            "asserts": "the starter's worker container gets --memory and --memory-swap at 60 % of what Docker has and --cpu-shares 256 (POSIX run over stand-ins, the Windows text); the worker process is niced by 10 and GDAL takes the cores but one",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-BAD-WORKER-POLITE-OVERRIDE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The owner's own limits win",
+            "asserts": "HCM_WORKER_MEMORY (a size, or none for no limit), HCM_WORKER_THREADS and HCM_WORKER_NICE (0: not niced; not a number: 10) are taken as given; GDAL_NUM_THREADS in the environment stays the worker's thread count",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-HAPPY-CLAIM-BACKOFF",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An idle worker asks for a job less and less often, and often again after a job or the admin's look",
+            "asserts": "ten minutes after its start, its last job or the admin's last GET /state the waits grow from pollSeconds up to idlePollSeconds (60 s, so a new job starts within a minute) with a tenth of jitter; a job that ran or the admin's page looking ends a long wait; the worker still counts as connected (WORKER_FRESH_SECONDS covers the longest wait)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-BAD-CLAIM-BACKOFF-OLD-SERVER",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A server that names no idle interval is asked as before",
+            "asserts": "worker.hello without idlePollSeconds (a server older than the image) -> a claim every pollSeconds, so its three-minute presence still holds; a longest wait under the poll changes nothing",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-HAPPY-ATLAS-PAGES",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas holds its pages grey and reads each in colour only to paste it",
+            "asserts": "36 colour sheets on disk composed as placing/maps.py does, in a process of its own -> peak memory under the budget; the canvas equals the one made of pages held in colour, a framed page cut the same way; the canvas is written once and published as the stitched picture",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/integration/test_memory_budgets.py, pipeline/tests/unit/test_compose_canvas.py."
+        },
+        {
+            "id": "S-P31-HAPPY-SMALL-MACHINE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A 4 GB computer's worker assembles a 60-sheet colour atlas and crops a Corona strip",
+            "asserts": "60 colour sheets of 2,222 px and a 35,664 by 8,172 city crop, each in a process of its own -> peak memory under 60 % of 4 GB, the worker's cap there",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/integration/test_memory_budgets.py, pipeline/tests/unit/test_compose_canvas.py."
         }
     ]
 }

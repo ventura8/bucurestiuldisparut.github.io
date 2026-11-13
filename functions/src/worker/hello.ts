@@ -3,6 +3,7 @@ import '../global-options.js';
 import {
     FIRESTORE_PATHS,
     HEARTBEAT_SECONDS,
+    WORKER_IDLE_POLL_SECONDS,
     WORKER_POLL_SECONDS,
     workerDocSchema,
     type CallableRequest,
@@ -60,7 +61,8 @@ async function workerHello(
         outdated: images.outdated,
     });
     const image = images.installed === undefined ? {} : { image: images.installed };
-    return { pollSeconds: WORKER_POLL_SECONDS, heartbeatSeconds: HEARTBEAT_SECONDS, ...image, outdated: images.outdated };
+    const timing = { pollSeconds: WORKER_POLL_SECONDS, idlePollSeconds: WORKER_IDLE_POLL_SECONDS, heartbeatSeconds: HEARTBEAT_SECONDS };
+    return { ...timing, ...image, outdated: images.outdated };
 }
 
 /** A paired worker's document names its pairing, its image and whether that is still the installed one (finding 67). */

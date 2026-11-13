@@ -48,7 +48,7 @@ export class MapSync {
             this.#map.setOverlayOpacity(photos.id, photos.opacity);
         }
         this.#features(manifest, state);
-        drawMapLabels(this.#map, state.mapLabels.shown);
+        drawMapLabels(this.#map, state.mapLabels.shown, manifest.city.basemap.config);
         drawMapLight(this.#map, mapLight(state));
         this.#map.setMyLocation(fixOf(state.myLocation));
         if (state.photoMark !== null) {
@@ -65,7 +65,7 @@ export class MapSync {
         this.#overlays(displayedOverlays(previous), displayedOverlays(next));
         this.#yearAndLanguage(previous, next, manifest);
         if (next.mapLabels.shown !== previous.mapLabels.shown) {
-            drawMapLabels(this.#map, next.mapLabels.shown);
+            drawMapLabels(this.#map, next.mapLabels.shown, manifest.city.basemap.config);
         }
         this.#light(previous, next);
         this.#places(previous, next);

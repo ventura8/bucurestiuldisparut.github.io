@@ -5,7 +5,7 @@ points, or, over terrain (M15), its RPC over the heights it carries. A part's no
 pair scan pixels with places; a part over terrain is first read through its RPC onto the level's grid, and its nodes pair that grid's
 pixels (`ground_grid`, at `FINE_ZOOM`, moved to each level's grid: `regridded`) with places, so the spline between them carries the
 smooth field alone and never the relief, which no spread of nodes holds (A001: 11 m RMS through 17 x 17). Warps stay memory-bounded
-(`WARP_MEMORY_MB`) and stop with the run (`gdal_progress`). A scan is staged only while it is warped, or while a seam it lies on is
+(`rasters.warp_memory_mb`) and stop with the run (`gdal_progress`). A scan is staged only while it is warped, or while a seam it lies on is
 measured: on Cloud Run the scratch folder is memory.
 """
 
@@ -26,9 +26,9 @@ from hcm_pipeline.join.correction import BaseTransform, Mapping, Node
 from hcm_pipeline.join.plan import Part
 from hcm_pipeline.join.room import out_of_room
 from hcm_pipeline.raster import gdal
-from hcm_pipeline.rasters import GTIFF_OPTIONS, WEB_MERCATOR, driver_of, srs_wkt
+from hcm_pipeline.rasters import GTIFF_OPTIONS, WEB_MERCATOR, driver_of, srs_wkt, warp_memory_mb
 from hcm_pipeline.steps.common import gdal_step
-from hcm_pipeline.steps.warp import WARP_MEMORY_MB, attached, cutline, rendered_points
+from hcm_pipeline.steps.warp import attached, cutline, rendered_points
 
 FLAT_GROUND: Final = 0.0
 DST_SRS: Final = "DST_SRS=EPSG:3857"
@@ -145,7 +145,7 @@ class Warper:
             "yRes": grid.resolution,
             "resampleAlg": "bilinear",
             "dstAlpha": True,
-            "warpMemoryLimit": WARP_MEMORY_MB,
+            "warpMemoryLimit": warp_memory_mb(),
             **method,
             **clipped,
         }

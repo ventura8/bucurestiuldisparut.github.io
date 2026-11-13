@@ -51,7 +51,7 @@ New code: `pipeline/src/hcm_pipeline/matcher/` (`serve.py`, `search.py` from `re
 
 ```text
 docker run --rm --name hcm-matcher <gpu flags> --network none --cap-drop ALL \
-  --security-opt no-new-privileges --memory 6g --memory-swap 6g --shm-size 1g --pids-limit 512 \
+  --security-opt no-new-privileges --memory 4g --memory-swap 4g --cpu-shares 128 --shm-size 1g --pids-limit 512 \
   --tmpfs /tmp -u 10001:10001 -e HOME=/tmp -e HCM_AI_DEVICE=gpu|cpu -e HCM_AI_WHY=<reason> \
   -v hcm-ai-files:/ai/files:ro -v hcm-ai-box:/ai/box --entrypoint python <image> /ai/files/code/serve.py
 ```
@@ -64,10 +64,10 @@ Log lines: `local AI: graphics card through --gpus all` or `local AI: NO GRAPHIC
 
 ## Memory and budgets
 
-- 6 GB cap against 2.5 GB measured; 2,048 keypoints; pair gate 12 inliers, as Tests A and C; one run at a time.
+- 4 GB cap against 2.5 GB measured (6 GB until 2026-11-12, `reports/resource-audit.md`), a low CPU weight (`--cpu-shares 128`); 2,048 keypoints; pair gate 12 inliers, as Tests A and C; one run at a time.
 - Under `MATCHER_MIN_VRAM_GB = 2`, the CPU.
 - Each request runs in a child process that imports torch and exits, so an idle sidecar holds no VRAM.
-- CPU: half the logical threads; the first 2 orientations by votes (GPU: all), each at every scale of the sensor. Timeout per request: 10 min GPU, 45 min CPU (adapter only, injected clock).
+- CPU: the logical threads but one, niced by 10 (half of them until 2026-11-12); the first 2 orientations by votes (GPU: all), each at every scale of the sensor. Timeout per request: 10 min GPU, 45 min CPU (adapter only, injected clock).
 
 ## Failure modes
 
@@ -305,3 +305,20 @@ The three maps agree with gate R1's over the film: GPU median 0.4 m, largest 4.2
 ### Licences, read
 
 ALIKED's own `LICENSE` at the pinned commit is BSD-3-Clause; kornia, kornia_rs and OpenCV are Apache-2.0 by their wheels' metadata (`matcher/NOTICE.md`). OpenCV's wheel bundles FFmpeg's libraries under LGPL-2.1, listed in its `LICENSE-3RD-PARTY.txt`, which is unpacked with it. **Still unread:** the CUDA library terms in the PyTorch image, which is why it stays on Docker Hub and is never re-hosted.
+
+## Addendum of 2026-11-12: the governor's budget per request (M26)
+
+Each request carries a `MatcherBudget` (`matcher/box.py`; an optional `budget` array in the `.npz`, a request without
+one reads as the old defaults): processor threads (in place of half the cores), keypoints (2048 full, 1024 quiet), the
+card's memory share (`torch.cuda.set_per_process_memory_fraction`, ≤ 0.7 full, ≤ 0.4 quiet) and `yield_gpu`: when other
+programs leave the card less than the matcher's 2 GB, the child runs that request on the processor and says
+`fallback: gpu-busy` (never a silent processor run: the reason is in the answer and in the proposer's record).
+`docs/research/M26-governor.md` §4–§5.
+
+## Addendum of 2026-11-13: the processor's sidecar and its lighter search (M26 h2, i)
+
+A computer with no NVIDIA card no longer pulls PyTorch's CUDA image (9.68 GB): the starter passes `HCM_AI_VARIANT=cpu`,
+the worker fetches `matcher/pins-cpu.json` into `lib-cpu/` (276 MB fetched, 830 MB unpacked) and the sidecar runs from
+the worker's own image, under the same flags. On the processor the search runs at half resolution with the full
+keypoints: 64 s a request on the NUC against 553 s, the same verdict on ten requests of three frames. Numbers, the
+rejected settings and what is unproved: `docs/research/M26-governor.md` §5, §9, §10.

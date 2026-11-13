@@ -22,7 +22,7 @@ import {
     type PoiCategory,
 } from '@hcm/shared';
 import { localizedCredit } from '@hcm/shared/credits';
-import { basemapLabels, MAP_LABEL_CONFIG, MAP_LABEL_KINDS, type MapLabels } from '@hcm/shared/map-labels';
+import { basemapLabels, MAP_LABEL_CONFIG, MAP_LABEL_KINDS, TRANSIT_LABELS, transitLabels, type MapLabels } from '@hcm/shared/map-labels';
 import type {
     MapOptions,
     PhotoConeFeature,
@@ -146,14 +146,16 @@ export interface MapMoment {
 
 /**
  * The city's `basemap.config` with the labels the visitor chose where they differ from it, so a shared link never flashes
- * the labels it turned off, and a dark theme's night, so a dark page never flashes day (day is Standard's own default, and
- * `MapSync` writes it where a style's differs). Mapbox ignores a property the style does not have.
+ * the labels it turned off (transit stations with the points of interest), and a dark theme's night, so a dark page never
+ * flashes day (day is Standard's own default, and `MapSync` writes it where a style's differs). Mapbox ignores a property
+ * the style does not have.
  */
 function basemapConfig(basemap: Basemap, labels: MapLabels, light: MapMoment['light']): MapOptions['config'] {
     const defaults = basemapLabels(basemap);
     const changed = MAP_LABEL_KINDS.filter((kind) => labels[kind] !== defaults[kind]).map((kind) => [MAP_LABEL_CONFIG[kind], labels[kind]]);
     const night = light === 'night' ? { [LIGHT_PRESET]: light } : {};
-    const config = { ...basemap.config, ...night, ...Object.fromEntries(changed) } as NonNullable<MapOptions['config']>;
+    const transit = transitLabels(basemap.config, labels.pois) ? {} : { [TRANSIT_LABELS]: false };
+    const config = { ...basemap.config, ...night, ...Object.fromEntries(changed), ...transit } as NonNullable<MapOptions['config']>;
     return Object.keys(config).length === 0 ? undefined : config;
 }
 

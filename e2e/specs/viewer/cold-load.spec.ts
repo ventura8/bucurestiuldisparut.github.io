@@ -27,7 +27,7 @@ const CPU_SLOWDOWN = 4;
 /** DNS, TCP and TLS to a new origin. */
 const CONNECT_ROUND_TRIPS = 3;
 
-/** The first contentful paint's budget in this profile (docs/research/DECISIONS-for-review.md §175). */
+/** The first contentful paint's budget in this profile (docs/research/DECISIONS-for-review.md §178). */
 const FCP_BUDGET_MS = 1_800;
 
 const SIZES = [
