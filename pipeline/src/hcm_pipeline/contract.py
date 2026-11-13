@@ -94,8 +94,8 @@ LAYER_VERSION_STATES: Final = (
     "cancelled",
     "joined",
 )
-# M25 (docs/research/M25-landsat.md): Landsat 4-5 TM and Landsat 7 ETM+ Collection 2 Level-1, already georeferenced.
-LANDSAT_DATASETS: Final = ("landsat_tm_c2_l1", "landsat_etm_c2_l1")
+# M25 (docs/research/M25-landsat.md): Landsat 4-5 TM, Landsat 7 ETM+ and Landsat 8-9 OLI Collection 2 Level-1, already georeferenced.
+LANDSAT_DATASETS: Final = ("landsat_tm_c2_l1", "landsat_etm_c2_l1", "landsat_ot_c2_l1")
 USGS_DATASETS: Final = ("corona2", "declassii", "declassiii", *LANDSAT_DATASETS)
 GEOREF_TRANSFORMS: Final = ("affine", "poly2", "tps")
 MIN_GCPS: Final[Mapping[str, int]] = {"affine": 3, "poly2": 6, "tps": 10}
@@ -226,6 +226,9 @@ SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
     "L4-TM": SensorSpec("landsat_tm_c2_l1", "Landsat 4 TM", 30, 8, 13, "std"),
     "L5-TM": SensorSpec("landsat_tm_c2_l1", "Landsat 5 TM", 30, 8, 13, "std"),
     "L7-ETM": SensorSpec("landsat_etm_c2_l1", "Landsat 7 ETM+", 15, 8, 14, "std"),
+    # Lesson 676: Landsat 8 and 9 OLI, pan-sharpened to 15 m as ETM+.
+    "L8-OLI": SensorSpec("landsat_ot_c2_l1", "Landsat 8 OLI", 15, 8, 14, "std"),
+    "L9-OLI": SensorSpec("landsat_ot_c2_l1", "Landsat 9 OLI-2", 15, 8, 14, "std"),
 }
 
 # The share of a job's progress each pipeline step stands for (`usgs-import`'s weights add up to 1; other job

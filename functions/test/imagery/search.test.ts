@@ -143,7 +143,21 @@ describe('imagery.search', () => {
 
         const response = await search(world);
 
-        expect(response).toEqual({ found: 4, added: 4, updated: 0, failedDatasets: [], searchedAt: NOW });
+        expect(response).toEqual({
+            found: 4,
+            added: 4,
+            updated: 0,
+            failedDatasets: [],
+            searchedAt: NOW,
+            datasets: {
+                corona2: { state: 'done', found: 2 },
+                declassii: { state: 'done', found: 1 },
+                declassiii: { state: 'done', found: 1 },
+                landsat_tm_c2_l1: { state: 'done', found: 0 },
+                landsat_etm_c2_l1: { state: 'done', found: 0 },
+                landsat_ot_c2_l1: { state: 'done', found: 0 },
+            },
+        });
         const kh4b = await readScene(world, KH4B);
         expect(kh4b).toMatchObject({
             entityId: KH4B,
@@ -175,6 +189,7 @@ describe('imagery.search', () => {
             'declassiii',
             'landsat_tm_c2_l1',
             'landsat_etm_c2_l1',
+            'landsat_ot_c2_l1',
         ]);
         // M25: a Landsat dataset is searched in its summer months under its cloud cap.
         expect(world.scenes.recorder.argsOf('search').at(-1)?.[1]).toMatchObject({ months: [5, 6, 7, 8, 9], maxCloud: 40 });
@@ -370,7 +385,8 @@ describe('imagery.search: browse images and secrets', () => {
 
         const response = await search(world, { cityId: CITY, datasets: ['corona2'] });
 
-        expect(response).toMatchObject({ found: 2, added: 1 });
+        // Lesson 676: `found` counts the scenes stored; the skipped record is only logged.
+        expect(response).toMatchObject({ found: 1, added: 1 });
         expect(world.deps.recording.records.map((entry) => entry.message)).toContain('usgs scene skipped');
     });
 

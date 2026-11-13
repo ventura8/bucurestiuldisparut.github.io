@@ -168,7 +168,7 @@ describe('<hcm-settings-page> imagery: Landsat', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
 
-    it('happyPath_landsatImportsItselfFrom1984To2000ByDefaultAndAllThreeChange @S-A130-HAPPY-AUTO', async () => {
+    it('happyPath_landsatImportsItselfFrom1984ToThisYearByDefaultAndAllThreeChange @S-A130-HAPPY-AUTO', async () => {
         const settings = area(imageryState(cityDoc()));
         const { element } = await page('settings', settings, { params: ['imagery'] });
         const group = deep(element, '[data-landsat]');
@@ -183,11 +183,15 @@ describe('<hcm-settings-page> imagery: Landsat', () => {
         to.value = '1999';
         to.dispatchEvent(new Event('input'));
 
-        expect(shown).toEqual(['1984', '2000', true]);
+        to.value = '';
+        to.dispatchEvent(new Event('input'));
+
+        expect(shown).toEqual(['1984', '', true]);
         expect(calls(settings)).toEqual([
             'editCity {"imagery":{"landsatAuto":false}}',
             'editCity {"imagery":{"landsatFrom":1986}}',
             'editCity {"imagery":{"landsatTo":1999}}',
+            'editCity {"imagery":{}}',
         ]);
         expect(deepText(group)).toContain('within the daily limit');
         expect(await axeViolations(group)).toEqual([]);

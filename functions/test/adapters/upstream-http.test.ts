@@ -1,5 +1,5 @@
 /** The HTTP plumbing of the fn-setup adapters: failures by status, the timeout-wrapped call, lenient JSON reading. */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
     at,
@@ -9,6 +9,7 @@ import {
     readJson,
     send,
     stringAt,
+    TIMED_OUT_REASON,
     strings,
     upstreamError,
     UPSTREAM_TIMEOUT_MS,
@@ -81,6 +82,25 @@ describe('send', () => {
 
         await expect(failure).rejects.toEqual(new UpstreamError('mapbox', 'unavailable'));
         await expect(failure).rejects.not.toThrow(/e2e-never/);
+    });
+
+    it('badPath_aRequestPastItsOwnTimeoutIsAbortedAndSaysItTimedOut', async () => {
+        vi.useFakeTimers();
+        try {
+            const hanging = (_url: string | URL | Request, init?: RequestInit) =>
+                new Promise<Response>((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => {
+                        reject(new DOMException('aborted', 'AbortError'));
+                    });
+                });
+            const failure = send(hanging, 'usgs', 'https://m2m.cr.usgs.gov/api/api/json/stable/scene-search', { method: 'POST', timeoutMs: 5000 });
+            const caught = failure.catch((error: unknown) => error);
+            await vi.advanceTimersByTimeAsync(5000);
+
+            expect(await caught).toMatchObject({ service: 'usgs', failure: 'unavailable', reason: TIMED_OUT_REASON });
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });
 

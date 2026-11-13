@@ -328,6 +328,14 @@ The browser never requests a USGS address (the admin's CSP does not allow one, a
 - `imagery.tick` harvests again, once a month, a city already harvested whose newest `harvestedAt` is older than
   `HARVEST_EVERY_DAYS`, only while `setup/status.usgs` is `ok` or `pending`; a city never harvested, or whose area holds
   no frame, waits for the Imagery area's first visit (CR-M3-44: otherwise every tick would search USGS for it).
+- Lesson 676 (2026-11-13): a run is never all or nothing. Each dataset is stored as soon as its own search ends; each
+  `scene-search` request has its own timeout (`PAGE_TIMEOUT_MS`, inside `PAGES_BUDGET_MS`); no page is asked for after
+  `SEARCH_BUDGET_MS` (300 s) and the run ends by `RUN_BUDGET_MS` (420 s), inside the callable's 540 s. `ops/harvest-{city}` is
+  written `running` at the start and as each dataset is stored (`datasets`: state, scenes stored, reason, `next` cursor); a run
+  with a dataset unfinished is `partial` and due again after `HARVEST_RESUME_MINUTES` (15, doubled after each further one), when
+  only the unfinished datasets are searched, from their cursor; a run still `running` 10 minutes after its start was stopped by
+  the server (`harvest.killed`, logged as an error) and is resumed the same way. `imagery.search` answers `datasets` too, and
+  the Imagery area shows each dataset's part live from `ops/harvest-{city}`.
 
 ## 4. The import job model (fn-imagery, pipeline)
 

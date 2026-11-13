@@ -213,6 +213,22 @@
             "minzoom": 8,
             "maxzoom": 14,
             "machine": "std"
+        },
+        "L8-OLI": {
+            "dataset": "landsat_ot_c2_l1",
+            "name": "Landsat 8 OLI",
+            "resolutionM": 15,
+            "minzoom": 8,
+            "maxzoom": 14,
+            "machine": "std"
+        },
+        "L9-OLI": {
+            "dataset": "landsat_ot_c2_l1",
+            "name": "Landsat 9 OLI-2",
+            "resolutionM": 15,
+            "minzoom": 8,
+            "maxzoom": 14,
+            "machine": "std"
         }
     },
     "MAX_GCPS": 300,

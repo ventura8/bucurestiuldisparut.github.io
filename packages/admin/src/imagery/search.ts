@@ -5,7 +5,15 @@
  * any time. Its answer says how many scenes it found and which datasets did not answer; the scenes themselves arrive
  * through the area's live list.
  */
-import { HARVEST_EVERY_DAYS, type ServiceState, type UsgsDataset } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    HARVEST_EVERY_DAYS,
+    harvestStateDocSchema,
+    type HarvestDataset,
+    type HarvestDatasets,
+    type ServiceState,
+    type UsgsDataset,
+} from '@hcm/shared';
 
 import type { ContentServices } from '../content/services.js';
 import type { NoticeInput } from '../state/state.js';
@@ -22,6 +30,23 @@ export interface SearchState {
     /** Datasets M2M did not answer for (the others were harvested). */
     readonly failedDatasets: readonly UsgsDataset[];
     readonly error: NoticeInput | null;
+    /** Lesson 676: each dataset's part, live from `ops/harvest-{city}` while searching, then the answer's (absent before). */
+    readonly datasets?: readonly SearchPart[];
+}
+
+export interface SearchPart {
+    readonly dataset: UsgsDataset;
+    readonly state: HarvestDataset['state'];
+    readonly found: number;
+    readonly reason?: NonNullable<HarvestDataset['reason']>;
+}
+
+/** The record's parts as a list, in the record's order; undefined for none. */
+export function partsOf(datasets: HarvestDatasets | undefined): readonly SearchPart[] | undefined {
+    const entries = Object.entries(datasets ?? {}) as [UsgsDataset, HarvestDataset][];
+    return entries.length === 0
+        ? undefined
+        : entries.map(([dataset, part]) => ({ dataset, state: part.state, found: part.found, ...(part.reason === undefined ? {} : { reason: part.reason }) }));
 }
 
 export const IDLE_SEARCH: SearchState = { phase: 'idle', found: null, added: null, failedDatasets: [], error: null };
@@ -96,12 +121,32 @@ export class HarvestSearch {
         }
         this.#set({ ...IDLE_SEARCH, phase: 'searching' });
         const started = this.#services.clock.now();
+        const stop = this.#watchParts();
         try {
             const answer = await callImagery(this.#services.callables, 'imagery.search', { cityId: this.#services.cityId }, SEARCH_OPTIONS);
-            this.#set({ phase: 'done', found: answer.found, added: answer.added, failedDatasets: answer.failedDatasets, error: null });
+            const datasets = partsOf(answer.datasets);
+            const done = { phase: 'done', found: answer.found, added: answer.added, failedDatasets: answer.failedDatasets, error: null } as const;
+            this.#set(datasets === undefined ? done : { ...done, datasets });
         } catch (error) {
             this.#set({ ...IDLE_SEARCH, phase: 'failed', error: searchRefusalOf(error, this.#services.clock.now() - started) });
+        } finally {
+            stop();
         }
+    }
+
+    /** Each dataset's part as the harvest records it, while the search runs (a failed read only leaves the line without them). */
+    #watchParts(): () => void {
+        return this.#services.store.watchDoc(
+            FIRESTORE_PATHS.harvestState(this.#services.cityId),
+            harvestStateDocSchema,
+            (stored) => {
+                const datasets = stored?.data.outcome === 'running' ? partsOf(stored.data.datasets) : undefined;
+                if (this.#state.phase === 'searching' && datasets !== undefined) {
+                    this.#set({ ...this.#state, datasets });
+                }
+            },
+            () => undefined,
+        );
     }
 
     #set(state: SearchState): void {

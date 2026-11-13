@@ -101,6 +101,7 @@ const PRODUCT_NAMES: Readonly<Record<string, string>> = {
     // M25: what USGS calls a Level-1 product bundle.
     landsat_tm_c2_l1: 'Landsat Collection 2 Level-1 Product Bundle',
     landsat_etm_c2_l1: 'Landsat Collection 2 Level-1 Product Bundle',
+    landsat_ot_c2_l1: 'Landsat Collection 2 Level-1 Product Bundle',
 };
 
 const textBytes = (text: string): Bytes => new TextEncoder().encode(text);

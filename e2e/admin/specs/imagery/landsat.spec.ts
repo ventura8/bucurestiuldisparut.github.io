@@ -28,7 +28,7 @@ test.describe.configure({ lock: ADMIN_LOCK });
 
 /**
  * Landsat beside the declassified sources (behaviour A130, docs/research/M25-landsat.md §2, §4, §5): the fake USGS lists Landsat 5 TM's
- * scenes over the city (`usgs.landsatScenes`: the same M2M API, the same account); the Landsat chip narrows the list to them, a cloudy
+ * and Landsat 8 and 9 OLI's scenes over the city (`usgs.landsatScenes`: the same M2M API, the same account); the Landsat chip narrows the list to them, a cloudy
  * scene ranks below a clear one of the same summer, Import (free) runs the stand-in pipeline's Landsat path (no locate, no georef: the
  * product is on the ground already; `warp` composes it and measures its shift from Sentinel-2) and the policy publishes it within a
  * pixel, credited to NASA and USGS. `imagery.tick` imports the clearest scene of a wanted year on its own; a delivery without a band
@@ -39,15 +39,19 @@ test.use({ persona: 'owner', mapOwner: 'owner' });
 const CLEAR_1989 = 'LT51830291989193MTI00';
 const CLOUDY_1989 = 'LT51830291989209MTI00';
 const CLEAR_1990 = 'LT51830291990180MTI00';
-/** The six free declassified frames and the three Landsat scenes. */
-const LISTED_FREE = 9;
+/** Lesson 676: Landsat 8 and 9 OLI (`landsat_ot_c2_l1`), searched beside TM and ETM+. */
+const OLI_2016 = 'LC81830292016198LGN01';
+const OLI_2023 = 'LC91830292023199LGN00';
+/** The six free declassified frames, the three Landsat 5 TM scenes and the two Landsat 8 and 9 OLI ones. */
+const LISTED_FREE = 11;
+const LISTED_LANDSAT = 5;
 
 /** The page's own first search listed, then only Landsat's scenes. */
 async function landsatListed(page: Page, lang: 'ro' | 'en'): Promise<void> {
     await page.goto(adminPath(lang, 'imagery'));
     await expect(sceneList(page, lang).getByRole('link')).toHaveCount(LISTED_FREE, { timeout: FUNCTIONS_TIMEOUT_MS });
     await page.getByRole('button', { name: imageryText(lang, 'adminContent.imagery.filter.landsat'), exact: true }).click();
-    await expect(sceneList(page, lang).getByRole('link')).toHaveCount(3);
+    await expect(sceneList(page, lang).getByRole('link')).toHaveCount(LISTED_LANDSAT);
 }
 
 /** Import (free) on a Landsat card: the version's page, the notice closed. */
@@ -60,7 +64,7 @@ async function importScene(page: Page, lang: 'ro' | 'en', entityId: string): Pro
 
 test(
     'Landsat scenes are listed beside the declassified ones, and Import publishes one credited to NASA and USGS',
-    { tag: '@S-A130-HAPPY' },
+    { tag: ['@S-A130-HAPPY', '@S-A130-HAPPY-OLI'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
         test.setTimeout(420_000);
         const fixtures = { emulators: adminWorld.emulators, api: mockApiRequest, upstream };
@@ -69,6 +73,8 @@ test(
 
         await landsatListed(page, lang);
         await expect(sceneLink(page, lang, CLEAR_1989)).toContainText(imageryText(lang, 'adminContent.imagery.reason.free'));
+        await expect(sceneLink(page, lang, OLI_2016)).toContainText(imageryText(lang, 'adminContent.imagery.reason.free'));
+        await expect(sceneLink(page, lang, OLI_2023)).toBeVisible();
         await expectStateSound(page, adminVisit('imagery.results-landsat', lang));
 
         const versionId = await importScene(page, lang, CLEAR_1989);

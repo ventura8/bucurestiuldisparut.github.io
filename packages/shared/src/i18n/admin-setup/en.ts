@@ -109,7 +109,7 @@ export const en: AdminSetupMessages = {
     'adminSetup.mapbox.saved': 'Saved for the Mapbox account {user}.',
     'adminSetup.usgs.answers': 'Registration answers: individual, non-commercial historical research.',
     'adminSetup.usgs.justification': 'Non-commercial historical research for a public map: a few declassified scenes a month.',
-    'adminSetup.usgs.datasets': 'Datasets: corona2, declassii, declassiii, landsat_tm_c2_l1, landsat_etm_c2_l1.',
+    'adminSetup.usgs.datasets': 'Datasets: corona2, declassii, declassiii, landsat_tm_c2_l1, landsat_etm_c2_l1, landsat_ot_c2_l1.',
     'adminSetup.usgs.area': 'Area (west, south, east, north): {area}.',
     'adminSetup.usgs.copyRequest': 'Copy the request text',
     'adminSetup.usgs.username': 'ERS username',

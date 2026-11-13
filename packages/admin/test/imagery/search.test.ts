@@ -1,7 +1,8 @@
+import { FIRESTORE_PATHS } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { IMAGERY_SEARCH_TIMEOUT_MS } from '../../src/imagery/search-timeout.js';
-import { HarvestSearch, SEARCH_CUT_OFF_MS, searchRefusalOf, usgsCanSearch, type SearchState } from '../../src/imagery/search.js';
+import { HarvestSearch, SEARCH_CUT_OFF_MS, partsOf, searchRefusalOf, usgsCanSearch, type SearchState } from '../../src/imagery/search.js';
 import { failure, settle } from '../app/fakes.js';
 import { answer, callsOf, imageryWorld } from './world.js';
 
@@ -100,5 +101,55 @@ describe('a search the server could not answer', () => {
         expect(searchRefusalOf(failure('unavailable', 'apiError.usgs.unavailable'), SEARCH_CUT_OFF_MS)).toEqual({
             key: 'apiError.usgs.unavailable',
         });
+    });
+});
+
+const T0 = { seconds: 1_792_486_800, nanoseconds: 0 };
+
+describe('each dataset’s part of the search (lesson 676)', () => {
+    it('happyPath_eachDatasetsPartShowsLiveThenTheAnswersPartsWithWhatAPartialOneKept @S-A11-BAD-HARVEST-PARTIAL-STORED', async () => {
+        const { harvest, callables, store, states } = search();
+        let release: () => void = () => undefined;
+        const datasets = {
+            corona2: { state: 'partial', found: 100, next: 101, reason: 'requestTimedOut', error: 'apiError.usgs.unavailable' },
+            landsat_ot_c2_l1: { state: 'done', found: 2 },
+        } as const;
+        answer(
+            callables,
+            'imagery.search',
+            () =>
+                new Promise((resolve) => {
+                    release = () => {
+                        resolve({ ...SEARCHED, failedDatasets: [], datasets });
+                    };
+                }),
+        );
+
+        const running = harvest.search();
+        store.put(FIRESTORE_PATHS.harvestState('bucharest'), {
+            attemptedAt: T0,
+            outcome: 'running',
+            failures: 0,
+            nextAt: T0,
+            datasets: { corona2: { state: 'searching', found: 0 }, landsat_ot_c2_l1: { state: 'done', found: 2 } },
+            updatedBy: 'system:imagery',
+            updatedAt: T0,
+        });
+        await settle();
+        const live = states.at(-1);
+        release();
+        await running;
+
+        expect(live).toMatchObject({ phase: 'searching', datasets: [{ dataset: 'corona2', state: 'searching' }, { dataset: 'landsat_ot_c2_l1', state: 'done', found: 2 }] });
+        expect(harvest.state.datasets).toEqual([
+            { dataset: 'corona2', state: 'partial', found: 100, reason: 'requestTimedOut' },
+            { dataset: 'landsat_ot_c2_l1', state: 'done', found: 2 },
+        ]);
+        expect(store.listeners(FIRESTORE_PATHS.harvestState('bucharest'))).toBe(0);
+    });
+
+    it('badPath_aFinishedRecordOrNoneAddsNoParts', () => {
+        expect(partsOf(undefined)).toBeUndefined();
+        expect(partsOf({})).toBeUndefined();
     });
 });

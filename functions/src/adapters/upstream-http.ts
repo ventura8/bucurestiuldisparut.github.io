@@ -50,15 +50,31 @@ export function upstreamError(
     return new UpstreamError(service, failure, errorDetails(response));
 }
 
+/** The `reason` of the `unavailable` error a request that ran out of its time fails with (lesson 676: the harvest records it). */
+export const TIMED_OUT_REASON = 'TIMED_OUT';
+
 /**
- * One request with a timeout. A network failure, a refused connection or the timeout is `unavailable`; the original
- * error is dropped on purpose (its message or cause may hold the URL, and with it a token).
+ * One request with a timeout (`init.timeoutMs`, `UPSTREAM_TIMEOUT_MS` by default), its own `AbortController` aborting it. A network
+ * failure, a refused connection or the timeout is `unavailable` (the timeout's `reason` `TIMED_OUT`); the original error is dropped on
+ * purpose (its message or cause may hold the URL, and with it a token).
  */
-export async function send(fetchFn: Fetch, service: UpstreamService, url: string, init: RequestInit): Promise<Response> {
+export async function send(
+    fetchFn: Fetch,
+    service: UpstreamService,
+    url: string,
+    init: RequestInit & { readonly timeoutMs?: number },
+): Promise<Response> {
+    const { timeoutMs = UPSTREAM_TIMEOUT_MS, ...request } = init;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+        controller.abort();
+    }, timeoutMs);
     try {
-        return await fetchFn(url, { ...init, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
+        return await fetchFn(url, { ...request, signal: controller.signal });
     } catch {
-        throw new UpstreamError(service, 'unavailable');
+        throw new UpstreamError(service, 'unavailable', controller.signal.aborted ? { reason: TIMED_OUT_REASON } : {});
+    } finally {
+        clearTimeout(timer);
     }
 }
 

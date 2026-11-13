@@ -10,7 +10,7 @@ from hcm_pipeline.contract import SENSOR_SPECS, Errors
 from hcm_pipeline.geo import FloatArray, Grid, MercatorBox
 from hcm_pipeline.jobs import Done, JobContext, Skipped, StepFailedError
 from hcm_pipeline.landsat import compose as compose_module
-from hcm_pipeline.landsat.bands import ETM_BANDS, TM_BANDS, band_of, needed_bands
+from hcm_pipeline.landsat.bands import ETM_BANDS, OLI_BANDS, TM_BANDS, band_of, needed_bands, true_colour
 from hcm_pipeline.landsat.colour import CLOUD_BITS, FILL_BIT, Bands, brovey, cloud_pct, compose, masks, stretch
 from hcm_pipeline.landsat.compose import measured_shift, reference_grey, shift_record, staged_bands
 from hcm_pipeline.landsat.offset import Shift, shift_of
@@ -68,6 +68,15 @@ def test_happy_path_the_bands_are_known_by_their_usgs_names() -> None:
     assert "B8" in ETM_BANDS
     assert "B8" not in TM_BANDS
     assert (SENSOR_SPECS["L5-TM"].maxzoom, SENSOR_SPECS["L7-ETM"].maxzoom) == (13, 14)
+
+
+def test_happy_path_an_oli_scene_takes_its_own_colour_bands_and_its_panchromatic_band() -> None:
+    """Scenarios: S-P30-HAPPY-OLI"""
+    assert needed_bands("L8-OLI") == needed_bands("L9-OLI") == OLI_BANDS == ("B4", "B3", "B2", "B8", "QA_PIXEL")
+    assert true_colour("L9-OLI") == ("B4", "B3", "B2")
+    assert true_colour("L7-ETM") == true_colour("L5-TM") == ("B3", "B2", "B1")
+    assert band_of("LC09_L1TP_183029_20230718_20230718_02_T1_B10.TIF") is None
+    assert (SENSOR_SPECS["L8-OLI"].dataset, SENSOR_SPECS["L8-OLI"].maxzoom, SENSOR_SPECS["L9-OLI"].resolution_m) == ("landsat_ot_c2_l1", 14, 15)
 
 
 def scene(size: int = 64, pan: bool = False) -> Bands:
