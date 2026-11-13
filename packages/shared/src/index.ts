@@ -315,6 +315,8 @@ export * from './schemas/city-export.js';
 export * from './schemas/engine-release.js';
 // M6 installer (docs/research/M6-interfaces.md §1): the install bundle, the build log's events, each target's state.
 export * from './schemas/install.js';
+// The admin on its own Hosting site (the owner's decision of 2026-11-13, DECISIONS-for-review.md §210).
+export * from './schemas/admin-site.js';
 export * from './schemas/start-release.js';
 // M5 kit-cli (§3.2): the one CSP table of every engine page, and the starter kit's page (`fillKitPage`).
 export * from './kit/csp.js';

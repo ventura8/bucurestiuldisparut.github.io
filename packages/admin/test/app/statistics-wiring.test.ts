@@ -20,6 +20,7 @@ function world(outcome: GoogleOutcome, live: boolean) {
     const lives: { readonly scope: GoogleScope; readonly min: number | undefined }[] = [];
     const callables = new FakeCallables();
     const clock = new FakeClock();
+    const measured: unknown[] = [];
     const source = statisticsSourceOf({
         google: {
             request: (scope) => {
@@ -36,8 +37,11 @@ function world(outcome: GoogleOutcome, live: boolean) {
         fetch: fakes.fetch,
         clock,
         log: createLogger('test', { minLevel: 'error' }),
+        measure: (event) => {
+            measured.push(event);
+        },
     });
-    return { fakes, source, requested, lives, callables, clock };
+    return { fakes, source, requested, lives, callables, clock, measured };
 }
 
 const CONFIG: AnalyticsConfigResponse = {
@@ -48,6 +52,14 @@ const CONFIG: AnalyticsConfigResponse = {
 };
 
 describe('statisticsSourceOf', () => {
+    it('happyPath_aReasonCodeIsOneUiErrorOfTheCrashesRoute', () => {
+        const { source, measured } = world({ granted: true, access: ACCESS }, true);
+
+        source.report?.('statistics_notReady');
+
+        expect(measured).toEqual([{ name: 'ui_error', params: { code: 'statistics_notReady', route: 'crashes' } }]);
+    });
+
     it('happyPath_theReadOnlyScopeIsAskedTheIdReadAndTheNumbersComeFromTheDataApi', async () => {
         const { fakes, source, requested, lives, callables } = world({ granted: true, access: ACCESS }, true);
         callables.answer('setup.analyticsConfig', () => CONFIG);

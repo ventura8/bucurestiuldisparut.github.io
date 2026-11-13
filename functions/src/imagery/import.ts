@@ -19,6 +19,7 @@ import type { Ports } from '../ports/index.js';
 import { refuseNewRasterJob } from './limits.js';
 import { pickDefined, requireCity, stampOf } from './records.js';
 import { markNotScanned } from './scene-rank.js';
+import { trueSensor } from './scene-record.js';
 import { requireUsgs, usgsDownloads, withUsgs } from './usgs-session.js';
 import { createWork, jobIdFor, reserveLayerId, type NewWork } from './versions.js';
 
@@ -80,7 +81,8 @@ export async function readFreeScene(transaction: DocumentTransaction, cityId: st
  * The job and its version are created, the scene (as `readFreeScene` read it) is marked imported and its order, M4,
  * `importing`. `partOf` (M8): the join this frame is imported for.
  */
-export async function writeImport(transaction: DocumentTransaction, work: NewWork, scene: UsgsSceneDoc, partOf?: string): Promise<void> {
+export async function writeImport(transaction: DocumentTransaction, work: NewWork, stored: UsgsSceneDoc, partOf?: string): Promise<void> {
+    const scene = { ...stored, sensor: trueSensor(stored) };
     const label = layerLabelFor(scene.sensor, scene.acquisitionDate);
     await createWork(transaction, work, {
         origin: 'usgs',
@@ -144,7 +146,7 @@ export function importWork(start: ImportStart, layerId: string): NewWork {
         cityId,
         jobId: jobIdFor('im', now, scene.entityId),
         type: 'usgs-import',
-        params: { entityId: scene.entityId, dataset: scene.dataset, sensor: scene.sensor },
+        params: { entityId: scene.entityId, dataset: scene.dataset, sensor: trueSensor(scene) },
         layerId,
         createdBy: start.createdBy,
         now,
@@ -178,7 +180,7 @@ async function startImportAgain(
  */
 export async function startImport(deps: Pick<Ports, 'documents'>, start: ImportStart): Promise<{ jobId: string; layerId: string }> {
     const { cityId, scene } = start;
-    const layerId = await reserveLayerId(deps.documents, cityId, layerLabelFor(scene.sensor, scene.acquisitionDate).ro);
+    const layerId = await reserveLayerId(deps.documents, cityId, layerLabelFor(trueSensor(scene), scene.acquisitionDate).ro);
     const work = importWork(start, layerId);
     await deps.documents.transaction(async (transaction) =>
         writeImport(transaction, work, await readFreeScene(transaction, cityId, scene.entityId)),

@@ -112,7 +112,7 @@ export const viewerStyles = [
 
         /*
          * The date menu's host spans the viewer and lets pointers through (its scrim and its menu take them): its peek is not
-         * modal, and the rule above, outside its shadow root, would beat its own \`:host\` (lesson 664: the peek's host took
+         * modal, and the rule above, outside its shadow root, would beat its own \`:host\` (lesson 671: the peek's host took
          * every press over the map).
          */
         .modal-layer > hcm-date-menu {

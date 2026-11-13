@@ -40,6 +40,7 @@ export const NUMBERS: StatisticsNumbersPort = {
         { wizard: 'new_city', step: 'e2e_extra', visitors: 0, averageMs: null, errors: [] },
         { wizard: 'e2e_wizard', step: 'one', visitors: 1, averageMs: null, errors: [] },
     ],
+    pending: null,
 };
 
 export function statistics(overrides: Partial<StatisticsViewState> = {}): StatisticsViewState {

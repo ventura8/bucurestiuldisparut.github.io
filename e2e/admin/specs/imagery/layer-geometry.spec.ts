@@ -13,7 +13,7 @@ import { E2E_CITY_BOUNDS } from '../../support/imagery-geometry.js';
 import type { ImageryWorld } from '../../support/imagery.js';
 import { adminMapReady } from '../../support/map.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
-import { addPair, georeferencerReady, georefText, landmark } from './georef.js';
+import { addPair, expectPanesAligned, georeferencerReady, georefText, landmark, showPane } from './georef.js';
 import {
     bringIntoView,
     cornerPoints,
@@ -256,10 +256,13 @@ test(
         await expect(page.locator('[data-state="published-note"]')).toHaveText(georefText(lang, 'adminContent.georef.publishedNote'));
         await expectStateSound(page, adminVisit('georef.edit-published', lang));
         // The map shows: the published layer itself goes under the pairs, on the page's one map; back to OpenStreetMap, it is gone.
+        // On a phone the list is on the map's side of the switch (the test never showed it there: lesson 667).
+        await showPane(page, lang, 'map');
         const shows = page.getByLabel(georefText(lang, 'adminContent.georef.shows.map'));
         await shows.selectOption(`layer:${layer.id}`);
         await expect(page.locator('.map-pane > p.note')).toContainText('(1966)');
         await expect.poll(async () => (await mapFacts(page)).layers.some((id) => id.includes(layer.id))).toBe(true);
+        await expectPanesAligned(page, lang);
         await expectStateSound(page, adminVisit('georef.map-shows', lang));
         await shows.selectOption('reference:osm');
         await expect.poll(async () => (await mapFacts(page)).layers.some((id) => id.includes(layer.id))).toBe(false);

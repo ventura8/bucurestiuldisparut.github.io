@@ -1170,6 +1170,13 @@
             "name": "Not useful on a scene, and a scene its preview shows cloudy over the city is ranked down and warned",
             "milestone": "M4",
             "source": "the owner, 2026-11-13: \"This scan is useless (too many clouds!!!)\", DS09066A047MC019, a 1964 scan the whole-city plan kept offering to buy; docs/research/M4-interfaces.md, Not useful and the cloud estimate"
+        },
+        {
+            "id": "A160",
+            "area": "admin",
+            "name": "The admin on its own web address: one sign-in for every tab, the old /admin/ links forwarded",
+            "milestone": "post-M8",
+            "source": "the owner's decision of 2026-11-13; DECISIONS-for-review.md §210; docs/research/M6-interfaces.md addendum \"The admin on its own site\""
         }
     ],
     "scenarios": [
@@ -5440,6 +5447,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "docs/research/M9-calibration.md §14. In functions/test/imagery/scene-record.test.ts."
+        },
+        {
+            "id": "S-A12-HAPPY-STALE-CAMERA",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A scene harvested before the id rules is imported as the camera its id names",
+            "asserts": "DS09065A073MC043 stored as KH-4A (the corona2 fallback) imports as KH-5: the job's params, the version's sensor and label, the reserved layer id and the scene say KH-5 Argon; DS1103 reads KH-4B",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §209, LESSONS 664. In functions/test/imagery/{scene-record,import}.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-STALE-CAMERA-KEPT",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A stored camera other than the fallback, or an id of no known form, is kept",
+            "asserts": "a stored KH-4B stays KH-4B whatever the id; an unknown id keeps the stored KH-4A",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §209. In functions/test/imagery/scene-record.test.ts."
         },
         {
             "id": "S-A11-HAPPY-SAME-DATE-RANK",
@@ -10983,7 +11012,7 @@
             "asserts": "the owner signed in on /admin/ -> a reload keeps the session; Firebase Auth's user is in the tab's sessionStorage only, never in localStorage or IndexedDB",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review (DECISIONS-for-review.md §73a). Test: e2e/admin/specs/shell/admin-path.spec.ts."
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review (DECISIONS-for-review.md §73a). Test: e2e/admin/specs/shell/admin-path.spec.ts. Since §210 this is the fallback without the admin's own site (S-A160-BAD-NO-ADMIN-SITE); on that site the sign-in is the origin's (S-A160-HAPPY-ONE-SIGN-IN)."
         },
         {
             "id": "S-A58-BAD-VIEWER-READS-NO-SIGN-IN",
@@ -10994,7 +11023,7 @@
             "asserts": "the owner signed in on /admin/ -> the viewer opened at / in another tab of the same browser boots, and its localStorage, sessionStorage and IndexedDB hold no Firebase Auth user",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review. Test: e2e/admin/specs/shell/admin-path.spec.ts."
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review. Test: e2e/admin/specs/shell/admin-path.spec.ts. Since §210 this is the fallback without the admin's own site (S-A160-BAD-NO-ADMIN-SITE); on that site the sign-in is the origin's (S-A160-HAPPY-ONE-SIGN-IN)."
         },
         {
             "id": "S-A59-HAPPY",
@@ -11292,6 +11321,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Finding 57 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82h). Test: pipeline/tests/unit/test_frames.py."
+        },
+        {
+            "id": "S-P01-HAPPY-RECROP-RIGHT-TO-LEFT",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A point on a whole strip shrunk crops the same place at full resolution, whichever way the film was scanned",
+            "asserts": "a 3-segment strip lettered right to left (and left to right), read whole shrunk 8 times: a point on the city at 73 % along maps to 73 % of the film, and the crop around it is the film's own pixels holding the city",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS §209 (DS1103-1058DF026, 1968). Test: pipeline/tests/unit/test_recrop_order.py."
+        },
+        {
+            "id": "S-P01-BAD-RECROP-MIRRORED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The mirror place of the city is never cropped",
+            "asserts": "on the same strips a decoy at 27 % (the city's mirror place) stays out of the crop around the point on the city",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS §209. Test: pipeline/tests/unit/test_recrop_order.py."
         },
         {
             "id": "S-P01-HAPPY-KH9-STRIP",
@@ -18290,6 +18341,17 @@
             "notes": "M22 §13.2. Tests: packages/ui/test/admin/georef/georef-page.test.ts."
         },
         {
+            "id": "S-A122-BAD-GEOREF-PANES-MISALIGNED",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "bad",
+            "title": "The map's list of what it shows does not push the map below the scan (panes misaligned)",
+            "asserts": "the scan's and the map's views share their top and height within 1 px, and the turn rows under them their top, in the page and in full screen, side by side and on a compact window's switch",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (lesson in docs/LESSONS.md). Tests: e2e/admin/specs/imagery/georeferencer.spec.ts, e2e/admin/specs/imagery/layer-geometry.spec.ts."
+        },
+        {
             "id": "S-A125-HAPPY-DELETE-VERSION",
             "behaviour": "A125",
             "area": "admin",
@@ -18409,6 +18471,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The NUC's /state of 2026-11-13 listed nvidia-smi's failure as a card's name (and an empty one, which made the whole card read as an older worker). Tests: functions/test/worker/starter-governor.test.ts, pipeline/tests/unit/test_governor_probe.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
+            "id": "S-A141-HAPPY-WSL-IDLE",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "A worker in WSL reads the Windows user's idle time, so Automatic leaves Quiet when the owner is away",
+            "asserts": "under WSL (/proc/version names microsoft) the POSIX starter skips GNOME, xprintidle and logind and writes GetLastInputInfo's seconds from powershell.exe into host-hints.json; a socket Windows refuses (1_interop) and one whose process runs in session 0 (sshd's wsl.exe, which reads the uptime) are passed over; powershell.exe runs at most once per 30 s, the socket that answered is tried first next time",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's PC (WSL Ubuntu, systemd user service hcm-worker) wrote idleS 0 every 5 s on 2026-11-13: logind's IdleHint is always no without a desktop session, and the governor held Quiet forever. Tests: functions/test/worker/starter-governor.test.ts."
+        },
+        {
+            "id": "S-A141-BAD-WSL-NO-INTEROP",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker in WSL that cannot reach Windows says nothing about the owner's activity, never that they are typing",
+            "asserts": "under WSL with no powershell.exe, or with only sockets Windows refuses or whose process runs in session 0, the hints say idleS null (the governor never claims activity it cannot see), never logind's 0",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Tests: functions/test/worker/starter-governor.test.ts."
         },
         {
             "id": "S-A142-HAPPY-VERSIONS",
@@ -19907,6 +19991,72 @@
             "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-problem); Vitest packages/ui/test/admin/ops/statistics.test.ts."
         },
         {
+            "id": "S-A153-HAPPY-PARTIAL",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "happy",
+            "title": "The numbers GA4 can answer show even when some measurement names cannot be used",
+            "asserts": "the property's metadata lacks the custom names -> visitors, pages, devices and countries still show; no report naming a missing name is sent (no 400), no alert",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Fix of 2026-11-13 (a 400 for the whole batch was said as 'Google Analytics does not know the names'). Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-pending); Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-HAPPY-DATA-ARRIVES",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "happy",
+            "title": "Once values arrive, Refresh shows the steps and the no-values note goes",
+            "asserts": "after the noData note, the property gets rows -> Refresh shows the new_city funnel, no pending note, and the guide's codes line says Google Analytics knows the codes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-NOT-REGISTERED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "A measurement name not registered on the property: said with Setup step g as the fix",
+            "asserts": "the Admin API lists none of the view's names -> the note says some names are unknown and the apps and steps are incomplete, links #/setup/analytics; ui_error statistics_notRegistered; the log names the missing names",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-NOT-READY",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "Names registered but not usable in reports yet: said with when to look again",
+            "asserts": "every name is registered on the Admin API but missing from the Data API metadata -> the note says Google Analytics cannot report on them yet and to look again tomorrow (up to 48 hours); no Setup link; ui_error statistics_notReady",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-pending); Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-NO-DATA",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "Names usable but no values yet: said with when to look again",
+            "asserts": "no step, no admin screen and only '(not set)' apps -> the note says no values yet and that Google shows them 24 to 48 hours after use; the guide's codes line says the same; ui_error statistics_noData",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-REFUSED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "A report request Google refuses (400) is the admin's fault, not missing names",
+            "asserts": "batchRunReports answers 400 INVALID_ARGUMENT -> the alert says Google Analytics refused the way the admin asked, that it is in the logs, and links Google Analytics; ui_error statistics_refused",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
             "id": "S-V70-HAPPY-KEY-ACTIONS",
             "behaviour": "V70",
             "area": "viewer",
@@ -20015,6 +20165,83 @@
             "tier": "functions",
             "status": "exists",
             "notes": "The owner's report of 2026-11-13. Tests: functions/test/imagery/browse.test.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-ONE-SIGN-IN",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "Signed in once on the admin's own site, a new tab is signed in too",
+            "asserts": "the admin on its own origin (runtime.json naming it) -> the sign-in lives in the origin's IndexedDB; a second tab opens Home signed in with nothing seeded in it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-BAD-VIEWER-READS-NOTHING",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "A public map page, on its own origin, reads nothing of the admin's sign-in",
+            "asserts": "the owner signed in on the admin's own origin -> a public map page on the map's origin finds no sign-in in localStorage, sessionStorage or IndexedDB",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Keeps the intent of S-A58-BAD-VIEWER-READS-NO-SIGN-IN across the two origins. Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-BAD-NO-ADMIN-SITE",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without the admin's own site the sign-in stays in the admin's tab",
+            "asserts": "the admin served under the public map's /admin/ (runtime.json naming another origin, or none) -> the sign-in is in the tab's sessionStorage only, as since M6",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). The fallback of a self-hosted copy, a starter-kit city or a project whose site could not be made. Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-OLD-LINK-FORWARDS",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "An old admin address forwards to the admin's own site with its route",
+            "asserts": "/admin/?lang=en#/settings on the public map's origin -> 301 (the site build's rule) to the admin's site, the same query and hash, Settings shown",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Tests: e2e/admin/specs/shell/admin-site.spec.ts, scripts/site/test/hosting-admin-site.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-NOT-FORWARDED",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "The starter list and the public map's own pages are never forwarded to the admin's site",
+            "asserts": "/, a city's page and /admin/starter.json (read by a Linux starter's curl without -L) match no forward; the map opens on its own origin",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-ADMIN-TOKEN",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin's Mapbox token follows the server's admin origins",
+            "asserts": "setup/status.mapbox.adminAllowedUrls without the admin site -> ops.tick mints an admin token for the server origins and queues the old one for retirement",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: functions/test/ops/admin-token.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-ADMIN-TOKEN-REFUSED",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused admin token mint keeps the old token for the next tick",
+            "asserts": "Mapbox refuses the mint -> the stored admin token and its addresses stay, the step goes on",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: functions/test/ops/admin-token.test.ts."
         }
     ]
 }
