@@ -132,6 +132,36 @@ describe('imagery.search: a partial harvest', () => {
         expect(await harvestState(world)).toMatchObject({ outcome: 'ok', failures: 0 });
     });
 
+    it('badPath_aPageUsgsRefusesForTooManyRequestsIsAskedAgainAfterAWait @S-A11-BAD-HARVEST-PARTIAL-STORED', async () => {
+        const world = await readyWorld(NOW, records());
+        const scenes = world.deps.scenes;
+        const waits: number[] = [];
+        let refused = 0;
+        const busy: typeof scenes = {
+            ...scenes,
+            search: async (apiKey, request) => {
+                if (request.dataset === 'declassii' && refused < 2) {
+                    refused += 1;
+                    throw new UpstreamError('usgs', 'rateLimited', { status: 500 });
+                }
+                return scenes.search(apiKey, request);
+            },
+        };
+        const clock = {
+            now: () => world.deps.clock.now(),
+            sleep: (ms: number) => {
+                waits.push(ms);
+                return Promise.resolve();
+            },
+        };
+
+        const response = await searchFunction(() => ({ ...world.deps, scenes: busy, clock })).run(adminCall({ cityId: CITY }));
+
+        expect(waits).toEqual([5000, 10_000]);
+        expect(response.datasets?.declassii).toEqual({ state: 'done', found: 1 });
+        expect(await readScene(world, MAPPING)).toBeDefined();
+    });
+
     it('badPath_aRunOutOfTimeStoresEveryDatasetItFinishedAndRecordsTheRestPartial @S-A11-BAD-HARVEST-PARTIAL-STORED', async () => {
         const world = await readyWorld(NOW, records());
         const scenes = world.deps.scenes;

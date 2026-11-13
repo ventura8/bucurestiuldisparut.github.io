@@ -76,7 +76,7 @@ interface PagesSearch {
 type PageRead = { readonly records: readonly SceneRecord[]; readonly next: number | undefined } | NonNullable<Pages['stop']>;
 
 /** One page from `next`: its records and the next page, or why the search stops there. */
-async function readPage(deps: PagesDeps, apiKey: string, search: PagesSearch, next: number): Promise<PageRead> {
+async function readOnce(deps: PagesDeps, apiKey: string, search: PagesSearch, next: number): Promise<PageRead> {
     const timeoutMs = pageTimeout(search.budget, deps.clock.now().getTime());
     if (timeoutMs === undefined) {
         deps.log.warn('usgs search out of time, kept what it found', {
@@ -98,6 +98,27 @@ async function readPage(deps: PagesDeps, apiKey: string, search: PagesSearch, ne
         });
         return { reason, next, error: codeOf(error) };
     }
+}
+
+/** A page USGS refused for too many requests is asked again this many times, after `RATE_LIMIT_WAIT_MS` times the attempt. */
+const RATE_LIMIT_RETRIES = 3;
+const RATE_LIMIT_WAIT_MS = 5_000;
+
+function rateLimited(read: PageRead): boolean {
+    return 'reason' in read && read.error === 'apiError.rateLimited';
+}
+
+/**
+ * One page from `next`, asked again after a short wait while USGS answers "too many requests" (2026-11-13: six datasets at once
+ * met M2M's `RATE_LIMIT`), as long as the run has time.
+ */
+async function readPage(deps: PagesDeps, apiKey: string, search: PagesSearch, next: number): Promise<PageRead> {
+    let read = await readOnce(deps, apiKey, search, next);
+    for (let attempt = 1; attempt <= RATE_LIMIT_RETRIES && rateLimited(read) && deps.clock.sleep !== undefined; attempt += 1) {
+        await deps.clock.sleep(RATE_LIMIT_WAIT_MS * attempt);
+        read = await readOnce(deps, apiKey, search, next);
+    }
+    return read;
 }
 
 /** Every page of one search from `from` on, up to {@link MAX_SCENES_PER_DATASET} records, inside the budget. */
