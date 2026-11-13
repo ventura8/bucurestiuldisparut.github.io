@@ -41,7 +41,7 @@ import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } 
 import { guardCallables, type AdminProject, type SetupModuleSpec, type ShellServices } from './services.js';
 import type { AdminTelemetry, Measure } from './telemetry.js';
 
-export { ACCENT_KEY, THEME_KEY, storedTheme, themeIntents, themeModeOf } from './theme-prefs.js';
+export { ACCENT_KEY, THEME_KEY, storedTheme, themeIntents } from './theme-prefs.js';
 
 export type { TelemetryView };
 

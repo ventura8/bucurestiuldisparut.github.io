@@ -114,7 +114,6 @@ A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](rese
 - **The basemap's labels** follow the language where Mapbox's style has names in it (`zh` as `zh-Hans`); elsewhere each place shows its local name.
 - **Fonts.** Latin and Cyrillic come from the engine's `fonts/`; Arabic, Devanagari, Chinese, Japanese and Korean use the system's fonts (`system-ui, sans-serif`), so nothing is fetched from a font CDN.
 
-
 **Theme: Follow my device by default.** The menu's Settings has two choices, each remembered per city in `localStorage` (`hcm:<cityId>:theme`, `hcm:<cityId>:accent`; a visitor who chose Light or Dark before keeps it):
 
 - **Theme**: **Follow my device** (`system`, the default: the system's light or dark scheme, live), **Light** or **Dark**. Every mode also follows `prefers-contrast: more` (the city's high-contrast scheme), `prefers-reduced-motion: reduce` (no spatial motion) and the browser's text size (the type scale is in `rem`); under forced colours (Windows' contrast themes) the system paints the page.

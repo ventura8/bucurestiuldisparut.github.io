@@ -11,7 +11,7 @@ export const THEME_KEY = 'hcm:admin:theme';
 export const ACCENT_KEY = 'hcm:admin:accent';
 
 /** The stored theme (`system` for anything else). */
-export function themeModeOf(value: string | null): ThemeMode {
+function themeModeOf(value: string | null): ThemeMode {
     return value === 'light' || value === 'dark' ? value : 'system';
 }
 

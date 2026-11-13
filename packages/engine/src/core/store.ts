@@ -56,7 +56,6 @@ const LOCATING = -1;
 export type { ViewerDeps, ViewerLocation } from './deps.js';
 export { PHOTO_YEAR_WINDOW } from './timeline.js';
 export type { SheetName, ThemeMode, ViewerError, ViewerState, ViewerStatus } from './state.js';
-export type { AccentChoice };
 
 export interface ViewerActions {
     /** Fetch (or take the inline) manifest, check compat, validate, mount the map; errors land in state.error. */
