@@ -84,6 +84,8 @@ const POI_EDITABLE = [
     'photoIds',
     /** M13: the optional credit name. */
     'credit',
+    /** M27: the layer a disappeared street was traced on. */
+    'sourceLayer',
     'published',
     ...STAMP,
 ] as const;
@@ -91,7 +93,18 @@ const POI_EDITABLE = [
 /** M17 (`docs/research/M17-stories.md` §1). */
 const STORY_EDITABLE = ['title', 'body', 'yearStart', 'yearEnd', 'photoIds', 'poiIds', 'credit', 'published', ...STAMP] as const;
 
-const POI_CATEGORY_EDITABLE = ['label', 'icon', 'color', 'defaultOpacity', 'order', ...STAMP] as const;
+/** M27: a category may start hidden, be pinned and carry its data's credit. */
+const POI_CATEGORY_EDITABLE = [
+    'label',
+    'icon',
+    'color',
+    'defaultOpacity',
+    'order',
+    'defaultVisible',
+    'pinned',
+    'attribution',
+    ...STAMP,
+] as const;
 
 export interface ClientWrites {
     readonly create: readonly string[];

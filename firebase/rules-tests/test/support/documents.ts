@@ -228,6 +228,7 @@ export function poiDoc(creator: string): Data {
         published: true,
         ...reviewedFields(creator),
         credit: 'Ion Mureșan',
+        sourceLayer: 'plan-1911',
         createdAt: past(),
         createdBy: creator,
         updatedBy: creator,
@@ -254,6 +255,9 @@ export function poiCategoryDoc(): Data {
         color: '#875329',
         defaultOpacity: 0.8,
         order: 1,
+        defaultVisible: true,
+        pinned: false,
+        attribution: 'OpenHistoricalMap (CC0)',
         createdAt: past(),
         ...systemStamp('bootstrap'),
     };

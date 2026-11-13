@@ -184,7 +184,7 @@ class CloudBuildInstaller implements InstallerPort {
 
     /** The bundle a build of `target` installs: refused while a newer admin is out, or for a pipeline the bundle has none of. */
     async #bundleFor(target: InstallTarget): Promise<InstallBundle> {
-        const newer = (await movedTo(this.#deps)) ?? (await this.#deps.newerAdmin());
+        const newer = (await this.#deps.newerAdmin()) ?? (await movedTo(this.#deps));
         if (newer !== null) {
             throw new InstallBundleError('apiError.install.adminOutdated', { release: newer });
         }
