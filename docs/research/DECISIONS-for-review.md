@@ -6676,7 +6676,16 @@ leftovers of §164. Every figure is the container's cgroup `memory.peak` (page c
   `admin` + `create-historic-city` on 5 workers failed every time, with or without `--coverage`. The option now sits in the
   root `test` config that every project extends: the same command passes 230 files. Found while it, the shared API's
   fixture lacked the governor's eight exports (§176): added to `exports-m7.ts`.
-- **178f Left**: The Functions emulator's workers (178c) are the largest consumer of the e2e tier and the dev stack;
-  `--inspect-functions` runs them all in one worker but serialises every call and turns off their timeouts, so it needs a
-  full e2e run of its own before it is adopted. The e2e stage's peak after 178d was not measured, as it cannot finish
-  under the 12 GB slot before that.
+- **178i The Functions emulator's workers in the e2e stage** (NUC, 12 GB slot, sampled every 3 s). Every Node process the
+  emulators start now inherits `NODE_OPTIONS=--max-semi-space-size=1` (`EMULATOR_ENV`): one worker that loaded the functions
+  went from 102 to 48 MB of heap and 148 to 122 MB resident; in the stage, about 250 to 165 MB a worker. The count is the
+  problem: the emulator keeps one worker per function trigger for the whole run and never stops an idle one, 61 to 65 at
+  the end (10.6 GB), so the stage still reaches the 12 GB cap (the browsers 2 to 3 GB beside them). Tried and not adopted:
+  `--inspect-functions`, whose shared pool kept one worker (0.4 GB, the container's peak 9.9 GB) but served the calls one at
+  a time: past 2 hours for about 2,370 of 3,137 tests, with 43 failures, against 45 minutes. A per-worker heap ceiling saves
+  little (the code loaded is most of a worker). What would fit: the functions' entry loading each group's module on its
+  first call instead of the whole bundle in every worker, a change to the deployed code's cold start that needs its own
+  measurement; until then the e2e stage needs about 14 GB (CI's runners have 16).
+- **178f Left**: the Functions emulator's workers (178c, 178i) are the largest consumer of the e2e tier and the dev stack;
+  the e2e stage reaches a 12 GB cap with them (measured after 178d and 178i), and the dev stack's 8 GB default holds only
+  a manual session's fewer workers.

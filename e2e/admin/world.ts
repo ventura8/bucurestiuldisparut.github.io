@@ -116,10 +116,15 @@ export const FIREBASE_APP_NAME = '[DEFAULT]';
  * `admin.claim` takes the path of a project without it: it asks the fake Identity Toolkit for the Google sign-in
  * client, the stand-in consent's (CR-M2b-2). The emulators' JVMs (Firestore, the Storage rules runtime, Pub/Sub) get a
  * heap ceiling of 2 GB each: without one each may grow to a quarter of the machine's memory. `npm test` gives them 6 GB, as
- * it also asks the Firestore emulator for the whole rule-coverage report (DECISIONS-for-review.md §178).
+ * it also asks the Firestore emulator for the whole rule-coverage report (DECISIONS-for-review.md §178). Every Node
+ * process the emulators start inherits `NODE_OPTIONS`: the Functions emulator keeps one worker per function trigger for
+ * the whole run (about 46, never stopped while idle), and a young generation of 1 MB instead of V8's 16 MB semi-spaces
+ * keeps each one's heap at about half (one worker that loaded the functions: 102 to 48 MB of heap, 148 to 122 MB resident;
+ * in the e2e stage about 250 to 165 MB a worker, §178i).
  */
 export const EMULATOR_ENV: Readonly<Record<string, string>> = {
     JAVA_TOOL_OPTIONS: '-XX:CICompilerCount=2 -Xmx2g',
+    NODE_OPTIONS: '--max-semi-space-size=1',
     HCM_UPSTREAM_BASE: MOCK_API_ORIGIN,
     HCM_ADMIN_ORIGINS: ADMIN_ORIGIN,
     STORAGE_BUCKET_URL: E2E_BUCKET,
