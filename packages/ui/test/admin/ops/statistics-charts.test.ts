@@ -5,7 +5,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { CrashesIntentsPort, CrashesViewState, StatisticsNumbersPort } from '../../../src/admin/crashes/crashes-port.js';
 import { formatShare, pageName, screenName } from '../../../src/admin/crashes/statistics-bars.js';
 import { causeTitle } from '../../../src/admin/crashes/statistics-crashes.js';
-import { loadStatisticsLive } from '../../../src/admin/crashes/statistics-view.js';
+import { loadStatisticsLive, statisticsLiveSheet } from '../../../src/admin/crashes/statistics-view.js';
 import { FakeArea } from '../editing/fake-area.js';
 import { cleanup, deep, deepAll, deepText, defineAll, updated } from '../shell/fake-app.js';
 import { crashesState, page } from './fixtures.js';
@@ -124,6 +124,17 @@ describe('the Statistics view as cards and charts', () => {
     it('badPath_anEmptyCauseIsAnEmptyTitle', () => {
         expect(causeTitle('')).toBe('');
         expect(causeTitle('  short  \nmore')).toBe('short');
+    });
+
+    it('happyPath_thePageAdoptsTheLiveSectionsStylesOnce', async () => {
+        const crashes = new FakeArea<CrashesViewState, CrashesIntentsPort>(crashesState({}));
+        const { element } = await page('crashes', crashes, { params: ['statistics'] });
+        crashes.set({ status: 'loading' });
+        await updated(element);
+
+        const sheet = statisticsLiveSheet();
+        expect(sheet).not.toBeNull();
+        expect(element.shadowRoot?.adoptedStyleSheets.filter((item) => item === sheet)).toHaveLength(1);
     });
 
     it('happyPath_theHelpIsFolded_andOpensOnItsSummary', async () => {

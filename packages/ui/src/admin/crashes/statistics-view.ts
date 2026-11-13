@@ -30,6 +30,11 @@ export function loadStatisticsLive(): Promise<LiveModule> {
     return loading;
 }
 
+/** The live sections' styles once their chunk is there (the page adopts them), else null. */
+export function statisticsLiveSheet(): CSSStyleSheet | null {
+    return live?.liveStyles.styleSheet ?? null;
+}
+
 /** Whether the live sections' chunk is there (the page asks for it once, then renders again). */
 export function statisticsLiveReady(): boolean {
     return live !== null;
