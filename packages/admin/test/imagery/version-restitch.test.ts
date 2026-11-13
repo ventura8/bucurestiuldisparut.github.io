@@ -1,4 +1,4 @@
-/** M20 (DECISIONS-for-review.md §202): the version view says when Locate again lays a published series on its overview again. */
+/** M20 (DECISIONS-for-review.md §204): the version view says when Locate again lays a published series on its overview again. */
 import type { LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
@@ -8,7 +8,17 @@ import { versionDoc } from './world.js';
 const AT = { seconds: 1, nanoseconds: 0 };
 
 function stitched(method: string, leftOutCount: number) {
-    return { previewPath: 'p.jpg', previewScale: 0.2, width: 10, height: 10, method, parts: 3, joined: 3 - leftOutCount, leftOut: [], leftOutCount };
+    return {
+        previewPath: 'p.jpg',
+        previewScale: 0.2,
+        width: 10,
+        height: 10,
+        method,
+        parts: 3,
+        joined: 3 - leftOutCount,
+        leftOut: [],
+        leftOutCount,
+    };
 }
 
 function viewOf(overrides: Record<string, unknown>) {

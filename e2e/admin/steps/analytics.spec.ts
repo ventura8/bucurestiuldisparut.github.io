@@ -155,7 +155,7 @@ test(
         expect(await reportsConsent.requestedScopes()).toEqual([GOOGLE_SCOPES.analyticsEdit]);
         await reportsConsent.allow(setupBudget.consents('analytics'));
         const done = card.locator('.reports');
-        await expect(done).toHaveText(setupText(lang, 'adminSetup.analytics.reportsDone', { created: '14', skipped: '0' }));
+        await expect(done).toHaveText(setupText(lang, 'adminSetup.analytics.reportsDone', { created: '23', skipped: '0' }));
         expect(await definitions(upstream)).toMatchObject({
             'properties/400000001/customDimensions': expect.arrayContaining([expect.objectContaining({ parameterName: 'window_class' })]),
             'properties/400000001/customMetrics': expect.arrayContaining([
@@ -167,9 +167,9 @@ test(
         // Idempotent: the tab still holds the Analytics token, so no consent; every definition is there already.
         const asked = (await consent.requests()).length;
         await inputs.click(reports);
-        await expect(done).toHaveText(setupText(lang, 'adminSetup.analytics.reportsDone', { created: '0', skipped: '14' }));
+        await expect(done).toHaveText(setupText(lang, 'adminSetup.analytics.reportsDone', { created: '0', skipped: '23' }));
         expect(await consent.requests()).toHaveLength(asked);
-        expect((await upstream.calls('browser', 'analytics-admin')).filter((call) => call.method === 'POST')).toHaveLength(14);
+        expect((await upstream.calls('browser', 'analytics-admin')).filter((call) => call.method === 'POST')).toHaveLength(23);
     },
 );
 
@@ -237,7 +237,7 @@ test(
         await upstream.fail('analytics-admin', null, 'browser');
         await inputs.click(reports);
         await expect(card.locator('.reports')).toHaveText(
-            setupText(lang, 'adminSetup.analytics.reportsDone', { created: '14', skipped: '0' }),
+            setupText(lang, 'adminSetup.analytics.reportsDone', { created: '23', skipped: '0' }),
         );
         // Finding 49: the last failure went with its attempt (the card's alert regions stay, empty).
         await expect(card.getByRole('alert').filter({ hasText: permission })).toHaveCount(0);

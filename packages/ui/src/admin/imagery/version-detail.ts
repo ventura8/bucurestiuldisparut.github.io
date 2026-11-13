@@ -175,7 +175,7 @@ function failedCrop(job: JobViewPort): boolean {
  */
 function locatable(version: VersionViewPort, job: JobViewPort): boolean {
     if (version.origin === 'archive') {
-        // M20 (§202): or published with pieces left out of its overview mosaic, laid on it again in a new version.
+        // M20 (§204): or published with pieces left out of its overview mosaic, laid on it again in a new version.
         return parked(version, job) || version.restitchable === true;
     }
     return version.origin === 'usgs' && (parked(version, job) || (version.state === 'failed' && failedCrop(job)));

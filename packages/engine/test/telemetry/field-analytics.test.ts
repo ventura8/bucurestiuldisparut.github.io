@@ -28,7 +28,7 @@ describe('field measurements through analytics', () => {
         analytics.setConsent('granted');
         await settle();
 
-        expect(sdk.events).toEqual([['viewer_timing', { ...TIMING.params, ...FIELD_CONTEXT, page_location: PAGE }]]);
+        expect(sdk.events).toEqual([['viewer_timing', { ...TIMING.params, ...FIELD_CONTEXT, app_surface: 'viewer', page_location: PAGE }]]);
     });
 
     it('badPath_aRefusalForgetsTheHeldMeasurementsAndNoneIsHeldAfterIt', async () => {
@@ -73,7 +73,7 @@ describe('field measurements through analytics', () => {
         field.reporters[0]?.(LCP);
         await settle();
 
-        expect(sdk.events.at(-1)).toEqual(['web_vitals', { ...LCP, ...FIELD_CONTEXT, page_location: PAGE }]);
+        expect(sdk.events.at(-1)).toEqual(['web_vitals', { ...LCP, ...FIELD_CONTEXT, app_surface: 'viewer', page_location: PAGE }]);
     });
 
     it('badPath_afterAWithdrawalAVitalIsDropped', async () => {
@@ -105,7 +105,9 @@ describe('field measurements through analytics', () => {
         analytics.send({ name: 'exception', description: 'TypeError: x', fatal: false });
         await settle();
 
-        expect(sdk.events).toEqual([['exception', { description: 'TypeError: x', fatal: false, page_location: PAGE }]]);
+        expect(sdk.events).toEqual([
+            ['exception', { description: 'TypeError: x', fatal: false, app_surface: 'viewer', page_location: PAGE }],
+        ]);
         expect(log.records.filter((record) => record.message === 'analytics event dropped').map((record) => record.data)).toEqual([
             { name: 'exception', reason: 'privacy' },
             { name: 'photo_open', reason: 'schema' },

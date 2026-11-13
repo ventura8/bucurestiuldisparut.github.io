@@ -11,11 +11,18 @@ available memory plus what the worker holds already (else the budget would shrin
 limit. GDAL's block cache and the warper's memory are `rasters.gdal_memory` of the budget (a sixteenth and an eighth, at most 1,024 and
 2,048 MB: the measured savings of reports/resource-audit.md, never more); the tile processes are `steps/pyramid.tile_processes`'s rule,
 a quarter of the budget at `TILE_PROCESS_MB` each, at most the threads.
+
+Before the thermal limit (2026-11-13: the laptop's worker paused for hours at 93 to 96 °C beside a local model, pytest and Prettier),
+the threads shrink smoothly: full share up to `WARM_C`, then in proportion to the degrees left to the policy's `CPU_HOT_C`, at least
+one thread; and other programs' load takes its cores off the top (the person's own work counts as theirs, not ours). The memory is
+counted in `MEMORY_STEP_MB` steps, so the few megabytes that come and go every tick never change the budget (nor log a line).
 """
 
+import math
 from dataclasses import dataclass
 from typing import Final
 
+from hcm_pipeline.governor.policy import CPU_HOT_C
 from hcm_pipeline.governor.signals import Gpu, Profile, Signals
 from hcm_pipeline.rasters import gdal_memory
 
@@ -29,6 +36,9 @@ QUIET_DIVISOR: Final = 4
 TILE_SHARE_DIVISOR: Final = 4
 TILE_PROCESS_MB: Final = 256
 MATCHER_NEED_MB: Final = 2048
+# Where the threads start to shrink with heat: 15 °C under the step-down, so the worker's own share falls before the limit.
+WARM_C: Final = 80.0
+MEMORY_STEP_MB: Final = 256
 
 
 @dataclass(frozen=True)
@@ -62,16 +72,39 @@ def threads_for(profile: Profile, cores: int) -> int:
     return max(1, cores - reserve(cores))
 
 
+def thermal_share(temp_c: float | None) -> float:
+    """1 up to `WARM_C`, then down to 0 at `CPU_HOT_C`: the share of the profile's threads heat leaves."""
+    if temp_c is None or temp_c <= WARM_C:
+        return 1.0
+    return max(0.0, (CPU_HOT_C - temp_c) / (CPU_HOT_C - WARM_C))
+
+
+def others_cores(signals: Signals) -> int:
+    """The cores other programs keep busy now, rounded up."""
+    return math.ceil(signals.cpu.cores * signals.usage.others_cpu_pct / 100)
+
+
+def headroom_threads(profile: Profile, signals: Signals) -> int:
+    """The profile's threads within the heat's share and beside other programs' load; one at least, unless paused."""
+    base = threads_for(profile, signals.cpu.cores)
+    if base == 0:
+        return 0
+    cores = signals.cpu.cores
+    room = cores - reserve(cores) - others_cores(signals)
+    return max(1, min(math.floor(base * thermal_share(signals.cpu.temp_c)), room))
+
+
 def memory_for(profile: Profile, signals: Signals) -> int:
-    """MiB: the profile's share of what is free to us, never above the container's limit."""
+    """MiB: the profile's share of what is free to us in whole `MEMORY_STEP_MB` steps, never above the container's limit."""
     free = signals.memory.available_mb + signals.usage.memory_mb
     share = int(free * MEMORY_SHARE[profile])
+    stepped = share - share % MEMORY_STEP_MB
     limit = signals.memory.limit_mb
-    return share if limit is None else min(share, limit)
+    return stepped if limit is None else min(stepped, limit)
 
 
 def budget_for(profile: Profile, signals: Signals) -> Budget:
-    threads = threads_for(profile, signals.cpu.cores)
+    threads = headroom_threads(profile, signals)
     memory = memory_for(profile, signals)
     gdal = gdal_memory(memory) if memory else None
     tiles = max(1, min(threads, memory // TILE_SHARE_DIVISOR // TILE_PROCESS_MB)) if threads else 0

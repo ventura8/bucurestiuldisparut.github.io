@@ -37,7 +37,7 @@ import { restitchable, startRestitch } from './restitch.js';
  * again the same way, before anyone imports it anew; and Locate again is free: never the day's limit, and, for a frame parked for
  * points like the admin's points, one run of its own whatever the runs before used (`attemptForSearch`). A failed crop's run counts
  * as a retry's (review of M18: the same failure would repeat without end). `imagery.tick` asks it by itself for every frame parked
- * under an older pipeline image (`relocate.ts`). M20 (DECISIONS-for-review.md §202): on a placed archive series with pieces left out of
+ * under an older pipeline image (`relocate.ts`). M20 (DECISIONS-for-review.md §204): on a placed archive series with pieces left out of
  * its overview mosaic, the callable starts a new version of the same layer instead (`restitch.ts`).
  */
 export type LocateAgainDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'blobs'>;
@@ -185,7 +185,7 @@ export async function locateAgain(deps: LocateAgainDeps, ask: LocateAsk): Promis
     return job;
 }
 
-/** M20 (§202): a placed archive series with pieces left out of its overview mosaic is stitched again in a new version; else nothing. */
+/** M20 (§204): a placed archive series with pieces left out of its overview mosaic is stitched again in a new version; else nothing. */
 async function restitched(deps: LocateAgainDeps, uid: string, request: Request): Promise<boolean> {
     const { cityId, versionId } = request;
     const base = await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionId), layerVersionDocSchema);

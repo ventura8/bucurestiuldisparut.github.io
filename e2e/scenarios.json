@@ -1151,6 +1151,13 @@
             "source": "the owner's request of 2026-11-13 (beta.1); DECISIONS-for-review.md §200"
         },
         {
+            "id": "A153",
+            "area": "admin",
+            "name": "The Statistics view shows Google Analytics' numbers and Error Reporting's groups after the owner's read-only consent",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (take me to the analytics permission button); DECISIONS-for-review.md §203"
+        },
+        {
             "id": "V70",
             "area": "viewer",
             "name": "The viewer's key actions reach analytics only after consent, and never under Do Not Track",
@@ -18258,7 +18265,7 @@
             "asserts": "the version view marks a published series placed from the owner's pairs with pieces left out of its overview mosaic restitchable; the button calls imagery.locateAgain; a new archive-series job (restitch, runOn local) and its processing version on the same layer carry the base's pairs, scan, rights and help; the layer marks it pending and keeps the published version",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §202, layer 1895-1899. Tests: functions/test/imagery/restitch.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+            "notes": "DECISIONS-for-review.md §204, layer 1895-1899. Tests: functions/test/imagery/restitch.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
         },
         {
             "id": "S-A122-BAD-RESTITCH-NOTHING-LEFT",
@@ -18269,7 +18276,7 @@
             "asserts": "no Locate again button; imagery.locateAgain answers apiError.imagery.versionState (or apiError.layers.busy for a layer with a version on its way) and writes nothing",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §202. Tests: functions/test/imagery/restitch.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+            "notes": "DECISIONS-for-review.md §204. Tests: functions/test/imagery/restitch.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
         },
         {
             "id": "S-P20-HAPPY-RESTITCH",
@@ -18280,7 +18287,7 @@
             "asserts": "place with restitch publishes the new mosaic as help.stitched and the scan, then warps it through the owner's pairs scaled from the base's scan, landing within 15 m",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §202. Tests: pipeline/tests/unit/test_placing_restitch.py."
+            "notes": "DECISIONS-for-review.md §204. Tests: pipeline/tests/unit/test_placing_restitch.py."
         },
         {
             "id": "S-P20-BAD-RESTITCH-NO-OVERVIEW",
@@ -18291,7 +18298,7 @@
             "asserts": "place answers Waiting, the version needs_gcps with help low-confidence and the note saying so; nothing is warped",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §202. Tests: pipeline/tests/unit/test_placing_restitch.py."
+            "notes": "DECISIONS-for-review.md §204. Tests: pipeline/tests/unit/test_placing_restitch.py."
         },
         {
             "id": "S-A122-HAPPY-GEOREF-FULL-SCREEN",
@@ -18420,10 +18427,21 @@
             "area": "admin",
             "path": "bad",
             "title": "On a low battery the worker pauses; a hot computer steps down; the user at the keyboard gets the computer back",
-            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; at 90 C on the processor or 83 C on the card one level down, back 10 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test)",
+            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; from 80 C on the processor the threads shrink in proportion to the degrees left to 95 C (at least one), and other programs' busy cores come off the top; at 95 C on the processor or 83 C on the card one level down, back 5 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test); the log says a change of profile, reason, threads or memory step only, never every tick",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
+            "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_governor_budget.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
+            "id": "S-A141-BAD-NO-DRIVER",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "An NVIDIA card without its driver: the card says to install the driver and links to it; a command's error text is never a card's name",
+            "asserts": "the starter lists a card only from a command that succeeded, in the expected shape (nvidia-smi's exit status, whole numbers for the memory); the cards' names come from lspci (Intel Arc on the NUC: Arrow Lake-P [Arc Pro 130T/140T]); an NVIDIA card in /sys/class/drm with nvidia-smi failing -> via null, why no-driver; the worker drops a card whose name is empty, multi-line or over 120 characters; the admin's card shows the no-driver line with a link to NVIDIA's drivers, ro and en, axe clean",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The NUC's /state of 2026-11-13 listed nvidia-smi's failure as a card's name (and an empty one, which made the whole card read as an older worker). Tests: functions/test/worker/starter-governor.test.ts, pipeline/tests/unit/test_governor_probe.py, packages/ui/test/admin/worker/machine.test.ts."
         },
         {
             "id": "S-A142-HAPPY-VERSIONS",
@@ -19460,6 +19478,28 @@
             "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
         },
         {
+            "id": "S-P31-HAPPY-CANVAS-THREADS",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Two large colour sheets are laid out and mosaicked within 800 MB whatever GDAL's thread count",
+            "asserts": "two 12,000 px colour sheets laid out and mosaicked in a child process started as python -m hcm_pipeline starts (at most two malloc arenas) -> peak resident memory under 800 MB on one thread and on every core (ALL_CPUS); the C heap's free pages are given back before the first sheet and after each one; the pixels are the same on any thread count",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "2026-11-13, the NUC: one thread 636 MB, every core 870 MB before (the threads' malloc arenas kept the layout's reads); 588 / 653 MB on 1 / 16 threads after (tcmalloc, the worker image: 650 to 690 MB either way), no slower. Tests: pipeline/tests/unit/test_placing_canvas_window.py, test_heap.py."
+        },
+        {
+            "id": "S-P31-BAD-CANVAS-THREADS-NO-GLIBC",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Where the C library is not glibc, or there is nothing to give back, the heap calls do nothing and nothing fails",
+            "asserts": "no libc.so.6, or one without mallopt and malloc_trim -> limit_arenas and give_back answer False and the step goes on; malloc_trim returning 0 (nothing to return) is not an error",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Tests: pipeline/tests/unit/test_heap.py."
+        },
+        {
             "id": "S-P31-HAPPY-TILE-PROCESSES",
             "behaviour": "P31",
             "area": "pipeline",
@@ -19546,6 +19586,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-HAPPY-CLAIM-HEADROOM",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A hot or busy computer leaves a queued job to a cooler or idler worker of the same city",
+            "asserts": "every wait before a claim is stretched by 1 + 3 x (1 - headroom): headroom 1 with room, the heat's share from 80 to 95 C and other programs' load lower it, 0 while paused; with room the worker asks every pollSeconds (30 s), half the room 75 s, none 120 s (240 s when idle), so the cooler worker asks first; a lone worker still takes the job",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: three workers (laptop, NUC, PC); the laptop held jobs paused for heat. Tests: pipeline/tests/unit/test_worker_pace.py, test_governor_loop.py."
+        },
+        {
+            "id": "S-P31-BAD-CLAIM-HEADROOM-RANGE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A headroom out of range neither speeds a claim past the poll nor stretches it past four polls",
+            "asserts": "a headroom over 1 -> the plain poll; under 0 -> four polls; before the governor's first tick the headroom is 1",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Tests: pipeline/tests/unit/test_worker_pace.py, test_governor_loop.py."
         },
         {
             "id": "S-P31-HAPPY-ATLAS-PAGES",
@@ -19766,6 +19828,39 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Test: e2e/admin/specs/ops/ops.spec.ts; Vitest packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-HAPPY-NUMBERS",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "happy",
+            "title": "Show the numbers here: one read-only Analytics consent, then the overview, the apps and each wizard's funnel",
+            "asserts": "#/crashes/statistics: the button with Google's note about the read-only scope asks for analytics.readonly only; after the consent the visitors, the apps per role (the start page not measured) and the new_city funnel with who left and the error codes in words show; another period asks the Data API for its own days, coming back to a period asks nothing; Error Reporting's groups of the period link the console",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §203. Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-numbers); Vitest packages/ui/test/admin/ops/statistics.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/admin/test/google/analytics-data.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-CONSENT-REFUSED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused Analytics consent reads nothing and says how to try again",
+            "asserts": "the owner closes Google's window without ticking the scope -> the view says the permission was not given and to tick it on the next click; the Data API is never called",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/crashes/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-API-DISABLED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "The Data API off: the view says so with Setup's Update the map and the console's page",
+            "asserts": "the Data API answers SERVICE_DISABLED -> the alert says the API is off and to run Update the map or turn it on, with links to #/setup and the API's page in the Google Cloud console of the project",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-problem); Vitest packages/ui/test/admin/ops/statistics.test.ts."
         },
         {
             "id": "S-V70-HAPPY-KEY-ACTIONS",

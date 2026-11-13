@@ -209,6 +209,13 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # from the measurement id and the field measurements' custom definitions), fetched on its button's click only: 0.8 KB
     # measured on 2026-11-01 plus about 20 %, rounded up (DECISIONS-for-review.md §76f).
     "analytics-reports": 1,
+    # The Statistics view's numbers (`packages/admin/src/google/analytics-data.ts`: the GA4 Data API's three batches and
+    # their reading), fetched on Show the numbers here only (DECISIONS-for-review.md §203): about 1.2 KB, rounded up.
+    "analytics-data": 2,
+    # The Statistics view's live sections (`packages/ui/src/admin/crashes/statistics-live.ts`: the numbers, the apps, the funnels
+    # and the period's error groups), fetched the first time the view shows, so the crashes chunk stays within its 5 KB
+    # (DECISIONS-for-review.md §203): 3.2 KB measured on 2026-11-13 plus about 20 %, rounded up.
+    "statistics-live": 4,
     # M7's `worker` chunk (docs/research/M7-local-worker.md §7: `packages/admin/src/worker/worker.ts`, its one dynamic entry,
     # which the Jobs store imports): the local worker's feed, `<hcm-worker-panel>`, `<hcm-run-place>` and their texts
     # (`@hcm/shared/admin-worker`), 5.5 KB measured on 2026-11-02 plus about 20 %, rounded up; 5.7 KB since finding 72

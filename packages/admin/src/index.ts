@@ -6,7 +6,7 @@
  */
 import './admin.css';
 
-import { CITY_ID_PATTERN, createLogger, privacySignal, type Logger, type PrivacyNavigator } from '@hcm/shared';
+import { CITY_ID_PATTERN, createLogger, privacySignal, type CityRole, type Logger, type PrivacyNavigator } from '@hcm/shared';
 import { installFonts, windowClassFor, type FontFaceConstructor } from '@hcm/ui';
 import { SETUP_PAGE_TAGS, defineAdminElements, defineSetupElements, type HcmAdminShell } from '@hcm/ui/admin';
 
@@ -26,7 +26,7 @@ import { createGoogleAuth, type PopupSignIn } from './auth/google-auth.js';
 import { createStandInPopup } from './auth/stand-in.js';
 import { CONTENT_AREAS } from './content/areas.js';
 import type { ContentDeps } from './content/registry.js';
-import { createAnalytics, type AnalyticsPort, type EventParams } from './firebase/analytics.js';
+import { createAnalytics, surfaceOf, type AnalyticsPort, type EventParams } from './firebase/analytics.js';
 import { contentStore } from './firebase/content.js';
 import { contentSdk } from './firebase/content-sdk.js';
 import { credentialSignIn, firebasePopup, firebasePorts } from './firebase/adapters.js';
@@ -154,8 +154,9 @@ export function analyticsFor(
     measurementId: string | undefined,
     app: FirebaseHandles['app'],
     parts: BrowserParts,
-    release: string,
+    context: { readonly release: string; readonly role?: () => CityRole | null },
 ): AnalyticsPort | null {
+    const { release, role = () => null } = context;
     const location = parts.location;
     const fieldContext = (): EventParams => ({ app: 'admin', window_class: windowClassFor(parts.win.innerWidth), release });
     return measurementId === undefined
@@ -165,6 +166,7 @@ export function analyticsFor(
               load: loadAnalyticsSdk,
               loadField: loadFieldSdk,
               fieldContext,
+              surface: () => surfaceOf(role()),
               log: parts.log,
               pageLocation: location.page.bind(location),
           });
@@ -178,8 +180,10 @@ export function telemetryFor(
     release: string,
 ): AdminDeps<null, null>['telemetry'] {
     const { win, log, location, local } = parts;
-    const analytics = analyticsFor(config.measurementId, handles.app, parts, release);
+    let current: TelemetryView | null = null;
+    const analytics = analyticsFor(config.measurementId, handles.app, parts, { release, role: () => current?.role() ?? null });
     return (view: TelemetryView): AdminTelemetry => {
+        current = view;
         const endpoint = errorEndpointFor(config.projectId, parts.e2e !== null);
         const errors = new AdminErrorReporter({
             release,

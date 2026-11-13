@@ -18,7 +18,7 @@ import { formatWhen, loadingTemplate } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type { CrashesIntentsPort, CrashesViewState, CrashGroupPort, CrashPeriodPort } from './crashes-port.js';
-import { statisticsStyles, statisticsView } from './statistics-view.js';
+import { loadStatisticsLive, statisticsLiveReady, statisticsStyles, statisticsView } from './statistics-view.js';
 
 export const HCM_CRASHES_LIST_PAGE_TAG = 'hcm-crashes-list-page';
 
@@ -32,6 +32,9 @@ export function errorGroupUrl(projectId: string, groupId: string): string {
 }
 
 const PERIODS: readonly CrashPeriodPort[] = [24, 168, 720];
+
+/** The shell's facts the Statistics view reads, before the shell's state arrives. */
+const NO_SHELL = { analytics: false, projectId: '', authDomain: '' } as const;
 
 /** A count as text, or undefined without one. */
 function countText(count: number | undefined): string | undefined {
@@ -98,7 +101,7 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
     override render(): TemplateResult {
         const view = this.view;
         if (this.params[0] === 'statistics') {
-            return statisticsView(this.locale, this.state?.analytics === true);
+            return this.#statistics(view);
         }
         if (view === null) {
             return EMPTY;
@@ -119,6 +122,20 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
             <div slot="list">${this.#list(locale, view)}</div>
             <div slot="detail">${this.#detail(locale, view)}</div>
         </hcm-list-detail>`;
+    }
+
+    /** `#/crashes/statistics` (§200, §203): the guide, Google Analytics' numbers and the period's error groups. */
+    #statistics(view: CrashesViewState | null): TemplateResult {
+        if (!statisticsLiveReady()) {
+            void loadStatisticsLive().then(() => {
+                this.requestUpdate();
+            });
+        }
+        const { analytics, projectId, authDomain } = this.state ?? NO_SHELL;
+        return statisticsView(this.locale, {
+            ...{ analytics, projectId, authDomain, view, intents: this.intents },
+            groupUrl: (groupId) => errorGroupUrl(projectId, groupId),
+        });
     }
 
     #list(locale: Locale, view: CrashesViewState): TemplateResult {

@@ -26,6 +26,8 @@ export interface ContentShell {
     readonly shell: ShellStateAccess;
     /** A refused read or write: the shell asks `admin.session` again. */
     readonly denied: () => void;
+    /** §203: the Statistics view's numbers, made from the shell's Google consent (`statistics-wiring.ts`). */
+    readonly statistics?: (cityId: () => string) => ContentServices['statistics'];
 }
 
 /** An admin's name as the lists show it: the Google display name, else the address; none without either. */
@@ -80,6 +82,7 @@ export function contentServices(parts: ContentShell): ContentServices {
             return cityId();
         },
         firstCity: parts.firstCity,
+        statistics: parts.statistics?.(cityId) ?? content.areas.statistics ?? null,
         adminCityIds: () => shell.get().cities.map((city) => city.id),
         store: writesRefusedWhen(content.store, () => shell.get().revoked),
         ...{ theme: content.theme, callables: parts.callables },
