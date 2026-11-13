@@ -150,7 +150,9 @@ describe('<hcm-worker-household>: Add another computer', () => {
     it('happyPath_aComputerWithAScreenGetsThisAdminsAddress', async () => {
         const household = new FakeHousehold();
         const element = await list(household);
-        household.intents.add('windows');
+        deep(deep(element, '[data-add]'), 'button').click();
+        await updated(element);
+        deep(deep(element, '[data-kind="windows"]'), 'button').click();
         await updated(element);
 
         expect(deep(element, '[data-line="address"]').textContent).toBe('https://demo-hcm.web.app/admin/#/jobs');
@@ -191,7 +193,8 @@ describe('<hcm-worker-household>: Remove this computer', () => {
         button(element, t('adminWorkerHousehold.remove')).click();
         await updated(element);
         expect(deepText(element)).toContain(t('adminWorkerHousehold.removeIntro'));
-        (deep(element, 'input[id^="keep-"]') as HTMLInputElement).click();
+        deep(deep(element, '[data-choice="keep"] hcm-switch'), 'button').click();
+        await updated(element);
         button(element, t('adminWorkerHousehold.removeNow')).click();
         await updated(element);
         await updated(element);
@@ -250,9 +253,9 @@ describe('<hcm-worker-household>: Remove this computer', () => {
         button(element, t('adminWorkerHousehold.removeNow')).click();
         await updated(element);
         await updated(element);
-        expect(deepAll(element, 'input[type="checkbox"]')).toHaveLength(2);
+        expect(deepAll(element, 'hcm-switch')).toHaveLength(2);
         button(element, t('adminWorkerHousehold.cancel')).click();
         await updated(element);
-        expect(deepAll(element, 'input[type="checkbox"]')).toHaveLength(0);
+        expect(deepAll(element, 'hcm-switch')).toHaveLength(0);
     });
 });

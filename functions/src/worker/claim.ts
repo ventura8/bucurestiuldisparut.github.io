@@ -184,7 +184,7 @@ async function offerCopy(
 async function claimJob(deps: ClaimDeps, call: Claim, seenNow: WorkerDoc, now: Date): Promise<CallableResponse<'worker.claim'>> {
     const jobId = await takeFirst(deps, call, now);
     if (jobId !== null) {
-        deps.log.info('worker claimed a job', { cityId: claim.cityId, workerId: claim.workerId, jobId });
+        deps.log.info('worker claimed a job', { cityId: call.cityId, workerId: call.workerId, jobId });
         return { job: { jobId } };
     }
     await deps.documents.set(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema, seenNow);

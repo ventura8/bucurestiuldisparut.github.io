@@ -2,7 +2,7 @@ import type { AdminWorkerHouseholdKey } from './ro.js';
 
 /** English texts of the city's computers (W5), typed against the Romanian source of truth (`ro.ts`). */
 export const en: Readonly<Record<AdminWorkerHouseholdKey, string>> = {
-    'adminWorkerHousehold.title': 'Your computers',
+    'adminWorkerHousehold.title': "All of this map's computers",
     'adminWorkerHousehold.intro': 'Any computer in your household can work on the map.',
     'adminWorkerHousehold.intro2': 'Each keeps room for its user: a busy or hot one leaves the work to another.',
     'adminWorkerHousehold.none': 'No computer works for this map yet.',

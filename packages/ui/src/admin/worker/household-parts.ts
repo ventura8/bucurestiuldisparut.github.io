@@ -158,6 +158,19 @@ function screen(context: PartContext, view: HouseholdViewPort, kind: WorkerOsPor
         ${copyable(context, 'address', [t('adminWorkerHousehold.address'), view.link, 'adminWorkerHousehold.copyAddress'])} ${windows}`;
 }
 
+/** One kind of computer: the chosen one tonal and pressed (a group of buttons wraps on a phone, as a segmented row cannot). */
+function kindButton(context: PartContext, value: AddKindPort, chosen: AddKindPort): TemplateResult {
+    return html`<hcm-button
+        variant=${value === chosen ? 'tonal' : 'text'}
+        .pressed=${value === chosen}
+        data-kind=${value}
+        @click=${() => {
+            context.household.intents.add(value);
+        }}
+        >${context.t(`adminWorkerHousehold.kind.${value}`)}</hcm-button
+    >`;
+}
+
 /** "Add another computer": the kind, then the address or the line. */
 export function addPanel(context: PartContext, view: HouseholdViewPort): TemplateResult {
     const { t, household } = context;
@@ -175,16 +188,10 @@ export function addPanel(context: PartContext, view: HouseholdViewPort): Templat
             >
         </div>`;
     }
-    const options = ADD_KINDS.map((value) => ({ value, label: t(`adminWorkerHousehold.kind.${value}`) }));
     return html`<div class="add" data-adding=${kind}>
-        <hcm-segmented-button
-            .label=${t('adminWorkerHousehold.addKind')}
-            .options=${options}
-            .value=${kind}
-            @hcm-change=${(event: CustomEvent<{ value: AddKindPort }>) => {
-                household.intents.add(event.detail.value);
-            }}
-        ></hcm-segmented-button>
+        <div class="actions" role="group" aria-label=${t('adminWorkerHousehold.addKind')}>
+            ${ADD_KINDS.map((value) => kindButton(context, value, kind))}
+        </div>
         ${kind === 'headless' ? headless(context, view) : screen(context, view, kind)}
         <div class="actions">
             <hcm-button

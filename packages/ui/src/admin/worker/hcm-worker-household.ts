@@ -11,6 +11,7 @@ import { translateAdminWorkerHousehold } from '@hcm/shared/admin-worker-househol
 import { css, html, LitElement, type PropertyValues, type TemplateResult } from 'lit';
 
 import { defineOnce } from '../../components/internal.js';
+import { defineHcmSwitch } from '../../components/switch.js';
 import { errorTemplate } from '../editing/states.js';
 import { copyToClipboard } from '../setup/setup-body.js';
 import { noticeOf } from '../shell/text.js';
@@ -42,6 +43,7 @@ export class HcmWorkerHousehold extends LitElement {
         view: { state: true },
         open: { state: true },
         copied: { state: true },
+        choices: { state: true },
     };
 
     static override readonly styles = [
@@ -76,9 +78,8 @@ export class HcmWorkerHousehold extends LitElement {
                 min-block-size: 48px;
             }
 
-            .check input {
-                inline-size: 24px;
-                block-size: 24px;
+            .check {
+                justify-content: space-between;
             }
         `,
     ];
@@ -91,6 +92,8 @@ export class HcmWorkerHousehold extends LitElement {
     declare open: Open;
     /** Which line was copied, and whether it worked (null: none yet). */
     declare copied: { readonly what: string; readonly ok: boolean } | null;
+    /** Remove this computer's choices: keep the scanned maps, also remove Docker. */
+    declare choices: { readonly keep: boolean; readonly docker: boolean };
     #unsubscribe: (() => void) | null = null;
 
     constructor() {
@@ -102,6 +105,7 @@ export class HcmWorkerHousehold extends LitElement {
         this.view = null;
         this.open = null;
         this.copied = null;
+        this.choices = { keep: false, docker: false };
     }
 
     override disconnectedCallback(): void {
@@ -281,17 +285,13 @@ export class HcmWorkerHousehold extends LitElement {
     }
 
     #remove(context: PartContext, view: HouseholdViewPort, computer: ComputerViewPort): TemplateResult {
-        const ids = { keep: ['keep', computer.id].join('-'), docker: ['docker', computer.id].join('-') };
-        const checked = (id: string): boolean => this.renderRoot.querySelector<HTMLInputElement>(`#${id}`)?.checked === true;
         const go = async (): Promise<void> => {
-            const options = { docker: checked(ids.docker), keep: checked(ids.keep) };
-            if (await context.household.intents.remove(computer.id, options)) {
+            if (await context.household.intents.remove(computer.id, this.choices)) {
                 this.open = null;
             }
         };
         return html`<p>${this.#t('adminWorkerHousehold.removeIntro')} ${this.#t('adminWorkerHousehold.removeIntro2')}</p>
-            <label class="check"><input type="checkbox" id=${ids.keep} />${this.#t('adminWorkerHousehold.keep')}</label>
-            <label class="check"><input type="checkbox" id=${ids.docker} />${this.#t('adminWorkerHousehold.docker')}</label>
+            ${this.#choice('keep', this.#t('adminWorkerHousehold.keep'))} ${this.#choice('docker', this.#t('adminWorkerHousehold.docker'))}
             <div class="actions">
                 <hcm-button variant="filled" icon="delete" data-remove-now ?disabled=${view.acting !== null} @click=${() => void go()}
                     >${this.#t('adminWorkerHousehold.removeNow')}</hcm-button
@@ -300,7 +300,22 @@ export class HcmWorkerHousehold extends LitElement {
             </div>`;
     }
 
+    /** One of the removal's choices: its words and a switch (M3's 48 px target, its state not by colour alone). */
+    #choice(name: 'keep' | 'docker', label: string): TemplateResult {
+        return html`<div class="check" data-choice=${name}>
+            <span>${label}</span>
+            <hcm-switch
+                .label=${label}
+                .checked=${this.choices[name]}
+                @hcm-change=${(event: CustomEvent<{ readonly checked: boolean }>) => {
+                    this.choices = { ...this.choices, [name]: event.detail.checked };
+                }}
+            ></hcm-switch>
+        </div>`;
+    }
+
     #openFor(id: string, what: 'rename' | 'remove'): void {
+        this.choices = { keep: false, docker: false };
         this.open = { id, what };
     }
 
@@ -319,6 +334,7 @@ export class HcmWorkerHousehold extends LitElement {
 
 /** Registers `<hcm-worker-household>` (its kit elements are the panel's, registered with it); again, a no-op. */
 export function defineWorkerHousehold(registry: CustomElementRegistry = customElements): void {
+    defineHcmSwitch(registry);
     defineOnce(registry, HCM_WORKER_HOUSEHOLD_TAG, HcmWorkerHousehold);
 }
 

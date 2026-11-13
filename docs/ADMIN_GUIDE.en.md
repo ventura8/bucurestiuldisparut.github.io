@@ -360,7 +360,7 @@ Imagery jobs can run on your own computer instead of Google Cloud, which costs n
 
 ### The computers of your household
 
-Every computer at home can work on the map's imagery jobs, not only the one you use. The **Your computers** list on **Jobs** (under **This computer**) shows each one: its name, **On** or **Off** (and when it was last seen), what it is doing, how much of the computer it may use and why (someone is using it, it is on battery, it got hot), and whether its helper is up to date. The design and the security review: `docs/research/M7-local-worker.md`, *Household computers*.
+Every computer at home can work on the map's imagery jobs, not only the one you use. The **All of this map's computers** list on **Jobs** (under **This computer**) shows each one: its name, **On** or **Off** (and when it was last seen), what it is doing, how much of the computer it may use and why (someone is using it, it is on battery, it got hot), and whether its helper is up to date. The design and the security review: `docs/research/M7-local-worker.md`, *Household computers*.
 
 - **Add another computer**. Pick what kind of computer it is:
   - **Windows**, **Mac** or **Linux** with a screen: the list shows this admin's address. On Windows without Docker Desktop the helper file turns on WSL (Windows asks your permission once, then the computer restarts and the setup goes on by itself after you sign in), installs its own small Linux with Docker in it, and keeps it awake while it works; **Settings → Apps → Historic City Map Maker helper → Uninstall** removes it. On a Mac without Docker, the helper installs Colima (a small free Docker) with Homebrew; without Homebrew it tells you to install Homebrew from brew.sh first (or Docker Desktop). Open it on that computer, sign in with your Google account and press **Use this computer**; the rest happens by itself, as on your own computer.
@@ -496,7 +496,7 @@ The message shown, its cause and what to do, screen by screen.
 | **Local AI: processor only** | no graphics card reached the sidecar | it still works, much slower; install the NVIDIA driver and `nvidia-container-toolkit`, and the next frame finds the card |
 | A version waits with the Cloud Run estimate | its run in Google Cloud would pass this month's free tier | **Run in Google Cloud anyway** (it is billed past the free tier) or **Run on my computer** |
 
-### Your computers
+### All of this map's computers
 
 | Message | Cause | What to do |
 | --- | --- | --- |

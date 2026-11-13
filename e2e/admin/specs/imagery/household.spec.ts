@@ -129,7 +129,7 @@ test(
 
         // A computer with a screen: this admin's address.
         await computers(page)
-            .getByRole('radio', { name: text(lang, 'adminWorkerHousehold.kind.windows') })
+            .getByRole('button', { name: text(lang, 'adminWorkerHousehold.kind.windows') })
             .click();
         await expect(line(page, 'address')).toContainText('#/jobs');
         await expectStateSound(page, adminVisit('worker.household-add-screen', lang));
@@ -149,7 +149,7 @@ test(
         await page.goto(adminPath(lang, 'jobs'));
         const laptop = computers(page).locator(`[data-computer="${LAPTOP}"]`);
         await laptop.getByRole('button', { name: text(lang, 'adminWorkerHousehold.remove') }).click({ timeout: FUNCTIONS_TIMEOUT_MS });
-        await laptop.getByLabel(text(lang, 'adminWorkerHousehold.keep')).check();
+        await laptop.getByRole('switch', { name: text(lang, 'adminWorkerHousehold.keep') }).click();
         await expectStateSound(page, adminVisit('worker.household-remove', lang));
         await laptop.getByRole('button', { name: text(lang, 'adminWorkerHousehold.removeNow') }).click();
         await expect

@@ -3,7 +3,7 @@
  * another computer and Remove this computer, in Romanian, the source of truth (`en.ts` is typed against it).
  */
 export const ro = {
-    'adminWorkerHousehold.title': 'Calculatoarele tale',
+    'adminWorkerHousehold.title': 'Toate calculatoarele hărții',
     'adminWorkerHousehold.intro': 'Orice calculator din casă poate lucra la hartă.',
     'adminWorkerHousehold.intro2': 'Fiecare lasă loc celui care îl folosește: unul ocupat sau cald lasă lucrul altuia.',
     'adminWorkerHousehold.none': 'Încă niciun calculator nu lucrează pentru această hartă.',
