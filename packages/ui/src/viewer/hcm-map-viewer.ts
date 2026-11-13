@@ -9,7 +9,7 @@
  * (`mapContainer`); mapbox-gl.css is linked inside the shadow root (`mapboxCssUrl`), the city theme is adopted on the
  * host (`applyTheme`). It listens on that container for what opens the map's menu (`watchMapMenu`).
  */
-import { resolveLocale, type MessageKey, type ThemeTokens } from '@hcm/shared';
+import { resolveLocale, type MessageKey } from '@hcm/shared';
 import { LitElement, type TemplateResult } from 'lit';
 
 import { deepActiveElement, restoreFocus, tabbableElements } from '../components/focus.js';
@@ -26,7 +26,7 @@ import type { Unsubscribe, ViewerController, ViewerError, ViewerState, ViewerSto
 import { TimelineDock } from './timeline-dock.js';
 import { timelineStops, type TimelineStop } from './timeline-model.js';
 import { syncLocale } from './viewer-actions.js';
-import { withViewerBaseline } from './viewer-baseline.js';
+import { themeChanged, viewerTokens } from './viewer-theme.js';
 import { createHandlers } from './viewer-handlers.js';
 import { isGameConsole, reportConsole } from './game-console.js';
 import { activate as activateIn, askForPadKeys, navigate as navigateIn, spatialKey, type Direction } from './spatial-nav.js';
@@ -54,11 +54,6 @@ function layoutOf(state: ViewerState | null): ViewerLayout {
 
 function stopsOf(state: ViewerState | null): readonly TimelineStop[] {
     return timelineStops(state?.manifest?.layers ?? []);
-}
-
-/** The city's colour tokens over the baseline's (what a city theme leaves out), or the baseline until a manifest is loaded. */
-function tokensOf(state: ViewerState | null): ThemeTokens {
-    return withViewerBaseline(state?.manifest?.city.theme.tokens);
 }
 
 /** A copy of `state` before boot: the starting point of the events of a store attached in any state. */
@@ -400,7 +395,7 @@ export class HcmMapViewer extends LitElement {
             this.setAttribute('lang', state.locale);
             this.ownerDocument.documentElement.lang = state.locale;
         }
-        if (state.theme !== previous.theme || state.manifest !== previous.manifest) {
+        if (themeChanged(previous, state)) {
             this.#applyTheme(state);
         }
         this.#trackOpener('sheet', previous.sheet !== 'none', state.sheet !== 'none');
@@ -420,7 +415,7 @@ export class HcmMapViewer extends LitElement {
 
     #applyTheme(state: ViewerState | null): void {
         if (this.isConnected) {
-            applyTheme(this, tokensOf(state), state === null ? 'system' : state.theme, false);
+            applyTheme(this, viewerTokens(state, this.ownerDocument), state === null ? 'system' : state.theme, false);
         }
     }
 

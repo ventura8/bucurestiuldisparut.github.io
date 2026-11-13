@@ -9,6 +9,7 @@
 import type { CityRole, Locale, ThemeTokens } from '@hcm/shared';
 
 import type { ThemeMode } from '../theme/apply.js';
+import type { AccentChoice } from '../theme/device-accent.js';
 import type { ContentPort } from './content-port.js';
 import type { AdminNoticeInputPort } from './notice-port.js';
 import type { SetupIntentsPort, SetupViewState } from './setup/setup-port.js';
@@ -92,7 +93,13 @@ export interface AdminStatePort {
     readonly route: AdminRoutePort;
     readonly destinations: readonly AdminDestinationPort[];
     readonly locale: Locale;
-    readonly theme: { readonly mode: ThemeMode; readonly city: ThemeTokens | null; readonly preview: ThemeTokens | null };
+    readonly theme: {
+        readonly mode: ThemeMode;
+        /** The colours: the device's accent (the default, also when absent) or the city's own. */
+        readonly accent?: AccentChoice;
+        readonly city: ThemeTokens | null;
+        readonly preview: ThemeTokens | null;
+    };
     readonly consent: 'unknown' | 'granted' | 'denied';
     readonly analytics: boolean;
     readonly windowClass: string;
@@ -142,6 +149,8 @@ export interface AdminIntentsPort {
     refreshCities?(now?: boolean): Promise<void>;
     setLocale(locale: Locale): void;
     setTheme(mode: ThemeMode): void;
+    /** The colours of the admin: the device's accent or the city's own, remembered on this browser. */
+    setAccent(accent: AccentChoice): void;
     setConsent(consent: 'granted' | 'denied'): void;
     dismissNotice(): void;
     setWindowClass(windowClass: string): void;

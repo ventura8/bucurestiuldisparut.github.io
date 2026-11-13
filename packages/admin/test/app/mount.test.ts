@@ -5,7 +5,7 @@ import { createUpstreamFakes, GOOGLE_TOKENS } from '@hcm/test-support/fakes';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ADMINS_MODULE } from '../../src/admins/admins.js';
-import { mount, SERVER_SEEN_KEY, serverMemory, THEME_KEY, type TelemetryView } from '../../src/app/mount.js';
+import { ACCENT_KEY, mount, SERVER_SEEN_KEY, serverMemory, THEME_KEY, type TelemetryView } from '../../src/app/mount.js';
 import type { AreaModule } from '../../src/content/areas.js';
 import type { ContentDeps } from '../../src/content/registry.js';
 import type { ContentServices } from '../../src/content/services.js';
@@ -50,9 +50,11 @@ describe('mount', () => {
         await settle();
         expect(app.state.locale).toBe('en');
         expect(app.state.theme.mode).toBe('dark');
+        expect(app.state.theme.accent).toBe('device');
 
         app.intents.setLocale('ro');
         app.intents.setTheme('light');
+        app.intents.setAccent('map');
         app.intents.previewTheme(BASELINE_THEME);
         app.intents.setConsent('granted');
         app.intents.setWindowClass('large');
@@ -60,12 +62,13 @@ describe('mount', () => {
 
         expect(w.local.get(LANGUAGE_KEY)).toBe('ro');
         expect(w.local.get(THEME_KEY)).toBe('light');
+        expect(w.local.get(ACCENT_KEY)).toBe('map');
         expect(w.local.get(CONSENT_KEY)).toBe('granted');
         expect(app.state).toMatchObject({
             locale: 'ro',
             consent: 'granted',
             windowClass: 'large',
-            theme: { mode: 'light', preview: BASELINE_THEME },
+            theme: { mode: 'light', accent: 'map', preview: BASELINE_THEME },
         });
         expect(seen).toContain('ro');
     });

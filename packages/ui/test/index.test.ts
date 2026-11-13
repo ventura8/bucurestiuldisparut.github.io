@@ -68,6 +68,7 @@ const KIT_EXPORTS = [
     'UI_ICONS',
     'WINDOW_CLASS_BREAKPOINTS',
     'WindowClassController',
+    'accentTokens',
     'applyTheme',
     'atLeast',
     'baseStyles',

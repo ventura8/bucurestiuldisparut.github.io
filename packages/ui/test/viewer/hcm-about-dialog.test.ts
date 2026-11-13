@@ -9,8 +9,9 @@ import { testManifest } from './fixtures.js';
 const CITY = testManifest().city;
 
 /** The icons the theme choice passes to the kit's segmented button, per option. */
-function themeIcons(element: HcmAboutDialog): (string | undefined)[] {
-    const theme = shadowQueryAll(element, 'hcm-segmented-button').at(-1) as unknown as {
+/** The icons of the second segmented button (the theme's mode), or of the `index`th one. */
+function themeIcons(element: HcmAboutDialog, index = 1): (string | undefined)[] {
+    const theme = shadowQueryAll(element, 'hcm-segmented-button').at(index) as unknown as {
         readonly options: readonly { readonly icon?: string }[];
     };
     return theme.options.map((option) => option.icon);
@@ -120,13 +121,36 @@ describe('<hcm-about-dialog>', () => {
         await expect.element(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
         // A compact screen has no room for an icon beside every theme label (the kit still shows the check mark).
         expect(themeIcons(element)).toEqual([undefined, undefined, undefined]);
+        expect(themeIcons(element, 2)).toEqual([undefined, undefined]);
+    });
+
+    it('happyPath_settingsFollowTheDeviceAndItsAccentByDefault', async () => {
+        const element = await about({ mode: 'settings', locale: 'en' });
+        const events = recordEvents(element, 'hcm-theme-change');
+
+        await expect.element(page.getByRole('radio', { name: 'Follow my device' })).toHaveAttribute('aria-checked', 'true');
+        await expect.element(page.getByRole('radio', { name: 'Device accent' })).toHaveAttribute('aria-checked', 'true');
+        expect(themeIcons(element, 2)).toEqual(['palette', 'map']);
+        await page.getByRole('radio', { name: 'Map colours' }).click();
+
+        expect(events).toEqual([{ type: 'hcm-theme-change', detail: { accent: 'map' } }]);
+    });
+
+    it('badPath_anUnknownAccentValueIsIgnored', async () => {
+        const element = await about({ mode: 'settings', accent: 'map' });
+        const events = recordEvents(element, 'hcm-theme-change');
+
+        await expect.element(page.getByRole('radio', { name: 'Culorile hărții' })).toHaveAttribute('aria-checked', 'true');
+        fireKitEvent(shadowQuery(element, 'hcm-segmented-button:last-of-type'), 'hcm-change', { value: 'rainbow' });
+
+        expect(events).toEqual([]);
     });
 
     it('badPath_anUnknownThemeValueIsIgnored', async () => {
         const element = await about({ mode: 'settings' });
         const events = recordEvents(element, 'hcm-theme-change');
 
-        fireKitEvent(shadowQuery(element, 'hcm-segmented-button:last-of-type'), 'hcm-change', { value: 'sepia' });
+        fireKitEvent(shadowQuery(element, 'hcm-segmented-button:nth-of-type(2)'), 'hcm-change', { value: 'sepia' });
 
         expect(events).toEqual([]);
     });

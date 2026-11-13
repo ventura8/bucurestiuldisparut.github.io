@@ -17,7 +17,7 @@ import {
     type PhotoView,
     type Story,
 } from '@hcm/shared';
-import type { WindowClass } from '@hcm/ui';
+import type { AccentChoice, WindowClass } from '@hcm/ui';
 import { CONE_MIN_ZOOM, type MyLocationFix } from '@hcm/ui/map';
 
 import type { ConsentState } from '../telemetry/telemetry-port.js';
@@ -100,6 +100,8 @@ export interface ViewerState {
     /** The viewer is wide enough to dock a sheet beside the map (`isDockable`: a medium window from 760 px docks it too). */
     readonly dockable: boolean;
     readonly theme: ThemeMode;
+    /** The theme's colours: the device's accent (the default, `@hcm/ui`'s `accentTokens`) or the map's own. */
+    readonly accent: AccentChoice;
     readonly consent: ConsentState;
     readonly toast: Toast | null;
     /** Swipe compare, or null when the visitor does not compare (M4). */
@@ -139,6 +141,7 @@ export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentS
         compactHeight: false,
         dockable: false,
         theme,
+        accent: 'device',
         consent,
         toast: null,
         compare: null,

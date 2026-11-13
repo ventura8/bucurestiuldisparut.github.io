@@ -132,12 +132,16 @@ describe('<hcm-account-menu>', () => {
     it('happyPath_languageThemeConsentAndSignOut', async () => {
         const app = new FakeAdminApp(adminState({ analytics: true, consent: 'unknown' }));
         const menu = await opened(app);
-        const [language, theme] = deepAll(menu, 'hcm-segmented-button') as HcmSegmentedButton[];
+        const [language, theme, accent] = deepAll(menu, 'hcm-segmented-button') as HcmSegmentedButton[];
+        expect(accent?.value).toBe('device');
 
         language?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'ro' } }));
         language?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'en' } }));
         theme?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'dark' } }));
         theme?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'sepia' } }));
+        accent?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'map' } }));
+        // A value that is no choice reads as the default, the device's accent.
+        accent?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'sepia' } }));
         const consent = deep(menu, 'hcm-switch') as HcmSwitch;
         consent.dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: true } }));
         consent.dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: false } }));
@@ -149,6 +153,8 @@ describe('<hcm-account-menu>', () => {
             'setLocale "ro"',
             'setLocale "en"',
             'setTheme "dark"',
+            'setAccent "map"',
+            'setAccent "device"',
             'setConsent "granted"',
             'setConsent "denied"',
             'signOut',
@@ -170,7 +176,7 @@ describe('<hcm-account-menu>', () => {
 
         expect(deepAll(menu, 'hcm-switch')).toEqual([]);
         expect(deepAll(menu, 'hcm-button')).toEqual([]);
-        expect(deepText(menu)).toContain('Automată');
+        expect(deepText(menu)).toContain('Ca dispozitivul');
         deep(menu, 'hcm-dialog').dispatchEvent(new CustomEvent('hcm-close', { detail: { returnValue: 'cancel' } }));
         await updated(menu);
         expect(menu.open).toBe(false);

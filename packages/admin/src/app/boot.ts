@@ -10,7 +10,7 @@ import { LANGUAGE_KEY, resolveAdminLocale } from '../state/locale.js';
 import { Store } from '../state/store.js';
 import type { ProjectConfig } from '../provision/project-config.js';
 import { loadProject, loadRuntime, loadWebConfig, type AdminRuntime, type FirebaseWebConfig } from './config.js';
-import { mount, THEME_KEY, themeModeOf, type AdminApp, type AdminDeps, type AdminIntents } from './mount.js';
+import { mount, storedTheme, themeIntents, type AdminApp, type AdminDeps, type AdminIntents } from './mount.js';
 import type { HashLocation, KeyValueStore } from './ports.js';
 import { AdminTelemetry } from './telemetry.js';
 
@@ -51,7 +51,7 @@ function missingState(env: MissingEnvironment): AdminState<null> {
         route: { id: 'setup', params: [] },
         destinations: [],
         locale: resolveAdminLocale(env.location.search(), env.local.get(LANGUAGE_KEY), env.languages),
-        theme: { mode: themeModeOf(env.local.get(THEME_KEY)), city: null, preview: null },
+        theme: storedTheme(env.local),
         consent: 'unknown',
         analytics: false,
         windowClass: 'compact',
@@ -88,10 +88,13 @@ export function configMissingApp(env: MissingEnvironment): AdminApp<null, null> 
             env.local.set(LANGUAGE_KEY, locale);
             store.update({ locale });
         },
-        setTheme: (mode) => {
-            env.local.set(THEME_KEY, mode);
-            store.update({ theme: { ...store.state.theme, mode } });
-        },
+        ...themeIntents(
+            env.local,
+            () => store.state.theme,
+            (patch) => {
+                store.update(patch);
+            },
+        ),
         ...{ previewTheme: () => undefined, setConsent: () => undefined, dismissNotice: () => undefined, setWindowClass: () => undefined },
         setup: null,
     };

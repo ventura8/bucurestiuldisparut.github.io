@@ -63,6 +63,8 @@ export type { HeightClass, ResizeObserverConstructor, WindowClassControllerOptio
 export { THEME_ATTRIBUTE, applyTheme, clearTheme, themeRules, writeThemeSheet } from './theme/apply.js';
 export type { ThemeMode, ThemeRule } from './theme/apply.js';
 export { BASELINE_THEME } from './theme/baseline.js';
+export { ACCENT_CHOICES, ACCENT_PROPERTY, accentOf, accentTokens, readDeviceAccent, withAccent } from './theme/device-accent.js';
+export type { AccentChoice } from './theme/device-accent.js';
 export {
     MOTION_EASINGS,
     MOTION_SPRINGS,

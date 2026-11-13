@@ -11,9 +11,17 @@ import type { MapLabelKind, MapLabels } from '@hcm/shared/map-labels';
 
 import type { CameraOffset } from '../map/mapbox-types.js';
 import type { ThemeMode } from '../theme/apply.js';
+import type { AccentChoice } from '../theme/device-accent.js';
 import type { WindowClass } from '../theme/tokens.js';
 
 export type { ThemeMode } from '../theme/apply.js';
+export type { AccentChoice } from '../theme/device-accent.js';
+
+/** One of Settings' theme choices (`hcm-theme-change`): the mode or the colours. */
+export interface ThemeChoice {
+    readonly theme?: ThemeMode;
+    readonly accent?: AccentChoice;
+}
 
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help' | 'settings';
@@ -78,6 +86,8 @@ export interface ViewerState {
     /** Wide enough to dock a sheet beside the map (a medium window from 760 px too: `layoutFor`). */
     readonly dockable: boolean;
     readonly theme: ThemeMode;
+    /** The theme's colours: the device's accent (the default) or the map's own (`theme/device-accent.ts`). */
+    readonly accent: AccentChoice;
     readonly consent: ConsentState;
     readonly toast: ViewerToast | null;
     /**
@@ -139,6 +149,7 @@ export interface ViewerStorePort {
     logInput?(device: 'gamepad' | 'console'): void;
     setWindowSize(width: number, height: number): void;
     setTheme(theme: ThemeMode): void;
+    setAccent(accent: AccentChoice): void;
     setConsent(consent: 'granted' | 'denied'): void;
     showToast(key: MessageKey, params?: MessageParams): void;
     dismissToast(): void;

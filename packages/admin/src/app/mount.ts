@@ -21,7 +21,8 @@ import { unregisterOnSignOut } from '../inbox/push-device.js';
 import type { PageRegistry } from '../routing/pages.js';
 import { parseAdminRoute, type AdminRoute, type AdminRouteId } from '../routing/routes.js';
 import { LANGUAGE_KEY } from '../state/locale.js';
-import { NO_GATE, type AdminState, type NoticeInput, type ShellStateAccess, type ThemeMode } from '../state/state.js';
+import { NO_GATE, type AdminState, type NoticeInput, type ShellStateAccess, type ThemeMode, type AccentChoice } from '../state/state.js';
+import { storedTheme, themeIntents } from './theme-prefs.js';
 import { Store } from '../state/store.js';
 import type { AdminRuntime, FirebaseWebConfig } from './config.js';
 import { contentServices } from './content-services.js';
@@ -39,8 +40,7 @@ import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } 
 import { guardCallables, type AdminProject, type SetupModuleSpec, type ShellServices } from './services.js';
 import type { AdminTelemetry, Measure } from './telemetry.js';
 
-/** `localStorage`: the theme the admin chose (`system` by default). */
-export const THEME_KEY = 'hcm:admin:theme';
+export { ACCENT_KEY, THEME_KEY, storedTheme, themeIntents, themeModeOf } from './theme-prefs.js';
 
 export type { TelemetryView };
 
@@ -108,6 +108,7 @@ export interface AdminIntents<SetupIntents> {
     refreshCities(now?: boolean): Promise<void>;
     setLocale(locale: Locale): void;
     setTheme(mode: ThemeMode): void;
+    setAccent(accent: AccentChoice): void;
     /** Settings' live preview of a seed colour's tokens; null returns to the city's. */
     previewTheme(tokens: ThemeTokens | null): void;
     setConsent(consent: 'granted' | 'denied'): void;
@@ -131,11 +132,6 @@ export interface AdminApp<Setup, SetupIntents> {
     destroy(): void;
 }
 
-/** The stored theme (`system` for anything else). */
-export function themeModeOf(value: string | null): ThemeMode {
-    return value === 'light' || value === 'dark' ? value : 'system';
-}
-
 function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup> {
     return {
         auth: 'starting',
@@ -147,7 +143,7 @@ function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup>
         route: { id: 'setup', params: [] },
         destinations: [destinationOf('setup')],
         locale: startLocale(deps.location, deps.local, deps.languages),
-        theme: { mode: themeModeOf(deps.local.get(THEME_KEY)), city: null, preview: null },
+        theme: storedTheme(deps.local),
         consent: 'unknown',
         analytics: false,
         windowClass: 'compact',
@@ -283,10 +279,7 @@ function shellIntents<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup
             deps.local.set(LANGUAGE_KEY, locale);
             update({ locale });
         },
-        setTheme: (mode) => {
-            deps.local.set(THEME_KEY, mode);
-            update({ theme: { ...store.state.theme, mode } });
-        },
+        ...themeIntents(deps.local, () => store.state.theme, update),
         previewTheme: (preview) => {
             update({ theme: { ...store.state.theme, preview } });
         },

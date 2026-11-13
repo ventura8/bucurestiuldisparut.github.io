@@ -8,9 +8,10 @@
  *
  * Its `mode` picks what it shows: About (`about`, with the accessibility statement of docs/research/viewer-input.md §5),
  * the help panel of the keyboard and the gamepad (`help`, §2), or Settings (`settings`, the menu's Setări): the language
- * and theme choices (V11, V12), which the owner wanted out of About (2026-11-08).
+ * and theme choices (V11, V12: the mode, Follow my device by default, and the colours, Device accent by default), which
+ * the owner wanted out of About (2026-11-08).
  *
- * Events (viewer-internal): `hcm-locale-change` (`{locale}`), `hcm-theme-change` (`{theme}`), `hcm-consent`
+ * Events (viewer-internal): `hcm-locale-change` (`{locale}`), `hcm-theme-change` (`{theme}` or `{accent}`), `hcm-consent`
  * (`{decision: 'denied'}`, the kit banner's event) when the visitor withdraws consent, `hcm-help-open` and
  * `hcm-shortcuts-change` (`{enabled}`).
  */
@@ -22,7 +23,7 @@ import { EMPTY } from './empty.js';
 import { externalLink, renderMarkdown } from './markdown.js';
 import { baseStyles, detailStyles } from './shared-styles.js';
 import { renderShortcutsHelp } from './shortcuts-help.js';
-import type { ConsentState, ThemeMode } from './store-port.js';
+import type { AccentChoice, ConsentState, ThemeMode } from './store-port.js';
 
 export const HCM_ABOUT_DIALOG_TAG = 'hcm-about-dialog';
 
@@ -30,6 +31,7 @@ export const HCM_ABOUT_DIALOG_TAG = 'hcm-about-dialog';
 const REPORT_URL = 'https://github.com/ventura8/historic-city-map-maker/issues';
 
 const THEMES: readonly ThemeMode[] = ['system', 'light', 'dark'];
+const ACCENTS: readonly AccentChoice[] = ['device', 'map'];
 
 /** What the dialog shows: About, the help panel or Settings (`dialogMode` of the open sheet). */
 export type AboutMode = 'about' | 'help' | 'settings';
@@ -42,9 +44,14 @@ function creditText(credit: Credit, locale: Locale): TemplateResult | string {
 }
 
 const THEME_ICONS: Readonly<Record<ThemeMode, string>> = { system: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' };
+const ACCENT_ICONS: Readonly<Record<AccentChoice, string>> = { device: 'palette', map: 'map' };
 
 function isThemeMode(value: string): value is ThemeMode {
     return (THEMES as readonly string[]).includes(value);
+}
+
+function isAccent(value: string): value is AccentChoice {
+    return (ACCENTS as readonly string[]).includes(value);
 }
 
 /** The `{value}` of a kit `hcm-change` event, which stops here (the dialog re-fires it in its own words). */
@@ -65,6 +72,7 @@ export class HcmAboutDialog extends LitElement {
         analytics: { type: Boolean },
         fullscreen: { type: Boolean },
         theme: { type: String },
+        accent: { type: String },
     };
 
     static override readonly styles = [
@@ -106,6 +114,7 @@ export class HcmAboutDialog extends LitElement {
     declare analytics: boolean;
     declare fullscreen: boolean;
     declare theme: ThemeMode;
+    declare accent: AccentChoice;
 
     constructor() {
         super();
@@ -119,6 +128,7 @@ export class HcmAboutDialog extends LitElement {
         this.analytics = false;
         this.fullscreen = false;
         this.theme = 'system';
+        this.accent = 'device';
     }
 
     override render(): TemplateResult {
@@ -202,8 +212,12 @@ export class HcmAboutDialog extends LitElement {
         const languages = LOCALES.map((choice) => ({ value: choice, label: translate(locale, `language.${choice}`) }));
         // Full screen (compact width) leaves no room for an icon beside every Romanian theme label: only the
         // selected segment keeps its check mark there.
-        const icons = (choice: ThemeMode): { readonly icon?: string } => (this.fullscreen ? {} : { icon: THEME_ICONS[choice] });
-        const themes = THEMES.map((choice) => ({ value: choice, label: translate(locale, `theme.${choice}`), ...icons(choice) }));
+        const icons = (icon: string): { readonly icon?: string } => (this.fullscreen ? {} : { icon });
+        const themes = THEMES.map((choice) => ({
+            value: choice,
+            label: translate(locale, `theme.${choice}`),
+            ...icons(THEME_ICONS[choice]),
+        }));
         const onLanguage = (event: Event): void => {
             this.#emit('hcm-locale-change', { locale: resolveLocale(changedValue(event)) });
         };
@@ -228,7 +242,31 @@ export class HcmAboutDialog extends LitElement {
                 .label=${translate(locale, 'theme.label')}
                 @hcm-change=${onTheme}
             ></hcm-segmented-button>
+            ${this.#accent(icons)}
         </section>`;
+    }
+
+    /** The colours: the device's accent (the default) or the map's own. */
+    #accent(icons: (icon: string) => { readonly icon?: string }): TemplateResult {
+        const locale = this.locale;
+        const accents = ACCENTS.map((choice) => ({
+            value: choice,
+            label: translate(locale, `accent.${choice}`),
+            ...icons(ACCENT_ICONS[choice]),
+        }));
+        const onAccent = (event: Event): void => {
+            const value = changedValue(event);
+            if (isAccent(value)) {
+                this.#emit('hcm-theme-change', { accent: value });
+            }
+        };
+        return html`<h3>${translate(locale, 'accent.label')}</h3>
+            <hcm-segmented-button
+                .options=${accents}
+                .value=${this.accent}
+                .label=${translate(locale, 'accent.label')}
+                @hcm-change=${onAccent}
+            ></hcm-segmented-button>`;
     }
 
     #emit(type: string, detail: object): void {

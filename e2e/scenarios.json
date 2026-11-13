@@ -2298,6 +2298,28 @@
             "notes": "Milestone M1. ui-kit: installFonts/loadIconFont (packages/ui/src/fonts/font-faces.ts) and hcm-icon's clipped 1 em box; no Google Fonts host is ever requested (V16)."
         },
         {
+            "id": "S-V12-HAPPY-DEVICE-ACCENT",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Follow my device and Device accent are the defaults: the theme takes the device's accent in light and dark, with the city's contrast",
+            "asserts": "light and dark systems with an emulated accent (--hcm-device-accent #1e8e3e): the host's primary takes the accent's hue with the city primary's luminance; Settings shows Follow my device and Device accent chosen; axe colour contrast passes; Map colours brings the city's primary back and persists after a reload",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: \"the feature to follow the OS accent colours (and others available) is the new default\" (track/osaccent; DECISIONS-for-review.md §215). packages/ui/src/theme/device-accent.ts: the city's schemes turned to the accent's OKLCH hue with their WCAG luminance kept; Chrome exposes the device's AccentColor only to an installed app (a tab gets a constant), Safari a constant, Firefox the real one; a page names it with --hcm-device-accent. Tests: e2e/specs/viewer/device-accent.spec.ts; packages/ui/test/theme/device-accent.test.ts (every contrast pair of the four schemes kept for three accents); packages/engine/test/core/theme-choice.test.ts."
+        },
+        {
+            "id": "S-V12-BAD-NO-DEVICE-ACCENT",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without the device's accent, or with a grey one, the city's own colours show",
+            "asserts": "a Chromium tab (Chrome's AccentColor is its constant there) -> the city's primary; a grey accent (#808080) -> the city's primary and on-primary; forced colours read no accent",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: \"the feature to follow the OS accent colours (and others available) is the new default\" (track/osaccent; DECISIONS-for-review.md §215). packages/ui/src/theme/device-accent.ts: the city's schemes turned to the accent's OKLCH hue with their WCAG luminance kept; Chrome exposes the device's AccentColor only to an installed app (a tab gets a constant), Safari a constant, Firefox the real one; a page names it with --hcm-device-accent. Tests: e2e/specs/viewer/device-accent.spec.ts; packages/ui/test/theme/device-accent.test.ts."
+        },
+        {
             "id": "S-V13-HAPPY",
             "behaviour": "V13",
             "area": "viewer",
@@ -7268,6 +7290,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3 (the integrator, 2026-10-24: the live polish of the deployed admin, 2026-10-23, where the title stayed Romanian under an English UI). Test: e2e/admin/specs/shell/title.spec.ts; packages/ui/test/admin/shell/shell.test.ts."
+        },
+        {
+            "id": "S-A21-HAPPY-DEVICE-ACCENT",
+            "behaviour": "A21",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin wears the device's accent by default and the account menu's Map colours brings the city's back",
+            "asserts": "light and dark systems with an emulated accent: the shell's primary is the accent's; Colours -> Map colours: the city's primary, kept after a reload; Device accent: the accent again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: \"the feature to follow the OS accent colours (and others available) is the new default\" (track/osaccent; DECISIONS-for-review.md §215). packages/ui/src/theme/device-accent.ts: the city's schemes turned to the accent's OKLCH hue with their WCAG luminance kept; Chrome exposes the device's AccentColor only to an installed app (a tab gets a constant), Safari a constant, Firefox the real one; a page names it with --hcm-device-accent. Settings' live seed preview always shows the seed's own colours. Tests: e2e/admin/specs/shell/accent.spec.ts; packages/ui/test/admin/shell/shell.test.ts, nav-and-menu.test.ts; packages/admin/test/app/mount.test.ts, boot.test.ts."
+        },
+        {
+            "id": "S-A21-BAD-NO-DEVICE-ACCENT",
+            "behaviour": "A21",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without the device's accent the admin wears the city's own colours",
+            "asserts": "no accent the browser exposes -> Device accent and Map colours show the same primary",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: \"the feature to follow the OS accent colours (and others available) is the new default\" (track/osaccent; DECISIONS-for-review.md §215). packages/ui/src/theme/device-accent.ts: the city's schemes turned to the accent's OKLCH hue with their WCAG luminance kept; Chrome exposes the device's AccentColor only to an installed app (a tab gets a constant), Safari a constant, Firefox the real one; a page names it with --hcm-device-accent. Tests: e2e/admin/specs/shell/accent.spec.ts."
         },
         {
             "id": "S-A21-BAD-UNSUPPORTED-LANGUAGE",

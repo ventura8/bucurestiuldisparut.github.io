@@ -20,7 +20,7 @@ import { dialogMode, isDialogSheet } from './input-commands.js';
 import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from './layout.js';
 import type { LegalLift } from './legal-lift.js';
 import { renderSheetFrame } from './sheet-frame.js';
-import type { ViewerError, ViewerState } from './store-port.js';
+import type { ThemeChoice, ViewerError, ViewerState } from './store-port.js';
 import { dateMenu, timelineDock, type TimelineDock } from './timeline-dock.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
 import type { MenuPoint } from './map-menu-trigger.js';
@@ -88,7 +88,8 @@ export interface ViewerHandlers extends LightboxHandlers, MapMenuHandlers {
     readonly onPhotoShown: (event: CustomEvent<{ readonly ok: boolean }>) => void;
     readonly onMenuSelect: (event: CustomEvent<{ readonly value: string }>) => void;
     readonly onLocaleChange: (event: CustomEvent<{ readonly locale: Locale }>) => void;
-    readonly onThemeChange: (event: CustomEvent<{ readonly theme: ViewerState['theme'] }>) => void;
+    /** Settings' theme choices: the mode (`theme`) or the colours (`accent`), one at a time. */
+    readonly onThemeChange: (event: CustomEvent<ThemeChoice>) => void;
     readonly onConsent: (event: CustomEvent<{ readonly decision: 'granted' | 'denied' }>) => void;
     readonly onRetry: (event: Event) => void;
     /** The Layers panel's Compare button (M4, V06). */
@@ -466,6 +467,7 @@ function overlays(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
             ?fullscreen=${view.layout.aboutFullscreen}
             @hcm-close=${handlers.onSheetClose}
             .theme=${state.theme}
+            .accent=${state.accent}
             @hcm-consent=${handlers.onConsent}
             @hcm-locale-change=${handlers.onLocaleChange}
             @hcm-theme-change=${handlers.onThemeChange}
