@@ -4312,7 +4312,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A setup.status the admin cannot read says Update the server to check, never To do",
-            "asserts": "setup.status answers in a shape the admin does not know -> the page says the server is older than the admin (update it in step d); sign-in, server and claim are Done (it answered this admin); Mapbox and USGS read Update the server to check, never To do",
+            "asserts": "setup.status answers in a shape the admin does not know -> the page says the server is older than the admin (update it in step d); sign-in, server and claim are Done (it answered this admin); Mapbox and USGS read Update the server to check, never To do; step d stays open with its update even while (b) and (c) cannot be checked (2026-11-13: it waited for them, and the owner could never update)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Live test of 2026-10-31, finding 27 of docs/research/manual-test-2026-10-25.md. Tests: e2e/admin/steps/older-server.spec.ts, packages/admin/test/setup/controller.test.ts; tour state setup.older-server-status."
