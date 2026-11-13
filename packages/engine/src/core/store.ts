@@ -24,7 +24,7 @@ import type { Measurement } from '../telemetry/telemetry-port.js';
 import { Boot, type BootHost } from './boot.js';
 import { CompareDriver, type CompareDriverHost } from './compare-driver.js';
 import { resetNorth, watchCamera, zoomBy, type CompassActions } from './compass.js';
-import { inputLogger, measureToast } from './viewer-analytics.js';
+import { inputLogger, measureToast, shareLogger } from './viewer-analytics.js';
 import { withWindowSize } from './window-size.js';
 import type { MountedMap } from './compare-port.js';
 import type { ViewerDeps } from './deps.js';
@@ -406,9 +406,7 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         zoomBy(this.deps.map, this.#boot, this.#state.manifest?.city, step);
     }
 
-    logShare(): void {
-        this.deps.telemetry.logEvent({ name: 'share' });
-    }
+    readonly logShare: ViewerStore['logShare'] = shareLogger(() => this.deps.telemetry);
 
     /** A pad or a games console's browser, reported once a page each (V65; `input_device`, after consent). */
     readonly logInput: ViewerStore['logInput'] = inputLogger(() => this.deps.telemetry);

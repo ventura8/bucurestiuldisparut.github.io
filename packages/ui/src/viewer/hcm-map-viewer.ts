@@ -28,7 +28,7 @@ import { timelineStops, type TimelineStop } from './timeline-model.js';
 import { syncLocale } from './viewer-actions.js';
 import { withViewerBaseline } from './viewer-baseline.js';
 import { createHandlers } from './viewer-handlers.js';
-import { isGameConsole } from './game-console.js';
+import { isGameConsole, reportConsole } from './game-console.js';
 import { activate as activateIn, askForPadKeys, navigate as navigateIn, spatialKey, type Direction } from './spatial-nav.js';
 import { isViewerKey, shortcutOf } from './viewer-keyboard.js';
 import { modalOpen } from './viewer-legal.js';
@@ -267,9 +267,7 @@ export class HcmMapViewer extends LitElement {
         const state = store.getState();
         this.#onState(state, idleOf(state));
         this.#subscribe();
-        if (isGameConsole(navigator.userAgent)) {
-            store.logInput?.('console');
-        }
+        reportConsole(navigator.userAgent, store);
     }
 
     /** Disconnects the store (Show my location stops); the element shows its loading state again. */

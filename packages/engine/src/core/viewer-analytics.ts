@@ -20,6 +20,13 @@ export function inputLogger(telemetry: () => Pick<TelemetryPort, 'logEvent'>): (
     };
 }
 
+/** The visitor shared the page (Web Share or the clipboard): the `share` event (CR-17; moved here from the store, §200). */
+export function shareLogger(telemetry: () => Pick<TelemetryPort, 'logEvent'>): () => void {
+    return () => {
+        telemetry().logEvent({ name: 'share' });
+    };
+}
+
 /** An error toast (`error.…`) is one `ui_error` field measurement by its key; other toasts are not errors. */
 export function measureToast(telemetry: Pick<TelemetryPort, 'measure'>, key: MessageKey): void {
     if (key.startsWith('error.')) {
