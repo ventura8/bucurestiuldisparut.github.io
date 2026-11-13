@@ -47,8 +47,8 @@ export class HcmIconButton extends LitElement {
                 display: inline-grid;
                 place-items: center;
                 box-sizing: border-box;
-                width: 40px;
-                height: 40px;
+                width: var(--hcm-control-size, 40px);
+                height: var(--hcm-control-size, 40px);
                 padding: 0;
                 margin: 0;
                 border: none;
