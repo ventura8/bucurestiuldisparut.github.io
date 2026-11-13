@@ -229,3 +229,60 @@ export async function removePair(page: Page, lang: 'ro' | 'en', number: number):
 export function transformRadio(page: Page, lang: 'ro' | 'en', kind: 'affine' | 'poly2' | 'tps'): Locator {
     return page.getByRole('radio', { name: georefText(lang, `adminContent.georef.transform.${kind}`) });
 }
+
+/** A visible box's top and height. */
+async function topAndHeight(locator: Locator): Promise<{ readonly top: number; readonly height: number }> {
+    await expect(locator).toBeVisible();
+    const box = await locator.boundingBox();
+    return { top: box?.y ?? Number.NaN, height: box?.height ?? Number.NaN };
+}
+
+/** The scan's and the map's view, and the turn row under each, as the person sees them (one at a time on a compact window). */
+async function paneBoxes(
+    page: Page,
+    lang: 'ro' | 'en',
+    pane: 'scan' | 'map',
+): Promise<{ view: { top: number; height: number }; turn: number }> {
+    await showPane(page, lang, pane);
+    const view = await topAndHeight(page.locator(pane === 'scan' ? 'hcm-scan-viewer' : 'hcm-admin-map'));
+    const turn = await topAndHeight(page.getByRole('group', { name: georefText(lang, `adminContent.georef.turn.${pane}`) }));
+    return { view, turn: turn.top };
+}
+
+/**
+ * The two panes line up (the owner's report of 2026-11-13: the map's list pushed the map 80 px below the scan): the scan's and
+ * the map's views share their top and height within 1 px, and so do the turn rows under them; on a compact window the map
+ * shown by the switch sits where the scan sat. Leaves the pane that was shown.
+ */
+export async function expectPanesAligned(page: Page, lang: 'ro' | 'en'): Promise<void> {
+    const shown = (await page.locator('.panes').getAttribute('data-pane')) === 'map' ? 'map' : 'scan';
+    const other = shown === 'map' ? 'scan' : 'map';
+    const boxes = { [other]: await paneBoxes(page, lang, other), [shown]: await paneBoxes(page, lang, shown) };
+    const { scan, map } = boxes as Record<'scan' | 'map', Awaited<ReturnType<typeof paneBoxes>>>;
+    expect(Math.abs(scan.view.top - map.view.top), 'the panes share their top').toBeLessThanOrEqual(1);
+    expect(Math.abs(scan.view.height - map.view.height), 'the panes share their height').toBeLessThanOrEqual(1);
+    expect(Math.abs(scan.turn - map.turn), 'the turn rows share their top').toBeLessThanOrEqual(1);
+}
+
+/** Window sizes past the e2e projects' own: a tablet on its side, a wide screen and the owner's (about 2000 × 1125). */
+const WIDE_SIZES = [
+    { width: 1024, height: 768 },
+    { width: 1920, height: 1080 },
+    { width: 2000, height: 1125 },
+] as const;
+
+/**
+ * The panes line up at each of the wide sizes too, the window put back after. A phone project (emulated as a touch phone, its
+ * layout wider than its window once resized) checks its own size only.
+ */
+export async function expectPanesAlignedAtSizes(page: Page, lang: 'ro' | 'en'): Promise<void> {
+    const own = page.viewportSize();
+    if (own === null || own.width < 768) {
+        return;
+    }
+    for (const size of WIDE_SIZES) {
+        await page.setViewportSize(size);
+        await expectPanesAligned(page, lang);
+    }
+    await page.setViewportSize(own);
+}

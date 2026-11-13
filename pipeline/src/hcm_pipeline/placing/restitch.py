@@ -1,4 +1,4 @@
-"""A placed series laid on its overview again, the owner's pairs kept (docs/research/M20-import-local.md §15, DECISIONS-for-review.md §205).
+"""A placed series laid on its overview again, the owner's pairs kept (docs/research/M20-import-local.md §15, DECISIONS-for-review.md §210).
 
 `imagery.locateAgain` on a published (or waiting) archive series that was placed from the owner's pairs on its overview mosaic, with
 pieces left out of that mosaic, starts a new version of the same layer whose job asks `restitch` (`functions/src/imagery/restitch.ts`).

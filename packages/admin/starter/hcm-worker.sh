@@ -25,7 +25,7 @@ set -u
 
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-STARTER_VERSION=7d4d3f94aee3
+STARTER_VERSION=0428b9113175
 
 HCM_PROJECT='__HCM_PROJECT__'
 HCM_CITY='__HCM_CITY__'
@@ -59,6 +59,10 @@ AI_LIB=lib
 # The governor (docs/research/M26-governor.md): what only the host can say, every few seconds, and the worker's CPU quota.
 GOVERN_SECONDS=5
 HINTS=/work/host-hints.json
+# Under WSL: Windows' idle reading at most this often, the interop sockets and powershell.exe when PATH has no /mnt/c (windows_idle).
+WSL_IDLE_SECONDS=30
+WSL_INTEROP_ROOT=${HCM_WSL_INTEROP_ROOT:-/run/WSL}
+WINDOWS_POWERSHELL=${HCM_WINDOWS_POWERSHELL:-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe}
 # The worker's share of the memory Docker has, and its weight against other containers (Docker's default is 1024).
 WORKER_MEMORY_PCT=60
 WORKER_CPU_SHARES=256
@@ -123,9 +127,11 @@ current_image() {
 }
 
 # The local AI's image as the worker's /state names it: pytorch/pytorch by digest, or `worker` (the worker's own image, on a computer
-# with no NVIDIA card) and nothing else; nothing when it says otherwise.
+# with no NVIDIA card) and nothing else; nothing when it says otherwise. Read inside `ai` only: /state's own `image` (the worker's,
+# sha256:…) comes later, and a match over the whole line took it, refused every frame and left the sidecar down (2026-11-13).
 ai_image() {
-	found=$(printf '%s' "$1" | sed -n 's/.*"image": *"\([^"]*\)".*/\1/p')
+	ai=$(printf '%s' "$1" | sed -n 's/.*"ai": *{\([^}]*\)}.*/\1/p')
+	found=$(printf '%s' "$ai" | sed -n 's/.*"image": *"\([^"]*\)".*/\1/p')
 	case "$found" in
 	worker)
 		printf worker
@@ -353,10 +359,15 @@ matcher_pass() {
 }
 
 # Seconds since the last keyboard or mouse input on this computer; nothing when it cannot be read (the governor then never says active).
-# GNOME's idle monitor (Wayland and X11), xprintidle, then logind's IdleHint (set only after the desktop's own idle delay); macOS's HID.
+# GNOME's idle monitor (Wayland and X11), xprintidle, then logind's IdleHint (set only after the desktop's own idle delay); macOS's HID;
+# under WSL, Windows' own reading (windows_idle).
 idle_seconds() {
 	if is_mac; then
 		ioreg -c IOHIDSystem 2>/dev/null | awk '/HIDIdleTime/ { print int($NF / 1000000000); exit }'
+		return
+	fi
+	if is_wsl; then
+		windows_idle
 		return
 	fi
 	ms=$(gdbus call --session --dest org.gnome.Mutter.IdleMonitor --object-path /org/gnome/Mutter/IdleMonitor/Core \
@@ -379,6 +390,64 @@ logind_idle() {
 		[ -n "$since" ] && [ "$since" -gt 0 ] && printf '%s' $(($(date +%s) - since / 1000000))
 		;;
 	esac
+}
+
+# Under WSL (the owner's PC, 2026-11-13) neither GNOME's monitor nor xprintidle answers, and logind's IdleHint is always `no` (there is no
+# desktop session): every hint said input and Auto never left Quiet. The person's input is Windows': GetLastInputInfo, read as
+# hcm-worker.bat reads it, through powershell.exe at most every WSL_IDLE_SECONDS (each call costs about half a second of processor).
+is_wsl() {
+	grep -qi microsoft "${HCM_PROC_VERSION:-/proc/version}" 2>/dev/null
+}
+
+# The cached reading ("<when> <seconds or -> <socket or ->" in the install folder), refreshed when older than WSL_IDLE_SECONDS.
+windows_idle() {
+	cache="$(home_dir)/windows-idle"
+	read -r at seconds socket 2>/dev/null <"$cache" || at=0
+	case "$at" in '' | *[!0-9]*) at=0 ;; esac
+	now=$(date +%s)
+	if [ $((now - at)) -ge "$WSL_IDLE_SECONDS" ] || [ "$now" -lt "$at" ]; then
+		reading=$(windows_idle_read "${socket:--}")
+		seconds=${reading% *}
+		socket=${reading#* }
+		mkdir -p "$(dirname "$cache")" && printf '%s %s %s\n' "$now" "$seconds" "$socket" >"$cache"
+	fi
+	case "$seconds" in '' | *[!0-9]*) ;; *) printf '%s' "$seconds" ;; esac
+}
+
+# "<seconds> <socket>" from the first interop socket whose powershell.exe runs in a person's session, else "- -". A systemd service has
+# no WSL_INTEROP and Windows refuses /run/WSL/1_interop; a process that sshd's wsl.exe started runs in session 0, whose
+# GetLastInputInfo never sees a key (it reads the computer's uptime), so only an answer from a session other than 0 is the person's.
+windows_idle_read() {
+	script=$(windows_idle_script | iconv -t UTF-16LE 2>/dev/null | base64 2>/dev/null | tr -d '\n')
+	powershell=$(command -v powershell.exe || printf '%s' "$WINDOWS_POWERSHELL")
+	if [ -n "$script" ] && [ -x "$powershell" ]; then
+		for socket in "$1" "${WSL_INTEROP:-}" "$WSL_INTEROP_ROOT"/*_interop; do
+			[ -e "$socket" ] || continue
+			seconds=$(WSL_INTEROP=$socket timeout 15 "$powershell" -NoProfile -NonInteractive -EncodedCommand "$script" 2>/dev/null |
+				tr -d '\r' | awk 'NF == 2 && $1 ~ /^[0-9]+$/ && $1 > 0 && $2 ~ /^[0-9]+$/ { print $2; exit }')
+			if [ -n "$seconds" ]; then
+				printf '%s %s' "$seconds" "$socket"
+				return
+			fi
+		done
+	fi
+	printf '%s' '- -'
+}
+
+# The PowerShell that prints "<session> <seconds>": the same GetLastInputInfo as hcm-worker.bat's Get-IdleSeconds.
+windows_idle_script() {
+	cat <<'PS'
+$ProgressPreference = 'SilentlyContinue'
+Add-Type -TypeDefinition @'
+using System; using System.Runtime.InteropServices;
+public static class HcmIdle {
+    [StructLayout(LayoutKind.Sequential)] struct Info { public uint Size; public uint Time; }
+    [DllImport("user32.dll")] static extern bool GetLastInputInfo(ref Info info);
+    public static uint Seconds() { var i = new Info(); i.Size = (uint)Marshal.SizeOf(i); GetLastInputInfo(ref i); return ((uint)Environment.TickCount - i.Time) / 1000; }
+}
+'@
+"$((Get-Process -Id $PID).SessionId) $([HcmIdle]::Seconds())"
+PS
 }
 
 # The graphics cards and NPUs Docker could pass to the sidecar, as JSON fields: NVIDIA's (nvidia-smi: memory, use, heat; CUDA when

@@ -468,7 +468,7 @@ belong to the dispatcher and the lease, so an execution never races its own retr
   imports are not used**; each start counts against `JOB_MAX_ATTEMPTS` as any (`apiError.imagery.attemptsExhausted`), and the budget
   guard stops it (`apiError.guardPaused`). A frame that parks again with the attempts used up can still take the admin's points:
   `imagery.saveGcps` goes on one short of the limit, so the dispatcher starts them instead of failing the job (S-A16-HAPPY-POINTS-AFTER-ATTEMPTS).
-  M20 (DECISIONS-for-review.md §205): on a published archive series with pieces left out of its
+  M20 (DECISIONS-for-review.md §210): on a published archive series with pieces left out of its
   overview mosaic, it starts a new version of the same layer that lays the series on its overview again with the pairs kept
   (`restitch.ts`; `apiError.layers.busy` when the layer has a version on its way; S-A122-HAPPY-RESTITCH).
 - **Cancel**: §4.2. The pipeline checks `cancelRequested` at every heartbeat and at its own checkpoints.
@@ -1448,8 +1448,9 @@ The owner placed points on 1966 Corona frames and hit four things; each is fixed
 
 The owner's requests for beta.1 (DECISIONS-for-review.md §173):
 
-- **The map shows**: a labelled native list above the map pane (`mapShows` in `georef-panes.ts`; a `<select>`, so the keyboard and a
-  screen reader have it as it is) offers the version's references (OpenStreetMap: the base map itself; Sentinel-2: the reference
+- **The map shows**: a labelled native list in the header row the two panes share (`mapShows` in `georef-panes.ts`; a `<select>`, so
+  the keyboard and a screen reader have it as it is; the panes share their rows by CSS subgrid, so the list never pushes the map below
+  the scan: lesson 667, `S-A122-BAD-GEOREF-PANES-MISALIGNED`) offers the version's references (OpenStreetMap: the base map itself; Sentinel-2: the reference
   picture) and the city's **published layers**, by name and year, oldest first (`base-layers.ts`: a `LiveList` of
   `cities/{city}/layers`, `published` only). A layer chosen is drawn opaque through the map's own `preview.show({ layers })`
   (`GeorefMap.showBase`): the page's **one map**, no second instance, and never Mapbox Satellite. It goes on before the pictures when

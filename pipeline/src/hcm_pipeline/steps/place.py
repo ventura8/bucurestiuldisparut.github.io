@@ -7,7 +7,7 @@ A class with no placer yet, or a placer that cannot prove a placement, never fai
 waits for points (`awaiting_gcps`). A low-confidence placer leaves its correspondences as suggested pairs first. Once the owner saved
 pairs on the parked series (`imagery.saveGcps`: the version's `georef`, `method: 'gcps'`), `place` warps it through them
 (`placing/owner.py`) and never runs the class's placer again: it only parked the series once more (2026-11-10). A series stitched
-again (`restitch` in its job's parameters, DECISIONS §205) is first laid on its overview again (`placing/restitch.py`).
+again (`restitch` in its job's parameters, DECISIONS §210) is first laid on its overview again (`placing/restitch.py`).
 """
 
 from collections.abc import Mapping

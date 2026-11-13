@@ -1,5 +1,5 @@
 /**
- * M20 (DECISIONS-for-review.md §205): a placed archive series with pieces left out of its overview mosaic is offered Locate again,
+ * M20 (DECISIONS-for-review.md §210): a placed archive series with pieces left out of its overview mosaic is offered Locate again,
  * which lays it on its overview again in a new version of the same layer (`imagery.locateAgain`, `functions/src/imagery/restitch.ts`).
  */
 import { axeViolations } from '@hcm/test-support/axe';

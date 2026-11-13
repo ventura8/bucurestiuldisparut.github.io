@@ -1,4 +1,4 @@
-/** M20 (DECISIONS-for-review.md §205): the shared rule of a series Locate again lays on its overview again. */
+/** M20 (DECISIONS-for-review.md §210): the shared rule of a series Locate again lays on its overview again. */
 import { describe, expect, it } from 'vitest';
 
 import { helpFlagsOf, restitchable } from '../src/index.js';

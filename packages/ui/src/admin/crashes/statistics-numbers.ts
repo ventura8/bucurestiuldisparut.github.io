@@ -16,6 +16,7 @@ import type {
     NamedCountPort,
     StatisticsDaysPort,
     StatisticsNumbersPort,
+    StatisticsPendingPort,
     StatisticsProblemPort,
     StatisticsViewState,
     StepNumbersPort,
@@ -62,7 +63,7 @@ const FIXES: Readonly<Record<StatisticsProblemPort, (projectId: string) => reado
         { href: dataApiUrl(projectId), key: 'adminContent.statistics.problem.openConsole', external: true },
     ],
     noProperty: () => [SETUP_FIX],
-    noReports: () => [SETUP_FIX],
+    refused: () => [{ href: GA_HOME, key: 'adminContent.statistics.open', external: true }],
     notSetUp: () => [SETUP_FIX],
     noAccess: () => [{ href: GA_HOME, key: 'adminContent.statistics.open', external: true }],
     consent: () => [],
@@ -279,10 +280,30 @@ function wizardTable(context: NumbersContext, numbers: StatisticsNumbersPort, wi
         </div>`;
 }
 
+/**
+ * Why the apps, the admin screens and the wizards' steps are incomplete, with the fix: Setup's step g for a name GA4 does
+ * not know, else when to look again.
+ */
+function pendingTemplate(locale: Locale, pending: StatisticsPendingPort | null): TemplateResult {
+    if (pending === null) {
+        return EMPTY;
+    }
+    const key = pending.reason;
+    return html`<p class="note" role="status" data-statistics-pending=${key}>
+            <hcm-icon name="schedule"></hcm-icon
+            ><span
+                >${contentText(locale, `adminContent.statistics.pending.${key}`)}
+                ${contentText(locale, `adminContent.statistics.pending.${key}Fix`)}</span
+            >
+        </p>
+        ${key === 'notRegistered' ? fixLink(locale, SETUP_FIX) : EMPTY}`;
+}
+
 function numbersTemplate(context: NumbersContext, numbers: StatisticsNumbersPort): TemplateResult {
     const { locale } = context;
     const identity = (value: string): string => value;
-    return html`<h4>${contentText(locale, 'adminContent.statistics.numbers.overview')}</h4>
+    return html`${pendingTemplate(locale, numbers.pending)}
+        <h4>${contentText(locale, 'adminContent.statistics.numbers.overview')}</h4>
         <dl class="facts">
             <dt>${contentText(locale, 'adminContent.statistics.numbers.visitors')}</dt>
             <dd data-statistics-visitors>${formatCount(locale, numbers.visitors)}</dd>

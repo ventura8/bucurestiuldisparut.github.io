@@ -21,7 +21,7 @@ type StatisticsProblemKind =
     | 'apiDisabled'
     | 'noProperty'
     | 'noAccess'
-    | 'noReports'
+    | 'refused'
     | 'notSetUp'
     | 'unavailable'
     | 'blocked'
@@ -57,6 +57,11 @@ export interface StatisticsSource {
     /** The project's GA4 measurement id (`setup.analyticsConfig`), or null when Google Analytics is not set up. */
     measurementId(): Promise<string | null>;
     read(access: StatisticsToken, measurementId: string, days: StatisticsDays): Promise<StatisticsNumbers>;
+    /**
+     * Logs and measures why the numbers are missing or incomplete, as one reason code (`statistics_refused`,
+     * `statistics_notReady` …): a `ui_error` with the code, never Google's words.
+     */
+    report?(code: string): void;
 }
 
 const CONSENT_PROBLEMS: Readonly<Record<Exclude<StatisticsConsent, { granted: true }>['failure'], StatisticsProblemKind>> = {
@@ -74,7 +79,8 @@ const NOT_SET_UP: ReadonlySet<string> = new Set(['apiError.analytics.notEnabled'
 const GOOGLE_PROBLEMS: Readonly<Partial<Record<GoogleApiError['kind'], StatisticsProblemKind>>> = {
     unauthorized: 'consent',
     notFound: 'noProperty',
-    invalid: 'noReports',
+    // Any other 400: the names are checked against the property's metadata first, so this is a request GA4 refuses.
+    invalid: 'refused',
 };
 
 /** A refused Google call as the page's problem: a 403 names the disabled API or the missing access. */
@@ -173,7 +179,12 @@ class StatisticsFlow implements StatisticsIntents {
             await this.#load(consent.access, days);
             return;
         }
+        this.#report(CONSENT_PROBLEMS[consent.failure]);
         this.update({ status: 'error', numbers: null, notice: null, problem: CONSENT_PROBLEMS[consent.failure] });
+    }
+
+    #report(reason: string): void {
+        this.source.report?.(`statistics_${reason}`);
     }
 
     async #load(access: StatisticsToken, days: StatisticsDays): Promise<void> {
@@ -183,9 +194,14 @@ class StatisticsFlow implements StatisticsIntents {
         try {
             const numbers = await this.source.read(access, await this.#measurementId(), days);
             this.#cache.set(days, numbers);
+            if (numbers.pending !== null) {
+                this.#report(numbers.pending.reason);
+            }
             this.#answer(mine, { status: 'ready', numbers });
         } catch (error) {
-            this.#answer(mine, { status: 'error', numbers: null, ...problemOf(error) });
+            const problem = problemOf(error);
+            this.#report(problem.problem ?? 'unavailable');
+            this.#answer(mine, { status: 'error', numbers: null, ...problem });
         }
     }
 
