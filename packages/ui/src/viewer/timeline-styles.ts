@@ -45,6 +45,15 @@ export const timelineStyles = [
             --hcm-x: 50%;
         }
 
+        /*
+         * The card's touch-action reaches the track: the scroller is a scroll container, where a browser stops looking up
+         * for touch-action, so without it a finger on the track panned and cancelled the scrub (lesson 642).
+         */
+        .scroller,
+        .track {
+            touch-action: inherit;
+        }
+
         .scroller {
             --hcm-fade-to: to right;
 

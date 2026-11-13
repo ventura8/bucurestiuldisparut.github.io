@@ -130,6 +130,21 @@ describe('<hcm-timeline> under a finger', () => {
         document.body.replaceChildren();
     });
 
+    it('happyPath_theCardsTouchActionReachesTheTrackInsideItsScroller', async () => {
+        // A real finger on the track panned and cancelled the scrub: the scroller is a scroll container (lesson 642).
+        const element = await timeline();
+
+        expect(getComputedStyle(shadowQuery(element, '.scroller')).touchAction).toBe('none');
+        expect(getComputedStyle(shadowQuery(element, '.track')).touchAction).toBe('none');
+    });
+
+    it('badPath_aScrollingCardStillLetsAFingerScrollItAlongTheTrack', async () => {
+        const element = await timeline({ stops: [...Array.from({ length: 61 }, (_, at) => 1924 + at), null], layers: [] });
+
+        expect(element.getAttribute('density')).toBe('scroll');
+        expect(getComputedStyle(shadowQuery(element, '.track')).touchAction).toBe('pan-x');
+    });
+
     it('happyPath_aFingerDragAcrossYearsSelectsEachLiveAndTheChipFollows', async () => {
         const element = await timeline();
         const events = recordEvents(element, 'hcm-year-change');
@@ -165,7 +180,7 @@ describe('<hcm-timeline> under a finger', () => {
             fire(window, 'pointermove', at(element, index), 'touch');
         }
         expect(events.map((event) => event.detail)).toEqual([{ year: 1967 }]);
-        // The viewer renders the store's year (1967) back into the timeline before the frame (lesson 648).
+        // The viewer renders the store's year (1967) back into the timeline before the frame (lesson 641).
         element.value = 1967;
         fire(window, 'pointerup', at(element, 9), 'touch');
         await frame();

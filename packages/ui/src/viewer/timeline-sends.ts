@@ -3,7 +3,7 @@
  * drag, a finger's scrub) its first new year at once, then at most one per animation frame, the latest, so a fast scrub
  * selects live without queueing map work, and the press's end sends what is left. The store writes the hash with
  * `replaceState`, so the scrub leaves no history entry per year. The year sent is the one selected, kept here: the
- * viewer renders the timeline with the store's year meanwhile, one behind (lesson 648).
+ * viewer renders the timeline with the store's year meanwhile, one behind (lesson 641).
  */
 export class YearSends {
     readonly #send: (year: number | null) => void;
