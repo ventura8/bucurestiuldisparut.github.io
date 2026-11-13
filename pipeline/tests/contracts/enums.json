@@ -26,7 +26,8 @@
         "worker",
         "free-tier",
         "parts",
-        "daily"
+        "daily",
+        "archive-copy"
     ],
     "JOB_STEP_STATES": ["pending", "running", "done", "failed", "skipped"],
     "PIPELINE_STEPS": [

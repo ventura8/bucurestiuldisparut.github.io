@@ -406,6 +406,14 @@ describe('a job lost in a step as the page reads it (findings 60 and 61 of 2026-
             jobDoc({ status: 'failed', error: { code: 'apiError.internal', message: 'apiError.unavailable' } }),
         );
         expect(jobViewOf(stored(ID, other)).error?.message).toBe('');
+        // The owner's rule of 2026-11-13: an archive series' missing files show the plain sentence alone, never the archive's id.
+        const missing = jobDocSchema.parse(
+            jobDoc({
+                status: 'failed',
+                error: { code: 'apiError.imagery.archiveMissing', message: 'no record of ar-0123456789abcdef on this computer' },
+            }),
+        );
+        expect(jobViewOf(stored(ID, missing)).error).toEqual({ notice: { key: 'apiError.imagery.archiveMissing' }, message: '' });
         // A running job's running step stays running.
         expect(jobViewOf(stored(ID, jobDocSchema.parse(jobDoc({ status: 'running', steps: { georef } })))).steps[5]?.status).toBe(
             'running',
