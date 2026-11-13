@@ -3889,7 +3889,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
     - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**
 
-662. **The published 1895-1899 layer had three white patches where three pieces were never placed.**
+662. **A second worker failed every archive series it took: the scanned maps were on another computer.**
+    - Seen: live, 2026-11-13: after the NUC and the PC joined the laptop, five archive series failed at `gather` with "no record of
+      ar-971b77774eee2871 on this computer", and an atlas used up its attempts on the same cause.
+    - Found by: the owner's Jobs page; every test ran one worker, which always held the archive it imported.
+    - Fix and pin: a worker without the sheets hands the job back unspent and the computer with the archive sends a copy through the
+      bucket (M20 §20; `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/test_archive_copy.py`).
+    - **Data that lives on one machine needs a test with two workers: one that has it and one that does not.**
+
+663. **The published 1895-1899 layer had three white patches where three pieces were never placed.**
     - Seen: 2026-11-13, the owner on layer `1895-1899` (version `ar-mw993zri-s-4054e55659a3`): white patches near Grivița, Obor/Gara de Est and Tineretului. The version's `help.stitched` said `joined 57`, `leftOut` img366, img390, img418 (`no-join`); all three files are in harti.zip, not blank, and are the same printed plan as the overview `Harta Bucuresti 1895.png`.
     - Cause: `fit_tiles` matches each piece against the whole overview's 20,000 ORB features; on the quiet edges of town (rail yards, fields, a park) a piece's features lose the 0.75 ratio test to look-alikes elsewhere on the sheet, so fewer than 10 inliers survive. The consensus filter only rescues weak fits that exist; a piece with none was dropped, and the series was published with the holes.
     - Fix and pin: a second pass, `overview_holes.refit_in_holes`: once the others are placed, a left-out piece is turned and scaled by their consensus (as scanned and upside down: img418 was scanned the other way up) and searched by normalised cross-correlation only where it covers uncovered overview, kept when it clearly beats every other place, refined by its features within that window. Real files: 0.96 / 0.91 / 0.90 against next bests 0.66 / 0.51 / 0.15, 60 of 60 placed. `S-P20-HAPPY-OVERVIEW-HOLES`, `S-P20-BAD-OVERVIEW-HOLES-NOT-FOUND`. A published series had no way to be stitched again (its `place` only re-warps the kept picture through the pairs): Locate again now starts a new version that lays it on the overview again with the pairs kept (`S-A122-HAPPY-RESTITCH`, `S-P20-HAPPY-RESTITCH`).

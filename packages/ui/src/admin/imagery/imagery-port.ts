@@ -204,7 +204,7 @@ export interface VersionViewPort {
     readonly archive?: ArchiveReport | null;
     /** An archive series waiting with `layout-check`: its tiles wait for the tile-import wizard (`#/help/<id>/tiles`). */
     readonly layoutCheck?: boolean;
-    /** M20 (§204): published with pieces left out of its overview mosaic: offered Locate again (a new version). */
+    /** M20 (§205): published with pieces left out of its overview mosaic: offered Locate again (a new version). */
     readonly restitchable?: boolean;
     /**
      * M20 (§7): rights summary for the approval card (null: none). Approve stays off until `allowPublish`; Confirm when

@@ -468,7 +468,7 @@ belong to the dispatcher and the lease, so an execution never races its own retr
   imports are not used**; each start counts against `JOB_MAX_ATTEMPTS` as any (`apiError.imagery.attemptsExhausted`), and the budget
   guard stops it (`apiError.guardPaused`). A frame that parks again with the attempts used up can still take the admin's points:
   `imagery.saveGcps` goes on one short of the limit, so the dispatcher starts them instead of failing the job (S-A16-HAPPY-POINTS-AFTER-ATTEMPTS).
-  M20 (DECISIONS-for-review.md §204): on a published archive series with pieces left out of its
+  M20 (DECISIONS-for-review.md §205): on a published archive series with pieces left out of its
   overview mosaic, it starts a new version of the same layer that lays the series on its overview again with the pairs kept
   (`restitch.ts`; `apiError.layers.busy` when the layer has a version on its way; S-A122-HAPPY-RESTITCH).
 - **Cancel**: §4.2. The pipeline checks `cancelRequested` at every heartbeat and at its own checkpoints.

@@ -11,6 +11,7 @@
  */
 import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection } from '@hcm/shared';
 
+import { archiveJobFields } from './archive-fields.js';
 import { derivative, reviewedFields, versionEdits, versionFields } from './photo-fields.js';
 import { STORY_EDITS } from './stories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
@@ -309,8 +310,7 @@ export function jobDoc(creator: string, status = 'running'): Data {
         // Review of M18 item 3: an editor placing points on the parked frame (the georeferencer's mark).
         placingPoints: true,
         // M20 (docs/research/M20-import-local.md §1.1, §1.3): an archive series' originals on the computer, and the day it counted.
-        localOnly: true,
-        countedAt: past(),
+        ...archiveJobFields(),
         ...systemStamp('pipeline'),
     };
 }

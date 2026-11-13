@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from hcm_pipeline.governor.actuate import Actuators, Gate, apply_gdal, idle_io, libc_syscall, lower_priority
 from hcm_pipeline.governor.budget import budget_for
-from hcm_pipeline.governor.governor import CHOICE_FILE, Governor, load_choice, owner_threads
+from hcm_pipeline.governor.governor import CHOICE_FILE, Governor, load_choice, owner_threads, steady
 from hcm_pipeline.governor.policy import Choice
 from hcm_pipeline.governor.signals import Cpu, Power, Signals, Usage
 from hcm_pipeline.matcher.box import MatcherBudget
@@ -243,3 +243,15 @@ def test_the_headroom_follows_heat_load_and_the_pause(tmp_path: Path) -> None:
     probe.signals = replace(LINUX_NVIDIA_CDI, power=Power("battery", 10))
     governor.tick()
     assert governor.headroom() == 0.0
+
+
+def test_a_thread_more_or_less_within_a_profile_is_not_a_change(tmp_path: Path) -> None:
+    """The laptop (2026-11-13): 88 to 92 °C moved quiet's threads 1, 2, 3, 4 in turn, one log line and one quota change each."""
+    governor, probe, _options, _gate = _governor(tmp_path, replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, temp_c=85.0)))
+    assert governor.tick().budget.threads == 9
+    for temp, threads in ((84.0, 9), (86.0, 9), (83.0, 11), (87.0, 7), (86.5, 7)):
+        probe.signals = replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, temp_c=temp))
+        assert governor.tick().budget.threads == threads
+    probe.signals = replace(LINUX_NVIDIA_CDI, idle_s=0.0)
+    assert governor.tick().budget.threads == 4
+    assert steady(None, budget_for("full", LINUX_NVIDIA_CDI)).threads == 14

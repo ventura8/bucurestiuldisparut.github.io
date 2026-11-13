@@ -266,6 +266,9 @@ const LEFT_BY_THE_RUN = [
     'placingPoints',
     'cancelRequested',
     'workerOverdueAt',
+    // M20 (2026-11-13): a retried archive series starts its hand-backs again and wants a fresh copy of its sheets.
+    'archiveReturns',
+    'archiveCopy',
 ] as const;
 
 function retriedJob(job: JobDoc, atPublish: boolean, stamp: Stamp): JobDoc {

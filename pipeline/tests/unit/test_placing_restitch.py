@@ -1,4 +1,4 @@
-"""A placed series laid on its overview again with the owner's pairs kept (`placing/restitch.py`, DECISIONS-for-review.md §204)."""
+"""A placed series laid on its overview again with the owner's pairs kept (`placing/restitch.py`, DECISIONS-for-review.md §205)."""
 
 from dataclasses import replace
 from pathlib import Path
