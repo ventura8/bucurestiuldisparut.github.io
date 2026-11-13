@@ -1467,6 +1467,61 @@
             "notes": "The owner, 2026-11-08. packages/ui/src/viewer/viewer-styles.ts (.dock.chip)."
         },
         {
+            "id": "S-V04-HAPPY-YEAR-CHIP",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A mouse over a year without its label shows the year in a chip above the timeline; a year of several dates names them",
+            "asserts": "at 768x1024 with 21 years: hovering 1965 (unlabelled) shows '1965' above the card, inside the viewport, over no control (compass, zoom group, menu button, photos chip); hovering 1964 (two dated layers, the first stop) shows '1964 · …' and stays over the card's start; unit: packages/ui/test/viewer/hcm-timeline-tip.test.ts, timeline-tip.test.ts",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §192). packages/ui/src/viewer/timeline-tip.ts, timeline-scrub.ts, timeline-pointer.ts, timeline-sends.ts, hcm-timeline.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
+        },
+        {
+            "id": "S-V04-BAD-YEAR-CHIP-LABELLED",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A mouse over a labelled year of one date shows no chip",
+            "asserts": "at 768x1024, hovering 1966 (labelled, undated) -> no chip in the timeline",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §192). packages/ui/src/viewer/timeline-tip.ts, timeline-scrub.ts, timeline-pointer.ts, timeline-sends.ts, hcm-timeline.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
+        },
+        {
+            "id": "S-V04-HAPPY-TOUCH-SCRUB",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A finger dragged across the years selects each one live, the chip following it clear of the finger",
+            "asserts": "at 360x800 (standing) and 768x1024 (lying), CDP touch: down on 1968, moved over 1969 to 1970 and held -> the slider says 1970, layers=e2e-1970, the chip says 1970 beside the standing card or above the lying one; lifted -> no chip",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §192). packages/ui/src/viewer/timeline-tip.ts, timeline-scrub.ts, timeline-pointer.ts, timeline-sends.ts, hcm-timeline.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
+        },
+        {
+            "id": "S-V04-BAD-FAST-SCRUB",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A fast scrub ends on its last year with no other layer in front, and a swipe that starts on the map pans it and leaves the timeline",
+            "asserts": "at 360x800 and 768x1024: a finger over nine years and lifted -> the slider and layers= say 1976 only, no chip; then a vertical swipe in the map's middle -> the hash's view moves, the timeline stays at 1976; unit: at most one hcm-year-change per frame (hcm-timeline-tip.test.ts)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §192). packages/ui/src/viewer/timeline-tip.ts, timeline-scrub.ts, timeline-pointer.ts, timeline-sends.ts, hcm-timeline.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
+        },
+        {
+            "id": "S-V04-HAPPY-YEAR-CHIP-TOUR",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The year chip under a mouse and under a finger passes the tour's layout and accessibility checks at every viewport",
+            "asserts": "the journey timeline-chip of e2e/tour/states.ts: the hover chip and a finger held mid-scrub, each through expectStateSound at c320, c360, c915l, m768, e1024, l1440 and the rest of the tour's viewports",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §192). packages/ui/src/viewer/timeline-tip.ts, timeline-scrub.ts, timeline-pointer.ts, timeline-sends.ts, hcm-timeline.ts. Test: e2e/tour/viewer.tour.ts; states e2e/tour/timeline-chip-states.ts."
+        },
+        {
             "id": "S-V04-HAPPY-PHONE-ICON-CHIP",
             "behaviour": "V04",
             "area": "viewer",

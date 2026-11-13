@@ -305,6 +305,7 @@ function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers
             id="timeline"
             data-layout-check="timeline"
             .stops=${view.stops}
+            .layers=${state.manifest?.layers ?? []}
             .value=${state.year}
             .locale=${view.locale}
             .orientation=${view.layout.timeline}
