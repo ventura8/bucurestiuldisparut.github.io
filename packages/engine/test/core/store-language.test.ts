@@ -1,4 +1,4 @@
-/** The visitor's language among sixteen, its texts fetched first (V11; `core/catalogues.ts`, DECISIONS-for-review.md §195). */
+/** The visitor's language among sixteen, its texts fetched first (V11; `core/catalogues.ts`, DECISIONS-for-review.md §196). */
 import { hasCatalogue, type ViewerLocale } from '@hcm/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

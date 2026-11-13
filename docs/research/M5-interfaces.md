@@ -347,7 +347,7 @@ image (no download: every package is already in the lockfile); `scripts/ci/check
 
 - jsDelivr's GitHub route serves the files of a tag, and `dist/` is ignored, so **the release commit holds the built
   engine in `cdn/engine/`**: every file of `packages/engine/dist` but the source maps (`engine.iife.js`, `engine.mjs`,
-  its chunks `compare-<hash>.js` and `firebase-sdk-<hash>.js`, `engine.css`, `fonts/`, `i18n/` (the viewer's sixteen languages, fetched when shown: DECISIONS-for-review.md §195), `THIRD_PARTY_NOTICES.txt`), each
+  its chunks `compare-<hash>.js` and `firebase-sdk-<hash>.js`, `engine.css`, `fonts/`, `i18n/` (the viewer's sixteen languages, fetched when shown: DECISIONS-for-review.md §196), `THIRD_PARTY_NOTICES.txt`), each
   file's last `//# sourceMappingURL=` line removed (the maps are attached to the GitHub Release instead). About 1 MB;
   `cdn/engine/` is replaced, never added to, so the tree holds one release at a time and each tag keeps its own.
 - `cdn/engine/release.json` (`engineReleaseSchema`, done): `version`, `repository`, `base` (the pinned folder,

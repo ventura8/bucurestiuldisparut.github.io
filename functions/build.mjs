@@ -79,7 +79,7 @@ try {
         await copyFile(`${ENGINE_DIST}${file}`, `${KIT_DIR}engine/${file}`);
     }
     await cp(`${ENGINE_DIST}fonts`, `${KIT_DIR}engine/fonts`, { recursive: true });
-    // The languages' texts the engine fetches when it shows one (DECISIONS-for-review.md §195).
+    // The languages' texts the engine fetches when it shows one (DECISIONS-for-review.md §196).
     await cp(`${ENGINE_DIST}i18n`, `${KIT_DIR}engine/i18n`, { recursive: true });
 } catch (error) {
     throw new Error(`the export kit needs the engine's build (npm run build --workspace @hcm/engine first): ${String(error)}`, {

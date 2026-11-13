@@ -11,7 +11,7 @@ import { VIEWER_LOCALES, hasCatalogue, translate, type MessageKey, type ViewerLo
  * The credits the pipeline writes, as text keys, each with its stored English text (`USGS_ATTRIBUTION`,
  * `LANDSAT_ATTRIBUTION`; a test holds them equal to those and to the English catalogue). Spelt here, not read from the
  * English catalogue: the engine fetches only the page's language, so on any other page English is not here
- * (`docs/LESSONS.md` 659), and not imported from the schemas, whose zod the engine's bundle would then carry.
+ * (`docs/LESSONS.md` 663), and not imported from the schemas, whose zod the engine's bundle would then carry.
  */
 export const STORED_CREDITS: Readonly<Partial<Record<MessageKey, string>>> = {
     'layers.attribution.usgs': 'USGS EROS, declassified imagery (public domain)',

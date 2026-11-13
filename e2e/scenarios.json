@@ -2141,7 +2141,7 @@
             "asserts": "Settings' list shows the 16 languages by their own names, each with its lang, the current one checked; German, Arabic and Japanese chosen in turn relabel the whole viewer with no text of another language, the hash keeps lang=<code> and a reload keeps the last; each language's file is fetched once; every other language boots from ?lang=",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §195). Test: e2e/specs/viewer/languages.spec.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §196). Test: e2e/specs/viewer/languages.spec.ts."
         },
         {
             "id": "S-V11-HAPPY-RTL",
@@ -2152,7 +2152,7 @@
             "asserts": "?lang=ar: html and the viewer dir=rtl, the map container left to right, the timeline's today on the left, no text of another language",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §195). Test: e2e/specs/viewer/languages.spec.ts, packages/ui/test/viewer/languages.test.ts, packages/ui/test/components/rtl.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §196). Test: e2e/specs/viewer/languages.spec.ts, packages/ui/test/viewer/languages.test.ts, packages/ui/test/components/rtl.test.ts."
         },
         {
             "id": "S-V11-HAPPY-FALLBACK-TEXT",
@@ -2163,7 +2163,7 @@
             "asserts": "German viewer, a photo whose title is only in Romanian: the Romanian title and the note 'Sprache des Textes: Română (noch nicht übersetzt)'; a text with English shows the English one with lang=en (unit: languages.test.ts)",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §195). Test: e2e/specs/viewer/languages.spec.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §196). Test: e2e/specs/viewer/languages.spec.ts."
         },
         {
             "id": "S-V11-HAPPY-TRANSLATING-FALLS-BACK",
@@ -2174,7 +2174,7 @@
             "asserts": "the Settings list names the 25 languages (LANGUAGE_NAMES); Persian chosen: html and the viewer dir=rtl, fa.json and en.json fetched (the file says fallback: en), the menu and the timeline named in English, no text of a third language",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback, DECISIONS-for-review.md §196). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts, packages/shared/test/i18n-viewer.test.ts."
+            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback, DECISIONS-for-review.md §197). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts, packages/shared/test/i18n-viewer.test.ts."
         },
         {
             "id": "S-V11-BAD-MISSING-KEY-FALLS-BACK",
@@ -2196,7 +2196,7 @@
             "asserts": "tour: a photo, home and the language list in Arabic, right to left, through the layout, accessibility and i18n checkers at the phone, the phone held landscape, the laptop and the 4K screen",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §195). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §196). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
         },
         {
             "id": "S-V11-HAPPY-CJK-TOUR",
@@ -2207,7 +2207,7 @@
             "asserts": "tour: home and the Layers panel in Japanese, in the system's Japanese font, through the layout, accessibility and i18n checkers at the per-push viewports",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §195). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §196). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
         },
         {
             "id": "S-V11-BAD-CATALOGUE-404",
@@ -2218,7 +2218,7 @@
             "asserts": "i18n/ko.json answers 404: Korean chosen from the list leaves the page in its language, the list's selection back on it, the hash without lang=ko, and the snackbar says the language could not be loaded",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §195). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/store-language.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §196). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/store-language.test.ts."
         },
         {
             "id": "S-V11-BAD-CATALOGUE-STALE",
@@ -2229,7 +2229,7 @@
             "asserts": "i18n/fr.json names engine 0.0.1: French is refused like a missing file, with the same message",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §195). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §196). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts."
         },
         {
             "id": "S-V11-BAD-BOOT-CATALOGUE",
@@ -2240,7 +2240,7 @@
             "asserts": "?lang=hi with i18n/hi.json refused: the viewer boots in Romanian and says the language could not be loaded; every file refused: the engine's one bilingual card (Romanian and English lines, each with its lang) and a Retry that reloads",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §195). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §196). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
         },
         {
             "id": "S-V11-BAD-UNKNOWN-HASH-LANG",
@@ -2251,7 +2251,7 @@
             "asserts": "#…&lang=xx -> Romanian, the hash's view still applied; setLang('xx') is ignored too",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §195). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §196). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
         },
         {
             "id": "S-V12-HAPPY",
