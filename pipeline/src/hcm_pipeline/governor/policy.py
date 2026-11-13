@@ -5,7 +5,8 @@
   of a switch to battery; it returns to full only after `CALM_S` with none of those.
 - Below `LOW_BATTERY_PCT` on battery it pauses, unless the owner allowed work on battery.
 - Thermal: at `CPU_HOT_C` on the processor or `GPU_HOT_C` on a graphics card it steps down one level (full to quiet, quiet to paused),
-  and steps back up only `COOL_MARGIN_C` below both.
+  and steps back up only `COOL_MARGIN_C` below both. Before that the budget's threads already shrink with the heat (`budget.py`,
+  from `WARM_C`), so the worker's own load seldom takes the processor there.
 """
 
 from dataclasses import dataclass, replace
@@ -22,7 +23,9 @@ LOW_BATTERY_PCT: Final = 30
 # matcher run; their trip points are 100 to 110. At 90 the governor would step down on every mobile processor at work, all day.
 CPU_HOT_C: Final = 95.0
 GPU_HOT_C: Final = 83.0
-COOL_MARGIN_C: Final = 10.0
+# 5, not 10 (2026-11-13): with other programs holding the laptop's processor at 88 to 93 °C, a resume at 85 never came and the worker
+# paused for hours; at 90 it resumes on the one thread the heat's share leaves it (budget.py), not on a full profile.
+COOL_MARGIN_C: Final = 5.0
 STEP_DOWN: Final[dict[Profile, Profile]] = {"full": "quiet", "quiet": "paused", "paused": "paused"}
 
 

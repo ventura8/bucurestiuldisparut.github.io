@@ -144,7 +144,7 @@ async function rewriteUntilSettled(deps: DatePlanDeps, cityId: string, rewrite: 
 /**
  * Writes the city's plan again, one rewrite per city at a time in an instance. Each reads every scene and version of the city
  * (about 480 frames for Bucharest), and `imagery-onJobWrite` takes 80 events at once in 256 MiB: three frames ending together
- * read the city three times over and ran out of memory (Cloud Error Reporting, 2026-11-13; LESSONS 659). A call that comes while
+ * read the city three times over and ran out of memory (Cloud Error Reporting, 2026-11-13; LESSONS 662). A call that comes while
  * one runs waits for one more rewrite that starts after it, so it still sees its own write; any number of them share that one.
  */
 export function rewriteDatePlan(deps: DatePlanDeps, cityId: string): Promise<void> {

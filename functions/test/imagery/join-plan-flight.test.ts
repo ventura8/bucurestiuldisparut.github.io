@@ -1,6 +1,6 @@
 /**
  * One rewrite of a city's plan at a time (`functions/src/imagery/join-plan.ts`): `imagery-onJobWrite` ran out of its 256 MiB when
- * three frames ended together and each read the whole city (Cloud Error Reporting, 2026-11-13; docs/LESSONS.md 659). Calls that
+ * three frames ended together and each read the whole city (Cloud Error Reporting, 2026-11-13; docs/LESSONS.md 662). Calls that
  * come while a rewrite runs share one more rewrite, which starts after them, so the plan still shows what they wrote.
  */
 import { FIRESTORE_PATHS, datePlanDocSchema } from '@hcm/shared';
