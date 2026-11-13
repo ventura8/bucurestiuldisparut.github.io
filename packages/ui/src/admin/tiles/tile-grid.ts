@@ -15,7 +15,7 @@ import { sheetLabel, tilesText as t } from './tiles-text.js';
 import { tileStyles } from './tiles-styles.js';
 import type { TileSheetPort, TilesIntentsPort, TilesViewState } from './tiles-port.js';
 
-export const HCM_TILE_GRID_TAG = 'hcm-tile-grid';
+const HCM_TILE_GRID_TAG = 'hcm-tile-grid';
 
 const MOVES: Readonly<Record<string, readonly [number, number]>> = {
     ArrowUp: [-1, 0],
@@ -271,7 +271,7 @@ class HcmTileGrid extends LitElement {
         return html`<div class="tools">
             <hcm-button
                 variant="tonal"
-                icon="open_with"
+                icon="drag_indicator"
                 .pressed=${this.moving}
                 ?disabled=${chosen === undefined}
                 @click=${() => {

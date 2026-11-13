@@ -22,7 +22,7 @@ import { ownerSeamsOf, seamsAfter, seamSpriteOf, weakSeamsOf, type DraftSeam } f
 import { INITIAL_TILES, seamPortOf, sheetPortOf } from './view.js';
 
 /** The stitched picture of a series that waits for its tiles, with its layout. */
-export function waitingLayout(version: LayerVersionDoc): (Stitched & { readonly layout: StitchLayout }) | undefined {
+function waitingLayout(version: LayerVersionDoc): (Stitched & { readonly layout: StitchLayout }) | undefined {
     const stitched = waitingStitched(version);
     return stitched?.layout === undefined ? undefined : { ...stitched, layout: stitched.layout };
 }

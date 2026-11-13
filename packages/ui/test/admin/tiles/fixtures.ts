@@ -2,7 +2,7 @@
 import type { TileSeamPort, TileSheetPort, TilesViewState } from '../../../src/admin/tiles/tiles-port.js';
 
 /** A one-pixel grey JPEG-like image as a data address (the page only binds it). */
-export const SPRITE = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
+const SPRITE = 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
 
 function sheet(index: number, row: number, col: number, more: Partial<TileSheetPort> = {}): TileSheetPort {
     return {

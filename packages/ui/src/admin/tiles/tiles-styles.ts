@@ -8,6 +8,7 @@ import { css } from 'lit';
 export const tileStyles = css`
     :host {
         --hcm-tile-cell: 88px;
+
         /* At 320 px even a 6 : 1 strip is 48 px high: a touch target on a medium window. */
         --hcm-seam-side: 320px;
     }
@@ -15,6 +16,7 @@ export const tileStyles = css`
     @media (width < 600px) {
         :host {
             --hcm-tile-cell: 64px;
+
             /* A strip as wide as a 320 px window allows, so even a 6 : 1 strip is 48 px high (a touch target); the two stack. */
             --hcm-seam-side: 288px;
         }

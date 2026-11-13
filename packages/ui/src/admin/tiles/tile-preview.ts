@@ -15,7 +15,7 @@ import { tilesText as t } from './tiles-text.js';
 import { tileStyles } from './tiles-styles.js';
 import type { TileQualityPort, TilesIntentsPort, TilesViewState } from './tiles-port.js';
 
-export const HCM_TILE_PREVIEW_TAG = 'hcm-tile-preview';
+const HCM_TILE_PREVIEW_TAG = 'hcm-tile-preview';
 
 /** One line of the meter: its text, its value within its range, and whether it holds. */
 interface MeterLine {
@@ -27,7 +27,7 @@ interface MeterLine {
     readonly ok: boolean;
 }
 
-export function meterLines(quality: TileQualityPort): readonly MeterLine[] {
+function meterLines(quality: TileQualityPort): readonly MeterLine[] {
     const { placedPct, seamMedian, seamRmsPx } = quality;
     return [
         {

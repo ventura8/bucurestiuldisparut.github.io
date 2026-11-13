@@ -15,7 +15,7 @@ import { tilesText as t } from './tiles-text.js';
 import { tileStyles } from './tiles-styles.js';
 import type { TilePointPort, TileRectPort, TileSeamPort, TilesIntentsPort, TilesViewState } from './tiles-port.js';
 
-export const HCM_SEAM_PAIR_TAG = 'hcm-seam-pair';
+const HCM_SEAM_PAIR_TAG = 'hcm-seam-pair';
 
 type Side = 'a' | 'b';
 
@@ -61,7 +61,7 @@ function placeOf(point: TilePointPort, sheet: TileRectPort): Readonly<Record<str
 }
 
 /** Where a click on a strip lands in the oriented sheet's pixels. */
-export function pointOf(event: MouseEvent, element: Element, sheet: TileRectPort): TilePointPort {
+function pointOf(event: MouseEvent, element: Element, sheet: TileRectPort): TilePointPort {
     const box = element.getBoundingClientRect();
     const across = (event.clientX - box.left) / Math.max(box.width, 1);
     const down = (event.clientY - box.top) / Math.max(box.height, 1);

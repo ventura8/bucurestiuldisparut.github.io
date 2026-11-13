@@ -87,7 +87,7 @@ export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> =
     },
     /** The tile-import wizard: opened from an archive series waiting with `layout-check`, never from the navigation. */
     help: {
-        icon: 'grid_view',
+        icon: 'crop_free',
         needsBackend: true,
         inCompactBar: false,
         inCompactBarOnceSetUp: false,

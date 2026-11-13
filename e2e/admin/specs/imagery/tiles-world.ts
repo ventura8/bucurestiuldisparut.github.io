@@ -27,7 +27,7 @@ interface Quality {
     readonly verdict: 'good' | 'check' | 'poor';
 }
 
-export const CHECK: Quality = { placedPct: 80, seamMedian: 0.48, seamRmsPx: 6.5, verdict: 'check' };
+const CHECK: Quality = { placedPct: 80, seamMedian: 0.48, seamRmsPx: 6.5, verdict: 'check' };
 export const GOOD: Quality = { placedPct: 100, seamMedian: 0.82, seamRmsPx: 1.1, verdict: 'good' };
 export const POOR: Quality = { placedPct: 20, seamMedian: -0.1, seamRmsPx: 40, verdict: 'poor' };
 
