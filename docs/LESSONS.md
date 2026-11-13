@@ -3684,3 +3684,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-12, the viewer tour at 360 × 800 and 915 × 412: the Layers strip pinned on 2026-11-10 covered the overlay switches and sliders the list scrolled under it (focus obscured, targets of 52 × 32 and 4 × 44), and at peek height Tab reached the strip's switches where nobody could see them; the overlay rows' 48 px rings also overlapped one another (52 × 40).
     - Fix and pin: the strip is sticky in the docked pane only; the overlay rows and the map-label rows are 48 px each (`packages/ui/test/viewer/hcm-layer-panel.test.ts`, the tour's Layers states).
     - **Pin a strip only where the pane is tall enough; a modal sheet's content scrolls whole, and rows of 48 px targets are 48 px apart.**
+
+628. **A track that moved code into a lazily loaded part left the part asking for a binding its host never gave.**
+    - Seen: 2026-11-13, the merge queue (track/mergequeue): after track/extras the engine's build refused swipe compare's extra (`compare carries packages/shared/src/i18n/...: it must take it from the host`).
+    - Cause: track/extras listed the host's bindings for the code compare had when it branched; `feat/engine-rewrite` then gave compare `localizedCredit` from `@hcm/shared/credits`, a subpath the host did not map.
+    - Found by: the extras' own build check (`scripts/site/src/engine-extras.ts`). Fix: `@hcm/shared/credits` maps to the same host entry and `host-shared.ts` exports `localizedCredit`; the side part's kit test (`packages/ui/test/viewer/extras-loader.test.ts`) guards the other lazily loaded part the same way.
+    - **After merging branches that touch a lazily loaded part or what it imports, build the engine and run the part's kit test before anything else: its binding lists are written by hand and go stale silently.**
+
+629. **A merge of tracks that renumbered the same lessons and decisions moved some references and missed others.**
+    - Seen: 2026-11-13, the merge queue: stale-text's lessons became 621 and 622, but `.agent/skills/web/i18n_skill.md` and `ci_quality_gates_skill.md` still cited `LESSONS.md` 594, 595 (an unrelated release-channel lesson).
+    - Cause: the renumbering matched `lesson N` and `§N` only, not `` `docs/LESSONS.md` N ``.
+    - Fix and pin: every reference a merged track added is renumbered by the lines that track added, in each of the forms `lesson N`, `lessons N, M`, `` LESSONS.md` N ``, `§N` and `DECISIONS §N`; the merge note under each renumbered decision says the old and new numbers.
+    - **When a merge renumbers a lesson or a decision, search the track's own added lines for every way the repository cites one, not only the common one.**
