@@ -11,7 +11,7 @@ export const ro = {
     'adminSetup.step.site': 'Publicarea hărții',
     'adminSetup.why.pipeline': 'Fluxul transformă scanările USGS în straturi ale hărții; se instalează odată cu serverul.',
     'adminSetup.why.site': 'Vizitatorii văd harta la adresa proiectului, iar administrarea rămâne la /admin/.',
-    'adminSetup.cost.pipeline': 'Cam 0,10 USD pe lună, plus câțiva cenți pentru fiecare import.',
+    'adminSetup.cost.pipeline': 'Imaginea 0,10 USD/lună; un import descarcă pe 1 vCPU (0,09 USD/h), apoi lucrează pe 2 vCPU (0,19 USD/h).',
     'adminSetup.cost.site': 'Găzduirea Firebase: gratuită până la 10 GB stocați și 360 MB transferați pe zi.',
     'adminSetup.install.server.explain': 'Instalăm serverul de aici, cu Google Cloud Build, în proiectul tău. Durează cam 15 minute.',
     'adminSetup.install.server.action': 'Instalează serverul',

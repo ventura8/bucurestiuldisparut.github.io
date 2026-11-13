@@ -26,8 +26,13 @@ export const CLOUD_RUN_JOBS = { fetch: 'raster-fetch', std: 'raster-pipeline', x
 export const PIPELINE_RUN_ARGS = ['run'] as const;
 /** The task queue of the publisher (`imagery.publish`: one at a time, at most two MTS calls a minute). */
 export const IMAGERY_PUBLISH_QUEUE = 'imagery-publish';
-/** `imagery.tick`: dispatch, resume, poll Mapbox, run due deletions and deferred publishes, the monthly harvest. */
-export const IMAGERY_TICK_SCHEDULE = 'every 5 minutes';
+/**
+ * `imagery.tick`: dispatch, resume, poll Mapbox, run due deletions and deferred publishes, the monthly harvest. Every 15 minutes since
+ * 2026-11-12 (reports/resource-audit.md item 9: every 5 made 8,640 runs a month, nearly all with nothing to do): a queued job is
+ * dispatched by `imagery.onJobWrite` at once, and so are the waiting ones when a run ends; the tick only catches up (a lost run, a
+ * USGS wait over, a lost event), so 2,880 runs a month.
+ */
+export const IMAGERY_TICK_SCHEDULE = 'every 15 minutes';
 /** At most this many raster jobs a day per project (security review §3.4), and this many running at once. */
 export const JOBS_PER_DAY = 10;
 export const RUNNING_JOBS_MAX = 2;

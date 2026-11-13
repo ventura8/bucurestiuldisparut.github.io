@@ -94,4 +94,13 @@ export const M7_EXPORTS: readonly string[] = [
     'pipelineImageDigest',
     // Review of M18 item 3: how long the georeferencer's mark holds imagery.tick's Locate again back.
     'PLACING_POINTS_HOLD_MS',
+    // M26 (DECISIONS-for-review.md §176): the hardware governor's machine, profiles and their choices.
+    'WORKER_ACCELERATOR_VIAS',
+    'WORKER_MATCHERS',
+    'WORKER_POWER_SOURCES',
+    'WORKER_PROFILES',
+    'WORKER_PROFILE_CHOICES',
+    'WORKER_PROFILE_WHYS',
+    'workerMachineSchema',
+    'workerProfileRequestSchema',
 ];

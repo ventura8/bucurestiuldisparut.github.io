@@ -15,12 +15,12 @@ SCRIPT = Path(parallel.__file__)
 @pytest.mark.parametrize(
     ("name", "machine", "expected"),
     [
-        ("lint", Machine(16, 30), 4),
-        ("lint", LAPTOP, 1),
-        ("lint", Machine(16, 14), 2),
-        ("lint", Machine(16, 19), 3),
+        ("lint", Machine(16, 30), 7),
+        ("lint", LAPTOP, 2),
+        ("lint", Machine(16, 14), 3),
+        ("lint", Machine(16, 19), 4),
         ("lint", Machine(16, 3), 1),
-        ("lint", Machine(16, None), 4),
+        ("lint", Machine(16, None), 8),
         ("lint", Machine(2, 30), 1),
         ("gates", Machine(16, 30), 15),
         ("gates", LAPTOP, 4),
@@ -52,12 +52,12 @@ def test_happy_path_overrides_cap_every_kind_and_set_the_lint_workers() -> None:
 
 @pytest.mark.parametrize("value", ["", "0", "-1", "many"])
 def test_bad_path_an_unusable_override_is_ignored(value: str) -> None:
-    assert parallel.workers("lint", {parallel.MAX_VARIABLE: value, parallel.LINT_VARIABLE: value}, Machine(16, 14)) == 2
+    assert parallel.workers("lint", {parallel.MAX_VARIABLE: value, parallel.LINT_VARIABLE: value}, Machine(16, 14)) == 3
 
 
 def test_happy_path_the_tools_get_their_counts_unless_already_told() -> None:
-    assert parallel.tool_variables({}, LAPTOP) == {"HCM_LINT_WORKERS": "1", "VITEST_MAX_WORKERS": "4", "HCM_E2E_WORKERS": "4"}
-    assert parallel.tool_variables({"HCM_E2E_WORKERS": "1"}, LAPTOP) == {"HCM_LINT_WORKERS": "1", "VITEST_MAX_WORKERS": "4"}
+    assert parallel.tool_variables({}, LAPTOP) == {"HCM_LINT_WORKERS": "2", "VITEST_MAX_WORKERS": "4", "HCM_E2E_WORKERS": "4"}
+    assert parallel.tool_variables({"HCM_E2E_WORKERS": "1"}, LAPTOP) == {"HCM_LINT_WORKERS": "2", "VITEST_MAX_WORKERS": "4"}
 
 
 def test_happy_path_the_free_memory_is_read_in_whole_gib(tmp_path: Path) -> None:
@@ -75,6 +75,37 @@ def test_bad_path_a_meminfo_without_the_figure_leaves_only_the_cores(tmp_path: P
 
     assert parallel.available_gib(meminfo) is None
     assert parallel.available_gib(tmp_path / "missing") is None
+
+
+def test_happy_path_a_container_limit_caps_the_available_memory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "memory.max").write_text(f"{8 * 1024**3}\n", encoding="utf-8")
+    (tmp_path / "memory.current").write_text(f"{1024**3}\n", encoding="utf-8")
+    monkeypatch.setattr(parallel, "CGROUP", tmp_path)
+    monkeypatch.setattr(parallel, "available_gib", lambda: 20)
+
+    assert parallel.cgroup_spare_gib(tmp_path) == 7
+    assert parallel.this_machine().available_gib == 7
+
+
+@pytest.mark.parametrize(("limit", "used"), [("max", "1024"), ("123", None), (None, None)])
+def test_bad_path_no_limit_or_no_cgroup_leaves_the_host_figure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, limit: str | None, used: str | None
+) -> None:
+    for name, value in (("memory.max", limit), ("memory.current", used)):
+        if value is not None:
+            (tmp_path / name).write_text(value, encoding="utf-8")
+    monkeypatch.setattr(parallel, "CGROUP", tmp_path)
+    monkeypatch.setattr(parallel, "available_gib", lambda: 20)
+
+    assert parallel.cgroup_spare_gib(tmp_path) is None
+    assert parallel.this_machine().available_gib == 20
+
+
+def test_bad_path_neither_figure_leaves_only_the_cores(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(parallel, "cgroup_spare_gib", lambda _cgroup: None)
+    monkeypatch.setattr(parallel, "available_gib", lambda: None)
+
+    assert parallel.this_machine().available_gib is None
 
 
 def test_happy_path_the_command_prints_one_number(caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:

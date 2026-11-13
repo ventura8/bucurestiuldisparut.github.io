@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 import { dispatchJob, machineOf } from '../../src/imagery/dispatch.js';
 import { releaseCancelled } from '../../src/imagery/end.js';
-import { onJobWrite, onJobWriteFunction, transitionOf } from '../../src/imagery/on-job-write.js';
+import { onJobWrite, onJobWriteFunction, placeFreed, transitionOf } from '../../src/imagery/on-job-write.js';
 import { cancelAsked } from '../../src/imagery/tick-jobs.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 import {
@@ -305,6 +305,63 @@ describe('onJobWrite', () => {
         ['another write of a cancelled job', queued({ status: 'cancelled' }), queued({ status: 'cancelled', progress: 1 }), 'none'],
     ] as const)('transitionOf_%s', (_case, before, after, transition) => {
         expect(transitionOf(before, after)).toBe(transition);
+    });
+
+    it('happyPath_aRunThatEndsStartsTheJobWaitingForItsPlaceAtOnce @S-A12-HAPPY-FREED-PLACE', async () => {
+        // 2026-11-12 (reports/resource-audit.md item 9): the tick runs every 15 minutes; a job waiting for capacity does not wait for it.
+        const world = await readyWorld();
+        const running = queued({ status: 'running', lease: LEASE_HELD });
+        await seedJob(world, 'running-1', running);
+        await seedJob(world, 'running-2', running);
+        await seedJob(world, 'third', queued());
+        expect(await dispatchJob(world.deps, CITY, 'third')).toBe('waiting');
+        const ended = { ...running, status: 'succeeded' as const };
+        await seedJob(world, 'running-1', ended);
+
+        expect(await onJobWrite(world.deps, CITY, 'running-1', { before: running, after: ended })).toBe('none');
+
+        expect(world.jobs.runs).toHaveLength(1);
+        expect(await readJob(world, 'third')).toMatchObject({ status: 'starting' });
+    });
+
+    it.each([
+        ['a heartbeat', queued({ status: 'running', lease: LEASE_HELD }), queued({ status: 'running', lease: LEASE_HELD, progress: 0.5 })],
+        ['a start', queued({ status: 'starting' }), queued({ status: 'running', lease: LEASE_HELD })],
+        ['a new job that ended', undefined, queued({ status: 'succeeded' })],
+    ] as const)('badPath_%sFreesNoPlaceAndStartsNothing @S-A12-BAD-NO-FREED-PLACE', async (_case, before, after) => {
+        const world = await readyWorld();
+        await seedJob(world, 'running-2', queued({ status: 'running', lease: LEASE_HELD }));
+        await seedJob(world, 'third', queued({ waitReason: 'capacity' }));
+
+        expect(placeFreed(before, after)).toBe(false);
+        await onJobWrite(world.deps, CITY, 'running-1', { before, after });
+
+        expect(world.jobs.runs).toEqual([]);
+        expect(await readJob(world, 'third')).toMatchObject({ status: 'queued' });
+    });
+
+    it.each([
+        ['a run that succeeded', 'running', 'succeeded'],
+        ['a run that failed', 'running', 'failed'],
+        ['a start that went back to a USGS wait', 'starting', 'waiting_usgs'],
+        ['a rendered version', 'running', 'awaiting_approval'],
+        ['a lost run requeued', 'running', 'queued'],
+    ] as const)('placeFreed_%s', (_case, from, to) => {
+        expect(placeFreed(queued({ status: from }), queued({ status: to }))).toBe(true);
+    });
+
+    it('badPath_aQueuedJobThatCannotBeDispatchedIsLoggedAndTheOthersStillAre @S-A12-BAD-NO-FREED-PLACE', async () => {
+        const world = await readyWorld();
+        const running = queued({ status: 'running', lease: LEASE_HELD });
+        await seedJob(world, 'rp', queued({ type: 'republish', params: { versionId: 'job-1966-0712' } }));
+        await seedJob(world, 'next', queued());
+        world.deps.tasks.recorder.failNext('enqueue', new Error('queue down'));
+
+        await onJobWrite(world.deps, CITY, 'ended', { before: running, after: { ...running, status: 'failed' } });
+
+        expect(world.deps.recording.records.map((record) => record.message)).toContain('queued job not dispatched');
+        expect(world.jobs.runs).toHaveLength(1);
+        expect(await readJob(world, 'next')).toMatchObject({ status: 'starting' });
     });
 
     it('badPath_anInvalidOrDeletedJobAndABadCityAreIgnored', async () => {

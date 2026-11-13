@@ -16,7 +16,9 @@
 # runs scripts/dev/in-stack.sh in it (node_modules, the e2e build when an input changed, then e2e/stack/main.ts). The
 # container shares the host's network (`--network host`), so the ports are the host's 127.0.0.1 ones: admin 4312, viewer
 # 4310, mock APIs 4311, the emulators of firebase.json. A Playwright run of the pipeline has its own network and is
-# unaffected. Never edit this file while a stack started from it runs (bash reads a script as it goes).
+# unaffected. The container is capped at HCM_STACK_MEM_GB (default 8) GB with no extra swap and is the first thing the
+# kernel kills when memory runs out (`--oom-score-adj 500`), never the desktop session; the emulators' JVMs have their own
+# heap cap (EMULATOR_ENV in e2e/admin/world.ts). Never edit this file while a stack started from it runs (bash reads a script as it goes).
 set -euo pipefail
 
 readonly CONTAINER=hcm-dev-stack
@@ -42,6 +44,9 @@ serve() {
 	docker run --rm --init "${tty[@]}" \
 		--name "$CONTAINER" \
 		--network host \
+		--memory "${HCM_STACK_MEM_GB:-8}g" \
+		--memory-swap "${HCM_STACK_MEM_GB:-8}g" \
+		--oom-score-adj 500 \
 		--user "$(id -u):$(id -g)" \
 		--env HOME=/tmp/hcm-home \
 		--env HCM_STACK_SEED \

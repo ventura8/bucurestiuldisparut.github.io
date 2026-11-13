@@ -201,9 +201,6 @@ const SUITES: readonly Suite[] = [
                 name: 'create-historic-city',
                 environment: 'node',
                 include: ['packages/create-historic-city/test/**/*.test.ts'],
-                // The colour library's ES modules import without file extensions, which Node refuses: Vite transforms it
-                // as it does for the CLI's bundle.
-                server: { deps: { inline: ['@material/material-color-utilities'] } },
                 testTimeout: 30_000,
             },
         },
@@ -216,6 +213,10 @@ const present = SUITES.filter((suite) => existsSync(`${suite.dir}/package.json`)
 export default defineConfig({
     test: {
         projects: present.map((suite) => suite.project),
+        // The colour library's ES modules import without file extensions, which Node refuses, so Vite transforms it as it does
+        // for the CLI's bundle, in every project (each extends this config). Set for `create-historic-city` alone, its six
+        // files failed to import it whenever a worker had run `admin` files first (2026-11-13, DECISIONS-for-review.md §180h).
+        server: { deps: { inline: ['@material/material-color-utilities'] } },
         reporters: ['default', ['junit', { outputFile: 'reports/junit/vitest.xml' }]],
         coverage: {
             provider: 'v8',

@@ -38,8 +38,8 @@ function queued(overrides: Partial<JobDoc> = {}): JobDoc {
     };
 }
 
-/** This month's counted use: 170,000 of the 180,000 vCPU-seconds (an import's estimate, 12,600, passes the rest). */
-async function seedUse(world: ImageryWorld, vcpuSeconds = 170_000, gibSeconds = 100_000): Promise<void> {
+/** This month's counted use: 175,000 of the 180,000 vCPU-seconds (an import's estimate, 7,200 since 2026-11-12, passes the rest). */
+async function seedUse(world: ImageryWorld, vcpuSeconds = 175_000, gibSeconds = 100_000): Promise<void> {
     await world.deps.documents.set(FIRESTORE_PATHS.cloudRunUsage('2026-10'), cloudRunUsageDocSchema, {
         month: '2026-10',
         vcpuSeconds,
@@ -166,18 +166,18 @@ describe('the free tier before a cloud run', () => {
 
 describe('estimateCloudRun', () => {
     it.each([
-        ['an import still to download (fetch, then std)', queued(), { vcpuSeconds: 1800 + 10_800, gibSeconds: 7200 + 43_200 }],
+        ['an import still to download (fetch, then std)', queued(), { vcpuSeconds: 1800 + 5400, gibSeconds: 7200 + 21_600 }],
         [
             'a downloaded KH-9 panoramic frame (xl)',
             queued({ params: { sensor: 'KH-9-pan' }, steps: DOWNLOADED }),
-            { vcpuSeconds: 28_800, gibSeconds: 115_200 },
+            { vcpuSeconds: 14_400, gibSeconds: 57_600 },
         ],
         [
             'an escalated import still to download (both on xl)',
             queued({ machine: 'xl' }),
-            { vcpuSeconds: 14_400 + 28_800, gibSeconds: 57_600 + 115_200 },
+            { vcpuSeconds: 7200 + 14_400, gibSeconds: 28_800 + 57_600 },
         ],
-        ['an upload (no download)', queued({ type: 'geotiff-import', params: {} }), { vcpuSeconds: 10_800, gibSeconds: 43_200 }],
+        ['an upload (no download)', queued({ type: 'geotiff-import', params: {} }), { vcpuSeconds: 5400, gibSeconds: 21_600 }],
     ] as const)('estimateCloudRun_%s', (_name, job, estimate) => {
         expect(estimateCloudRun(job)).toEqual(estimate);
     });
