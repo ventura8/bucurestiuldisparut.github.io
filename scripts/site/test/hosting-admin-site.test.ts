@@ -69,6 +69,23 @@ describe("the forward of the admin's old addresses", () => {
         expect(rule.test('/bucharest/')).toBe(false);
     });
 
+    it('happyPath_aCitysAddressOnTheAdminsSiteGoesToThePublicMap_badPath_theAdminsOwnPathsStay', () => {
+        const config = tree();
+        splitAdminSite({ config, siteId: SITE });
+        const [, admin] = (JSON.parse(readFileSync(config, 'utf8')) as { hosting: Entry[] }).hosting;
+        const rule = admin?.redirects.at(-1);
+        const city = new RegExp(String(rule?.['regex']).replace('(?P<', '(?<'));
+
+        expect(rule?.['destination']).toBe('https://demo-hcm.web.app/:city/');
+        expect(['/bacau/', '/bacau', '/admins/', '/a-dmin'].map((path) => city.exec(path)?.groups?.['city'])).toEqual([
+            'bacau',
+            'bacau',
+            'admins',
+            'a-dmin',
+        ]);
+        expect(['/admin', '/admin/', '/admin/index.html', '/release.json'].filter((path) => city.test(path))).toEqual([]);
+    });
+
     it('happyPath_thePatternLeavesOutExactlyTheNameGiven', () => {
         const only = new RegExp(`^(?:${everyStringBut('a.b')})$`);
 

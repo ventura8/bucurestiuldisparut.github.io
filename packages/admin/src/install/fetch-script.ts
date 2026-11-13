@@ -101,7 +101,6 @@ export const FETCH_BUNDLE_SCRIPT = [
     'if (env.HCM_ADMIN_SITE) {',
     "    mkdirSync(join(env.HCM_OUT, 'functions/dist'), { recursive: true });",
     "    appendFileSync(join(env.HCM_OUT, 'functions/dist/.env'), '\\nHCM_ADMIN_SITE=' + env.HCM_ADMIN_SITE + '\\n');",
-    "    process.stdout.write('fetch: the functions open the admin at ' + env.HCM_ADMIN_SITE + '.web.app\\n');",
     '}',
     "process.stdout.write('fetch: ' + main.name + ' checked and unpacked\\n');",
 ].join('\n');

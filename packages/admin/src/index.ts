@@ -36,7 +36,7 @@ import type { SetupModule } from './setup/module.js';
 import type { SetupState } from './setup/state.js';
 import { initFirebase, loadAnalyticsSdk, loadFieldSdk, type FirebaseHandles } from './firebase/app.js';
 import { firebaseSdk } from './firebase/sdk.js';
-import { adminReleaseFields, installPlace, markPublicMap } from './app/admin-site.js';
+import { adminReleaseFields, installPlace } from './app/admin-site.js';
 import { AREA_CHUNKS, areaPageLoader, type ContentModuleSlots } from './routing/area-pages.js';
 import { PageRegistry, type PageLoader } from './routing/pages.js';
 import type { AdminRouteId } from './routing/routes.js';
@@ -316,7 +316,6 @@ export function contentDepsFor(
 export function browserDeps(parts: BrowserParts): BootEnvironment<EntrySetup, EntryIntents>['build'] {
     const { win, e2e, log, clock } = parts;
     return (config: FirebaseWebConfig, runtime: AdminRuntime, project: ProjectConfig | null) => {
-        markPublicMap(win.document, config.projectId, runtime, win.location.origin);
         const handles = initFirebase(firebaseSdk, config, runtime, { emulators: e2e !== null, origin: win.location.origin });
         const fetcher: typeof fetch = (input, init) => win.fetch(input, init);
         const firebase = firebasePorts(firebaseSdk, handles);

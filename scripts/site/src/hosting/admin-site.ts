@@ -69,16 +69,31 @@ const KEPT_ADMIN_FILE = 'starter.json';
 
 const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/** A character class of `chars` (each listed), or any character for none. */
+function charClass(chars: string): string {
+    return chars === '' ? '.' : `[${chars.replaceAll('-', '\\-')}]`;
+}
+
+/** Any character of `chars` but `char` (any character but `char` for none). */
+function otherThan(char: string, chars: string): string {
+    return chars === '' ? `[^${escaped(char)}]` : charClass(chars.replaceAll(char, ''));
+}
+
 /**
- * An RE2 pattern (Hosting's regex syntax: no lookahead) of every string but `name`: a proper prefix of it, a string that
- * leaves it at some character, or `name` with more after it.
+ * An RE2 pattern (Hosting's regex syntax: no lookahead, no class subtraction) of every string of `chars` (each character
+ * listed; any character when empty) but `name`: a proper prefix of it, a string that leaves it at some character, or
+ * `name` with more after it.
  */
-export function everyStringBut(name: string): string {
+export function everyStringBut(name: string, chars = ''): string {
+    const any = charClass(chars);
     const indexes = Array.from({ length: name.length }, (_, index) => index);
     const prefixes = indexes.map((index) => escaped(name.slice(0, index)));
-    const leaving = indexes.map((index) => `${escaped(name.slice(0, index))}[^${escaped(name.charAt(index))}].*`);
-    return [...prefixes, ...leaving, `${escaped(name)}.+`].join('|');
+    const leaving = indexes.map((index) => `${escaped(name.slice(0, index))}${otherThan(name.charAt(index), chars)}${any}*`);
+    return [...prefixes, ...leaving, `${escaped(name)}${any}+`].join('|');
 }
+
+/** The characters of a city id (`CITY_ID_PATTERN`'s). */
+const CITY_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789-';
 
 /** The public map's entry: the admin's rules gone, its addresses forwarded to the admin's site with their path. */
 function publicEntry(entry: Json, adminOrigin: string): Json {
@@ -100,8 +115,11 @@ function publicEntry(entry: Json, adminOrigin: string): Json {
     };
 }
 
-/** The admin's entry: its folder's rules and headers, every page's headers, `/` to `/admin/`. */
-function adminEntry(entry: Json, siteId: string, adminPublic: string): Json {
+/**
+ * The admin's entry: its folder's rules and headers, every page's headers, `/` to `/admin/`, and a city's address
+ * (`/<id>/`, which the admin's links build from its own origin) to the same address on the public map.
+ */
+function adminEntry(entry: Json, siteId: string, adminPublic: string, publicOrigin: string): Json {
     return {
         ...common(entry),
         site: siteId,
@@ -109,6 +127,11 @@ function adminEntry(entry: Json, siteId: string, adminPublic: string): Json {
         redirects: [
             { regex: '^/(?:index\\.html)?$', destination: `/${ADMIN_FOLDER}/`, type: 301 },
             ...rules(entry, 'redirects').filter(isAdminRule),
+            {
+                regex: `^/(?P<city>${everyStringBut(ADMIN_FOLDER, CITY_CHARS)})/?$`,
+                destination: `${publicOrigin}/:city/`,
+                type: 301,
+            },
         ],
         rewrites: rules(entry, 'rewrites').filter(isAdminRule),
         headers: rules(entry, 'headers').filter((rule) => isAdminRule(rule) || rule['source'] === '**'),
@@ -145,6 +168,11 @@ function moveAdmin(publicTree: string, adminTree: string): void {
     }
 }
 
+/** The public map's own address: its site's `web.app` origin. */
+function publicOriginOf(entry: Json): string {
+    return `https://${String(entry['site'])}.web.app`;
+}
+
 /** The admin's entry's public folder in a configuration split before. */
 function splitBefore(hosting: readonly Json[], siteId: string): string {
     const folder = hosting.find((entry) => entry['site'] === siteId)?.['public'];
@@ -173,7 +201,10 @@ export function splitAdminSite(options: AdminSplitOptions): AdminSplitResult {
     const root = dirname(options.config);
     moveAdmin(join(root, entry.public), join(root, adminPublic));
     markRuntime(join(root, adminPublic), adminOrigin);
-    const split = { ...config, hosting: [publicEntry(entry, adminOrigin), adminEntry(entry, options.siteId, adminPublic)] };
+    const split = {
+        ...config,
+        hosting: [publicEntry(entry, adminOrigin), adminEntry(entry, options.siteId, adminPublic, publicOriginOf(entry))],
+    };
     writeFileSync(options.config, `${JSON.stringify(split, null, 4)}\n`);
     return { split: true, adminPublic, adminOrigin };
 }

@@ -80,8 +80,6 @@ export function documentVisibility(doc: Pick<Document, 'visibilityState'> & List
 export interface LocationWindow extends Listening {
     readonly location: Pick<Location, 'hash' | 'search' | 'origin' | 'pathname' | 'hostname' | 'reload'>;
     readonly history: Pick<History, 'pushState' | 'replaceState'>;
-    /** The page's root element, whose `data-hcm-public-map` the boot sets on the admin's own site (§210). */
-    readonly document?: { readonly documentElement: { readonly dataset: DOMStringMap } };
 }
 
 /**
@@ -114,7 +112,6 @@ export function windowLocation(win: LocationWindow): HashLocation {
         },
         search: () => win.location.search,
         page: () => `${win.location.origin}${win.location.pathname}`,
-        publicMap: () => win.document?.documentElement.dataset['hcmPublicMap'] ?? `${win.location.origin}/`,
         reload: () => {
             win.location.reload();
         },
