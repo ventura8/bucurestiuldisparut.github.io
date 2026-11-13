@@ -174,7 +174,7 @@ describe('<hcm-jobs-page>: waiting, finished and failing jobs', () => {
         });
         await updated(element);
         const alerts = deepAll(element, '[role="alert"]').map((alert) => alert.textContent.trim());
-        expect(alerts).toEqual(['Access was refused. Check that you are still an admin.', 'This could not be read (internal). Try again.']);
+        expect(alerts).toEqual(['Access was refused. Check that you are still an admin.', 'This could not be read. Try again.']);
         deepAll(element, '.actions hcm-button')[0]?.click();
         expect(jobs.named('retry')).toHaveLength(1);
 
@@ -210,13 +210,13 @@ describe('<hcm-jobs-page>: waiting, finished and failing jobs', () => {
     it('happyPath_aJoinAndItsStepsHaveTheirWords', () => {
         expect([jobTypeText('en', 'layer-join'), stepNameText('en', 'align'), stepNameText('en', 'merge')]).toEqual([
             'Join frames',
-            'Align seams',
-            'Merge frames',
+            'Aligning the seams',
+            'Merging the frames',
         ]);
         expect([jobTypeText('ro', 'layer-join'), stepNameText('ro', 'align'), stepNameText('ro', 'merge')]).toEqual([
             'Unire cadre',
-            'Aliniere îmbinări',
-            'Unire cadre',
+            'Alinierea îmbinărilor',
+            'Contopirea cadrelor',
         ]);
     });
 

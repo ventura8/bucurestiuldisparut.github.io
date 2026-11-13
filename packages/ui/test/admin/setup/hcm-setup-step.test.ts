@@ -179,7 +179,7 @@ describe('<hcm-setup-step> body', () => {
         );
 
         expect(shadowPart(element, '.detail').dataset['detail']).toBe('apiError.cloud.permission');
-        expect(shadowPart(element, '.detail').textContent).toContain('roles/owner');
+        expect(shadowPart(element, '.detail').textContent).toContain('lacks a permission in the project');
         expect(page.getByRole('alert').element().textContent).toContain('"Manage your Google Cloud data"');
     });
 

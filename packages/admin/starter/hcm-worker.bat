@@ -1,5 +1,5 @@
 @echo off
-rem Historic City Map: use this computer for the imagery pipeline's jobs (docs/research/M7-local-worker.md section 1.5).
+rem Historic City Map Maker: use this computer for the imagery pipeline's jobs (docs/research/M7-local-worker.md section 1.5).
 rem The admin's "Use this computer" fills the three values below; the file holds no secret (the admin pairs this computer
 rem by itself once the worker runs). Double-click it once: it checks Docker, writes its PowerShell part to a folder of
 rem yours and registers a task of your user at logon (no administrator rights), which runs the worker in the background:
@@ -21,7 +21,7 @@ exit /b
 $Project = $env:HCM_PROJECT
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-$StarterVersion = 'cfa9f3965aa2'
+$StarterVersion = '881afefcef25'
 $City = $env:HCM_CITY
 $Action = $env:HCM_ACTION
 $Name = 'hcm-worker'
@@ -140,7 +140,12 @@ function Set-AiImageNote($Wanted) {
 function Test-AiGpu($Image, $Flags) {
     & docker run --rm @Flags @SidecarFlags -e "PYTHONPATH=/ai/files/code:/ai/files/$script:AiLib" $Image -m matcher.child probe gpu none *> $null
     $code = $LASTEXITCODE
-    if ($code -ne 0) { Write-Host "local AI: the look at the graphics card ($Flags) ended with $code (77: none seen, 76: under 2 GB, else Docker or the driver refused)" }
+    switch ($code) {
+        0 {}
+        77 { Write-Host 'local AI: no graphics card seen' }
+        76 { Write-Host 'local AI: the graphics card has under 2 GB of memory' }
+        default { Write-Host "local AI: Docker or the graphics driver refused the graphics card (code $code)" }
+    }
     return $code -eq 0
 }
 
@@ -180,16 +185,16 @@ function Start-Matcher($Image) {
     $workerImage = & docker inspect --format '{{.Config.Image}}' $Name 2> $null
     if ($Image -eq $workerImage) {
         $script:AiLib = 'lib-cpu'
-        Write-Host "local AI: on the processor, in the worker's own image (no NVIDIA card on this computer, so nothing big to fetch)"
+        Write-Host "local AI: on the processor, in the worker's own image (no NVIDIA card on this computer)"
         Start-Sidecar $Image 'cpu' 'no-gpu' @()
     } elseif (Test-AiGpu $Image @('--gpus', 'all')) {
-        Write-Host 'local AI: graphics card through --gpus all'
+        Write-Host 'local AI: graphics card found'
         Start-Sidecar $Image 'gpu' '' @('--gpus', 'all')
     } elseif (((& docker info 2> $null) -match 'nvidia\.com/gpu') -and (Test-AiGpu $Image @('--device', 'nvidia.com/gpu=all'))) {
-        Write-Host 'local AI: graphics card through --device nvidia.com/gpu=all'
+        Write-Host 'local AI: graphics card found'
         Start-Sidecar $Image 'gpu' '' @('--device', 'nvidia.com/gpu=all')
     } else {
-        Write-Host 'local AI: NO GRAPHICS CARD (tried --gpus all, CDI); falling back to the processor'
+        Write-Host 'local AI: no usable graphics card; using the processor (slower)'
         Start-Sidecar $Image 'cpu' 'no-gpu' @()
     }
 }
@@ -216,7 +221,7 @@ function Start-MatcherLoop($Supervisor) {
             $workerImage = & docker inspect --format '{{.Config.Image}}' $Name 2> $null
             if ($wanted -ceq 'worker' -and $workerImage) { $wanted = $workerImage }
             if ($wanted -cnotmatch $AiImagePattern -and $wanted -ne $workerImage) {
-                Write-Host 'local AI: the worker named an image that is not pytorch/pytorch by digest: refused'
+                Write-Host 'local AI: refused an unexpected program image'
             } elseif ($workerImage) {
                 if ($pulled -ne $wanted -and $wanted -eq $workerImage) { $pulled = $wanted }
                 if ($pulled -ne $wanted -and (Get-AiImage $workerImage $wanted)) { $pulled = $wanted }

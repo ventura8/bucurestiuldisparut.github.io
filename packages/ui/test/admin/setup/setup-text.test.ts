@@ -10,7 +10,9 @@ describe('setupText', () => {
             'Funcția admin-claim nu s-a instalat. Reia instalarea.',
         );
         expect(setupText('en', { key: 'adminShell.session.continue' })).toBe('Continue');
-        expect(setupText('ro', { key: 'apiError.cloud.permission', params: { role: 'roles/owner' } })).toContain('roles/owner');
+        expect(setupText('ro', { key: 'apiError.cloud.permission', params: { role: 'roles/owner' } })).toBe(
+            'Contului serverului îi lipsește o permisiune în proiect: reia „Pregătește proiectul”.',
+        );
         expect(setupLabel('en', 'adminSetup.title')).toBe('Setup');
     });
 

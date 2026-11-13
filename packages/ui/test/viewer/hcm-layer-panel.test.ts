@@ -168,7 +168,7 @@ describe('<hcm-layer-panel>', () => {
         });
         const element = await panel({ manifest, overlays: overlaysFromManifest(manifest), mode: 'docked' });
 
-        expect(shadowText(element)).toContain('Straturile istorice vor apărea aici în curând.');
+        expect(shadowText(element)).toContain('Această hartă nu are straturi istorice.');
         // UX review: the note leads the panel, where the layers will be, not after the photos and places.
         const note = element.shadowRoot?.querySelector('.empty');
         const list = element.shadowRoot?.querySelector('hcm-overlay-list');

@@ -124,7 +124,7 @@ export const ro = {
     'adminContent.settings.categoryLabelRo': 'Nume (română)',
     'adminContent.settings.categoryLabelEn': 'Nume (engleză, opțional)',
     'adminContent.settings.icon': 'Pictogramă',
-    'adminContent.settings.iconUnbundled': 'Pictograma „{icon}” nu este inclusă: harta o desenează ca un ac. Alege una din listă.',
+    'adminContent.settings.iconUnbundled': 'Această pictogramă nu există: harta arată un ac. Alege una din listă.',
     'adminContent.settings.color': 'Culoare',
     'adminContent.settings.colorLowContrast': 'Pictograma albă nu se citește pe această culoare.',
     'adminContent.settings.useColor': 'Folosește {hex}',

@@ -47,7 +47,7 @@ export const en: Readonly<Record<AdminReviewKey, string>> = {
     'adminContent.review.isBlocked': 'This account is blocked.',
     'adminContent.review.unblock': 'Let this account back',
     'adminContent.review.unblocked': 'The account can contribute again.',
-    'adminContent.review.account': 'Account {uid}',
+    'adminContent.review.account': 'Unnamed account',
     // [end review]
     // [section contribute] owner: roles; keys adminContent.contribute.*
     'adminContent.contribute.title': 'Contribute to {city}',

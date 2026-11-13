@@ -17,7 +17,7 @@ IMPORT_HTML: Final = f"""<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Historic City Map: import local files</title>
+<title>Historic City Map Maker: import local files</title>
 <link rel="stylesheet" href="/import.css">
 <script type="application/json" id="{SETTINGS_ELEMENT}">{SETTINGS_MARK}</script>
 <script type="module" src="/import.js"></script>

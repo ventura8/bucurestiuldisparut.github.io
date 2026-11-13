@@ -45,7 +45,7 @@ export const ro = {
     'adminContent.review.isBlocked': 'Acest cont este blocat.',
     'adminContent.review.unblock': 'Primește contul înapoi',
     'adminContent.review.unblocked': 'Contul poate contribui din nou.',
-    'adminContent.review.account': 'Contul {uid}',
+    'adminContent.review.account': 'Cont fără nume',
     // [end review]
     // [section contribute] owner: roles; keys adminContent.contribute.*
     'adminContent.contribute.title': 'Contribuie la {city}',

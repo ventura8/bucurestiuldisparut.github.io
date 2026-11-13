@@ -86,15 +86,15 @@ PAGE_HTML: Final = f"""<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Historic City Map: this computer's worker</title>
+<title>Historic City Map Maker: this computer's worker</title>
 <link rel="stylesheet" href="/page.css">
 <script type="application/json" id="{SETTINGS_ELEMENT}">{_SETTINGS_MARK}</script>
 <script type="module" src="/page.js"></script>
 </head>
 <body>
 <main>
-<h1 data-text="title">Historic City Map: this computer's worker</h1>
-<p data-text="intro">The command from the admin signs this computer in. Sign in with Google only if it did not.</p>
+<h1 data-text="title">Historic City Map Maker: this computer's worker</h1>
+<p data-text="intro">Use this computer, in the admin, connects this computer. Sign in with Google only if it did not.</p>
 <dl>
 <dt data-text="accountLabel">Signed in as</dt><dd id="account"></dd>
 <dt data-text="cityLabel">City</dt><dd id="city"></dd>
@@ -135,8 +135,8 @@ const settings = JSON.parse(document.getElementById('"""
     + """').textContent);
 const TEXTS = {
     en: {
-        title: "Historic City Map: this computer's worker",
-        intro: 'The command from the admin signs this computer in. Sign in with Google only if it did not.',
+        title: "Historic City Map Maker: this computer's worker",
+        intro: 'Use this computer, in the admin, connects this computer. Sign in with Google only if it did not.',
         accountLabel: 'Signed in as',
         cityLabel: 'City',
         workLabel: 'Work',
@@ -153,15 +153,15 @@ const TEXTS = {
         'apiError.unauthenticated': 'The sign-in was not accepted: sign in again',
         'apiError.invalidRequest': 'The sign-in could not be read: sign in again',
         'apiError.unavailable': 'The server did not answer: try again',
-        'apiError.worker.revoked': 'This computer was disconnected in the admin: run the command from the admin again',
-        'apiError.worker.pairCode': 'The pairing code is not valid any more: copy the command from the admin again',
+        'apiError.worker.revoked': 'This computer was disconnected in the admin: choose Use this computer in the admin again',
+        'apiError.worker.pairCode': 'The pairing code is not valid any more: choose Use this computer in the admin again',
         'apiError.city.notMember': 'This account is not an editor of this city',
-        signInTimeout: 'The sign-in did not finish: use the command from the admin, which signs this computer in',
-        outdated: 'The imagery pipeline was updated: copy the command from the admin and run it to update this computer',
+        signInTimeout: 'The sign-in did not finish: choose Use this computer in the admin, which connects this computer',
+        outdated: 'The imagery pipeline was updated: choose Use this computer in the admin and open the new file',
     },
     ro: {
         title: 'Harta istorică a orașului: lucrătorul acestui calculator',
-        intro: 'Comanda din administrare conectează acest calculator. Conectează-te cu Google doar dacă ea nu a reușit.',
+        intro: 'Folosește acest calculator, din administrare, îl conectează. Conectează-te cu Google doar dacă nu a reușit.',
         accountLabel: 'Conectat ca',
         cityLabel: 'Oraș',
         workLabel: 'Lucru',
@@ -178,11 +178,11 @@ const TEXTS = {
         'apiError.unauthenticated': 'Conectarea nu a fost acceptată: conectează-te din nou',
         'apiError.invalidRequest': 'Conectarea nu a putut fi citită: conectează-te din nou',
         'apiError.unavailable': 'Serverul nu a răspuns: încearcă din nou',
-        'apiError.worker.revoked': 'Acest calculator a fost deconectat din administrare: rulează din nou comanda din administrare',
-        'apiError.worker.pairCode': 'Codul de asociere nu mai este valabil: copiază din nou comanda din administrare',
+        'apiError.worker.revoked': 'Calculatorul a fost deconectat din administrare: alege din nou Folosește acest calculator',
+        'apiError.worker.pairCode': 'Codul de asociere nu mai este valabil: alege din nou Folosește acest calculator în administrare',
         'apiError.city.notMember': 'Acest cont nu este editor al acestui oraș',
-        signInTimeout: 'Conectarea nu s-a încheiat: folosește comanda din administrare, care conectează acest calculator',
-        outdated: 'Fluxul de imagini a fost actualizat: copiază comanda din administrare și rulează-o ca să actualizezi acest calculator',
+        signInTimeout: 'Conectarea nu s-a încheiat: alege Folosește acest calculator în administrare, care îl conectează',
+        outdated: 'Fluxul de imagini s-a actualizat: alege Folosește acest calculator în administrare și deschide fișierul nou',
     },
 };
 const lang = (navigator.language || 'en').toLowerCase().startsWith('ro') ? 'ro' : 'en';

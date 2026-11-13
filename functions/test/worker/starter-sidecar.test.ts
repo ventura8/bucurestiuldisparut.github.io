@@ -129,7 +129,7 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
         const { output, calls } = await matcherLoop({ state: WANTED, gpu: ['--gpus'] });
         const [sidecar] = sidecars(calls);
 
-        expect(output).toContain('local AI: graphics card through --gpus all');
+        expect(output).toContain('local AI: graphics card found');
         expect(calls).toContain(`pull ${AI_IMAGE}`);
         expect(sidecar).toContain('--name hcm-matcher --gpus all --network none --cap-drop ALL --security-opt no-new-privileges');
         // 4 GB (it held 2.4 GB in M10) and a light weight against the worker and the owner's programs (reports/resource-audit.md).
@@ -148,7 +148,7 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
     it('happyPath_CdiIsTriedWhenTheFirstWayFails @S-P07-HAPPY-GPU', async () => {
         const { output, calls } = await matcherLoop({ state: WANTED, gpu: ['--device'], info: ' Discovered Devices: nvidia.com/gpu=all' });
 
-        expect(output).toContain('local AI: graphics card through --device nvidia.com/gpu=all');
+        expect(output).toContain('local AI: graphics card found');
         expect(sidecars(calls)[0]).toContain('--device nvidia.com/gpu=all');
         expect(sidecars(calls)[0]).toContain('-e HCM_AI_DEVICE=gpu');
     });
@@ -156,7 +156,7 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
     it('happyPath_noGraphicsCardIsSaidInPlainWordsAndOnlyThenTheProcessor @S-P07-HAPPY-CPU-FALLBACK', async () => {
         const { output, calls } = await matcherLoop({ state: WANTED });
 
-        expect(output).toContain('local AI: NO GRAPHICS CARD (tried --gpus all, CDI); falling back to the processor');
+        expect(output).toContain('local AI: no usable graphics card; using the processor (slower)');
         expect(calls.findIndex((call) => call.includes('probe gpu'))).toBeLessThan(calls.indexOf(sidecars(calls)[0] ?? ''));
         expect(sidecars(calls)[0]).toContain('-e HCM_AI_DEVICE=cpu -e HCM_AI_WHY=no-gpu');
         expect(sidecars(calls)[0]).not.toContain('--gpus');
@@ -178,7 +178,7 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
     ])('badPath_%s_isRefusedWithoutAPull @S-P07-BAD-TAMPERED-FILE', async (_case, image) => {
         const { output, calls } = await matcherLoop({ state: `{"ai": {"wanted": true, "image": "${image}", "files": true}}` });
 
-        expect(output).toContain('not pytorch/pytorch by digest: refused');
+        expect(output).toContain('local AI: refused an unexpected program image');
         expect(calls.filter((call) => /^(pull|run) /.test(call))).toEqual([]);
     });
 
@@ -228,7 +228,7 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
             expect(text).toContain('hcm-ai-box');
             expect(text).toContain('--network');
             expect(text).toContain('--cap-drop');
-            expect(text).toContain('NO GRAPHICS CARD');
+            expect(text).toContain('no usable graphics card');
             expect(text).not.toContain('docker.sock');
         }
     });
@@ -320,8 +320,8 @@ describe('the sidecar lives only while a frame wants it', () => {
     it('badPath_whatTheLookAtTheCardEndedWithIsSaidSoAHiccupIsNotAComputerWithNoCard @S-P07-HAPPY-CPU-FALLBACK', async () => {
         const { output } = await matcherLoop({ state: WANTED });
 
-        expect(output).toContain('local AI: the look at the graphics card (--gpus all) ended with 77');
-        expect(output).toContain('NO GRAPHICS CARD');
+        expect(output).toContain('local AI: no graphics card seen');
+        expect(output).toContain('no usable graphics card');
     });
 
     it('happyPath_theProbeGivesAWordForItsReasonOnEverySystem @S-P07-HAPPY-GPU', async () => {
@@ -406,7 +406,7 @@ describe("the processor's sidecar in the worker's own image (docs/research/M26-g
     ])('badPath_%s_isRefused @S-P07-BAD-CPU-IMAGE', async (_case, image) => {
         const { output, calls } = await matcherLoop({ state: wantedOf(image) });
 
-        expect(output).toContain('not pytorch/pytorch by digest: refused');
+        expect(output).toContain('local AI: refused an unexpected program image');
         expect(sidecars(calls)).toEqual([]);
     });
 });

@@ -373,7 +373,7 @@ describe('<hcm-pois-page>: the import', () => {
         store.set({ importing: { status: 'preview', fileName: 'a.geojson', refusal: null, plan, fallbackCategory: null, written: 0 } });
         await updated(element);
         expect(deepAll(dialog, '#import-category')).toEqual([]);
-        expect(deepText(dialog)).toContain('Feature 2 : it has an altitude');
+        expect(deepText(dialog)).toContain('Item 2 : it has an altitude');
         store.set({
             importing: { status: 'preview', fileName: 'a.geojson', refusal: null, plan, fallbackCategory: 'parcuri', written: 0 },
         });
@@ -400,7 +400,7 @@ describe('<hcm-pois-page>: the import', () => {
 
         expect(dialog.headline).toBe('Import from locuri.geojson');
         expect(deepText(dialog)).toContain('New: 1');
-        expect(deepText(dialog)).toContain('Feature 4 Departe: outside the city');
+        expect(deepText(dialog)).toContain('Item 4 Departe: outside the city');
         const select = deep(dialog, '#import-category') as HTMLSelectElement;
         select.value = 'parcuri';
         select.dispatchEvent(new Event('change'));
@@ -516,8 +516,8 @@ describe('the places page: texts', () => {
         expect(categoryName('ro', CATEGORIES, 'nimic')).toBe('Categorie necunoscută');
         expect(localized('en', { ro: 'Biserică' })).toBe('Biserică');
         expect(refusalText('ro', 'self-intersection')).toBe('Laturile suprafeței nu se pot intersecta.');
-        expect(reasonText('en', 'invalid', 'title.ro')).toBe('invalid field (title.ro)');
-        expect(reasonText('en', 'invalid', null)).toBe('invalid field ()');
+        expect(reasonText('en', 'invalid', 'title.ro')).toBe('an invalid field');
+        expect(reasonText('en', 'invalid', null)).toBe('an invalid field');
         expect(poiHref('a')).toBe('#/pois/a');
     });
 

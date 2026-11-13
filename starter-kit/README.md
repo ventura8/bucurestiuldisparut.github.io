@@ -18,7 +18,7 @@ The `index.html` page is generated, not hand-written: its Content Security Polic
 
 ## Steps
 
-1. **Copy the kit.** For a new city use the M5 kit, `templates/starter-kit/` ([README](../templates/starter-kit/README.md)): three files, the engine from jsDelivr at a pinned version, or `npx create-historic-city@1.0.0-beta.1 my-city`. This kit (M1) stays the variant this repository's site build makes (`npm run build:site`, in the repository's Docker image, writes `dist/site/starter-kit/`).
+1. **Copy the kit.** For a new city use the starter kit, `templates/starter-kit/` ([README](../templates/starter-kit/README.md)): three files, the engine from jsDelivr at a pinned version, or `npx create-historic-city@1.0.0-beta.1 my-city`. This kit stays the variant this repository's site build makes (`npm run build:site`, in the repository's Docker image, writes `dist/site/starter-kit/`).
 2. **The Mapbox token.** In your Mapbox account, create a **public** token (`pk.…`) with the scopes `styles:read`, `styles:tiles`, `fonts:read` and restrict it to your site's address (`https://<user>.github.io`). Put it in `data/manifest.json` at `city.mapbox.publicToken`. Never use a secret token (`sk.…`): the manifest refuses it. Creating the account and the token are your own steps, in your own account.
 3. **Edit the manifest.** Change `city` (id, RO/EN name, centre, bounds, zoom, About, privacy, credits, theme colour), then the `photos` list: each photo has an `id`, a title, its licence, its place (`location`), optionally the direction it looks in (`bearing`) and its images in `data/media/<id>/`. Keep `cityId` in `config.js` equal to `city.id`.
 4. **Replace the example photos.** The two example photos come from the Lost Bucharest archive, are published there with permission only and may not be republished on another site: put your own photos in their place.
@@ -28,5 +28,5 @@ The `index.html` page is generated, not hand-written: its Content Security Polic
 ## Notes
 
 - A manifest hosted elsewhere (`manifestUrl` set to an https address) needs its origin in the page's CSP: rebuild the page after the change, the build adds it.
-- The engine is copied next to the page (`engine/`). The M5 template (`templates/starter-kit/`) loads it from jsDelivr instead, at a pinned version with `integrity`.
+- The engine is copied next to the page (`engine/`). The starter kit's template (`templates/starter-kit/`) loads it from jsDelivr instead, at a pinned version with `integrity`.
 - No cookies and no analytics unless the manifest has a GA4 measurement id and the visitor accepts; Mapbox sees each visitor's IP address (say so in your privacy text).

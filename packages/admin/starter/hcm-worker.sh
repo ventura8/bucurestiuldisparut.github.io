@@ -1,5 +1,5 @@
 #!/bin/sh
-# Historic City Map: use this computer for the imagery pipeline's jobs (docs/research/M7-local-worker.md, section 1.5).
+# Historic City Map Maker: use this computer for the imagery pipeline's jobs (docs/research/M7-local-worker.md, section 1.5).
 #
 # The admin's "Use this computer" fills the three values below and gives this file a name (hcm-worker.sh on Linux,
 # hcm-worker.command on macOS). It holds no secret: the admin pairs this computer by itself once the worker runs.
@@ -25,7 +25,7 @@ set -u
 
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-STARTER_VERSION=cfa9f3965aa2
+STARTER_VERSION=881afefcef25
 
 HCM_PROJECT='__HCM_PROJECT__'
 HCM_CITY='__HCM_CITY__'
@@ -227,9 +227,12 @@ ai_probe() {
 		-e HCM_AI_ROOT=/ai -e PYTHONPATH=/ai/files/code:/ai/files/$AI_LIB \
 		-v "$AI_FILES:/ai/files:ro" -v "$AI_BOX:/ai/box" --entrypoint python "$image" -m matcher.child probe gpu none >/dev/null 2>&1
 	code=$?
-	if [ "$code" -ne 0 ]; then
-		say "local AI: the look at the graphics card ($*) ended with $code (77: none seen, 76: under 2 GB, else Docker or the driver refused)"
-	fi
+	case $code in
+	0) ;;
+	77) say 'local AI: no graphics card seen' ;;
+	76) say 'local AI: the graphics card has under 2 GB of memory' ;;
+	*) say "local AI: Docker or the graphics driver refused the graphics card (code $code)" ;;
+	esac
 	return "$code"
 }
 
@@ -255,16 +258,16 @@ ai_start() {
 	AI_LIB=lib
 	if [ "$1" = "$(worker_image)" ]; then
 		AI_LIB=lib-cpu
-		say "local AI: on the processor, in the worker's own image (no NVIDIA card on this computer, so nothing big to fetch)"
+		say "local AI: on the processor, in the worker's own image (no NVIDIA card on this computer)"
 		ai_run "$1" cpu no-gpu
 	elif ai_probe "$1" --gpus all; then
-		say 'local AI: graphics card through --gpus all'
+		say 'local AI: graphics card found'
 		ai_run "$1" gpu '' --gpus all
 	elif docker info 2>/dev/null | grep -q nvidia.com/gpu && ai_probe "$1" --device nvidia.com/gpu=all; then
-		say 'local AI: graphics card through --device nvidia.com/gpu=all'
+		say 'local AI: graphics card found'
 		ai_run "$1" gpu '' --device nvidia.com/gpu=all
 	else
-		say 'local AI: NO GRAPHICS CARD (tried --gpus all, CDI); falling back to the processor'
+		say 'local AI: no usable graphics card; using the processor (slower)'
 		ai_run "$1" cpu no-gpu
 	fi
 }
@@ -330,7 +333,7 @@ matcher_heard() {
 
 matcher_pass() {
 	wanted=$(ai_image "$1") || {
-		say 'local AI: the worker named an image that is not pytorch/pytorch by digest: refused'
+		say 'local AI: refused an unexpected program image'
 		return 0
 	}
 	worker=$(worker_image) || return 0
@@ -615,7 +618,7 @@ install_linux() {
 	mkdir -p "$unit_dir"
 	{
 		say '[Unit]'
-		say 'Description=Historic City Map worker (the imagery pipeline on this computer)'
+		say 'Description=Historic City Map Maker worker (the imagery pipeline on this computer)'
 		say 'After=network-online.target'
 		say '[Service]'
 		say "Environment=\"PATH=$PATH\""
@@ -640,7 +643,7 @@ install_autostart() {
 	{
 		say '[Desktop Entry]'
 		say 'Type=Application'
-		say 'Name=Historic City Map worker'
+		say 'Name=Historic City Map Maker worker'
 		say "Exec=sh \"$1\" run"
 		say 'NoDisplay=true'
 	} >"$autostart/$NAME.desktop"
