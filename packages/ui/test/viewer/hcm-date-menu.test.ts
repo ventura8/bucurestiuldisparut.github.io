@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 
-import { HCM_DATE_MENU_TAG, HcmDateMenu, dateMenuOrigin, defineHcmDateMenu } from '../../src/viewer/hcm-date-menu.js';
+import { HCM_DATE_MENU_TAG, HcmDateMenu, dateMenuOrigin, defineHcmDateMenu, sideRoom } from '../../src/viewer/hcm-date-menu.js';
 import { recordEvents, shadowQuery, shadowQueryAll } from './doubles.js';
 
 const ITEMS = [
@@ -110,6 +110,15 @@ describe('<hcm-date-menu>', () => {
             x: 192,
             y: 274,
         });
+    });
+
+    it('happyPath_besideAStandingTimelineItIsNoWiderThanTheRoomPastIt', () => {
+        const card = { x: 16, y: 16, width: 68, height: 600 };
+
+        expect(sideRoom(card, 360, 'end')).toBe(360 - 84 - 16);
+        expect(sideRoom({ ...card, x: 276 }, 360, 'start')).toBe(260);
+        expect(sideRoom(card, 1024, 'above')).toBe(280);
+        expect(sideRoom({ ...card, x: 200 }, 300, 'end')).toBe(112);
     });
 
     it('badPath_definingTwiceKeepsTheFirstRegistration', () => {

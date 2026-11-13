@@ -25,7 +25,7 @@ import type { TimelineStop } from './timeline-model.js';
 import { PEEK_LEAVE_MS, type DatesPeekDetail } from './timeline-peek.js';
 
 /** The floating controls the date menu keeps clear of (`date-menu-clear.ts`). */
-const AVOIDED = '#timeline, hcm-compass, [data-layout-check="zoom"], hcm-fab-menu, [data-layout-check="near-year"]';
+const AVOIDED = '#timeline, [data-layout-check="compass"], [data-layout-check="zoom"], hcm-fab-menu, [data-layout-check="near-year"]';
 
 /** What the dock needs from the viewer element. */
 export type DockHost = ReactiveControllerHost & HTMLElement & { readonly renderRoot: HTMLElement | DocumentFragment };

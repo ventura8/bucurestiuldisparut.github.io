@@ -27,6 +27,9 @@ export const HCM_DATE_MENU_TAG = 'hcm-date-menu';
 const EDGE = 8;
 /** The strip at the foot of the map kept for Mapbox's logo and attribution (`--hcm-map-chrome`). */
 const LEGAL_STRIP = 42;
+/** The menu's width limits (M3 menus: 112 to 280 px). */
+const MIN_WIDTH = 112;
+const MAX_WIDTH = 280;
 
 type Box = DatesOpenDetail['anchor'];
 
@@ -51,6 +54,12 @@ export function dateMenuOrigin(
 /** Whether the point (`x`, `y`) is in `rect`, its edges included. */
 function contains(rect: DOMRect, x: number, y: number): boolean {
     return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
+/** The widest the menu may be (px) beside a standing timeline (the room past it), or above a lying one (the viewer). */
+export function sideRoom(anchor: Box, width: number, side: 'above' | 'end' | 'start'): number {
+    const room = { above: width, end: width - (anchor.x + anchor.width), start: anchor.x }[side] - 2 * EDGE;
+    return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, room));
 }
 
 const NEXT: Readonly<Record<string, (index: number, count: number) => number>> = {
@@ -242,8 +251,10 @@ export class HcmDateMenu extends LitElement {
         const host = this.getBoundingClientRect();
         const local = (box: Box): Box => ({ x: box.x - host.x, y: box.y - host.y, width: box.width, height: box.height });
         const anchor = local(at);
+        const side = this.#side();
+        menu.style.setProperty('max-inline-size', `${String(sideRoom(anchor, host.width, side))}px`);
         const size = { width: menu.offsetWidth, height: menu.offsetHeight };
-        const wanted = { ...dateMenuOrigin(anchor, size, host, this.#side()), ...size };
+        const wanted = { ...dateMenuOrigin(anchor, size, host, side), ...size };
         const origin = clearOf(wanted, [anchor, ...this.avoid().map(local)], host, LEGAL_STRIP);
         menu.style.setProperty('left', `${String(origin.x)}px`);
         menu.style.setProperty('top', `${String(origin.y)}px`);
