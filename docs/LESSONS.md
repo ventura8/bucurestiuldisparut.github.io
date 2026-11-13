@@ -3835,3 +3835,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-13, track/analytics: Prettier wrapped the Statistics page's long help texts onto two lines and `check_i18n.py` refused them ("not a one-line entry").
     - Fix: shorter texts, one idea a key (`adminContent.statistics.how1` … `how6`).
     - **Write a catalogue message to fit its line with its key (about 90 characters): split a long help into numbered keys.**
+
+653. **The date menu hung on a 16 px badge, too small for a finger or a mouse, and the pill was too small too.**
+    - Seen: 2026-11-13, the owner on beta.1 (V13 and V12): "The date picker should show up when the user selects a year with multiple dates, not when the user taps the badge", and the phone's year pill was too small.
+    - Cause: the badge was made a target of its own (a click handler on a 16 px span, lifted above the thumb's touch ring) instead of a hint; the menu followed a separate gesture rather than the selection itself. The pill kept the lying thumb's 40 px.
+    - Fix and pin: the badge takes no pointer; the timeline asks for the menu when a press the visitor lifted ends on a year of several dates (`settle(released)` in `timeline-pointer.ts` and `timeline-scrub.ts`; a cancelled or swiped-away press says `false`), on Enter and on the gamepad's A (a click with `detail` 0), never while a drag passes it; B closes it through the input `close`. The pill is 56 px in a 64 px card, the year in title large. Pinned by `hcm-timeline-dates.test.ts`, `timeline-dock.test.ts`, `S-V68-BAD-SCRUB-PASSES` and the tour's `timeline-dates`.
+    - **A choice that follows a selection opens on the selection's end (the release, Enter), never on a decoration beside it, and never on each step of a live drag.**

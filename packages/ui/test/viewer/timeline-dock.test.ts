@@ -97,15 +97,17 @@ describe('<hcm-map-viewer>: the timeline as a pill on a phone (V12)', () => {
         expect(collapsed(mounted)).toBe(false);
     });
 
-    it('badPath_theCollapsedPillLeavesTheChipAndTheMenuButtonClear', async () => {
-        const mounted = await mountViewer(readyState(testManifest(), { year: 1977 }), COMPACT);
+    it.each([
+        { name: '360 x 700', box: COMPACT },
+        { name: '320 x 568', box: { width: 320, height: 568 } },
+    ])('badPath_theLargerPillLeavesTheChipClear_$name', async ({ box }) => {
+        const mounted = await mountViewer(readyState(testManifest(), { year: 1977 }), box);
         const pill = timelineOf(mounted).getBoundingClientRect();
         const chip = part(mounted, '.dock.chip').getBoundingClientRect();
-        const fab = part(mounted, '.dock.menu').getBoundingClientRect();
 
-        expect([Math.round(pill.width), Math.round(pill.height)]).toEqual([68, 48]);
+        expect(Math.round(pill.height)).toBe(64);
+        expect(pill.width).toBeGreaterThanOrEqual(96);
         expect(chip.top - pill.bottom).toBeGreaterThanOrEqual(8);
-        expect(fab.left - pill.right).toBeGreaterThanOrEqual(8);
     });
 });
 
@@ -114,15 +116,67 @@ describe('<hcm-map-viewer>: the date picker of a year (V13)', () => {
         document.body.replaceChildren();
     });
 
-    async function opened(): Promise<Mounted> {
-        const mounted = await mountViewer(readyState(twoDates(), { year: 1966 }), EXPANDED);
-        expect(shadowQuery(timelineOf(mounted), '.thumb .badge').textContent.trim()).toBe('2');
-        shadowQuery(timelineOf(mounted), '.thumb .badge').click();
+    function enter(mounted: Mounted): void {
+        shadowQuery(timelineOf(mounted), '[role="slider"]').dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, composed: true }),
+        );
+    }
+
+    async function menuOf(mounted: Mounted): Promise<Element> {
+        await vi.waitFor(() => {
+            expect(mounted.element.shadowRoot?.querySelector('hcm-date-menu')).not.toBeNull();
+        });
         await mounted.element.updateComplete;
+        return part(mounted, 'hcm-date-menu');
+    }
+
+    async function opened(box = EXPANDED): Promise<Mounted> {
+        const mounted = await mountViewer(readyState(twoDates(), { year: 1966 }), box);
+        expect(shadowQuery(timelineOf(mounted), '.thumb .badge').textContent.trim()).toBe('2');
+        enter(mounted);
+        await menuOf(mounted);
         return mounted;
     }
 
-    it('happyPath_theBadgeOpensTheDatesTheFramesInertAPickComesToTheFront', async () => {
+    it('happyPath_aClickOnTheYearOpensTheDatesWithTheFocusOnTheOneShown', async () => {
+        const mounted = await mountViewer(readyState(twoDates(), { year: 1966 }), EXPANDED);
+        const track = shadowQuery(timelineOf(mounted), '.track');
+        const thumb = shadowQuery(timelineOf(mounted), '.thumb').getBoundingClientRect();
+        const at = { clientX: thumb.x + thumb.width / 2, clientY: thumb.y + thumb.height / 2, button: 0, bubbles: true, composed: true };
+
+        track.dispatchEvent(new PointerEvent('pointerdown', { ...at, cancelable: true }));
+        window.dispatchEvent(new PointerEvent('pointerup', at));
+        const menu = await menuOf(mounted);
+
+        await vi.waitFor(() => {
+            expect(menu.shadowRoot?.activeElement?.getAttribute('data-item')).toBe('kh4-1966b');
+        });
+        expect(mounted.store.callsOf('pickLayer')).toEqual([]);
+    });
+
+    it('happyPath_onAPhonesPillEnterOpensTheCardThenTheDatesBesideItsThumb', async () => {
+        const mounted = await opened(COMPACT);
+
+        expect(collapsed(mounted)).toBe(false);
+        const card = timelineOf(mounted).getBoundingClientRect();
+        const anchor = (part(mounted, 'hcm-date-menu') as unknown as { anchor: { y: number; height: number } }).anchor;
+        expect(anchor.height, 'the thumb of the open card, not the pill').toBeLessThan(card.height);
+        expect(anchor.y).toBeGreaterThanOrEqual(card.top);
+        expect(anchor.y + anchor.height).toBeLessThanOrEqual(card.bottom);
+    });
+
+    it('badPath_theGamepadsBClosesTheDatesAndKeepsTheDateShown', async () => {
+        const mounted = await opened();
+
+        mounted.element.runInput('close');
+        await mounted.element.updateComplete;
+
+        expect(mounted.element.shadowRoot?.querySelector('hcm-date-menu')).toBeNull();
+        expect(mounted.store.callsOf('pickLayer')).toEqual([]);
+        expect(mounted.store.callsOf('closeSheet')).toEqual([]);
+    });
+
+    it('happyPath_enterOnTheYearOpensTheDatesTheFramesInertAPickComesToTheFront', async () => {
         const mounted = await opened();
 
         await expect.element(page.getByRole('menu', { name: 'Datele din 1966' })).toBeVisible();

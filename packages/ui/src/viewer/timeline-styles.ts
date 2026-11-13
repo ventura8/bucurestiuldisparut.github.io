@@ -274,9 +274,9 @@ export const timelineStyles = [
             font-weight: 600;
             line-height: 1;
             visibility: visible;
-            cursor: pointer;
 
-            /* Above the thumb's 48 px touch ring, which would take its press. */
+            /* A hint only (V13): a press through it lands on the year's point or the thumb, which select the year. */
+            pointer-events: none;
             z-index: 1;
         }
 
@@ -298,8 +298,9 @@ export const timelineStyles = [
         }
 
         /*
-         * V12: on a phone, idle, the card is only the pill of its year (8 + 40 px tall: a 48 px target), the rail and the
-         * years hidden; the viewer docks it (timeline-dock.ts). A tap on it opens the whole card again.
+         * V12: on a phone, idle, the card is only the pill of its year, the rail and the years hidden; the viewer docks it
+         * (timeline-dock.ts). A tap on it opens the whole card again. The owner (2026-11-13: "too small") asked for a bigger
+         * one: a 56 px pill in 4 px of card (64 px tall), the year in M3 title large, 20 px either side of it.
          */
         :host([collapsed][orientation]) {
             inline-size: max-content;
@@ -317,7 +318,7 @@ export const timelineStyles = [
         :host([collapsed][orientation]) .track {
             inline-size: auto;
             min-inline-size: 0;
-            block-size: 40px;
+            block-size: 56px;
             min-block-size: 0;
         }
 
@@ -328,8 +329,11 @@ export const timelineStyles = [
         :host([collapsed][orientation]) .thumb {
             position: relative;
             inset: auto;
-            min-inline-size: 60px;
-            padding-inline: 8px;
+            min-inline-size: 88px;
+            block-size: 56px;
+            padding-inline: 20px;
+            font-size: var(--md-sys-typescale-title-large-size, 1.375rem);
+            line-height: var(--md-sys-typescale-title-large-line-height, 1.75rem);
             transform: none;
             transition: none;
         }

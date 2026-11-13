@@ -1118,16 +1118,16 @@
         {
             "id": "V67",
             "area": "viewer",
-            "name": "On a phone the timeline rests collapsed to the pill of its year, opens on a tap and covers none of the map's other controls",
+            "name": "On a phone the timeline rests collapsed to a large pill of its year (64 px, the year in title large), opens on a tap and covers none of the map's other controls",
             "milestone": "M17",
             "source": "the owner, 2026-11-13 (beta.1, V12 of reports/OPEN-ISSUES-beta1.md): on phones the vertical timeline collapses to a year pill when idle"
         },
         {
             "id": "V68",
             "area": "viewer",
-            "name": "A timeline year with several dates carries a badge; the badge or Enter opens a menu of its dates, and the date picked comes to the front",
+            "name": "A timeline year with several dates carries a badge (a hint only); selecting that year opens a menu of its dates, never mid-drag, and the date picked comes to the front",
             "milestone": "M17",
-            "source": "the owner, 2026-11-13 (beta.1, V13 of reports/OPEN-ISSUES-beta1.md): a year with several dates or layers lets the visitor pick the date (badge + compact chooser)"
+            "source": "the owner, 2026-11-13 (beta.1, V13 of reports/OPEN-ISSUES-beta1.md): a year with several dates or layers lets the visitor pick the date (badge + compact chooser); corrected the same day: the picker shows when the visitor selects such a year, not on the badge, too small for a finger or a mouse"
         },
         {
             "id": "P31",
@@ -19216,7 +19216,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "On a phone the timeline rests as its year pill and opens on a tap",
-            "asserts": "at 375x812 the timeline is a 68 x 48 pill 16 px from the leading edge, the slider says the year; it overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution; a tap opens the standing card with the year unchanged, and a tap on the map collapses it again",
+            "asserts": "at 375x812 the timeline is a pill 64 px tall and 96 px wide or more, 16 px from the leading edge, its year in title large (22 px), the slider says the year; it overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution; a tap opens the standing card with the year unchanged, and a tap on the map collapses it again",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dock.ts, timeline-dock-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/timeline-dock.test.ts and hcm-timeline-dates.test.ts. Test: e2e/specs/viewer/timeline-pill.spec.ts."
@@ -19227,7 +19227,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "On a short landscape phone the pill keeps the trailing foot, clear of the menu, the zoom, the compass and the legal line",
-            "asserts": "at 915x412 and at 568x270 the collapsed timeline is 48 px tall on the trailing half and overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution",
+            "asserts": "at 915x412 and at 568x270 the collapsed timeline is 64 px tall on the trailing half and overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dock.ts, timeline-dock-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/timeline-dock.test.ts and hcm-timeline-dates.test.ts. Test: e2e/specs/viewer/timeline-pill.spec.ts."
@@ -19249,7 +19249,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "The pill and the opened card pass the layout and accessibility checks on every phone",
-            "asserts": "expectStateSound on the journey timeline-dates (the pill, the card a tap opened) at every phone viewport, and on every other map state of a phone, which shows the pill",
+            "asserts": "expectStateSound on the journey timeline-dates (the 64 px pill, the card a tap opened) at every phone viewport (c320, c360, 568x270 and 915x412 among them), and on every other map state of a phone, which shows the pill",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dock.ts, timeline-dock-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/timeline-dock.test.ts and hcm-timeline-dates.test.ts. Test: e2e/tour/viewer.tour.ts (e2e/tour/timeline-states.ts)."
@@ -19259,8 +19259,8 @@
             "behaviour": "V68",
             "area": "viewer",
             "path": "happy",
-            "title": "The badge of a year with two dates opens them; the date picked comes to the front",
-            "asserts": "a city whose 1980 has two opaque layers, the timeline on 1980: the slider's value names two dates, the pill's badge reads 2; a click opens the menu 'Dates in 1980' with two menuitemradio, the August one (on top) checked; picking March closes it, the focus back on the slider, the March tiles on top and layers= names it last",
+            "title": "Selecting a multi-date year opens the menu; the date picked comes to the front",
+            "asserts": "a city whose 1980 has two opaque layers, the timeline on 1980: the slider's value names two dates, the pill's badge reads 2; on today, a click on 1980's point opens the menu 'Dates in 1980' with two menuitemradio, the August one (on top) checked and focused; picking March closes it, the focus back on the slider, the March tiles on top and layers= names it last",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/specs/viewer/timeline-dates.spec.ts."
@@ -19288,12 +19288,23 @@
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/specs/viewer/timeline-dates.spec.ts."
         },
         {
+            "id": "S-V68-BAD-SCRUB-PASSES",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A scrub across a multi-date year doesn't open the menu mid-drag",
+            "asserts": "the badge takes no pointer (pointer-events none); a mouse drag from today onto 1980 selects 1980 live with no menu while the button is down, and back to today, where it is released: the slider says today and no menu ever opened",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195g). packages/ui/src/viewer/hcm-timeline.ts (#settle, #offerDates), timeline-pointer.ts, timeline-scrub.ts; unit tests in packages/ui/test/viewer/hcm-timeline-dates.test.ts (a drag, a finger scrub, a cancelled press, the arrows). Test: e2e/specs/viewer/timeline-dates.spec.ts."
+        },
+        {
             "id": "S-V68-HAPPY-TOUR",
             "behaviour": "V68",
             "area": "viewer",
             "path": "happy",
             "title": "The menu of a year's dates passes the layout and accessibility checks on every window",
-            "asserts": "expectStateSound on the journey timeline-dates (the menu opened by Enter) at every viewer viewport; Esc closes it and the focus returns to the slider",
+            "asserts": "expectStateSound on the journey timeline-dates (the menu opened by a click on the selected year) at every viewer viewport; Esc closes it and the focus returns to the slider",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/tour/viewer.tour.ts (e2e/tour/timeline-states.ts)."
