@@ -80,6 +80,8 @@ interface Listed {
     /** M17: every listed photo, placed or not, and every listed place: a story's links are these. */
     readonly photos: ReadonlySet<string>;
     readonly pois: ReadonlySet<string>;
+    /** M27: the listed layers, which a place's `sourceLayer` must name. */
+    readonly layers: ReadonlySet<string>;
 }
 
 /** One listed document: its id and its manifest entry (its references are the ones the manifest still lists). */
@@ -203,7 +205,9 @@ function photoEntry(photo: PhotoDoc & { readonly image: NonNullable<PhotoDoc['im
 }
 
 function poiCategoryEntry(category: PoiCategoryDoc, id: string): unknown {
-    return { id, label: both(category.label), icon: category.icon, color: category.color, defaultOpacity: category.defaultOpacity };
+    const { icon, color, defaultOpacity, defaultVisible, pinned, attribution } = category;
+    // M27: the three optional fields travel only when set, so a category without them reads as before.
+    return { id, label: both(category.label), icon, color, defaultOpacity, defaultVisible, pinned, attribution };
 }
 
 /** The ids of `ids` that are in `known`; none at all is absent. */
@@ -225,6 +229,8 @@ function poiEntry(poi: PoiDoc, id: string, listed: Listed): unknown {
         links: poi.links ?? [],
         photoIds: stillListed(poi.photoIds, listed.placed),
         credit: poi.credit,
+        // M27: a layer the manifest does not list (unpublished, retired) is left out, never the place.
+        sourceLayer: poi.sourceLayer !== undefined && listed.layers.has(poi.sourceLayer) ? poi.sourceLayer : undefined,
     };
 }
 
@@ -296,6 +302,7 @@ function draft(content: CityContent, city: unknown, lists: Lists, links: Manifes
         placed: new Set(ids('photos')),
         photos: new Set([...ids('photos'), ...ids('unplaced')]),
         pois: new Set(ids('pois')),
+        layers: new Set(ids('layers')),
     };
     const entries = (key: ListKey) => lists[key].map((item) => item.entry(listed));
     return {

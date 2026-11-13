@@ -290,6 +290,8 @@ const RULES = [
     ['a category opacity over 1', ['poiCategories', 0, 'defaultOpacity'], 1.5, 'poiCategories[0].defaultOpacity', 'validation.tooBig'],
     ['a POI in an unknown category', ['pois', 0, 'category'], 'nope', 'pois[0].category', 'validation.reference'],
     ['a POI showing an unknown photo', ['pois', 0, 'photoIds'], ['ghost'], 'pois[0].photoIds[0]', 'validation.reference'],
+    ['a POI traced on an unknown layer (M27)', ['pois', 0, 'sourceLayer'], 'gone-1911', 'pois[0].sourceLayer', 'validation.reference'],
+    ['a pinned flag that is no boolean (M27)', ['poiCategories', 0, 'pinned'], 'yes', 'poiCategories[0].pinned', 'validation.type'],
     ['a POI photo id that is no id', ['pois', 0, 'photoIds'], ['a b'], 'pois[0].photoIds[0]', 'validation.format'],
     ['a POI span ending before it starts', ['pois', 0, 'yearStart'], 1990, 'pois[0].yearEnd', 'validation.yearRange'],
     ['a POI year before 1800', ['pois', 0, 'yearStart'], 1611, 'pois[0].yearStart', 'validation.tooSmall'],

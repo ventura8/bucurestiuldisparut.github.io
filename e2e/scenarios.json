@@ -1170,6 +1170,27 @@
             "name": "Not useful on a scene, and a scene its preview shows cloudy over the city is ranked down and warned",
             "milestone": "M4",
             "source": "the owner, 2026-11-13: \"This scan is useless (too many clouds!!!)\", DS09066A047MC019, a 1964 scan the whole-city plan kept offering to buy; docs/research/M4-interfaces.md, Not useful and the cloud estimate"
+        },
+        {
+            "id": "V71",
+            "area": "viewer",
+            "name": "Disappeared streets: a pinned POI category, hidden at start, whose streets name their sources",
+            "milestone": "M27",
+            "source": "the owner, 2026-11-13: a Disappeared streets layer rebuilt from open data and our own maps, pinned below the items already pinned; docs/research/M27-lost-streets.md"
+        },
+        {
+            "id": "A154",
+            "area": "admin",
+            "name": "Trace a street on a historical layer: the place editor shows the chosen old map under the drawing and saves it as the place's source",
+            "milestone": "M27",
+            "source": "the owner, 2026-11-13: a Disappeared streets layer rebuilt from open data and our own maps, pinned below the items already pinned; docs/research/M27-lost-streets.md"
+        },
+        {
+            "id": "A155",
+            "area": "admin",
+            "name": "A POI category's place in the Layers panel: shown at start, pinned to the top, its data credit",
+            "milestone": "M27",
+            "source": "the owner, 2026-11-13: a Disappeared streets layer rebuilt from open data and our own maps, pinned below the items already pinned; docs/research/M27-lost-streets.md"
         }
     ],
     "scenarios": [
@@ -19960,6 +19981,94 @@
             "tier": "functions",
             "status": "exists",
             "notes": "The owner's report of 2026-11-13. Tests: functions/test/imagery/browse.test.ts."
+        },
+        {
+            "id": "S-V71-HAPPY-PINNED",
+            "behaviour": "V71",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Disappeared streets sit in the pinned strip below Compare and Map labels and above every historical layer, hidden until switched on",
+            "asserts": "the strip's children are compare, labels, pinned-overlays in that order; the category's switch is above the first historical layer and off; no street feature is rendered until it is switched on, then the line renders and its credit joins the attribution lines",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-V71-HAPPY-SOURCES",
+            "behaviour": "V71",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A tapped disappeared street names the map it was traced on and its data's credit",
+            "asserts": "the sheet shows 'Se vede pe: <layer label>' / 'Seen on: <layer label>' and 'Sursa: OpenHistoricalMap (CC0)' as text",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-V71-BAD-UNKNOWN-LAYER",
+            "behaviour": "V71",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A street traced on a layer the manifest does not list",
+            "asserts": "the manifest is refused with validation.reference at pois[i].sourceLayer (the error card names the field); the builder drops an unlisted layer instead, keeping the street; the sheet says nothing for an unknown id",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-V71-BAD-NOTHING-ELSE-PINNED",
+            "behaviour": "V71",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without Compare or Map labels a pinned category still makes the strip; without one the strip holds only Compare and Map labels",
+            "asserts": "the strip exists with only the pinned list (unit); a manifest without a pinned category has no pinned list and no such switch (e2e)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-A154-HAPPY-TRACE",
+            "behaviour": "A154",
+            "area": "admin",
+            "path": "happy",
+            "title": "Choose an old map, trace a street over it, save it with its source",
+            "asserts": "the select lists the city's layers by year; choosing one draws hcm-source-<layer> under the drawing with an opacity slider; the saved place has sourceLayer and a LineString",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-A154-BAD-GONE-LAYER",
+            "behaviour": "A154",
+            "area": "admin",
+            "path": "bad",
+            "title": "A place traced on a map the city no longer has",
+            "asserts": "the select shows 'A map that no longer exists' with the fix in plain words; choosing another map saves it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-A155-HAPPY-DISPLAY",
+            "behaviour": "A155",
+            "area": "admin",
+            "path": "happy",
+            "title": "A category set hidden at start, pinned and credited",
+            "asserts": "the two switches and the credit field send their edits; a new category is saved with defaultVisible false, pinned true and its attribution; rules allow the fields",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
+        },
+        {
+            "id": "S-A155-BAD-BLANK-CREDIT",
+            "behaviour": "A155",
+            "area": "admin",
+            "path": "bad",
+            "title": "An emptied credit",
+            "asserts": "the field removes attribution instead of saving a blank (never an undefined field); rules refuse a non-boolean pinned or defaultVisible and a credit over 500 characters",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "Milestone M27. docs/research/M27-lost-streets.md."
         }
     ]
 }

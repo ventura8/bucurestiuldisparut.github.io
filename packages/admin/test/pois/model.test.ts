@@ -152,3 +152,16 @@ describe('places: values and documents', () => {
         expect(textIn({ ro: 'Biserică', en: 'Church' }, 'ro')).toBe('Biserică');
     });
 });
+
+describe('places: the old map a street was traced on (M27)', () => {
+    it('happyPath_theSourceLayerTravelsFromTheDocumentToTheValueAndBack', () => {
+        const value = valueOf({ ...DOC, sourceLayer: 'plan-1911' });
+        expect(value.sourceLayer).toBe('plan-1911');
+        expect(docFieldsOf(value)).toMatchObject({ sourceLayer: 'plan-1911' });
+    });
+
+    it('badPath_aPlaceWithoutOneHasNoSourceLayerField', () => {
+        expect(valueOf(DOC)).not.toHaveProperty('sourceLayer');
+        expect(docFieldsOf(patched(valueOf({ ...DOC, sourceLayer: 'x' }), { sourceLayer: undefined }))).not.toHaveProperty('sourceLayer');
+    });
+});

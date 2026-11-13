@@ -126,6 +126,12 @@ export const en: Readonly<Record<AdminSettingsKey, string>> = {
     'adminContent.settings.color': 'Colour',
     'adminContent.settings.colorLowContrast': 'The white icon does not read on this colour.',
     'adminContent.settings.useColor': 'Use {hex}',
+    'adminContent.settings.categoryDisplay': 'In the Layers panel',
+    'adminContent.settings.categoryShownAtStart': 'Show on the map when it opens',
+    'adminContent.settings.categoryPinned': 'Pin to the top of the Layers panel',
+    'adminContent.settings.categoryAttribution': 'Data credit',
+    'adminContent.settings.categoryAttributionHelp':
+        "Shown under the list while the category is visible and in each place's sheet, for example “OpenHistoricalMap (CC0)”.",
     'adminContent.settings.defaultOpacity': 'Default opacity',
     'adminContent.settings.deleteCategory': 'Delete the category',
     'adminContent.settings.deleteCategoryConfirm': 'Delete the category “{name}”?',

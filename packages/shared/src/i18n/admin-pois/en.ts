@@ -155,5 +155,14 @@ export const en: Readonly<Record<AdminPoisKey, string>> = {
     'adminContent.pois.view': 'View',
     'adminContent.pois.view.list': 'List',
     'adminContent.pois.view.map': 'Map',
+    'adminContent.pois.section.trace': 'Tracing on an old map',
+    'adminContent.pois.field.traceLayer': 'Traced on map',
+    'adminContent.pois.trace.none': 'None',
+    'adminContent.pois.trace.layerOption': 'The {year} map — {label}',
+    'adminContent.pois.trace.gone': 'A map that no longer exists',
+    'adminContent.pois.trace.goneHint': 'That old map was deleted or replaced. Choose another map or None, then save.',
+    'adminContent.pois.trace.hint': 'Choose an old map: it shows under your drawing, beside the streets of today.',
+    'adminContent.pois.field.traceOpacity': 'Old map opacity',
+    'adminContent.pois.trace.opacityHint': 'At 100 % the old map shows whole; lower it to see the streets of today.',
     // [end pois]
 };

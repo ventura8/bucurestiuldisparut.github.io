@@ -41,6 +41,8 @@ export interface PoiValuePort {
     readonly links: readonly PoiLinkPort[];
     readonly photoIds: readonly string[];
     readonly published: boolean;
+    /** M27: the id of the layer the street was traced on. */
+    readonly sourceLayer?: string;
 }
 
 /** A change the editor sends; `undefined` clears an optional field. */
@@ -61,6 +63,13 @@ export interface CategoryItemPort {
     readonly label: PoiTextPort;
     readonly icon: string;
     readonly color: string;
+}
+
+/** M27: an old map a street can be traced on. */
+export interface TraceLayerPort {
+    readonly id: string;
+    readonly label: PoiTextPort;
+    readonly year: number;
 }
 
 export interface PoiDraftPort {
@@ -153,6 +162,10 @@ export interface PoisViewState {
     readonly assist: AssistViewPort;
     /** The city's starting view once its document is read (Add at centre without a map needs it); null before. */
     readonly frame?: { readonly view: { readonly center: LngLat } } | null;
+    /** M27: the city's old maps a street can be traced on, by year. */
+    readonly traceLayers: readonly TraceLayerPort[];
+    /** M27: the traced-on map's opacity under the drawing, in percent. */
+    readonly traceOpacity: number;
 }
 
 export type VertexEditPort =
@@ -198,6 +211,8 @@ export interface PoisIntentsPort extends AssistActionsPort {
     bulk(action: BulkActionPort): Promise<void>;
     loadPhotos(): void;
     morePhotos(): void;
+    /** M27: fades the old map under the drawing (0..100 %). */
+    setTraceOpacity(percent: number): void;
     chooseImport(file: ImportFilePort): Promise<void>;
     setImportCategory(category: string): void;
     commitImport(): Promise<void>;

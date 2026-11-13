@@ -32,6 +32,7 @@ export const POI_EDITABLE = [
     'links',
     'photoIds',
     'published',
+    'sourceLayer',
 ] as const;
 
 /** M13 §2: what the rules want of an uploader's new place, added to its fields as it is created. */
@@ -62,6 +63,8 @@ export interface PoiValue {
     readonly links: readonly PoiLink[];
     readonly photoIds: readonly string[];
     readonly published: boolean;
+    /** M27: the id of the city's layer the street was traced on. */
+    readonly sourceLayer?: string;
 }
 
 /** A change the editor sends; `undefined` clears an optional field. */
@@ -125,6 +128,7 @@ export function valueOf(doc: PoiDoc): PoiValue {
         links: doc.links ?? [],
         photoIds: doc.photoIds ?? [],
         published: doc.published,
+        ...optional('sourceLayer', doc.sourceLayer),
     };
 }
 
@@ -160,6 +164,7 @@ export function docFieldsOf(value: PoiValue): Readonly<Record<string, unknown>> 
         links: value.links,
         photoIds: value.photoIds,
         published: value.published,
+        ...optional('sourceLayer', value.sourceLayer),
     };
 }
 

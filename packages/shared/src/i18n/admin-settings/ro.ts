@@ -128,6 +128,12 @@ export const ro = {
     'adminContent.settings.color': 'Culoare',
     'adminContent.settings.colorLowContrast': 'Pictograma albă nu se citește pe această culoare.',
     'adminContent.settings.useColor': 'Folosește {hex}',
+    'adminContent.settings.categoryDisplay': 'În panoul Straturi',
+    'adminContent.settings.categoryShownAtStart': 'Arată pe hartă la deschidere',
+    'adminContent.settings.categoryPinned': 'Fixează sus în panoul Straturi',
+    'adminContent.settings.categoryAttribution': 'Sursa datelor',
+    'adminContent.settings.categoryAttributionHelp':
+        'Apare sub listă cât timp categoria se vede și în fișa fiecărui loc, de exemplu „OpenHistoricalMap (CC0)”.',
     'adminContent.settings.defaultOpacity': 'Opacitate implicită',
     'adminContent.settings.deleteCategory': 'Șterge categoria',
     'adminContent.settings.deleteCategoryConfirm': 'Ștergi categoria „{name}”?',

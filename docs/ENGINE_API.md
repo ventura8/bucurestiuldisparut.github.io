@@ -445,6 +445,9 @@ Points of interest (PLAN Addendum 3) are places, buildings, vanished streets, ev
 | `icon` | string | a Material Symbols name, `^[a-z0-9_]{1,64}$`. The engine bundles the names of `POI_ICONS` (`packages/shared/src/schemas/poi.ts`); any other valid name is drawn as `location_on`, so an older engine never refuses a newer icon |
 | `color` | `#rrggbb` | the icon background, line and fill colour of the category's POIs |
 | `defaultOpacity` | number | 0 to 1 |
+| `defaultVisible?` | boolean | M27: false starts the overlay hidden until the visitor turns it on; absent, shown |
+| `pinned?` | boolean | M27: listed in the Layers panel's top strip, directly below Compare and Map labels and above every historical layer ([research/M27-lost-streets.md](research/M27-lost-streets.md)) |
+| `attribution?` | string | M27: the credit of the category's data (at most 500 characters, plain text), listed under the overlays while the category is visible and in each place's sheet |
 
 At most 50 categories.
 
@@ -459,6 +462,7 @@ At most 50 categories.
 | `yearStart?`, `yearEnd?` | integer | 1800 to 2100; either may be absent (an open end), never `yearEnd` before `yearStart` |
 | `links` | `[{url, label}]` | at most 5, https only |
 | `photoIds?` | string[] | at most 20 ids of manifest photos, shown in the POI's details |
+| `sourceLayer?` | string | M27: the id of a manifest layer the POI was traced on (`validation.reference` otherwise); the sheet says "Seen on: <layer>" |
 
 At most 5,000 POIs. The timeline shows a POI at a year its span covers (an absent bound is open); "today" shows every POI (`poiInYear`). POI details open in the same sheet as photos, labels show from zoom 16. Lines and area outlines are drawn in the category colour over a white casing (wider strokes as the zoom grows, the area filled at 35 %), so they stay legible on a satellite basemap; the casing fades with the category's opacity like the rest (`packages/ui/src/map/pois.ts`, 2026-11-01).
 
@@ -486,7 +490,7 @@ The viewer's Layers panel lists one **overlay** per historical layer, one for th
 | --- | --- | --- |
 | `raster` | `defaultVisible`, `opacity` | `raster-opacity` |
 | `photos` | visible, `photosOverlay.defaultOpacity` (1) | `icon-opacity`, `text-opacity` (markers, cluster counts), `fill-opacity` and `line-opacity` (view cones) |
-| `poi` | visible, `defaultOpacity` | `icon-opacity`, `text-opacity`, `circle-opacity`, `circle-stroke-opacity`, `line-opacity`, `fill-opacity` |
+| `poi` | visible unless `defaultVisible` is false, `defaultOpacity` | `icon-opacity`, `text-opacity`, `circle-opacity`, `circle-stroke-opacity`, `line-opacity`, `fill-opacity` |
 
 Each paint value is the overlay's opacity times the map layer's designed opacity (a view cone drawn at 25 % stays at 25 % of the overlay). Model and mapping: `packages/shared/src/overlays/model.ts` and `packages/shared/src/overlays/paint.ts`.
 

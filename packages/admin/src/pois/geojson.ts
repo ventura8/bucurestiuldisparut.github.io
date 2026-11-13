@@ -8,7 +8,7 @@
 import { geometrySchema, ID_PATTERN, MAX_GEOMETRY_VERTICES, type Geometry } from '@hcm/shared';
 
 import { draftIssues, type PoiContext } from './draft.js';
-import { docFieldsOf, type CategoryItem, type PoiLink, type PoiText, type PoiValue } from './model.js';
+import { docFieldsOf, optional, type CategoryItem, type PoiLink, type PoiText, type PoiValue } from './model.js';
 
 /** A file over this many bytes is refused before it is read. */
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
@@ -187,6 +187,11 @@ function idsOf(value: unknown): string[] {
     return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
 }
 
+/** `{sourceLayer}` when the property is a layer id, else nothing (a non-id value is dropped). */
+function sourceLayerOf(value: unknown): Readonly<Partial<Record<'sourceLayer', string>>> {
+    return typeof value === 'string' && ID_PATTERN.test(value) ? { sourceLayer: value } : {};
+}
+
 /** A feature's properties as a place's value, field by field. */
 function valueOf(properties: Raw, geometry: Geometry, category: string): PoiValue {
     const description = textOf(properties['description']);
@@ -200,6 +205,7 @@ function valueOf(properties: Raw, geometry: Geometry, category: string): PoiValu
         links: linksOf(properties['links']),
         photoIds: idsOf(properties['photoIds']),
         published: properties['published'] !== false,
+        ...sourceLayerOf(properties['sourceLayer']),
     };
 }
 
@@ -317,6 +323,7 @@ function exportFeature(place: ExportedPlace): Raw {
             links: value.links,
             ...(value.photoIds.length === 0 ? {} : { photoIds: value.photoIds }),
             published: value.published,
+            ...optional('sourceLayer', value.sourceLayer),
         },
     };
 }

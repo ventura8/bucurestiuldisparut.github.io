@@ -19,8 +19,8 @@ import {
 import type { EditorAssists } from '../assist/editor-assists.js';
 import type { AreaModule, AreaStore } from '../content/areas.js';
 import { LiveDoc } from '../content/doc.js';
-import { LiveList, type ListState, type LiveListDeps } from '../content/list.js';
-import { ownerOnlyOf, type ContentServices, type WriteOutcome } from '../content/services.js';
+import type { LiveList } from '../content/list.js';
+import { ownerOnlyOf, type WriteOutcome } from '../content/services.js';
 import { Store } from '../state/store.js';
 import { LAST_CATEGORY_KEY, PlaceActions } from './actions.js';
 import type { BulkAction } from './bulk.js';
@@ -28,6 +28,7 @@ import type { PoiContext } from './draft.js';
 import { placeAssists, pointDrawn } from './assists.js';
 import { PlaceEditor, type PlaceEditorState } from './editor.js';
 import { Importer } from './importer.js';
+import { liveListOf, livePartsOf } from './live.js';
 import { PlacePhotos } from './place-photos.js';
 import { mapIntents, PoisMap, UNCATEGORISED_COLOR, type EditTarget } from './map-session.js';
 import { categoryItemOf, cityFrameOf, drawLimitsOf, poiItemOf, type CategoryItem, type PoiItem, type PoiValue } from './model.js';
@@ -53,6 +54,7 @@ import {
     type PoisState,
     type SavedFile,
 } from './state.js';
+import { TraceLayers } from './trace-layers.js';
 import type { PlaceShape } from './vertices.js';
 
 class PoisStore implements AreaStore<PoisState, PoisIntents> {
@@ -66,6 +68,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
     readonly #importer: Importer;
     readonly #actions: PlaceActions;
     readonly #assists: EditorAssists;
+    readonly #trace: TraceLayers;
     /** New places not opened yet (Add place, then the page opens its address). */
     readonly #fresh = new Map<string, PlaceEditor>();
     #editor: PlaceEditor | null = null;
@@ -75,35 +78,32 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
     constructor(services: PoisServices) {
         this.#services = services;
         this.#cell = new Store<PoisState>(INITIAL_POIS_STATE, services.log);
-        this.#list = this.#liveList(FIRESTORE_PATHS.pois(services.cityId), poiDocSchema, poiItemOf, (list) => {
+        this.#list = liveListOf(services, FIRESTORE_PATHS.pois(services.cityId), { schema: poiDocSchema, map: poiItemOf }, (list) => {
             this.#cell.update({ list });
             this.#importer.contextChanged();
             this.#placesChanged();
         });
-        this.#categories = this.#liveList(
-            FIRESTORE_PATHS.poiCategories(services.cityId),
-            poiCategoryDocSchema,
-            categoryItemOf,
-            (categories) => {
-                this.#cell.update({ categories });
-                this.#importer.contextChanged();
-                this.#placesChanged();
-                this.#editor?.recheck();
-                this.#categoryArrived();
-            },
-        );
+        const categories = { schema: poiCategoryDocSchema, map: categoryItemOf };
+        this.#categories = liveListOf(services, FIRESTORE_PATHS.poiCategories(services.cityId), categories, (categories) => {
+            this.#cell.update({ categories });
+            this.#importer.contextChanged();
+            this.#placesChanged();
+            this.#editor?.recheck();
+            this.#categoryArrived();
+        });
         const ownerOnly = () => ownerOnlyOf(services);
-        this.#photos = new PlacePhotos({ ...this.#liveParts(), cityId: services.cityId, ownerOnly }, (patch) => {
+        this.#photos = new PlacePhotos({ ...livePartsOf(services), cityId: services.cityId, ownerOnly }, (patch) => {
             this.#cell.update(patch);
         });
         this.#city = new LiveDoc({
-            ...this.#liveParts(),
+            ...livePartsOf(services),
             schema: cityDocSchema,
             changed: () => {
                 this.#cityChanged();
             },
         });
         this.#map = this.#newMap();
+        this.#trace = new TraceLayers({ services, map: this.#map, cell: this.#cell });
         this.#importer = new Importer({
             ...{ store: services.store, clock: services.clock, cityId: services.cityId },
             context: () => this.#context(),
@@ -123,26 +123,6 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
             },
         });
         this.intents = this.#intents();
-    }
-
-    #liveParts(): Pick<ContentServices, 'store' | 'clock'> & { readonly denied: () => void } {
-        const { store, clock } = this.#services;
-        return {
-            store,
-            clock,
-            denied: () => {
-                this.#services.denied();
-            },
-        };
-    }
-
-    #liveList<Doc, Item>(
-        collection: string,
-        schema: LiveListDeps<Doc, Item>['schema'],
-        map: LiveListDeps<Doc, Item>['map'],
-        changed: (list: ListState<Item>) => void,
-    ): LiveList<Doc, Item> {
-        return new LiveList<Doc, Item>({ ...this.#liveParts(), collection, schema, map, changed });
     }
 
     #newMap(): PoisMap {
@@ -179,12 +159,13 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
             this.#list.show(poisQuery(this.#cell.state.filter, ownerOnlyOf(this.#services)));
             this.#categories.show({ orderBy: [['order', 'asc']] });
             this.#city.show(FIRESTORE_PATHS.city(this.#services.cityId));
+            this.#trace.open();
         }
         this.#select(params[0] ?? null);
     }
 
     close(): void {
-        for (const live of [this.#list, this.#categories, this.#photos, this.#city]) {
+        for (const live of [this.#list, this.#categories, this.#photos, this.#city, this.#trace]) {
             live.stop();
         }
         this.#map.detach();
@@ -278,8 +259,10 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
 
     /** The map's drawing tools and the linked photos' titles follow the open place. */
     #targetChanged(): void {
+        const value = this.#cell.state.editor?.draft?.value;
         this.#map.edit(this.#target());
-        this.#photos.showLinked(this.#cell.state.editor?.draft?.value.photoIds ?? []);
+        this.#trace.follow(value);
+        this.#photos.showLinked(value?.photoIds ?? []);
     }
 
     #target(): EditTarget | null {
@@ -398,6 +381,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
                 this.#categories.retry();
                 this.#editor?.retry();
                 this.#photos.retry();
+                this.#trace.retry();
             },
             add: (shape) => this.#add(shape),
             toggleSelected: (id) => {
@@ -451,6 +435,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
             },
             exportPlaces: (only) => this.#export(only),
             ...mapIntents(this.#map),
+            ...this.#trace.intents,
         };
     }
 }
