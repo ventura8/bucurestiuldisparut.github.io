@@ -132,7 +132,7 @@ export const ro = {
     'apiError.imagery.joinRecalibrate': 'Un strat unit nu poate fi încă recalibrat: nu are o scanare proprie. Rămâne cel actual.',
     'apiError.imagery.localOnly': 'Fișierele acestei serii sunt doar pe calculatorul tău, deci nu poate rula în Google Cloud.',
     'apiError.imagery.rightsUnconfirmed': 'Confirmă drepturile acestei hărți înainte să fie publicată.',
-    'apiError.imagery.archiveMissing': 'Fișierele arhivei lipsesc sau s-au schimbat. Deschide fișierul de pornire unde a fost scanată.',
+    'apiError.imagery.archiveMissing': 'Hărțile scanate sunt pe calculatorul care le-a importat: pornește-l, apoi Încearcă din nou.',
     'apiError.imagery.archiveImported': 'Arhiva aceasta a fost deja importată.',
     'apiError.imagery.archiveYear': 'Scrie mai întâi anul hărții. Hărțile de dinainte de 1800 nu pot fi importate încă.',
     'apiError.imagery.missingBand': 'Livrarea Landsat nu are banda {band}: nu iese imaginea color. Alege altă scenă din acel an.',
