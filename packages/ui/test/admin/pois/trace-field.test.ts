@@ -69,7 +69,7 @@ describe('<hcm-poi-editor>: Traced on map', () => {
 
         expect((deep(element, '#trace-layer') as HTMLSelectElement).value).toBe('corona-1968');
         expect(options(element)[0]).toBe('Niciuna');
-        expect(deepText(element)).toContain('Transparența hărții vechi');
+        expect(deepText(element)).toContain('Opacitatea hărții vechi');
         const slider = deep(element, '#trace-opacity') as HTMLInputElement;
         expect(slider.value).toBe('70');
         slider.value = '35';

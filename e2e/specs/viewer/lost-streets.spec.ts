@@ -12,9 +12,9 @@ import { sitePath } from '../../support/site.js';
  * Layers, hidden until the visitor turns it on, whose streets name the map they were traced on and the data's credit.
  */
 
-const LABEL = { ro: 'Străzi dispărute', en: 'Disappeared streets' } as const;
+const LABEL = { ro: 'Străzi demolate', en: 'Disappeared streets' } as const;
 const CREDIT = 'OpenHistoricalMap (CC0)';
-const ON_LINE: LngLat = [26.0882, 44.42598];
+const ON_LINE: LngLat = [26.088, 44.42485];
 const STREET_ID = 'ls-ohm-1';
 
 /** The tour's fixture (a pinned, hidden category and one street traced on the first layer) and that layer's label. */
@@ -26,7 +26,7 @@ function lostStreetsFixture(): { readonly manifest: Json; readonly layerLabel: {
 
 async function bootWide(page: Page, lang: 'ro' | 'en'): Promise<void> {
     await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.goto(sitePath('bucharest', { lang, hash: '16/44.42590/26.08720' }));
+    await page.goto(sitePath('bucharest', { lang, hash: '16/44.42490/26.08720' }));
     await waitForEngineEvent(page, 'hcm-ready');
     await mapIdle(page);
 }

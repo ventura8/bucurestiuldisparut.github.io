@@ -3,7 +3,7 @@ import { expect, type Page } from '@playwright/test';
 
 import { siteManifestData, type Json } from '../fixtures/manifest.js';
 import { mapIdle, screenPointOf } from '../support/map.js';
-import { openLayers, openViewer, serveManifest, viewer, visibilitySwitch } from '../support/viewer.js';
+import { openLayers, openViewer, serveManifest, t, viewer, visibilitySwitch } from '../support/viewer.js';
 
 /** The tour's states of M27's Disappeared streets (V71; docs/research/M27-lost-streets.md), from e2e/tour/states.ts. */
 
@@ -12,7 +12,7 @@ interface LostStreetsState {
     readonly enter: (tour: { readonly page: Page; readonly lang: Locale }) => Promise<void>;
 }
 
-const LABEL = { ro: 'Străzi dispărute', en: 'Disappeared streets' } as const;
+const LABEL = { ro: 'Străzi demolate', en: 'Disappeared streets' } as const;
 
 export const LOST_STREETS_STATES = {
     'layers-lost-streets': {
@@ -27,8 +27,14 @@ export const LOST_STREETS_STATES = {
     },
     'lost-street': {
         title: 'A disappeared street open in the sheet: its name, years and sources',
-        enter: async ({ page }) => {
-            const point = await screenPointOf(page, [26.0882, 44.42598]);
+        enter: async ({ page, lang }) => {
+            // A modal Layers sheet (a phone) covers the map: close it first; a docked pane stays.
+            const close = page.getByRole('button', { name: t(lang, 'action.close'), exact: true }).filter({ visible: true });
+            if ((await close.count()) > 0) {
+                await close.first().click();
+            }
+            await mapIdle(page);
+            const point = await screenPointOf(page, [26.088, 44.42485]);
             await page.mouse.click(point.x, point.y);
             await expect(viewer(page).locator('hcm-poi-detail .sources')).toBeVisible();
         },
@@ -49,9 +55,9 @@ export function lostStreetsManifest(): Json {
         geometry: {
             type: 'LineString',
             coordinates: [
-                [26.085, 44.4256],
-                [26.087, 44.4258],
-                [26.089, 44.4261],
+                [26.085, 44.4245],
+                [26.087, 44.4247],
+                [26.089, 44.425],
             ],
         },
         title: { ro: 'Strada Mămulari', en: 'Strada Mămulari' },
@@ -68,7 +74,7 @@ export const LOST_STREETS_JOURNEY = {
     id: 'lost-streets',
     boot: async ({ page, lang }: { readonly page: Page; readonly lang: Locale }): Promise<void> => {
         await serveManifest(page, lostStreetsManifest());
-        await openViewer(page, { lang, hash: '16/44.42590/26.08720' });
+        await openViewer(page, { lang, hash: '16/44.42490/26.08720' });
     },
     states: ['layers-lost-streets', 'lost-street'] as const,
 };
