@@ -277,6 +277,29 @@ describe('<hcm-layer-panel> pinned Compare and map labels', () => {
         expect(pinned?.compareDocumentPosition(list ?? pinned) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
+    it('happyPath_theStripStaysPinnedInTheDockedPaneOfALargeWindowOnly', async () => {
+        const labels: HcmLayerPanel['labels'] = { shown: { streets: true, pois: true }, available: ['streets', 'pois'] };
+        const [width, height] = [window.innerWidth, window.innerHeight];
+        await page.viewport(1440, 900);
+        const docked = await panel({ mode: 'docked', canCompare: true, labels });
+        const dockedStrip = docked.shadowRoot?.querySelector('.pinned');
+        expect(dockedStrip === null || dockedStrip === undefined ? '' : getComputedStyle(dockedStrip).position).toBe('sticky');
+        document.body.replaceChildren();
+
+        // A modal sheet is too short to keep it: the list scrolled under it hid a focused switch (WCAG 2.4.11).
+        const sheet = await panel({ mode: 'bottom', open: true, canCompare: true, labels });
+        const sheetStrip = sheet.shadowRoot?.querySelector('.pinned');
+        expect(sheetStrip === null || sheetStrip === undefined ? '' : getComputedStyle(sheetStrip).position).toBe('static');
+        document.body.replaceChildren();
+
+        // Under 1200 x 700 even the docked pane scrolls it with the list (docs/LESSONS.md 618).
+        await page.viewport(1024, 768);
+        const small = await panel({ mode: 'docked', canCompare: true, labels });
+        const smallStrip = small.shadowRoot?.querySelector('.pinned');
+        expect(smallStrip === null || smallStrip === undefined ? '' : getComputedStyle(smallStrip).position).toBe('static');
+        await page.viewport(width, height);
+    });
+
     it('badPath_noCompareButtonWithoutHistoricalLayersOrAMap', async () => {
         await panel({ mode: 'docked' });
 

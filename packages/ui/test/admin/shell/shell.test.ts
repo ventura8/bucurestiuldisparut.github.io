@@ -224,3 +224,19 @@ describe('<hcm-admin-shell> a newer admin', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 });
+
+/** The framed screens are an app shell whose page never scrolls (packages/admin/src/admin.css); the sign-in panels are documents. */
+describe('<hcm-admin-shell> data-frame', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_theFramedScreensMarkTheShellAsAnAppShellAndThePanelsDoNot', async () => {
+        const app = new FakeAdminApp(adminState({ destinations: DESTINATIONS }));
+        const element = await shell(app);
+        expect(element.hasAttribute('data-frame')).toBe(true);
+
+        app.set({ auth: 'signedOut' });
+        await updated(element);
+        expect(element.hasAttribute('data-frame')).toBe(false);
+    });
+});

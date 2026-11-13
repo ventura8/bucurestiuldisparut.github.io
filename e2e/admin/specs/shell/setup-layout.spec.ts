@@ -3,7 +3,7 @@ import { inflateSync } from 'node:zlib';
 import type { Locator, Page, Route } from '@playwright/test';
 
 import { GOOGLE_SCOPES } from '../../../../packages/admin/src/google/scopes.js';
-import { expectStateSound } from '../../../support/state-check.js';
+import { blankScrollOf, expectStateSound } from '../../../support/state-check.js';
 import type { InputBudget } from '../../../support/budget.js';
 import type { SetupBudget } from '../../support/budget.js';
 import { adminVisit } from '../../../tour/states.js';
@@ -332,6 +332,37 @@ test.describe('the page under the shell', () => {
 
             const colours = await bottomAndSurface(page);
             expectSameColour(colours.bottom, colours.surface);
+        },
+    );
+
+    test(
+        'The framed admin is an app shell: the window never scrolls into blank space under it',
+        { tag: ['@S-A31-HAPPY-NO-BLANK-SCROLL'] },
+        async ({ page, lang }) => {
+            await new SetupPage(page, lang).visit('mapbox');
+            await page.mouse.wheel(0, 3000);
+
+            expect(await page.evaluate(() => window.scrollY)).toBe(0);
+            expect(await page.evaluate(() => getComputedStyle(document.documentElement).overscrollBehaviorY)).toBe('none');
+            expect(await blankScrollOf(page)).toEqual([]);
+        },
+    );
+
+    test(
+        'A blank area left under the framed admin is found by the no-blank-scroll checker',
+        { tag: ['@S-A31-BAD-NO-BLANK-SCROLL'] },
+        async ({ page, lang }) => {
+            await new SetupPage(page, lang).visit('mapbox');
+            // A fixture's fault: 400 px of nothing under the shell, as an element escaping the frame once left.
+            await page.evaluate(() => {
+                const blank = document.createElement('div');
+                blank.style.blockSize = '400px';
+                document.body.append(blank);
+            });
+
+            const messages = (await blankScrollOf(page)).map((violation) => violation.message);
+            expect(messages.some((message) => /^the app shell's page is \d+ px tall in a \d+ px window$/.test(message))).toBe(true);
+            expect(messages).toContain('scrolling the window moves the app shell 400 px');
         },
     );
 });
