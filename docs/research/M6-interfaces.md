@@ -1030,4 +1030,3 @@ Supersedes §2.3's shared origin for a project that has the site; §2.3 stays th
 | Links | the functions' `adminUrl` on the admin site once `HCM_ADMIN_SITE` is set (a server build submitted from the admin site), else `/admin/` of the public map, which forwards with the hash route |
 | Allow-lists | the functions' `adminOrigins`, the worker's CORS and Private Network Access, `hostingOrigins()`, the reCAPTCHA key's domains, the browser key's referrers, the private bucket's CORS: each gains the admin site's two origins |
 | Fallback | a project without the site (self-hosted, starter kit, a site id another project holds): the admin under the public map's `/admin/` with the sign-in in the tab |
-
