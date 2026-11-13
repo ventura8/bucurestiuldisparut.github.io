@@ -362,13 +362,17 @@ class LocalServer:
     def post(self, request: Request) -> Reply:
         if request.path.startswith(IMPORT_PREFIX):
             return self._import_post(request)
-        if request.path == "/profile":
-            return self._profile(request)
-        if request.path == "/pause":
-            return self._pause(request)
-        if request.path == "/remove":
-            return self._guarded(request, self._remove, "/remove")
-        return self._pair(request) if request.path == "/pair" else self._guarded(request, self._sign_in)
+        routed = self._routes().get(request.path)
+        return routed(request) if routed is not None else self._guarded(request, self._sign_in)
+
+    def _routes(self) -> dict[str, Callable[[Request], Reply]]:
+        """The POST paths with their own handler (the rest is the page's sign-in)."""
+        return {
+            "/profile": self._profile,
+            "/pause": self._pause,
+            "/remove": lambda request: self._guarded(request, self._remove, "/remove"),
+            "/pair": self._pair,
+        }
 
     def _profile(self, request: Request) -> Reply:
         """M26: the owner's profile from the admin's card, under `/pair`'s rules (a Hosting origin, JSON); kept on this computer."""
