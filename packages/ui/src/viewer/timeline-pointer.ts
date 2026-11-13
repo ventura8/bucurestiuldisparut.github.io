@@ -3,7 +3,8 @@
  * selecting until release; hovering shows the year chip on a stop without its own label (`timeline-tip.ts`). A finger
  * scrubs along the track, each year it enters selected at once, the chip naming it (`timeline-scrub.ts`); on a scrolling
  * track a finger elsewhere than on the thumb may scroll the card, so it selects only as a tap, the chip shown while down.
- * Selections during a press are live (`select`, coalesced by the timeline to one event per frame); its end `settle`s them.
+ * Selections during a press are live (`select`, coalesced by the timeline to one event per frame); its end `settle`s them,
+ * and only a press the visitor lifted (not a cancelled one) may open the date menu of a year with several dates (V13).
  */
 import { startScrub } from './timeline-scrub.js';
 
@@ -36,8 +37,11 @@ export interface TimelinePointerHost {
     readonly count: () => number;
     /** Selects a stop during a press (live: the timeline sends at most one event per frame). */
     readonly select: (index: number) => void;
-    /** The press is over: the last year selected is sent now, and announced if the press changed it. */
-    readonly settle: () => void;
+    /**
+     * The press is over: the last year selected is sent now, and announced if the press changed it; `released` when the
+     * visitor lifted it (a tap, a click, the end of a drag or a scrub), not when it was cancelled or replaced.
+     */
+    readonly settle: (released: boolean) => void;
     readonly focus: () => void;
     readonly dragging: (dragging: boolean) => void;
     /** The chip under a finger at a stop, or none. */
@@ -92,13 +96,13 @@ export class TimelinePointer {
         this.#host.hideHint();
     };
 
-    /** Ends the current press, if any: what it selected is settled. */
-    end(): void {
+    /** Ends the current press, if any: what it selected is settled (`released`: the visitor lifted it). */
+    end(released = false): void {
         this.#host.dragging(false);
         this.#host.touchTip(null);
         this.#stop();
         this.#stop = () => undefined;
-        this.#host.settle();
+        this.#host.settle(released);
     }
 
     /** A finger along the track: the chip names the year under it, lifting selects it. */
@@ -112,9 +116,9 @@ export class TimelinePointer {
             onSelect: (index) => {
                 this.#host.select(index);
             },
-            onEnd: () => {
+            onEnd: (released) => {
                 this.#stop = () => undefined;
-                this.end();
+                this.end(released);
                 this.#host.focus();
             },
         });
@@ -124,9 +128,12 @@ export class TimelinePointer {
     #tapLater(track: HTMLElement, down: PointerEvent): void {
         this.#host.touchTip(this.#indexAt(track, down));
         const up = (event: PointerEvent): void => {
-            this.end();
-            if (Math.hypot(event.clientX - down.clientX, event.clientY - down.clientY) <= TAP_SLOP_PX) {
+            const tap = Math.hypot(event.clientX - down.clientX, event.clientY - down.clientY) <= TAP_SLOP_PX;
+            if (tap) {
                 this.#host.select(this.#indexAt(track, event));
+            }
+            this.end(tap);
+            if (tap) {
                 this.#host.focus();
             }
         };
@@ -146,16 +153,19 @@ export class TimelinePointer {
         const move = (moveEvent: PointerEvent): void => {
             this.#host.select(this.#indexAt(track, moveEvent));
         };
-        const end = (): void => {
+        const up = (): void => {
+            this.end(true);
+        };
+        const cancel = (): void => {
             this.end();
         };
         window.addEventListener('pointermove', move);
-        window.addEventListener('pointerup', end);
-        window.addEventListener('pointercancel', end);
+        window.addEventListener('pointerup', up);
+        window.addEventListener('pointercancel', cancel);
         this.#stop = () => {
             window.removeEventListener('pointermove', move);
-            window.removeEventListener('pointerup', end);
-            window.removeEventListener('pointercancel', end);
+            window.removeEventListener('pointerup', up);
+            window.removeEventListener('pointercancel', cancel);
         };
         this.#host.dragging(true);
         this.#host.select(this.#indexAt(track, event));

@@ -8,12 +8,14 @@
  * by itself (`hcm-archive-arrived`): choosing the files and Import are the owner's only inputs (§8.3, the admin-input budget).
  */
 import type { AdminArchiveKey } from '@hcm/shared/admin-archive';
+import { trackFunnel } from '@hcm/shared/funnels';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { errorTemplate } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import type { ArchiveRowPort, ArchiveViewPort, LocalFilePort, LocalImportPort } from './archive-port.js';
 import { ArchiveElement, count, sizeText } from './archive-element.js';
+import { localImportFunnel } from './local-import-funnel.js';
 
 export const HCM_ARCHIVE_PANEL_TAG = 'hcm-archive-panel';
 
@@ -44,6 +46,9 @@ export class HcmArchivePanel extends ArchiveElement {
         const view = this.view;
         if (view?.status === 'ready') {
             this.#arrived(view.archives);
+        }
+        if (view !== null) {
+            trackFunnel(this, localImportFunnel(view.local));
         }
     }
 

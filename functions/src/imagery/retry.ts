@@ -142,9 +142,45 @@ async function requireFailedWork(deps: RetryDeps, request: Request): Promise<{ j
     const path = FIRESTORE_PATHS.layerVersion(request.cityId, versionIdOf(request.jobId, job));
     const version = await deps.documents.get(path, layerVersionDocSchema);
     if (!retryable(job, version)) {
+        if (!isSideJob(job.type)) {
+            await refuseSetAside(deps, request, versionIdOf(request.jobId, job), version);
+        }
         throw new ApiError('apiError.imagery.versionState');
     }
     return { job, version };
+}
+
+/** The frame of an import version: its id after `<kind>-<stamp>-` (`im-mw11bz00-D3C1202-200149F039` → `D3C1202-200149F039`). */
+function frameOf(versionId: string): string {
+    return versionId.split('-').slice(2).join('-');
+}
+
+/** A later import of the same frame into the same layer, not set aside itself; undefined when there is none. */
+async function newerImport(deps: RetryDeps, cityId: string, versionId: string, layerId: string): Promise<string | undefined> {
+    const frame = frameOf(versionId);
+    const { documents } = await deps.documents.query(FIRESTORE_PATHS.layerVersions(cityId), layerVersionDocSchema, {
+        where: [['layerId', '==', layerId]],
+    });
+    const later = documents.filter(
+        ({ id, data }) => id !== versionId && frame !== '' && frameOf(id) === frame && data.state !== 'rejected',
+    );
+    return later.map(({ id }) => id).sort((a, b) => b.localeCompare(a))[0];
+}
+
+/**
+ * A version set aside (rejected) runs no more (the owner's report of 2026-11-13: "Run it again" on the 1972 frame
+ * `im-mw11bz00-D3C1202-200149F039` came back with a bare 400): the refusal names a newer import of the same frame
+ * (`apiError.imagery.importedAgain`, which the Jobs page turns into Open the newer import), else says it was set aside.
+ */
+async function refuseSetAside(deps: RetryDeps, request: Request, versionId: string, version: LayerVersionDoc | undefined): Promise<void> {
+    if (version?.state !== 'rejected') {
+        return;
+    }
+    const newer = await newerImport(deps, request.cityId, versionId, version.layerId);
+    deps.log.info('retry refused: the version was set aside', { jobId: request.jobId, versionId, newer: newer ?? 'none' });
+    throw newer === undefined
+        ? new ApiError('apiError.imagery.versionRejected')
+        : new ApiError('apiError.imagery.importedAgain', { versionId: newer });
 }
 
 /** The job may be retried: failed or stopped with its version, a raster type, a curable failure, attempts left, the guard green. */

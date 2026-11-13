@@ -8,15 +8,16 @@
  * No timer collapses it (WCAG 2.2.1: a visitor reading or tabbing is never hurried; DECISIONS-for-review.md §195). The
  * collapsed card is still the slider: the arrow keys change the year and the screen reader hears it.
  *
- * V13: a year with several dates carries a badge (`timeline-dates.ts`); its badge, or Enter on the slider, opens
- * `<hcm-date-menu>` beside it, and the date picked comes to the front (the store's `pickLayer`, V15's mechanism).
+ * V13: a year with several dates carries a badge (`timeline-dates.ts`), a hint only; selecting that year (a tap, a click,
+ * the end of a drag or a scrub, Enter, the gamepad's A) opens `<hcm-date-menu>` beside the thumb, and the date picked comes
+ * to the front (the store's `pickLayer`, V15's mechanism); Esc, a press outside it or the gamepad's B close it.
  */
-import { translate, type Layer, type Locale } from '@hcm/shared';
+import { translate, type Layer, type ViewerLocale } from '@hcm/shared';
 import { html, type ReactiveController, type ReactiveControllerHost, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
 import type { HcmTimeline, TimelineOrientation } from './hcm-timeline.js';
-import { dateCounts, dateItems, frontOfYear, type DatesOpenDetail } from './timeline-dates.js';
+import { dateCounts, dateItems, datesOpenEvent, frontOfYear, type DatesOpenDetail } from './timeline-dates.js';
 import type { TimelineStop } from './timeline-model.js';
 
 /** What the dock needs from the viewer element. */
@@ -54,10 +55,7 @@ export class TimelineDock implements ReactiveController {
         this.#set(true);
     }
 
-    /**
-     * A press on the pill opens the card instead of moving the year: caught on its way down to the timeline (a press on
-     * its badge still opens the dates, on the click that follows).
-     */
+    /** A press on the pill opens the card instead of moving the year (or opening its dates): caught on its way down to the timeline. */
     readonly pointerDown = {
         capture: true,
         handleEvent: (event: PointerEvent): void => {
@@ -76,11 +74,39 @@ export class TimelineDock implements ReactiveController {
         }
     };
 
+    /**
+     * The timeline asks for a year's dates. On a phone's pill (Enter or the gamepad's A on it) the card opens first and the
+     * menu opens beside its thumb there, so it never sits over the pill's corner.
+     */
     readonly onDatesOpen = (event: CustomEvent<DatesOpenDetail>): void => {
         event.stopPropagation();
-        this.dates = event.detail;
-        this.#host.requestUpdate();
+        const timeline = this.#timeline();
+        if (timeline?.collapsed !== true) {
+            this.#openDates(event.detail);
+            return;
+        }
+        this.#set(true);
+        void this.#host.updateComplete
+            .then(() => timeline.updateComplete)
+            .then(() => {
+                const thumb = timeline.renderRoot.querySelector('.thumb');
+                this.#openDates(thumb === null ? event.detail : datesOpenEvent(event.detail.year, thumb).detail);
+            });
     };
+
+    #openDates(detail: DatesOpenDetail): void {
+        this.dates = detail;
+        this.#host.requestUpdate();
+    }
+
+    /** B (or the Xbox's emulated GamepadB: the input `close`) over the date menu closes it and keeps the date shown. */
+    closedBy(command: string): boolean {
+        if (command !== 'close' || this.dates === null) {
+            return false;
+        }
+        this.closeDates();
+        return true;
+    }
 
     /** Closes the date picker; the focus goes back to the slider once the frame is no longer inert. */
     readonly closeDates = (): void => {
@@ -117,7 +143,7 @@ export class TimelineDock implements ReactiveController {
 export interface DockView {
     readonly stops: readonly TimelineStop[];
     readonly year: number | null;
-    readonly locale: Locale;
+    readonly locale: ViewerLocale;
     readonly orientation: TimelineOrientation;
     readonly layers: readonly Layer[];
     readonly collapsed: boolean;
@@ -130,7 +156,6 @@ export function timelineDock(view: DockView, dock: TimelineDock, onYearChange: (
             id="timeline"
             data-layout-check="timeline"
             .stops=${view.stops}
-            .layers=${view.layers}
             .value=${view.year}
             .locale=${view.locale}
             .orientation=${view.orientation}

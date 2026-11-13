@@ -1118,16 +1118,16 @@
         {
             "id": "V67",
             "area": "viewer",
-            "name": "On a phone the timeline rests collapsed to the pill of its year, opens on a tap and covers none of the map's other controls",
+            "name": "On a phone the timeline rests collapsed to a large pill of its year (64 px, the year in title large), opens on a tap and covers none of the map's other controls",
             "milestone": "M17",
             "source": "the owner, 2026-11-13 (beta.1, V12 of reports/OPEN-ISSUES-beta1.md): on phones the vertical timeline collapses to a year pill when idle"
         },
         {
             "id": "V68",
             "area": "viewer",
-            "name": "A timeline year with several dates carries a badge; the badge or Enter opens a menu of its dates, and the date picked comes to the front",
+            "name": "A timeline year with several dates carries a badge (a hint only); selecting that year opens a menu of its dates, never mid-drag, and the date picked comes to the front",
             "milestone": "M17",
-            "source": "the owner, 2026-11-13 (beta.1, V13 of reports/OPEN-ISSUES-beta1.md): a year with several dates or layers lets the visitor pick the date (badge + compact chooser)"
+            "source": "the owner, 2026-11-13 (beta.1, V13 of reports/OPEN-ISSUES-beta1.md): a year with several dates or layers lets the visitor pick the date (badge + compact chooser); corrected the same day: the picker shows when the visitor selects such a year, not on the badge, too small for a finger or a mouse"
         },
         {
             "id": "P31",
@@ -1142,6 +1142,41 @@
             "name": "The interface in 25 languages: the admin's language picker, right to left, the fallback to English",
             "milestone": "M26",
             "source": "docs/I18N.md (the owner, 2026-11-12: every UI text in 25 languages)"
+        },
+        {
+            "id": "A150",
+            "area": "admin",
+            "name": "Every wizard reports its step funnel and the errors it shows to analytics, after consent, as codes",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1); docs/ARCHITECTURE.md → Wizard funnels; DECISIONS-for-review.md §200"
+        },
+        {
+            "id": "A151",
+            "area": "admin",
+            "name": "The Statistics view shows each wizard's steps and the way to its funnel in Google Analytics",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1); DECISIONS-for-review.md §200"
+        },
+        {
+            "id": "A153",
+            "area": "admin",
+            "name": "The Statistics view shows Google Analytics' numbers and Error Reporting's groups after the owner's read-only consent",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (take me to the analytics permission button); DECISIONS-for-review.md §203"
+        },
+        {
+            "id": "V70",
+            "area": "viewer",
+            "name": "The viewer's key actions reach analytics only after consent, and never under Do Not Track",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1); DECISIONS-for-review.md §200"
+        },
+        {
+            "id": "A152",
+            "area": "admin",
+            "name": "Not useful on a scene, and a scene its preview shows cloudy over the city is ranked down and warned",
+            "milestone": "M4",
+            "source": "the owner, 2026-11-13: \"This scan is useless (too many clouds!!!)\", DS09066A047MC019, a 1964 scan the whole-city plan kept offering to buy; docs/research/M4-interfaces.md, Not useful and the cloud estimate"
         }
     ],
     "scenarios": [
@@ -1513,8 +1548,8 @@
             "behaviour": "V04",
             "area": "viewer",
             "path": "happy",
-            "title": "A mouse over a year without its label shows the year in a chip above the timeline; a year of several dates names them",
-            "asserts": "at 768x1024 with 21 years: hovering 1965 (unlabelled) shows '1965' above the card, inside the viewport, over no control (compass, zoom group, menu button, photos chip); hovering 1964 (two dated layers, the first stop) shows '1964 · …' and stays over the card's start; unit: packages/ui/test/viewer/hcm-timeline-tip.test.ts, timeline-tip.test.ts",
+            "title": "A mouse over a year without its label shows the year in a large chip above the timeline",
+            "asserts": "at 768x1024 with 21 years: hovering 1965 (unlabelled) shows '1965' above the card in M3 title medium (16 px, 40 px tall at least; the owner 2026-11-13: bigger on every platform), inside the viewport, over no control (compass, zoom group, menu button, photos chip); unit: packages/ui/test/viewer/hcm-timeline-tip.test.ts, timeline-tip.test.ts",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §192). packages/ui/src/viewer/timeline-tip.ts, timeline-scrub.ts, timeline-pointer.ts, timeline-sends.ts, hcm-timeline.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
@@ -1529,6 +1564,17 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §192). packages/ui/src/viewer/timeline-tip.ts, timeline-scrub.ts, timeline-pointer.ts, timeline-sends.ts, hcm-timeline.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
+        },
+        {
+            "id": "S-V04-BAD-MULTI-DATE-NO-CHIP",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A multi-date year shows no chip",
+            "asserts": "at 768x1024 with 21 years, 1964 with two dated layers: a mouse over its stop shows no chip, nor the keyboard's Home onto it; unit: a mouse, the keyboard and a finger scrubbing over a year of two layers show none, the years either side still do",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: a year of several images or dates shows no year chip on any platform, its date menu (V68) names them (DECISIONS-for-review.md §192, §195h). packages/ui/src/viewer/timeline-tip.ts (tipWanted), hcm-timeline.ts (#severalDates); unit tests in packages/ui/test/viewer/hcm-timeline-tip.test.ts and timeline-tip.test.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
         },
         {
             "id": "S-V04-HAPPY-TOUCH-SCRUB",
@@ -6063,6 +6109,17 @@
             "notes": "Round of 2026-11-06. In functions/test/imagery/retry.test.ts and approve.test.ts; jobRetryable in packages/shared/test/imagery/job-retryable.test.ts."
         },
         {
+            "id": "S-A12-BAD-RETRY-IMPORTED-AGAIN",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "Run it again on an import set aside after the frame was imported again names the newer import",
+            "asserts": "a failed job whose version was rejected, with a later import of the same frame in the same layer -> imagery.retry refuses apiError.imagery.importedAgain with the newer version's id (logged with both ids); the Jobs page says the frame was imported again later and offers Open the newer import; without a newer import, apiError.imagery.versionRejected says to import the frame again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (the 1972 frame im-mw11bz00-D3C1202-200149F039, a bare HTTP 400). Covered by functions/test/imagery/retry.test.ts and packages/admin/test/jobs/raster.test.ts."
+        },
+        {
             "id": "S-A12-BAD-STRANDED-VERSION",
             "behaviour": "A12",
             "area": "admin",
@@ -7579,6 +7636,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/telemetry/report-error.test.ts."
+        },
+        {
+            "id": "S-A24-HAPPY-CLIENT-LABEL",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "happy",
+            "title": "A crash report names the browser and device class, never the User-Agent, and the route",
+            "asserts": "a report from Firefox for iOS with route photo -> the logged event's httpRequest.userAgent is 'Firefox 145 mobile' and hcm.route is photo; the full User-Agent string is nowhere in it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (crash reports and analytics). Covered by functions/test/telemetry/report-error.test.ts; packages/shared/src/telemetry/crash-noise.ts."
+        },
+        {
+            "id": "S-A24-BAD-NOISE-DROPPED",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "bad",
+            "title": "A script the browser injected or an aborted fetch is no crash: dropped with its reason",
+            "asserts": "a report of Firefox for iOS's __firefox__ reader script (stack at the page's line 1) and an AbortError -> 204, nothing reaches Error Reporting, the log names the reason (injected, aborted)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The Crashes groups of 2026-11-11. The viewer and the admin drop them at the source too (crashNoiseOf). Covered by functions/test/telemetry/report-error.test.ts."
         },
         {
             "id": "S-A24-BAD-TOO-LARGE",
@@ -18410,10 +18489,21 @@
             "area": "admin",
             "path": "bad",
             "title": "On a low battery the worker pauses; a hot computer steps down; the user at the keyboard gets the computer back",
-            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; at 90 C on the processor or 83 C on the card one level down, back 10 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test)",
+            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; from 80 C on the processor the threads shrink in proportion to the degrees left to 95 C (at least one), and other programs' busy cores come off the top; at 95 C on the processor or 83 C on the card one level down, back 5 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test); the log says a change of profile, reason, threads or memory step only, never every tick",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
+            "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_governor_budget.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
+            "id": "S-A141-BAD-NO-DRIVER",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "An NVIDIA card without its driver: the card says to install the driver and links to it; a command's error text is never a card's name",
+            "asserts": "the starter lists a card only from a command that succeeded, in the expected shape (nvidia-smi's exit status, whole numbers for the memory); the cards' names come from lspci (Intel Arc on the NUC: Arrow Lake-P [Arc Pro 130T/140T]); an NVIDIA card in /sys/class/drm with nvidia-smi failing -> via null, why no-driver; the worker drops a card whose name is empty, multi-line or over 120 characters; the admin's card shows the no-driver line with a link to NVIDIA's drivers, ro and en, axe clean",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The NUC's /state of 2026-11-13 listed nvidia-smi's failure as a card's name (and an empty one, which made the whole card read as an older worker). Tests: functions/test/worker/starter-governor.test.ts, pipeline/tests/unit/test_governor_probe.py, packages/ui/test/admin/worker/machine.test.ts."
         },
         {
             "id": "S-A142-HAPPY-VERSIONS",
@@ -19290,7 +19380,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "On a phone the timeline rests as its year pill and opens on a tap",
-            "asserts": "at 375x812 the timeline is a 68 x 48 pill 16 px from the leading edge, the slider says the year; it overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution; a tap opens the standing card with the year unchanged, and a tap on the map collapses it again",
+            "asserts": "at 375x812 the timeline is a pill 64 px tall and 96 px wide or more, 16 px from the leading edge, its year in title large (22 px), the slider says the year; it overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution; a tap opens the standing card with the year unchanged, and a tap on the map collapses it again",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dock.ts, timeline-dock-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/timeline-dock.test.ts and hcm-timeline-dates.test.ts. Test: e2e/specs/viewer/timeline-pill.spec.ts."
@@ -19301,7 +19391,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "On a short landscape phone the pill keeps the trailing foot, clear of the menu, the zoom, the compass and the legal line",
-            "asserts": "at 915x412 and at 568x270 the collapsed timeline is 48 px tall on the trailing half and overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution",
+            "asserts": "at 915x412 and at 568x270 the collapsed timeline is 64 px tall on the trailing half and overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dock.ts, timeline-dock-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/timeline-dock.test.ts and hcm-timeline-dates.test.ts. Test: e2e/specs/viewer/timeline-pill.spec.ts."
@@ -19323,7 +19413,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "The pill and the opened card pass the layout and accessibility checks on every phone",
-            "asserts": "expectStateSound on the journey timeline-dates (the pill, the card a tap opened) at every phone viewport, and on every other map state of a phone, which shows the pill",
+            "asserts": "expectStateSound on the journey timeline-dates (the 64 px pill, the card a tap opened) at every phone viewport (c320, c360, 568x270 and 915x412 among them), and on every other map state of a phone, which shows the pill",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dock.ts, timeline-dock-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/timeline-dock.test.ts and hcm-timeline-dates.test.ts. Test: e2e/tour/viewer.tour.ts (e2e/tour/timeline-states.ts)."
@@ -19333,8 +19423,8 @@
             "behaviour": "V68",
             "area": "viewer",
             "path": "happy",
-            "title": "The badge of a year with two dates opens them; the date picked comes to the front",
-            "asserts": "a city whose 1980 has two opaque layers, the timeline on 1980: the slider's value names two dates, the pill's badge reads 2; a click opens the menu 'Dates in 1980' with two menuitemradio, the August one (on top) checked; picking March closes it, the focus back on the slider, the March tiles on top and layers= names it last",
+            "title": "Selecting a multi-date year opens the menu; the date picked comes to the front",
+            "asserts": "a city whose 1980 has two opaque layers, the timeline on 1980: the slider's value names two dates, the pill's badge reads 2; on today, a click on 1980's point opens the menu 'Dates in 1980' with two menuitemradio, the August one (on top) checked and focused; picking March closes it, the focus back on the slider, the March tiles on top and layers= names it last",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/specs/viewer/timeline-dates.spec.ts."
@@ -19362,12 +19452,34 @@
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/specs/viewer/timeline-dates.spec.ts."
         },
         {
+            "id": "S-V68-BAD-MULTI-DATE-NO-CHIP",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A multi-date year shows no year chip: the date menu names its dates",
+            "asserts": "at 768x1024 with 21 years, 1964 with two dated layers: a mouse over its stop shows no chip, nor the keyboard's Home onto it; unit: a mouse, the keyboard and a finger scrubbing over a year of two layers show none, the years either side still do",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: a year of several images or dates shows no year chip on any platform, its date menu (V68) names them (DECISIONS-for-review.md §192, §195h). packages/ui/src/viewer/timeline-tip.ts (tipWanted), hcm-timeline.ts (#severalDates); unit tests in packages/ui/test/viewer/hcm-timeline-tip.test.ts and timeline-tip.test.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-SCRUB-PASSES",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A scrub across a multi-date year doesn't open the menu mid-drag",
+            "asserts": "the badge takes no pointer (pointer-events none); a mouse drag from today onto 1980 selects 1980 live with no menu while the button is down, and back to today, where it is released: the slider says today and no menu ever opened",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195g). packages/ui/src/viewer/hcm-timeline.ts (#settle, #offerDates), timeline-pointer.ts, timeline-scrub.ts; unit tests in packages/ui/test/viewer/hcm-timeline-dates.test.ts (a drag, a finger scrub, a cancelled press, the arrows). Test: e2e/specs/viewer/timeline-dates.spec.ts."
+        },
+        {
             "id": "S-V68-HAPPY-TOUR",
             "behaviour": "V68",
             "area": "viewer",
             "path": "happy",
             "title": "The menu of a year's dates passes the layout and accessibility checks on every window",
-            "asserts": "expectStateSound on the journey timeline-dates (the menu opened by Enter) at every viewer viewport; Esc closes it and the focus returns to the slider",
+            "asserts": "expectStateSound on the journey timeline-dates (the menu opened by a click on the selected year) at every viewer viewport; Esc closes it and the focus returns to the slider",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/tour/viewer.tour.ts (e2e/tour/timeline-states.ts)."
@@ -19426,6 +19538,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-CANVAS-THREADS",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Two large colour sheets are laid out and mosaicked within 800 MB whatever GDAL's thread count",
+            "asserts": "two 12,000 px colour sheets laid out and mosaicked in a child process started as python -m hcm_pipeline starts (at most two malloc arenas) -> peak resident memory under 800 MB on one thread and on every core (ALL_CPUS); the C heap's free pages are given back before the first sheet and after each one; the pixels are the same on any thread count",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "2026-11-13, the NUC: one thread 636 MB, every core 870 MB before (the threads' malloc arenas kept the layout's reads); 588 / 653 MB on 1 / 16 threads after (tcmalloc, the worker image: 650 to 690 MB either way), no slower. Tests: pipeline/tests/unit/test_placing_canvas_window.py, test_heap.py."
+        },
+        {
+            "id": "S-P31-BAD-CANVAS-THREADS-NO-GLIBC",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Where the C library is not glibc, or there is nothing to give back, the heap calls do nothing and nothing fails",
+            "asserts": "no libc.so.6, or one without mallopt and malloc_trim -> limit_arenas and give_back answer False and the step goes on; malloc_trim returning 0 (nothing to return) is not an error",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Tests: pipeline/tests/unit/test_heap.py."
         },
         {
             "id": "S-P31-HAPPY-TILE-PROCESSES",
@@ -19514,6 +19648,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-HAPPY-CLAIM-HEADROOM",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A hot or busy computer leaves a queued job to a cooler or idler worker of the same city",
+            "asserts": "every wait before a claim is stretched by 1 + 3 x (1 - headroom): headroom 1 with room, the heat's share from 80 to 95 C and other programs' load lower it, 0 while paused; with room the worker asks every pollSeconds (30 s), half the room 75 s, none 120 s (240 s when idle), so the cooler worker asks first; a lone worker still takes the job",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: three workers (laptop, NUC, PC); the laptop held jobs paused for heat. Tests: pipeline/tests/unit/test_worker_pace.py, test_governor_loop.py."
+        },
+        {
+            "id": "S-P31-BAD-CLAIM-HEADROOM-RANGE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A headroom out of range neither speeds a claim past the poll nor stretches it past four polls",
+            "asserts": "a headroom over 1 -> the plain poll; under 0 -> four polls; before the governor's first tick the headroom is 1",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Tests: pipeline/tests/unit/test_worker_pace.py, test_governor_loop.py."
         },
         {
             "id": "S-P31-HAPPY-ATLAS-PAGES",
@@ -19734,6 +19890,204 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The review of 2026-11-13 (W1). Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-gcps.test.ts; Vitest packages/ui/test/admin/imagery/tiles-link.test.ts."
+        },
+        {
+            "id": "S-A150-HAPPY-FUNNEL-ORDER",
+            "behaviour": "A150",
+            "area": "admin",
+            "path": "happy",
+            "title": "A wizard's funnel events leave in the order the owner walks it",
+            "asserts": "wizard_start, step_view (with the attempt), step_help_opened, step_error, step_complete (with its time), step_back, step_action, wizard_complete reach a mocked telemetry in order; Setup's cards and New city's steps signal as codes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/cities/new-city.spec.ts (New city's signals in order); Vitest packages/shared/test/telemetry/funnel-hub.test.ts, packages/ui/test/admin/setup/hcm-setup-page.test.ts, packages/ui/test/admin/wizard-funnels.test.ts, packages/admin/test/app/funnels.test.ts."
+        },
+        {
+            "id": "S-A150-BAD-NO-EVENTS-BEFORE-CONSENT",
+            "behaviour": "A150",
+            "area": "admin",
+            "path": "bad",
+            "title": "No funnel event leaves before consent or under Do Not Track",
+            "asserts": "a browser that asks not to be tracked is taken as a refusal: no banner, nothing sent or held; an event before an answer waits in memory and is forgotten on a refusal",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/cities/new-city.spec.ts (no Google script on the page; the e2e admin has no GA4, the firewall refuses any Google host); Vitest packages/admin/test/app/telemetry.test.ts (Do Not Track, held before an answer)."
+        },
+        {
+            "id": "S-A150-BAD-STEP-ERROR-CODE-NOT-TEXT",
+            "behaviour": "A150",
+            "area": "admin",
+            "path": "bad",
+            "title": "A step's error leaves as its code, never as its words",
+            "asserts": "step_error and ui_error refuse free text, an address or an unknown wizard; the hub sends `unknown` for a step or code that is not a short token; an error notice is one ui_error with its key and route",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/cities/new-city.spec.ts (the area's problem leaves as validation.bounds); Vitest packages/shared/test/telemetry/field-events.test.ts, funnel-hub.test.ts, packages/admin/test/app/funnels.test.ts."
+        },
+        {
+            "id": "S-A151-HAPPY-STATISTICS",
+            "behaviour": "A151",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Statistics view lists every wizard's steps with their codes and links Google Analytics",
+            "asserts": "#/crashes/statistics: one item per wizard id, each with its steps in plain words and codes, the way to a funnel exploration, the Google Analytics link; reached from the crash list's head",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/ops.spec.ts (tour state crashes.statistics); Vitest packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A151-BAD-NO-ANALYTICS",
+            "behaviour": "A151",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without Google Analytics the Statistics view says so and leads to Setup",
+            "asserts": "statistics are off: the note says so in plain words and links step g of Setup",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/ops.spec.ts; Vitest packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-HAPPY-NUMBERS",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "happy",
+            "title": "Show the numbers here: one read-only Analytics consent, then the overview, the apps and each wizard's funnel",
+            "asserts": "#/crashes/statistics: the button with Google's note about the read-only scope asks for analytics.readonly only; after the consent the visitors, the apps per role (the start page not measured) and the new_city funnel with who left and the error codes in words show; another period asks the Data API for its own days, coming back to a period asks nothing; Error Reporting's groups of the period link the console",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §203. Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-numbers); Vitest packages/ui/test/admin/ops/statistics.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/admin/test/google/analytics-data.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-CONSENT-REFUSED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused Analytics consent reads nothing and says how to try again",
+            "asserts": "the owner closes Google's window without ticking the scope -> the view says the permission was not given and to tick it on the next click; the Data API is never called",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/crashes/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-API-DISABLED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "The Data API off: the view says so with Setup's Update the map and the console's page",
+            "asserts": "the Data API answers SERVICE_DISABLED -> the alert says the API is off and to run Update the map or turn it on, with links to #/setup and the API's page in the Google Cloud console of the project",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-problem); Vitest packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-V70-HAPPY-KEY-ACTIONS",
+            "behaviour": "V70",
+            "area": "viewer",
+            "path": "happy",
+            "title": "After Accept the compass reset is one GA4 event, valid and private",
+            "asserts": "the GA4 mock receives one compass_reset; every event passes the viewer's guard",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/key-actions.spec.ts; Vitest packages/engine/test/core/store-compass.test.ts, store.test.ts (input_device, ui_error)."
+        },
+        {
+            "id": "S-V70-BAD-NO-EVENTS-BEFORE-CONSENT",
+            "behaviour": "V70",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Under Do Not Track the viewer asks nothing and sends nothing",
+            "asserts": "no consent banner; no request reaches Google or Firebase; no gtag on the page",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/key-actions.spec.ts; Vitest packages/engine/test/telemetry/telemetry.test.ts."
+        },
+        {
+            "id": "S-V70-BAD-YEAR-DRAG-ONE-EVENT",
+            "behaviour": "V70",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A drag along the timeline is one year_change, its last year",
+            "asserts": "the year changes held 1.5 s; a newer one replaces it; hiding the page sends it at once",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/key-actions.spec.ts (four years along the timeline, one year_change); Vitest packages/engine/test/telemetry/settle.test.ts, telemetry.test.ts."
+        },
+        {
+            "id": "S-A152-HAPPY",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "happy",
+            "title": "A scene marked Not useful leaves the whole-city plan and its Buy this scan, and the list hides it",
+            "asserts": "the scene's page offers Not useful with four reasons, one click each; Clouds -> imagery.markScene stores status rejected and unusable {reason, at}, writes the plan again at once: the date's row keeps the free frames that complete it and lists no Buy this scan for it; Find hides it under Hide not useful and shows it with its Not useful chip once that is off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: e2e/admin/specs/imagery/unusable.spec.ts; functions/test/imagery/mark-scene.test.ts; packages/ui/test/admin/imagery/scene-unusable.test.ts."
+        },
+        {
+            "id": "S-A152-HAPPY-UNDO",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "happy",
+            "title": "Not useful is taken back from the scene's page or the snackbar",
+            "asserts": "the marked scene's page says what the mark did and offers It is useful after all; clicked (or the snackbar's Undo) -> imagery.markScene with null: a candidate again, no unusable field, the plan's Buy this scan is back",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: e2e/admin/specs/imagery/unusable.spec.ts; functions/test/imagery/mark-scene.test.ts; packages/admin/test/imagery/orders.test.ts."
+        },
+        {
+            "id": "S-A152-BAD-CLOUDY",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "bad",
+            "title": "A scene its preview shows cloudy over the city is ranked down and warned before an import or a purchase",
+            "asserts": "imagery.browse measures the clouds over the city on a 128 px grey copy of the browse image (bright, flat pixels inside the city's bounds placed through the frame's corners) and stores cloudEstimate; at 40 % or more the rank keeps only its clear share and says so first, the plan's row lists it in cloudyFrames, its card reads Probably cloudy over the city: N %, its page warns what to do, and the date's Buy this scan warns beside the link",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: e2e/admin/specs/imagery/unusable.spec.ts; functions/test/imagery/cloud-estimate.test.ts; packages/shared/test/imagery/ranking.test.ts; packages/shared/test/imagery/join.test.ts; packages/ui/test/admin/imagery/scene-unusable.test.ts."
+        },
+        {
+            "id": "S-A152-BAD-NOT-EDITOR",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "bad",
+            "title": "A moderator or an uploader cannot mark a scene, nor can anyone mark an imported one",
+            "asserts": "imagery.markScene by a moderator or an uploader -> apiError.city.notEditor; of an imported scene -> apiError.imagery.alreadyImported; of no scene -> apiError.notFound; an unknown reason -> invalid-argument; the scene is unchanged; a plan that cannot be written leaves the mark standing (logged by code)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: functions/test/imagery/mark-scene.test.ts; packages/admin/test/imagery/orders.test.ts."
+        },
+        {
+            "id": "S-A152-BAD-CLIENT-MARK",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "bad",
+            "title": "No client writes a scene's Not useful mark or its cloud estimate",
+            "asserts": "an admin's update of usgsScenes setting or removing unusable, or setting cloudEstimate, is denied (imagery.markScene and imagery.browse write them); candidate and rejected with a note stay allowed",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: firebase/rules-tests/test/jobs.test.ts."
+        },
+        {
+            "id": "S-A12-HAPPY-LARGE-BROWSE",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A KH-9 panoramic preview over 5 MB is copied, shrunk",
+            "asserts": "USGS's Declass 3 browse images are 7 to 13 MB: imagery.browse fetches up to 30 MB in 30 s and stores one over 5 MB as a JPEG at most 4,096 px long, so its card and page show it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13: every Declass 3 card said the preview could not be fetched. Tests: functions/test/imagery/browse.test.ts; functions/test/adapters/image.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-BROWSE-SPECIFIC",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A preview that cannot be copied says what failed and what to do",
+            "asserts": "a web page in place of the picture -> apiError.imagery.browseNotImage; a file over 30 MB, or one that cannot be shrunk -> apiError.imagery.browseTooLarge (trying again will not help: open the frame in EarthExplorer); USGS not answering -> apiError.imagery.browseUnavailable (try again in a few minutes); each recorded on the scene and answered",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13. Tests: functions/test/imagery/browse.test.ts."
         }
     ]
 }

@@ -34,11 +34,13 @@ const GROUP_STATS = {
         {
             group: { name: 'projects/demo-hcm/groups/e2e-group-1', groupId: 'e2e-group-1', resolutionStatus: 'ACKNOWLEDGED' },
             count: '12',
+            affectedUsersCount: '3',
             firstSeenTime: '2026-10-10T08:00:00.123456Z',
             lastSeenTime: '2026-10-12T08:00:00Z',
             representative: {
                 serviceContext: { service: 'viewer', version: '1.0.0' },
-                message: 'TypeError: boom\n    at draw (https://viewer.e2e.test/engine.mjs:10:5)',
+                message: 'TypeError: boom\n    at draw (https://viewer.e2e.test/engine.mjs:10:5)\n    not a frame',
+                context: { httpRequest: { url: 'https://viewer.e2e.test/bucharest/', userAgent: 'Firefox 145 mobile' } },
             },
         },
         {
@@ -117,6 +119,10 @@ describe('listGroups', () => {
                 {
                     groupId: 'e2e-group-1',
                     message: 'TypeError: boom',
+                    frames: ['at draw (https://viewer.e2e.test/engine.mjs:10:5)'],
+                    page: 'https://viewer.e2e.test/bucharest/',
+                    client: 'Firefox 145 mobile',
+                    affectedUsers: 3,
                     service: 'viewer',
                     version: '1.0.0',
                     count: 12,

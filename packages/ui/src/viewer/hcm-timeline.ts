@@ -11,10 +11,11 @@
  * fades, and the selected stop is centred whenever it changes, except while a drag is on (`timeline-model.ts`,
  * `timeline-styles.ts`). There a finger drags the thumb and taps a year; elsewhere it drags anywhere on the track.
  * A new stop fires `hcm-year-change` (`{year}`, null for today). The year chip (`timeline-tip.ts`) names a stop without
- * its own label under the mouse, a year of several dates under the keyboard, and the stop under a finger, which scrubs
- * along the track and selects on lift (`timeline-scrub.ts`).
+ * its own label under the mouse and the stop under a finger, which scrubs along the track and selects on lift
+ * (`timeline-scrub.ts`); never a year of several dates, whose date menu names them. V13: selecting a year with several dates (a tap, a click,
+ * the end of a drag or a scrub, Enter, the gamepad's A) asks for its date menu (`hcm-dates-open`); its badge is a hint only.
  */
-import { DEFAULT_LOCALE, translate, type Layer, type ViewerLocale } from '@hcm/shared';
+import { DEFAULT_LOCALE, translate, type ViewerLocale } from '@hcm/shared';
 import { LitElement, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 
@@ -24,7 +25,7 @@ import { labelShown, SCROLL_GAP_PX, stopIndex, timelineDensity, type TimelineDen
 import { TimelinePointer } from './timeline-pointer.js';
 import { YearSends } from './timeline-sends.js';
 import { timelineStyles } from './timeline-styles.js';
-import { datesOfYear, placeTip, tipText, tipWanted, type TimelineTip } from './timeline-tip.js';
+import { placeTip, tipText, tipWanted, type TimelineTip } from './timeline-tip.js';
 
 export const HCM_TIMELINE_TAG = 'hcm-timeline';
 
@@ -74,7 +75,6 @@ export class HcmTimeline extends LitElement {
         orientation: { type: String, reflect: true },
         dragging: { type: Boolean, reflect: true },
         density: { type: String, reflect: true },
-        layers: { attribute: false },
         gapPx: { state: true },
         fade: { state: true },
         collapsed: { type: Boolean, reflect: true },
@@ -100,8 +100,6 @@ export class HcmTimeline extends LitElement {
     declare collapsed: boolean;
     /** V13: the years with several dates, and how many (`timeline-dates.ts`): their stops carry a badge. */
     declare dateCounts: ReadonlyMap<number, number>;
-    /** The manifest's layers: the dates the chip names for a year of several. */
-    declare layers: readonly Pick<Layer, 'year' | 'date'>[];
     /** The year chip, or null. */
     declare tip: TimelineTip | null;
     /** What the polite live region says: the year a drag or a scrub ended on (the slider's own value text while it moves). */
@@ -121,8 +119,8 @@ export class HcmTimeline extends LitElement {
         select: (index) => {
             this.#select(index, true);
         },
-        settle: () => {
-            this.#settle();
+        settle: (released) => {
+            this.#settle(released);
         },
         focus: () => {
             this.focus();
@@ -131,7 +129,7 @@ export class HcmTimeline extends LitElement {
             this.dragging = dragging;
         },
         touchTip: (index) => {
-            this.tip = index === null ? null : { index, touch: true };
+            this.tip = index === null || this.#severalDates(index) ? null : { index, touch: true };
         },
         hint: (index) => {
             this.#hintAt(index);
@@ -156,7 +154,6 @@ export class HcmTimeline extends LitElement {
         this.fade = { start: false, end: false };
         this.collapsed = false;
         this.dateCounts = new Map();
-        this.layers = [];
         this.tip = null;
         this.said = '';
     }
@@ -284,7 +281,7 @@ export class HcmTimeline extends LitElement {
     /** The chip: decorative, the slider's `aria-valuetext` already names the year. */
     #tipChip(tip: TimelineTip): TemplateResult {
         const stop = this.stops[tip.index] ?? null;
-        return html`<div class="tip" aria-hidden="true">${tipText(stop, datesOfYear(this.layers, stop), this.locale)}</div>`;
+        return html`<div class="tip" aria-hidden="true">${tipText(stop, this.locale)}</div>`;
     }
 
     /** A mouse or a key on stop `index`: the chip when it has no label of its own or several dates; never over a finger's. */
@@ -292,8 +289,13 @@ export class HcmTimeline extends LitElement {
         if (this.tip?.touch === true) {
             return;
         }
-        const wanted = tipWanted(this.#named(index), datesOfYear(this.layers, this.stops[index] ?? null));
+        const wanted = tipWanted(this.#named(index), this.#severalDates(index));
         this.tip = wanted ? { index, touch: false } : null;
+    }
+
+    /** Whether stop `index` is a year of several dates: no chip there, its date menu names them (the owner, 2026-11-13). */
+    #severalDates(index: number): boolean {
+        return countOf(this.dateCounts, this.stops[index] ?? null) > 1;
     }
 
     /** Whether a stop's year is on the track: its label, or the pill for the selected one whatever the density. */
@@ -343,6 +345,7 @@ export class HcmTimeline extends LitElement {
                 aria-valuetext=${this.#valueText(this.stops[index] ?? null)}
                 ${cssProperties(position)}
                 @keydown=${this.#onKeyDown}
+                @click=${this.#onActivate}
                 @focus=${this.#onFocus}
                 @blur=${this.#onBlur}
             >
@@ -360,13 +363,33 @@ export class HcmTimeline extends LitElement {
         </li>`;
     }
 
-    /** V13: the badge of a year with several dates; a press on it asks for the date picker. */
+    /** V13: the badge of a year with several dates, a hint for the eye only (the year's point and the slider are the targets). */
     #badge(stop: TimelineStop): TemplateResult {
-        return dateBadge(stop, countOf(this.dateCounts, stop), this.#openDates);
+        return dateBadge(stop, countOf(this.dateCounts, stop));
     }
 
-    readonly #openDates = (year: number, from: Element): void => {
-        this.dispatchEvent(datesOpenEvent(year, from));
+    /**
+     * V13 (the owner, 2026-11-13: "the date picker should show up when the user selects a year with multiple dates"): the
+     * selected year, once rendered, asks for its date menu beside the thumb when it has several dates; nothing otherwise.
+     */
+    #offerDates(): void {
+        const stop = this.value;
+        if (stop === null || countOf(this.dateCounts, stop) < 2) {
+            return;
+        }
+        void this.updateComplete.then(() => {
+            const thumb = this.renderRoot.querySelector('.thumb');
+            if (thumb !== null && this.value === stop) {
+                this.dispatchEvent(datesOpenEvent(stop, thumb));
+            }
+        });
+    }
+
+    /** A click with no pointer behind it (`detail` 0: the gamepad's A, the D-pad's select) selects the year as Enter does. */
+    readonly #onActivate = (event: MouseEvent): void => {
+        if (event.detail === 0) {
+            this.#offerDates();
+        }
     };
 
     /** Whether a stop shows its year: `labelShown`, and standing, not under the pill (the pill names the selected year). */
@@ -399,6 +422,7 @@ export class HcmTimeline extends LitElement {
             this.#datesByKey(event);
             return;
         }
+        // The arrows move the year live, as a drag does; the menu waits for Enter (WCAG 3.2.2: no change of context on input).
         const step = KEY_STEPS[event.key];
         if (step === undefined) {
             return;
@@ -409,12 +433,11 @@ export class HcmTimeline extends LitElement {
         this.#hintAt(stopIndex(this.stops, this.value));
     };
 
-    /** V13: Enter on a year with several dates asks for its date picker, beside the thumb. */
+    /** V13: Enter (the keyboard's and the remote's select) on a year with several dates opens its date menu, every time. */
     #datesByKey(event: KeyboardEvent): void {
-        const stop = this.stops[stopIndex(this.stops, this.value)] ?? null;
-        if (stop !== null && countOf(this.dateCounts, stop) > 1) {
+        if (this.value !== null && countOf(this.dateCounts, this.value) > 1) {
             event.preventDefault();
-            this.#openDates(stop, event.currentTarget as Element);
+            this.#offerDates();
         }
     }
 
@@ -432,10 +455,17 @@ export class HcmTimeline extends LitElement {
         }
     }
 
-    /** A press ended: its last year is sent now and, if it changed the year, said politely. */
-    #settle(): void {
+    /**
+     * A press ended: its last year is sent now and, if it changed the year, said politely. A press the visitor lifted (a
+     * tap, a click, the end of a drag or a scrub) on a year with several dates opens its date menu, once per press: the
+     * years a drag passes never do.
+     */
+    #settle(released: boolean): void {
         if (this.#sends.settle()) {
             this.said = this.#valueText(this.value);
+        }
+        if (released) {
+            this.#offerDates();
         }
     }
 }

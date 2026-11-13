@@ -185,7 +185,7 @@ describe('<hcm-imagery-page>: the rows and the Work count of the live test 2026-
         const unavailable = deep(element, '[data-scene="DS1035-1057DA023"] [data-browse="unavailable"]');
         expect(deep(unavailable, 'hcm-icon').getAttribute('name')).toBe('broken_image');
         expect(deep(element, 'a[href$="/DS1035-1057DA023"]').textContent).toContain(
-            'The USGS preview cannot be fetched right now. Try again.',
+            'USGS did not answer when we asked for the preview. Try again in a few minutes.',
         );
         expect(deep(element, '[data-scene="DS2"] .thumb').getAttribute('aria-hidden')).toBe('true');
         expect(deepAll(element, 'img.thumb')).toHaveLength(0);

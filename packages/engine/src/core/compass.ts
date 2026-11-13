@@ -4,8 +4,10 @@
  * moves, and the reset to north up and level. The store's `watchCamera` and `resetNorth` are these, so the store stays
  * within its length.
  */
-import type { MapView } from '@hcm/shared';
+import { clamp, type MapView } from '@hcm/shared';
 import type { FlyOptions, Unsubscribe, ViewerMapPort } from '@hcm/ui/map';
+
+import type { TelemetryPort } from '../telemetry/telemetry-port.js';
 
 /** What the compass draws: degrees clockwise from north, `[0, 360)`, and the tilt in degrees (0 looks straight down). */
 export interface MapCamera {
@@ -52,12 +54,31 @@ interface Flyer {
 
 /**
  * The compass's press: bearing 0 and tilt 0, or nothing at all when the camera is already there (the address keeps what
- * it says). True when the camera moved.
+ * it says). True when the camera moved, which is one `compass_reset` analytics event (§200, after consent).
  */
-export function resetNorth(map: ViewerMapPort, flyer: Flyer): boolean {
+export function resetNorth(map: ViewerMapPort, flyer: Flyer, telemetry: Pick<TelemetryPort, 'logEvent'>): boolean {
     if (isNorthUp(cameraOf(map))) {
         return false;
     }
     flyer.flyMap({ bearing: 0 }, { pitch: 0 });
+    telemetry.logEvent({ name: 'compass_reset' });
     return true;
+}
+
+/** The city's zoom range (its manifest's `minZoom` and `maxZoom`). */
+interface ZoomRange {
+    readonly minZoom: number;
+    readonly maxZoom: number;
+}
+
+/**
+ * The zoom buttons (moved here from the store, §200, so it stays within its length): one level in (`step` 1) or out (-1)
+ * from the camera's own zoom, within the city's range; at its end nothing moves.
+ */
+export function zoomBy(map: ViewerMapPort, flyer: Flyer, city: ZoomRange | undefined, step: number): void {
+    const view = map.getView();
+    const zoom = city === undefined ? view.zoom : clamp(view.zoom + step, city.minZoom, city.maxZoom);
+    if (zoom !== view.zoom) {
+        flyer.flyMap({ ...view, zoom });
+    }
 }

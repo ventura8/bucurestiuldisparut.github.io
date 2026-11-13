@@ -15,7 +15,13 @@ import {
 
 import type { GoogleScopeName, SetupMessage, SetupMessageKey, SetupStepId } from './setup-port.js';
 
-const SCOPE_NAMES: ReadonlySet<string> = new Set<GoogleScopeName>(['cloudReadOnly', 'cloudBilling', 'cloudPlatform', 'analyticsEdit']);
+const SCOPE_NAMES: ReadonlySet<string> = new Set<GoogleScopeName>([
+    'cloudReadOnly',
+    'cloudBilling',
+    'cloudPlatform',
+    'analyticsEdit',
+    'analyticsRead',
+]);
 
 const STEP_NAMES: ReadonlySet<string> = new Set<SetupStepId>([
     'signIn',

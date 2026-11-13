@@ -5,7 +5,7 @@
  * passes it the manifest's ids with `setContext`; `destroy` removes the global error and page-hide hooks and every
  * listener.
  */
-import type { FieldChunk, Logger } from '@hcm/shared';
+import { privacySignal, type FieldChunk, type Logger, type PrivacyNavigator } from '@hcm/shared';
 import type { Unsubscribe } from '@hcm/ui/map';
 
 import type { PreferenceStorage } from '../core/preferences.js';
@@ -15,12 +15,15 @@ import { ConsentStore, type ConsentValue } from './consent.js';
 import { expireAnalyticsCookies, type CookieJar } from './cookies.js';
 import { ErrorReporter, installErrorHooks } from './errors.js';
 import { FieldRecorder, type FieldClock } from './field.js';
+import { Settle, YEAR_SETTLE_MS } from './settle.js';
 import type { ConsentState, ErrorSource, Measurement, TelemetryContext, TelemetryEvent, TelemetryPort } from './telemetry-port.js';
 
 /** The parts of `window` telemetry uses: the page's address without its hash, and its cookies (GA4's, on withdrawal). */
 export interface TelemetryWindow extends Pick<Window, 'addEventListener' | 'removeEventListener' | 'innerWidth' | 'innerHeight'> {
     readonly location: Pick<Location, 'origin' | 'pathname' | 'hostname'>;
     readonly document: CookieJar;
+    /** Do Not Track and Global Privacy Control: either one counts as a refusal until the visitor accepts (§200). */
+    readonly navigator?: PrivacyNavigator;
 }
 
 export interface TelemetryDeps {
@@ -70,13 +73,15 @@ class Telemetry implements TelemetryPort {
     readonly #errors: ErrorReporter;
     readonly #uninstall: () => void;
     readonly #field: FieldRecorder;
+    /** The timeline's last year change, sent once the year stays (`settle.ts`): a drag is one event. */
+    readonly #year: Settle<TelemetryEvent>;
     #windowClass = 'compact';
     #pageViewed = false;
     #destroyed = false;
 
     constructor(deps: TelemetryDeps) {
         const page = (): string => `${deps.window.location.origin}${deps.window.location.pathname}`;
-        this.#consent = new ConsentStore(deps.storage, deps.log, deps.cityId);
+        this.#consent = new ConsentStore(deps.storage, deps.log, deps.cityId, privacySignal(deps.window.navigator));
         this.#analytics = new AnalyticsLoader({
             loadSdk: deps.loadSdk ?? loadFirebaseSdk,
             log: deps.log,
@@ -92,6 +97,9 @@ class Telemetry implements TelemetryPort {
             this.#analytics.send(event);
         });
         this.#analytics.setConsent(this.#consent.state);
+        this.#year = new Settle((event) => {
+            this.#analytics.send(event);
+        }, YEAR_SETTLE_MS);
         this.#errors = new ErrorReporter({
             release: deps.release,
             log: deps.log,
@@ -107,6 +115,7 @@ class Telemetry implements TelemetryPort {
         const uninstallErrors = installErrorHooks(deps.window, this.#errors);
         const flush = (): void => {
             this.#field.flush();
+            this.#year.flush();
         };
         deps.window.addEventListener('pagehide', flush);
         deps.window.addEventListener('visibilitychange', flush);
@@ -139,7 +148,11 @@ class Telemetry implements TelemetryPort {
             return;
         }
         this.#pageViewed ||= event.name === 'page_view';
-        this.#analytics.send(event);
+        if (event.name === 'year_change') {
+            this.#year.hold(event);
+        } else {
+            this.#analytics.send(event);
+        }
     }
 
     measure(measurement: Measurement): void {
@@ -181,6 +194,7 @@ class Telemetry implements TelemetryPort {
             return;
         }
         this.#destroyed = true;
+        this.#year.cancel();
         this.#uninstall();
         this.#consent.destroy();
     }

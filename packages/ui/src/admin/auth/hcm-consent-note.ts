@@ -14,7 +14,7 @@ import { shellText } from '../shell/text.js';
 export const HCM_CONSENT_NOTE_TAG = 'hcm-consent-note';
 
 /** The Google scopes of `packages/admin/src/google/scopes.ts`. */
-export type GoogleScopePort = 'cloudReadOnly' | 'cloudBilling' | 'cloudPlatform' | 'analyticsEdit';
+export type GoogleScopePort = 'cloudReadOnly' | 'cloudBilling' | 'cloudPlatform' | 'analyticsEdit' | 'analyticsRead';
 
 export class HcmConsentNote extends LitElement {
     static override readonly properties = {

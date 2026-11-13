@@ -10,6 +10,8 @@ import type { ContentServices } from '../content/services.js';
 import { callImagery, refusalOf } from '../imagery/api.js';
 import { jobRetryable, type JobDoc, type JobWaitReason } from '@hcm/shared';
 
+import type { NoticeInput } from '../state/state.js';
+
 export interface RasterJobFields {
     /** Why the unfinished job is not running, or null. */
     readonly waitReason: JobWaitReason | null;
@@ -33,9 +35,24 @@ export async function retryRasterJob(services: ContentServices, jobId: string): 
     try {
         await callImagery(services.callables, 'imagery.retry', { cityId: services.cityId, jobId });
     } catch (error) {
-        services.notify(refusalOf(error));
+        services.notify(withNewerImport(refusalOf(error)));
         return false;
     }
     services.notify({ key: 'adminContent.jobs.retried' });
     return true;
+}
+
+/**
+ * A refusal that names a newer import of the same frame (`apiError.imagery.importedAgain`) offers to open it: the old
+ * import cannot run again, the newer one is where the frame goes on (the owner's report of 2026-11-13).
+ */
+export function withNewerImport(notice: NoticeInput): NoticeInput {
+    const newer = notice.params?.['versionId'];
+    if (notice.key !== 'apiError.imagery.importedAgain' || newer === undefined) {
+        return notice;
+    }
+    const run = (): void => {
+        globalThis.location.hash = `#/imagery/version/${encodeURIComponent(newer)}`;
+    };
+    return { ...notice, action: { key: 'adminContent.jobs.openNewer', run } };
 }

@@ -16,7 +16,7 @@ from typing import Final
 
 from hcm_pipeline.governor.actuate import Actuators, apply_budget
 from hcm_pipeline.governor.backends import IMAGES, Backend, Matcher, choose
-from hcm_pipeline.governor.budget import Budget, budget_for
+from hcm_pipeline.governor.budget import Budget, budget_for, thermal_share
 from hcm_pipeline.governor.policy import TICK_S, Choice, PolicyState, decide, effective
 from hcm_pipeline.governor.probe import Probe
 from hcm_pipeline.governor.record import machine_record
@@ -57,6 +57,20 @@ class Reading:
     why: Why
     budget: Budget
     backend: Backend
+
+
+def _said(reading: Reading) -> tuple[str, str, int]:
+    """What changes a log line: the profile, its reason and the threads (lesson of 2026-11-13: a line every 5 s, for ever, because the
+    memory budget moved by a few megabytes each tick; the line still says the memory)."""
+    return reading.budget.profile, reading.why, reading.budget.threads
+
+
+def headroom_of(reading: Reading) -> float:
+    """0 to 1: how much room this computer has for another job now, by its heat and other programs' load (0 while paused)."""
+    if reading.budget.profile == "paused":
+        return 0.0
+    signals = reading.signals
+    return min(thermal_share(signals.cpu.temp_c), max(0.0, 1 - signals.usage.others_cpu_pct / 100))
 
 
 class Governor:
@@ -128,19 +142,18 @@ class Governor:
         with self._lock:
             before = self._reading
         reading = self._read(PolicyState() if before is None else before.policy)
-        if before is None or before.budget != reading.budget:
-            LOG.info(
-                "this computer: %s (%s), %d threads, %d MB",
-                reading.budget.profile,
-                reading.why,
-                reading.budget.threads,
-                reading.budget.memory_mb,
-            )
-            apply_budget(reading.budget, self._actuators)
+        self._changed(before, reading)
         self._gate(reading.budget.profile == "paused")
         with self._lock:
             self._reading = reading
         return reading
+
+    def _changed(self, before: Reading | None, reading: Reading) -> None:
+        """A log line when the state changed; the budget applied when it changed."""
+        if before is None or _said(before) != _said(reading):
+            LOG.info("this computer: %s (%s), %d threads, %d MB", *_said(reading), reading.budget.memory_mb)
+        if before is None or before.budget != reading.budget:
+            apply_budget(reading.budget, self._actuators)
 
     def _gate(self, paused: bool) -> None:
         gate = self._actuators.gate
@@ -158,6 +171,12 @@ class Governor:
         budget, backend = reading.budget, reading.backend
         held = backend.matcher == "cpu" and backend.why == "gpu-busy"
         return MatcherBudget(budget.threads, budget.keypoints or 1, backend.gpu_fraction, held)
+
+    def headroom(self) -> float:
+        """The last reading's headroom (`headroom_of`); 1 before the first tick. The claim's pace reads it (`worker/pace.py`)."""
+        with self._lock:
+            reading = self._reading
+        return 1.0 if reading is None else headroom_of(reading)
 
     def machine(self) -> dict[str, object] | None:
         """`/state`'s `machine`; None before the first tick."""

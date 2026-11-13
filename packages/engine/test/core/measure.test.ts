@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Measurement } from '../../src/telemetry/telemetry-port.js';
 import { FakeCompare } from '../compare/support.js';
 import { harness, loaded } from './harness.js';
 import { jsonResponse, settle } from './support.js';
@@ -8,6 +9,11 @@ import { jsonResponse, settle } from './support.js';
  * The field measurements the boot and the store report to telemetry (docs/ARCHITECTURE.md → *Field measurements*,
  * DECISIONS-for-review.md §76); telemetry's own timing and sending are tested in `../telemetry/`.
  */
+
+/** The measurements without the error toasts' `ui_error` (§200), which each test of a failure also shows. */
+function withoutToasts(measures: readonly Measurement[]): Measurement[] {
+    return measures.filter((measure) => measure.kind !== 'ui_error');
+}
 
 describe('field measurements of the boot', () => {
     it('happyPath_theManifestTheFirstRenderAndTheFirstIdleAreReported', async () => {
@@ -45,7 +51,9 @@ describe('field measurements of the boot', () => {
         map.emit('error', { kind: 'source', layerId: 'kh9-1980', message: 'gone' });
         map.emit('webglcontextlost', undefined);
 
-        expect(telemetry.measures.slice(2)).toEqual([
+        // The error toasts the map's errors show are measured too (§200), by their keys.
+        expect(telemetry.measures.filter((measure) => measure.kind === 'ui_error').length).toBeGreaterThan(0);
+        expect(withoutToasts(telemetry.measures.slice(2))).toEqual([
             { kind: 'map_error', errorKind: 'tile' },
             { kind: 'map_error', errorKind: 'source' },
             { kind: 'map_unavailable', reason: 'context_lost' },
@@ -60,7 +68,7 @@ describe('field measurements of the store', () => {
         store.openPhoto('uranus-1936');
         store.photoShown(true);
 
-        expect(telemetry.measures.slice(2)).toEqual([
+        expect(withoutToasts(telemetry.measures.slice(2))).toEqual([
             { kind: 'start', what: 'photo' },
             { kind: 'end', what: 'photo', ok: true },
         ]);
@@ -71,7 +79,7 @@ describe('field measurements of the store', () => {
         store.openPhoto('no-such-photo');
         store.photoShown(false);
 
-        expect(telemetry.measures.slice(2)).toEqual([{ kind: 'end', what: 'photo', ok: false }]);
+        expect(withoutToasts(telemetry.measures.slice(2))).toEqual([{ kind: 'end', what: 'photo', ok: false }]);
     });
 
     it('happyPath_compareIsTimedUntilItsSecondMapIsReady', async () => {
@@ -81,7 +89,7 @@ describe('field measurements of the store', () => {
         store.openCompare('kh9-1980');
         await settle();
 
-        expect(telemetry.measures.slice(2)).toEqual([
+        expect(withoutToasts(telemetry.measures.slice(2))).toEqual([
             { kind: 'start', what: 'compare' },
             { kind: 'end', what: 'compare', ok: true },
         ]);
@@ -106,7 +114,7 @@ describe('field measurements of the store', () => {
             { kind: 'start', what: 'compare' },
             { kind: 'end', what: 'compare', ok: false },
         ];
-        expect(map.telemetry.measures.slice(2)).toEqual(failed);
-        expect(missing.telemetry.measures.slice(2)).toEqual(failed);
+        expect(withoutToasts(map.telemetry.measures.slice(2))).toEqual(failed);
+        expect(withoutToasts(missing.telemetry.measures.slice(2))).toEqual(failed);
     });
 });

@@ -26,6 +26,9 @@ const VALID: Readonly<Record<keyof typeof VIEWER_EVENT_PARAMS | keyof typeof ADM
     poi_open: { poi_id: 'poi-7', page_location: PAGE },
     share: { page_location: PAGE },
     compare_open: { page_location: PAGE },
+    story_open: { story_id: 'teatrul', page_location: PAGE },
+    locale_change: { locale: 'en', page_location: PAGE },
+    theme_change: { theme: 'dark', page_location: PAGE },
     exception: { description: 'TypeError: x is undefined', fatal: false, page_location: PAGE },
     setup_step: { step: 'billing', state: 'ok', page_location: PAGE },
     legacy_import: { imported: 120, failed: 2, page_location: PAGE },
@@ -53,6 +56,19 @@ const VALID: Readonly<Record<keyof typeof VIEWER_EVENT_PARAMS | keyof typeof ADM
     provision_item: { item: 'iam', outcome: 'ok', ...CONTEXT },
     editor_save: { area: 'photos', operation: 'update', outcome: 'ok', duration_ms: 310, ...CONTEXT },
     job_done: { job_type: 'raster', status: 'succeeded', duration_ms: 3_600_000, ...CONTEXT },
+    admin_action: { action: 'imagery_approve', outcome: 'apiError.imagery.versionState', duration_ms: 820, ...CONTEXT, app: 'admin' },
+    compass_reset: { page_location: PAGE },
+    input_device: { device: 'gamepad', page_location: PAGE },
+    ui_error: { code: 'apiError.imagery.notReady', route: 'imagery', ...CONTEXT, app: 'admin' },
+    wizard_start: { wizard_id: 'setup', ...CONTEXT, app: 'admin' },
+    step_view: { wizard_id: 'setup', step_id: 'billing', attempt: 2, ...CONTEXT, app: 'admin' },
+    step_complete: { wizard_id: 'new_city', step_id: 'area', attempt: 1, duration_ms: 5400, ...CONTEXT, app: 'admin' },
+    step_back: { wizard_id: 'tiles', step_id: 'seams', attempt: 1, ...CONTEXT, app: 'admin' },
+    step_error: { wizard_id: 'setup', step_id: 'mapbox', error_code: 'apiError.mapbox.tokenInvalid', attempt: 1, ...CONTEXT, app: 'admin' },
+    step_help_opened: { wizard_id: 'setup', step_id: 'usgs', ...CONTEXT, app: 'admin' },
+    step_action: { wizard_id: 'georef', step_id: 'points', action: 'points_added', ...CONTEXT, app: 'admin' },
+    wizard_abandon: { wizard_id: 'upload', step_id: 'year', duration_ms: 61_000, ...CONTEXT, app: 'admin' },
+    wizard_complete: { wizard_id: 'worker', duration_ms: 240_000, ...CONTEXT, app: 'admin' },
 };
 
 describe('field events', () => {
@@ -89,6 +105,15 @@ describe('field events', () => {
         expect(eventProblem('web_vitals', { ...VALID.web_vitals, debug_target: 'div.a b' })).toBeNull();
         expect(eventProblem('web_vitals', { ...VALID.web_vitals, debug_target: 'DIV[data-x]' })).toBe('schema');
         expect(eventProblem('web_vitals', { ...VALID.web_vitals, window_class: 'huge' })).toBe('schema');
+    });
+
+    it('badPath_aFunnelEventCarriesCodesNeverWordsOrAnUnknownWizard', () => {
+        // @S-A150-BAD-STEP-ERROR-CODE-NOT-TEXT: a step's error leaves as its code; the words on screen are refused.
+        expect(eventProblem('step_error', { ...VALID.step_error, error_code: 'The billing account is closed' })).toBe('schema');
+        expect(eventProblem('step_error', { ...VALID.step_error, error_code: 'owner@example.org' })).toBe('privacy');
+        expect(eventProblem('step_view', { ...VALID.step_view, wizard_id: 'checkout' })).toBe('schema');
+        expect(eventProblem('step_view', { ...VALID.step_view, file_name: 'scan.tif' })).toBe('schema');
+        expect(eventProblem('ui_error', { ...VALID.ui_error, code: 'Mapbox said no' })).toBe('schema');
     });
 
     it('happyPath_theGuardPassesAValidEventOn', () => {

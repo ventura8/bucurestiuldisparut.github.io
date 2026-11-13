@@ -93,7 +93,13 @@ describe('the local worker feed', () => {
             image: DIGEST,
             usage: { vcpuSeconds: 12_345, gibSeconds: 45_678 },
             job: null,
-            worker: { id: WORKER, state: 'idle', jobId: null, lastJob: { id: 'j1', outcome: 'done', at: '2025-10-09T08:00:00.000Z' } },
+            worker: {
+                id: WORKER,
+                version: '1.0.0',
+                state: 'idle',
+                jobId: null,
+                lastJob: { id: 'j1', outcome: 'done', at: '2025-10-09T08:00:00.000Z' },
+            },
         });
         // Two minutes on, it no longer counts as connected (seen 180 s ago at most).
         world.clock.advance(120_001);

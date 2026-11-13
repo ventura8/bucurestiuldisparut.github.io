@@ -83,6 +83,13 @@ const IMAGERY_UI_SHARED_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]imagery
  */
 const LEGACY_READ_MODULES = /packages[\\/]shared[\\/]src[\\/]schemas[\\/]legacy-reads\.ts$/;
 
+/**
+ * The wizard funnels (§200): each wizard page's snapshot (`*-funnel.ts`, `*-funnels.ts` of `packages/ui/src/admin/`) and the
+ * shared helper, in a chunk of their own so the archive, imagery, worker and editor-shared chunks keep their budgets.
+ */
+const FUNNEL_MODULES =
+    /packages[\\/](?:shared[\\/]src[\\/]telemetry[\\/]wizard-funnel|ui[\\/]src[\\/]admin[\\/][\w-]+[\\/][\w-]+-funnels?)\.ts$/;
+
 /** M4: the editors' assists, their state and intents (`packages/admin/src/assist/`) and their slots (`packages/ui/src/admin/assist/`). */
 const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]assist[\\/]/;
 
@@ -175,6 +182,7 @@ export default defineConfig({
                 // the place editor and the settings share (§78d). `georef-badges`: shared pair painters and the map overlay (§146).
                 // `georef-panes`: the georeferencer's panes, pair removal and the map pane's layers (§173).
                 // `legacy-reads`: the tolerant reads of older records, which Home and the Imagery pages share (§155).
+                // `funnels`: the wizards' funnel snapshots and the shared helper (§200).
                 // M7's `worker` chunk is no group: the natural chunk of its one dynamic entry (`src/worker/worker.ts`), whose
                 // namespace is the chunk's own (a group's needs Rolldown's runtime helper, a chunk of its own beside terra-draw's),
                 // with its texts on a path of their own (`@hcm/shared/admin-worker`).
@@ -186,6 +194,7 @@ export default defineConfig({
                         { name: 'georef-badges', test: GEOREF_BADGE_MODULES, priority: 2 },
                         { name: 'georef-panes', test: GEOREF_PANE_MODULES, priority: 2 },
                         { name: 'legacy-reads', test: LEGACY_READ_MODULES, priority: 2 },
+                        { name: 'funnels', test: FUNNEL_MODULES, priority: 2 },
                         {
                             name: 'editor-texts',
                             test: (id: string) =>

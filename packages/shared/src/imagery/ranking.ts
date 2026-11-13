@@ -6,11 +6,18 @@
  * harvest (functions) stores it and the admin re-ranks live when a filter or a layer changes.
  */
 import { isLandsatDataset, LANDSAT_AUTO_MAX_CLOUD, LEAF_ON_MONTHS } from '../schemas/landsat.js';
-import { RANKING_VERSION, RANKING_WEIGHTS, type RankReason, type RankReasonEntry, type UsgsSceneDoc } from '../schemas/usgs-scene.js';
+import {
+    CLOUDY_CITY_PERCENT,
+    RANKING_VERSION,
+    RANKING_WEIGHTS,
+    type RankReason,
+    type RankReasonEntry,
+    type UsgsSceneDoc,
+} from '../schemas/usgs-scene.js';
 
 /** What a rank reads of a scene (M25: its dataset, when known, says whether the season counts). */
 export type RankedScene = Pick<UsgsSceneDoc, 'downloadAvailable' | 'coverage' | 'acquisitionDate' | 'cloudCover' | 'resolutionM'> &
-    Partial<Pick<UsgsSceneDoc, 'dataset'>>;
+    Partial<Pick<UsgsSceneDoc, 'dataset' | 'cloudEstimate'>>;
 
 export interface RankContext {
     /** The city's target years (`cities/{city}.imagery.targetYears`). */
@@ -115,10 +122,26 @@ function cloud(scene: RankedScene): Scored {
         return { part: 'cloud', value: clear * OFF_SEASON_SHARE, reason: reason('season', { month: String(month) }), always: true };
     }
     if (scene.cloudCover === undefined) {
-        return { part: 'cloud', value: 0.5, reason: reason('cloudUnknown') };
+        return cityCloud(scene);
     }
     const value = Math.max(0, 1 - scene.cloudCover / CLOUDY_PERCENT);
     return { part: 'cloud', value, reason: reason('cloud', { percent: String(Math.round(scene.cloudCover)) }), always: tooCloudy(scene) };
+}
+
+/** No cloud cover from USGS (most declassified frames): the estimate from the browse image over the city, when measured. */
+function cityCloud(scene: RankedScene): Scored {
+    const percent = scene.cloudEstimate?.percent;
+    if (percent === undefined) {
+        return { part: 'cloud', value: 0.5, reason: reason('cloudUnknown') };
+    }
+    const value = Math.max(0, 1 - percent / CLOUDY_PERCENT);
+    return { part: 'cloud', value, reason: reason('cloudCity', { percent: String(percent) }), always: percent >= CLOUDY_CITY_PERCENT };
+}
+
+/** A frame probably cloudy over the city keeps only its clear share of the score: clouds hide what every other part promises. */
+function cloudyCityShare(scene: RankedScene): number | null {
+    const percent = scene.cloudEstimate?.percent;
+    return percent === undefined || percent < CLOUDY_CITY_PERCENT ? null : percent;
 }
 
 /** M25: a Landsat scene too cloudy for the tick to import says so first (a declassified frame's cloud is one reason among others). */
@@ -150,6 +173,7 @@ function reasonsOf(parts: readonly Scored[]): RankReasonEntry[] {
 /** The scene's rank: the rounded weighted score, the reasons in order, and the ranking's version. */
 export function rankScene(scene: RankedScene, context: RankContext): UsgsSceneDoc['rank'] {
     const parts = [free(scene), coverage(scene), targetYear(scene, context), newYear(scene, context), cloud(scene), resolution(scene)];
-    const score = Math.round(parts.reduce((sum, scored) => sum + contribution(scored), 0));
+    const clouded = scene.cloudCover === undefined ? (cloudyCityShare(scene) ?? 0) : 0;
+    const score = Math.round((parts.reduce((sum, scored) => sum + contribution(scored), 0) * (100 - clouded)) / 100);
     return { score: Math.min(100, Math.max(0, score)), reasons: reasonsOf(parts), version: RANKING_VERSION };
 }

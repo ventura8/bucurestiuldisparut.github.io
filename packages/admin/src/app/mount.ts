@@ -5,11 +5,14 @@
  * (`../index.ts`) builds the real ports, the node tests pass fakes.
  */
 import type { UiLocale, Logger, ThemeTokens } from '@hcm/shared';
+import type { FunnelWindow } from '@hcm/shared/funnels';
 
 import { AuthController } from '../auth/controller.js';
 import { GoogleAccessStore } from '../auth/google-access.js';
 import type { GoogleAuthPort } from '../auth/google-auth.js';
 import { GoogleAccessService } from '../auth/google-service.js';
+import type { StatisticsSource } from '../crashes/statistics.js';
+import { statisticsSourceOf } from './statistics-wiring.js';
 import { checkOwnership, enableService } from '../auth/ownership.js';
 import type { ContentStores } from '../content/areas.js';
 import { ContentRegistry, type ContentDeps } from '../content/registry.js';
@@ -22,7 +25,9 @@ import { NO_GATE, type AdminState, type NoticeInput, type ShellStateAccess, type
 import { Store } from '../state/store.js';
 import type { AdminRuntime, FirebaseWebConfig } from './config.js';
 import { contentServices } from './content-services.js';
-import { FieldWatch, measuredStore } from './field.js';
+import { measuredStore } from './field.js';
+import { measureOf, startTelemetry, type TelemetryView } from './telemetry-wiring.js';
+import { measuredCallables } from './field-actions.js';
 import { chooseCity, cityRefresher, switchTo, type CityChoiceDeps } from './current-city.js';
 import { Navigation } from './navigation.js';
 import { rememberedSetupReady } from './setup-readiness.js';
@@ -33,18 +38,12 @@ import { shellWatches, type ShellWatchSources } from './shell-watches.js';
 import { destinationOf, RETURN_TO_KEY } from '../routing/router.js';
 import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } from './ports.js';
 import { guardCallables, type AdminProject, type SetupModuleSpec, type ShellServices } from './services.js';
-import type { AdminEvent, AdminTelemetry, Measure } from './telemetry.js';
+import type { AdminTelemetry, Measure } from './telemetry.js';
 
 /** `localStorage`: the theme the admin chose (`system` by default). */
 export const THEME_KEY = 'hcm:admin:theme';
 
-/** What crash reports need to know of the app while it runs. */
-export interface TelemetryView {
-    locale(): string;
-    windowClass(): string;
-    /** The server answers (normal mode): only then does the crash endpoint exist. */
-    serverAnswers(): boolean;
-}
+export type { TelemetryView };
 
 export interface AdminDeps<Setup, SetupIntents> {
     /** §1.4 step 1. */
@@ -78,6 +77,8 @@ export interface AdminDeps<Setup, SetupIntents> {
     readonly content?: ContentDeps;
     /** Finding 29 of 2026-10-31: whether Hosting serves a newer admin (`release-watch.ts`); none: nothing is watched. */
     readonly releases?: ShellWatchSources['releases'];
+    /** The page's window, where the wizards' funnel signals arrive (`funnels.ts`, §200); none: no funnels. */
+    readonly funnelWindow?: FunnelWindow;
 }
 
 export interface AdminIntents<SetupIntents> {
@@ -372,7 +373,7 @@ function cityOpener<Setup>(deps: AdminDeps<Setup, unknown>): CityOpener {
 export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>): AdminApp<Setup, SetupIntents> {
     const store = new Store<AdminState<Setup>>(initialState(deps), deps.log);
     const shell = shellAccess(store);
-    const telemetry = telemetryOf(deps, store);
+    const { telemetry, stop: stopTelemetry } = startTelemetry(deps, store);
     const google = new GoogleAccessService({
         port: deps.google,
         store: new GoogleAccessStore(() => deps.clock.now()),
@@ -385,10 +386,8 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
         void controller.accessDenied();
     };
     const firebase: FirebasePorts = { ...deps.firebase, callables: guardCallables(deps.firebase.callables, denied) };
-    const track = (event: AdminEvent): void => {
-        telemetry.track(event);
-    };
-    const content = contentRegistry(deps, { shell, callables: firebase.callables, denied, measure: measureOf(telemetry) });
+    const track = telemetry.track.bind(telemetry);
+    const content = contentRegistry(deps, { shell, callables: firebase.callables, denied, measure: measureOf(telemetry), google });
     const { open: openCity, opening } = cityOpener(deps);
     // Once another city opens (its address set, the page reloading), an edit the admin chose to discard holds nothing back.
     const unsaved = (): boolean => !opening() && content.hasUnsavedChanges();
@@ -425,38 +424,13 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
         hasUnsavedChanges: unsaved,
         destroy: () => {
             stopWatching();
+            stopTelemetry();
             controller.stop();
             navigation.stop();
             watches.stop();
             content.destroyAll();
         },
     };
-}
-
-/** The field measurements of `field.ts`, through telemetry (§76). */
-function measureOf(telemetry: AdminTelemetry): Measure {
-    return (event) => {
-        telemetry.measure(event);
-    };
-}
-
-/**
- * Telemetry over the app's state: the language, the window class, whether the server answers; the field measurements of
- * the state (`field.ts`, §76) follow it for as long as the store lives.
- */
-function telemetryOf<Setup>(deps: AdminDeps<Setup, unknown>, store: Store<AdminState<Setup>>): AdminTelemetry {
-    const telemetry = deps.telemetry({
-        locale: () => store.state.locale,
-        windowClass: () => store.state.windowClass,
-        serverAnswers: () => store.state.mode === 'normal',
-    });
-    store.update({ consent: telemetry.consent, analytics: telemetry.available });
-    const field = new FieldWatch(measureOf(telemetry), () => globalThis.performance.now());
-    field.observe(store.state);
-    store.subscribe((state) => {
-        field.observe(state);
-    });
-    return telemetry;
 }
 
 /** The editors' stores over the entry's `ContentDeps` and the shell's services (none without `deps.content`). */
@@ -468,6 +442,8 @@ function contentRegistry<Setup>(
         readonly denied: () => void;
         /** §76: the editors' writes and the jobs' ends are measured (`field.ts`). */
         readonly measure: Measure;
+        /** §203: the shell's Google consent, for the Statistics view's numbers. */
+        readonly google: GoogleAccessService;
     },
 ): ContentRegistry {
     const content = deps.content;
@@ -476,10 +452,18 @@ function contentRegistry<Setup>(
             throw new Error('no content services');
         });
     }
-    const { measure, ...shellParts } = parts;
+    const { measure, google, ...shellParts } = parts;
+    const statistics = (cityId: () => string): StatisticsSource =>
+        statisticsSourceOf({
+            ...{ google, callables: parts.callables, cityId },
+            ...{ fetch: deps.fetch, clock: deps.clock, log: deps.log },
+        });
     const store = measuredStore(content.store, { measure, now: () => globalThis.performance.now(), epoch: () => deps.clock.now() });
+    const callables = measuredCallables(shellParts.callables, measure, () => globalThis.performance.now());
     const services = contentServices({
         ...shellParts,
+        callables,
+        statistics,
         content: { ...content, store },
         ...{ cities: deps.project.cities, firstCity: deps.project.firstCity },
         ...{ clock: deps.clock, local: deps.local, log: deps.log },

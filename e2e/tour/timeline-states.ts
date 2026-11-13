@@ -7,8 +7,8 @@ import { callController, openTimelineCard, openViewer, serveManifest, t, viewer 
 /**
  * The timeline's pill and date picker in the tour's inventory (V67 and V68, the owner's V12 and V13 of 2026-11-13), visited
  * by the journey `timeline-dates` of e2e/tour/states.ts at every viewer viewport, on a city whose 1980 has two dates: on
- * a phone (upright or on its side) the timeline resting as its pill, then the card a tap opened; everywhere the menu of
- * 1980's dates opened by Enter on the slider. Every other map state checks the pill against the chip, the menu button, the
+ * a phone (upright or on its side) the timeline resting as its pill (64 px, the owner's larger one), then the card a tap
+ * opened; everywhere the menu of 1980's dates opened by selecting 1980 (a click on its point, where the thumb stands). Every other map state checks the pill against the chip, the menu button, the
  * zoom group, the compass and the legal line on a phone.
  */
 
@@ -43,10 +43,10 @@ export const TIMELINE_STATES = {
         },
     },
     'timeline-dates': {
-        title: "The menu of a year's dates, opened by Enter on the timeline, the date on top checked",
+        title: "The menu of a year's dates, opened by selecting the year on the timeline, the date on top checked",
         enter: async ({ page, lang }: TimelineTour) => {
-            await slider(page, lang).focus();
-            await page.keyboard.press('Enter');
+            await openTimelineCard(page);
+            await slider(page, lang).click();
             await expect(page.getByRole('menuitemradio', { checked: true })).toBeFocused();
         },
         escape: ({ lang }: TimelineTour) => ({ opener: t(lang, 'timeline.label') }),

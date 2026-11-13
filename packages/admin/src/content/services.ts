@@ -14,6 +14,7 @@ import type { ThemeTokenSet } from '@hcm/ui/dynamic-color';
 import type { Clock, KeyValueStore, Unsubscribe } from '../app/ports.js';
 import type { CallablesPort } from '../firebase/ports.js';
 import type { FilePort, PicturePort } from '../imagery/files.js';
+import type { StatisticsSource } from '../crashes/statistics.js';
 import type { BundleStamp } from '../install/model.js';
 import type { AdminMapFactory } from '../map/factory.js';
 import type { UploadPort } from '../firebase/uploads.js';
@@ -193,6 +194,10 @@ export interface ContentServices {
      */
     readonly adminRelease?: BundleStamp | null;
     // [end install]
+    // [section statistics] owner: analytics (`statistics`: `../app/statistics-wiring.ts`, DECISIONS-for-review.md §203)
+    /** The Statistics view's numbers: Google's read-only Analytics consent and the GA4 Data API (none: the button says so). */
+    readonly statistics?: StatisticsSource | null;
+    // [end statistics]
 }
 
 /** The members every area gets from the shell; the rest are the areas' own (`AreaServiceParts`). */

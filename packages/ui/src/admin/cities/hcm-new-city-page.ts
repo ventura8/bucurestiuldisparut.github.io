@@ -21,9 +21,11 @@ import { editingStyles } from '../editing/editing-styles.js';
 import { defineHcmAdminMap } from '../map/hcm-admin-map.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
+import { trackAreaFunnels } from '../editing/area-funnel.js';
 import { completeBounds, EDGES, nextDraft, type Edge, type EdgeDraft } from './area-edges.js';
 import { AreaGesture } from './area-gesture.js';
 import type { NewCityIntentsPort, NewCityViewState } from './cities-port.js';
+import { newCityFunnel } from './new-city-funnel.js';
 import { publicAddressLink, publicAddressStyles } from './public-address.js';
 
 export const HCM_NEW_CITY_PAGE_TAG = 'hcm-new-city-page';
@@ -144,6 +146,8 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
 
     /** The done screen replaced the form: its heading takes the focus, which would otherwise fall to the page. */
     protected override updated(): void {
+        // The wizard's funnel (§200): what changed since the last render, as codes.
+        trackAreaFunnels(this, this.view, (view) => [newCityFunnel(view)]);
         const cityId = this.view?.created?.cityId;
         if (cityId !== undefined && cityId !== this.#focused) {
             this.#focused = cityId;

@@ -51,6 +51,12 @@ export const errorReportSchema = z.strictObject({
     locale: z.string().max(16),
     fatal: z.boolean(),
     source: z.enum(ERROR_SOURCES),
+    /** The admin's route id (`georef`, `setup`) or the viewer's open panel (`photo`, `story`, `map`): never an id of data. */
+    route: z
+        .string()
+        .max(40)
+        .regex(/^[a-z][a-z0-9-]*$/)
+        .optional(),
 });
 
 export type ErrorReport = z.infer<typeof errorReportSchema>;
@@ -67,7 +73,8 @@ export const reportedErrorEventSchema = z.strictObject({
     message: z.string().min(1).max(10_000),
     serviceContext: z.strictObject({ service: z.enum(ERROR_SERVICES), version: z.string().min(1).max(64) }),
     context: z.strictObject({
-        httpRequest: z.strictObject({ url: z.string().max(2048) }),
+        /** `userAgent` is never the browser's string: only `clientLabel`'s family, major version and device class. */
+        httpRequest: z.strictObject({ url: z.string().max(2048), userAgent: z.string().max(60).optional() }),
         reportLocation: z.strictObject({
             filePath: z.string().max(2048),
             lineNumber: z.number().int().min(0),
@@ -81,10 +88,15 @@ export const reportedErrorEventSchema = z.strictObject({
         viewport: z.strictObject({ width: z.number().int().min(0), height: z.number().int().min(0) }),
         fatal: z.boolean(),
         source: z.enum(ERROR_SOURCES),
+        /** The admin's route id or the viewer's panel when the error happened. */
+        route: z.string().max(40).optional(),
     }),
 });
 
 export type ReportedErrorEvent = z.infer<typeof reportedErrorEventSchema>;
+
+/** The top stack frames a crash group shows. */
+export const CRASH_TOP_FRAMES = 5;
 
 export const ERROR_GROUP_RESOLUTIONS = ['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'MUTED'] as const;
 
@@ -108,6 +120,14 @@ export const listGroupsResponseSchema = z.strictObject({
                 firstSeen: isoTimeSchema,
                 lastSeen: isoTimeSchema,
                 resolution: z.enum(ERROR_GROUP_RESOLUTIONS),
+                /** The representative's top stack frames (at most {@link CRASH_TOP_FRAMES}), redacted; text only. */
+                frames: z.array(z.string().max(300)).max(5).optional(),
+                /** How many distinct users Error Reporting counted (it counts none for our reports without a user). */
+                affectedUsers: z.number().int().min(0).optional(),
+                /** The page (origin and path) of the representative report, redacted. */
+                page: z.string().max(2048).optional(),
+                /** The representative's browser and device class (`clientLabel`, e.g. `Safari 18 mobile`). */
+                client: z.string().max(60).optional(),
             }),
         )
         .max(50),

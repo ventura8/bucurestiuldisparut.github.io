@@ -58,6 +58,24 @@ function mapCenterLat(page: Page): Promise<number> {
     );
 }
 
+/** Runs in the page before the admin: records every wizard funnel signal (`hcm-funnel`, §200) as `<kind> <wizard> [step]`. */
+function recordFunnel(): void {
+    const seen: string[] = [];
+    const codes: string[] = [];
+    Object.assign(window, { __hcmFunnel: seen, __hcmFunnelCodes: codes });
+    window.addEventListener('hcm-funnel', (event) => {
+        const signal = (event as CustomEvent<{ kind: string; wizard: string; step?: string; code?: string }>).detail;
+        seen.push([signal.kind, signal.wizard, signal.step].filter((part) => part !== undefined).join(' '));
+        if (signal.code !== undefined) {
+            codes.push(signal.code);
+        }
+    });
+}
+
+function recordedFunnel(page: Page): Promise<string[]> {
+    return page.evaluate(() => (window as unknown as { __hcmFunnel: string[] }).__hcmFunnel);
+}
+
 /** Types the rectangle's four edges, the keyboard's way (each field commits when the focus leaves it). */
 async function typeEdges(
     page: Page,
@@ -73,9 +91,10 @@ async function typeEdges(
 
 test(
     'The project owner creates a city in two inputs',
-    { tag: '@S-A50-HAPPY' },
+    { tag: ['@S-A50-HAPPY', '@S-A150-HAPPY-FUNNEL-ORDER', '@S-A150-BAD-NO-EVENTS-BEFORE-CONSENT'] },
     async ({ page, lang, adminWorld, inputBudget, consoleErrors }) => {
         const { emulators, accounts } = adminWorld;
+        await page.addInitScript(recordFunnel);
         await seedCity(emulators, PROJECT_CITY, 'București');
         await page.goto(addressWithMap(lang, 'cities/new'));
         await adminMapReady(page);
@@ -123,6 +142,17 @@ test(
         await expect(cityChoice(menu, FOUND_ID)).toBeVisible();
         // The viewer's token, best effort after the create: this project has no Mapbox yet, so Setup's Mapbox card mints it.
         await expect.poll(() => consoleErrors.takeMatching(/status of 400 .*setup-rotatePublicToken/).length).toBe(1);
+        // §200: the wizard's funnel, in the order the owner walked it, as codes (this admin has no GA4, so nothing leaves).
+        const funnel = await recordedFunnel(page);
+        expect(funnel[0]).toBe('view new_city names');
+        expect(funnel.filter((signal) => signal.startsWith('complete'))).toEqual([
+            'complete new_city names',
+            'complete new_city area',
+            'complete new_city create',
+        ]);
+        expect(funnel.at(-1)).toBe('finish new_city');
+        // Without the admin's consent (here: no GA4 at all) no Google script runs on the page.
+        expect(await page.evaluate(() => Object.keys(window).filter((key) => key === 'dataLayer' || key === 'gtag'))).toEqual([]);
     },
 );
 
@@ -188,27 +218,38 @@ test('An id no city may take is said at its field', { tag: '@S-A50-BAD-ID-INVALI
     await expect(createButton(page)).not.toHaveAttribute('disabled', '');
 });
 
-test('Edges typed in part wait for the others, and keep them', { tag: '@S-A50-BAD-EDGES-PARTIAL' }, async ({ page, lang, adminWorld }) => {
-    // The UX review of M5: each edge before the fourth made an impossible rectangle and an alert about dragging.
-    await seedCity(adminWorld.emulators, PROJECT_CITY, 'București');
-    await page.goto(addressWithMap(lang, 'cities/new'));
-    await form(page).getByLabel(cityText(lang, 'adminContent.cities.new.nameRo'), { exact: true }).fill(NAME);
+test(
+    'Edges typed in part wait for the others, and keep them',
+    { tag: ['@S-A50-BAD-EDGES-PARTIAL', '@S-A150-BAD-STEP-ERROR-CODE-NOT-TEXT'] },
+    async ({ page, lang, adminWorld }) => {
+        // The UX review of M5: each edge before the fourth made an impossible rectangle and an alert about dragging.
+        await page.addInitScript(recordFunnel);
+        await seedCity(adminWorld.emulators, PROJECT_CITY, 'București');
+        await page.goto(addressWithMap(lang, 'cities/new'));
+        await form(page).getByLabel(cityText(lang, 'adminContent.cities.new.nameRo'), { exact: true }).fill(NAME);
 
-    await typeEdges(page, lang, { west: 23.7, south: 46.5 });
-    await expect(form(page).locator('[data-edges-incomplete]')).toHaveText(cityText(lang, 'adminContent.cities.new.edgesIncomplete'));
-    await expect(form(page).locator('[data-area-problem]')).toHaveCount(0);
-    await typeEdges(page, lang, { east: 23.9, north: 46.6 });
-    await expect(form(page).locator('[data-edges-incomplete]')).toHaveCount(0);
-    await expect(createButton(page)).not.toHaveAttribute('disabled', '');
+        await typeEdges(page, lang, { west: 23.7, south: 46.5 });
+        await expect(form(page).locator('[data-edges-incomplete]')).toHaveText(cityText(lang, 'adminContent.cities.new.edgesIncomplete'));
+        await expect(form(page).locator('[data-area-problem]')).toHaveCount(0);
+        await typeEdges(page, lang, { east: 23.9, north: 46.6 });
+        await expect(form(page).locator('[data-edges-incomplete]')).toHaveCount(0);
+        await expect(createButton(page)).not.toHaveAttribute('disabled', '');
 
-    await edgeField(page, lang, 'east').fill('');
-    await edgeField(page, lang, 'east').press('Tab');
-    await expect(edgeField(page, lang, 'west')).toHaveValue('23.7');
-    await expect(edgeField(page, lang, 'north')).toHaveValue('46.6');
-    await expect(createButton(page)).toHaveAttribute('disabled', '');
-    await typeEdges(page, lang, { east: 23.6 });
-    await expect(form(page).locator('[data-area-problem]')).toHaveText(cityText(lang, 'adminContent.cities.new.areaBounds'));
-});
+        await edgeField(page, lang, 'east').fill('');
+        await edgeField(page, lang, 'east').press('Tab');
+        await expect(edgeField(page, lang, 'west')).toHaveValue('23.7');
+        await expect(edgeField(page, lang, 'north')).toHaveValue('46.6');
+        await expect(createButton(page)).toHaveAttribute('disabled', '');
+        await typeEdges(page, lang, { east: 23.6 });
+        await expect(form(page).locator('[data-area-problem]')).toHaveText(cityText(lang, 'adminContent.cities.new.areaBounds'));
+        // §200: the funnel names the area's problem by its code, never by the words on screen.
+        const funnel = await recordedFunnel(page);
+        expect(funnel).toContain('error new_city area');
+        expect((await page.evaluate(() => (window as unknown as { __hcmFunnelCodes: string[] }).__hcmFunnelCodes)).at(-1)).toBe(
+            'validation.bounds',
+        );
+    },
+);
 
 test('A taken id is refused with a suggestion', { tag: '@S-A50-BAD-ID-TAKEN' }, async ({ page, lang, adminWorld, consoleErrors }) => {
     const { emulators } = adminWorld;

@@ -28,7 +28,7 @@ import { timelineStops, type TimelineStop } from './timeline-model.js';
 import { syncLocale } from './viewer-actions.js';
 import { withViewerBaseline } from './viewer-baseline.js';
 import { createHandlers } from './viewer-handlers.js';
-import { isGameConsole } from './game-console.js';
+import { isGameConsole, reportConsole } from './game-console.js';
 import { activate as activateIn, askForPadKeys, navigate as navigateIn, spatialKey, type Direction } from './spatial-nav.js';
 import { isViewerKey, shortcutOf } from './viewer-keyboard.js';
 import { modalOpen } from './viewer-legal.js';
@@ -220,7 +220,7 @@ export class HcmMapViewer extends LitElement {
     /** A keyboard shortcut or a gamepad button: what the state allows of `command` (docs/research/viewer-input.md §1). */
     runInput(command: InputCommand): void {
         this.#act(null, (store) => {
-            if (commandAllowed(store.getState(), command)) {
+            if (!this.#dock.closedBy(command) && commandAllowed(store.getState(), command)) {
                 runInputCommand(store, command);
                 this.#focusLayers(command);
             }
@@ -267,6 +267,7 @@ export class HcmMapViewer extends LitElement {
         const state = store.getState();
         this.#onState(state, idleOf(state));
         this.#subscribe();
+        reportConsole(navigator.userAgent, store);
     }
 
     /** Disconnects the store (Show my location stops); the element shows its loading state again. */

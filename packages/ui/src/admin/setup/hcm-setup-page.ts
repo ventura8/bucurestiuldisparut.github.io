@@ -10,6 +10,7 @@
  * holds its scope.
  */
 import type { AdminSetupKey, UiLocale } from '@hcm/shared';
+import { funnelHelpOpened, trackFunnel } from '@hcm/shared/funnels';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { defineHcmButton } from '../../components/button.js';
@@ -34,6 +35,7 @@ import { installCardAsks } from './install-status.js';
 import { selfTestList, selfTestStyles } from './self-test.js';
 import { SetupPortHost } from './setup-host.js';
 import type { SetupIntentsPort, SetupStepId, SetupStepView, SetupViewState } from './setup-port.js';
+import { setupFunnel } from './setup-funnel.js';
 import { setupTextStyles } from './setup-styles.js';
 import { formatMoney, setupLabel, setupText } from './setup-text.js';
 
@@ -108,6 +110,7 @@ export class HcmSetupPage extends SetupPortHost {
     constructor() {
         super();
         this.windowClass = 'compact';
+        this.addEventListener('click', this.#linkOpened);
     }
 
     override connectedCallback(): void {
@@ -143,8 +146,19 @@ export class HcmSetupPage extends SetupPortHost {
         if (this.view !== null) {
             this.dataset['inputs'] = String(this.view.used.inputs);
             this.dataset['consents'] = String(this.view.used.consents);
+            // The funnel (§200): what changed since the last render, as codes (never the cards' words).
+            trackFunnel(this, setupFunnel(this.view));
         }
     }
+
+    /** A guide or console link of the open card opened in a new tab: the step's help (`step_help_opened`). */
+    readonly #linkOpened = (event: Event): void => {
+        const step = this.view?.openStep;
+        const link = event.composedPath().some((node) => node instanceof HTMLAnchorElement && node.target === '_blank');
+        if (step !== null && step !== undefined && link) {
+            funnelHelpOpened(this, 'setup', step);
+        }
+    };
 
     private renderHeader(view: SetupViewState): TemplateResult {
         const loading = view.loading === true;

@@ -42,6 +42,10 @@
         "./viewer-catalogues": {
             "types": "./src/i18n/viewer-catalogues.ts",
             "default": "./src/i18n/viewer-catalogues.ts"
+        },
+        "./funnels": {
+            "types": "./src/telemetry/funnels.ts",
+            "default": "./src/telemetry/funnels.ts"
         }
     },
     "dependencies": {

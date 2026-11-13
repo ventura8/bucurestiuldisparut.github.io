@@ -104,7 +104,7 @@ describe('the gamepad and the colour scheme of the page', () => {
             activate: vi.fn(),
         };
 
-        const stop = env.watchGamepads?.(surface, new FakeMap());
+        const stop = env.watchGamepads?.(surface, new FakeMap(), vi.fn());
 
         expect(stop).toBeTypeOf('function');
         stop?.();

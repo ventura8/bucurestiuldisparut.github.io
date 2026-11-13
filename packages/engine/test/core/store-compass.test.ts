@@ -31,6 +31,17 @@ describe('the compass', () => {
         expect(location.hash.split('&')[0]).toBe('#14/44.43/26.1');
     });
 
+    it('happyPath_aResetThatTurnsTheMapIsOneCompassEvent', async () => {
+        // @S-V70-HAPPY-KEY-ACTIONS: the compass's reset is counted (after consent, by telemetry).
+        const { store, map, telemetry } = await loaded();
+        map.view = { ...map.view, bearing: 90 };
+
+        store.resetNorth();
+        store.resetNorth();
+
+        expect(telemetry.events.filter((event) => event.name === 'compass_reset')).toEqual([{ name: 'compass_reset' }]);
+    });
+
     it('happyPath_reducedMotionJumps', async () => {
         const { store, map } = await loaded({ reducedMotion: true });
         map.view = { ...map.view, bearing: 300 };

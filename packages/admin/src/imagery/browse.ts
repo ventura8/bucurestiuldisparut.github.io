@@ -90,6 +90,10 @@ export class BrowseImages {
     /** The detail's image: copied first when the harvest made no copy (the copy the list asked for, if any), then its larger picture. */
     async open(scene: SceneItem): Promise<void> {
         const generation = this.#generation;
+        // A copy made before the cloud estimate (2026-11-13) is measured once its page opens: `imagery.browse` measures what it serves.
+        if (copiedPath(scene) !== null && scene.cloudCity === null) {
+            this.#copy(scene.id).catch(() => null);
+        }
         await (this.#making.get(scene.id) ?? (this.#images.has(scene.id) ? null : this.#make(scene)));
         await this.#preview(scene.id, generation);
     }

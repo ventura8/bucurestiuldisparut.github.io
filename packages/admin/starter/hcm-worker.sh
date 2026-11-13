@@ -25,7 +25,7 @@ set -u
 
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-STARTER_VERSION=881afefcef25
+STARTER_VERSION=7d4d3f94aee3
 
 HCM_PROJECT='__HCM_PROJECT__'
 HCM_CITY='__HCM_CITY__'
@@ -383,20 +383,55 @@ logind_idle() {
 
 # The graphics cards and NPUs Docker could pass to the sidecar, as JSON fields: NVIDIA's (nvidia-smi: memory, use, heat; CUDA when
 # Docker has the NVIDIA runtime or CDI), Intel's and AMD's render nodes (OpenVINO, ROCm), Intel's NPU (/dev/accel). Never on macOS.
+# Only what a command answers on success, in the expected shape, is data (2026-11-13: on the NUC, which has an Intel Arc and no
+# NVIDIA driver, nvidia-smi printed its failure on stdout and the worker listed that sentence as a card's name). A card's name is
+# lspci's, else the vendor's word; an NVIDIA card nvidia-smi cannot reach says `no-driver`.
+DRM_ROOT=${HCM_DRM_ROOT:-/sys/class/drm}
+DEV_ROOT=${HCM_DEV_ROOT:-/dev}
+
+# nvidia-smi's rows, only when it succeeds: a name and the memory as whole numbers (use and heat may read [N/A]: 0); quotes and
+# backslashes dropped from the name.
+nvidia_rows() {
+	rows=$(nvidia-smi --query-gpu=name,memory.total,memory.used,utilization.gpu,temperature.gpu --format=csv,noheader,nounits 2>/dev/null) ||
+		return 0
+	printf '%s\n' "$rows" | awk -F', *' -v via="$1" 'NF == 5 && $1 != "" && $2 ~ /^[0-9]+$/ && $3 ~ /^[0-9]+$/ {
+		gsub(/["\\]/, "", $1)
+		printf ",{\"vendor\":\"nvidia\",\"name\":\"%s\",\"vramMb\":%d,\"othersMb\":%d,\"busyPct\":%d,\"tempC\":%d,\"via\":%s}", \
+			substr($1, 1, 120), $2, $3, $4, $5, via }'
+}
+
+# A PCI card's model from lspci (`-mm`: the fourth quoted field), else $2.
+card_name() {
+	name=$(lspci -mm -s "$1" 2>/dev/null | awk -F'"' 'NF > 6 { print $6; exit }' | tr -d '\042\134' | cut -c1-120)
+	printf '%s' "${name:-$2}"
+}
+
+# One card's JSON record: vendor, name, and what follows `"via":`.
+card_record() {
+	printf ',{"vendor":"%s","name":"%s","vramMb":0,"via":%s}' "$1" "$2" "$3"
+}
+
+drm_cards() {
+	for vendor in "$DRM_ROOT"/card*/device/vendor; do
+		[ -r "$vendor" ] || continue
+		device=$(dirname "$vendor")
+		slot=$(basename "$(readlink -f "$device")")
+		case "$(cat "$vendor")" in
+		0x8086) [ -e "$DEV_ROOT/dri" ] && card_record intel "$(card_name "$slot" 'Intel graphics')" '"openvino"' ;;
+		0x1002) [ -e "$DEV_ROOT/kfd" ] && card_record amd "$(card_name "$slot" 'AMD graphics')" '"rocm"' ;;
+		0x10de) [ "$1" = 0 ] && card_record nvidia "$(card_name "$slot" 'NVIDIA graphics')" 'null,"why":"no-driver"' ;;
+		esac
+	done
+}
+
 host_gpus() {
 	via=null
 	if docker info 2>/dev/null | grep -qi 'nvidia'; then
 		via='"cuda"'
 	fi
-	nvidia-smi --query-gpu=name,memory.total,memory.used,utilization.gpu,temperature.gpu --format=csv,noheader,nounits 2>/dev/null |
-		awk -F', *' -v via="$via" '{ printf "%s{\"vendor\":\"nvidia\",\"name\":\"%s\",\"vramMb\":%d,\"othersMb\":%d,\"busyPct\":%d,\"tempC\":%d,\"via\":%s}", \
-			(NR > 1 ? "," : ""), $1, $2, $3, $4, $5, via }'
-	for vendor in /sys/class/drm/card*/device/vendor; do
-		case "$(cat "$vendor" 2>/dev/null)" in
-		0x8086) [ -e /dev/dri ] && printf '%s' ',{"vendor":"intel","name":"Intel graphics","vramMb":0,"via":"openvino"}' ;;
-		0x1002) [ -e /dev/kfd ] && printf '%s' ',{"vendor":"amd","name":"AMD graphics","vramMb":0,"via":"rocm"}' ;;
-		esac
-	done
+	nvidia=$(nvidia_rows "$via")
+	printf '%s' "$nvidia"
+	drm_cards "${#nvidia}"
 }
 
 host_npus() {

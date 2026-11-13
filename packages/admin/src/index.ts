@@ -6,7 +6,7 @@
  */
 import './admin.css';
 
-import { CITY_ID_PATTERN, createLogger, type Logger } from '@hcm/shared';
+import { CITY_ID_PATTERN, createLogger, privacySignal, type CityRole, type Logger, type PrivacyNavigator } from '@hcm/shared';
 import { installFonts, windowClassFor, type FontFaceConstructor } from '@hcm/ui';
 import { SETUP_PAGE_TAGS, defineAdminElements, defineSetupElements, type HcmAdminShell } from '@hcm/ui/admin';
 
@@ -16,7 +16,7 @@ import { areaServices } from './app/content-wiring.js';
 import { documentVisibility, webStorage, windowClock, windowLocation, type LocationWindow } from './app/browser.js';
 import type { Clock, HashLocation, KeyValueStore } from './app/ports.js';
 import type { AdminRuntime, FirebaseWebConfig } from './app/config.js';
-import { errorEndpointFor, installErrorHooks, AdminErrorReporter } from './app/errors.js';
+import { errorEndpointFor, installErrorHooks, AdminErrorReporter, routeOfHash } from './app/errors.js';
 import type { AdminApp, AdminDeps, TelemetryView } from './app/mount.js';
 import { watchRelease, type ReleaseWatch } from './app/release-watch.js';
 import type { AdminProject, SetupModuleSpec } from './app/services.js';
@@ -26,7 +26,7 @@ import { createGoogleAuth, type PopupSignIn } from './auth/google-auth.js';
 import { createStandInPopup } from './auth/stand-in.js';
 import { CONTENT_AREAS } from './content/areas.js';
 import type { ContentDeps } from './content/registry.js';
-import { createAnalytics, type AnalyticsPort, type EventParams } from './firebase/analytics.js';
+import { createAnalytics, surfaceOf, type AnalyticsPort, type EventParams } from './firebase/analytics.js';
 import { contentStore } from './firebase/content.js';
 import { contentSdk } from './firebase/content-sdk.js';
 import { credentialSignIn, firebasePopup, firebasePorts } from './firebase/adapters.js';
@@ -71,7 +71,7 @@ export function registerAdminPage(id: AdminRouteId, load: PageLoader): void {
 /** What the entry needs of `window` (the node tests pass a plain object). */
 export interface AdminWindow extends LocationWindow {
     readonly document: Document;
-    readonly navigator: Pick<Navigator, 'languages'>;
+    readonly navigator: Pick<Navigator, 'languages'> & PrivacyNavigator;
     readonly sessionStorage: Storage;
     readonly localStorage: Storage;
     readonly innerWidth: number;
@@ -154,8 +154,9 @@ export function analyticsFor(
     measurementId: string | undefined,
     app: FirebaseHandles['app'],
     parts: BrowserParts,
-    release: string,
+    context: { readonly release: string; readonly role?: () => CityRole | null },
 ): AnalyticsPort | null {
+    const { release, role = () => null } = context;
     const location = parts.location;
     const fieldContext = (): EventParams => ({ app: 'admin', window_class: windowClassFor(parts.win.innerWidth), release });
     return measurementId === undefined
@@ -165,6 +166,7 @@ export function analyticsFor(
               load: loadAnalyticsSdk,
               loadField: loadFieldSdk,
               fieldContext,
+              surface: () => surfaceOf(role()),
               log: parts.log,
               pageLocation: location.page.bind(location),
           });
@@ -178,8 +180,10 @@ export function telemetryFor(
     release: string,
 ): AdminDeps<null, null>['telemetry'] {
     const { win, log, location, local } = parts;
-    const analytics = analyticsFor(config.measurementId, handles.app, parts, release);
+    let current: TelemetryView | null = null;
+    const analytics = analyticsFor(config.measurementId, handles.app, parts, { release, role: () => current?.role() ?? null });
     return (view: TelemetryView): AdminTelemetry => {
+        current = view;
         const endpoint = errorEndpointFor(config.projectId, parts.e2e !== null);
         const errors = new AdminErrorReporter({
             release,
@@ -188,7 +192,7 @@ export function telemetryFor(
             endpoint: () => (view.serverAnswers() ? endpoint : null),
             page: () => location.page(),
             viewport: () => ({ width: win.innerWidth, height: win.innerHeight }),
-            context: () => ({ locale: view.locale(), windowClass: view.windowClass() }),
+            context: () => ({ locale: view.locale(), windowClass: view.windowClass(), route: routeOfHash(win.location.hash) }),
             post: (url, body) =>
                 win.fetch(url, { method: 'POST', body, headers: { 'content-type': 'text/plain' }, keepalive: true, credentials: 'omit' }),
             exception: (description, fatal) => {
@@ -198,7 +202,7 @@ export function telemetryFor(
         const clearCookies = (): void => {
             log.info('analytics cookies expired', { count: expireAnalyticsCookies(win.document, win.location.hostname).length });
         };
-        const telemetry = new AdminTelemetry({ local, analytics, errors, clearCookies, log });
+        const telemetry = new AdminTelemetry({ local, analytics, errors, clearCookies, log, privacySignal: privacySignal(win.navigator) });
         installErrorHooks(win, errors);
         return telemetry;
     };
@@ -332,6 +336,7 @@ export function browserDeps(parts: BrowserParts): BootEnvironment<EntrySetup, En
                 project,
             ),
             content: contentDepsFor(parts, handles, fetcher, runtime),
+            funnelWindow: win,
         };
     };
 }

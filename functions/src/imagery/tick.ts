@@ -30,7 +30,7 @@ import { relocateParked } from './relocate.js';
  */
 export type TickDeps = Pick<
     Ports,
-    'documents' | 'clock' | 'log' | 'jobs' | 'tasks' | 'secrets' | 'setup' | 'tilesets' | 'blobs' | 'usgs' | 'scenes' | 'remote'
+    'documents' | 'clock' | 'log' | 'jobs' | 'tasks' | 'secrets' | 'setup' | 'tilesets' | 'blobs' | 'usgs' | 'scenes' | 'remote' | 'images'
 >;
 
 type Part = (deps: TickDeps, cityId: string, now: Date) => Promise<void>;

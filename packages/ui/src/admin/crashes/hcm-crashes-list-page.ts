@@ -4,7 +4,8 @@
  * text, how often, when last), More for the next page; the selected group's count, first and last seen, release and
  * state, with **Open in Error Reporting** (the project's page in the Google Cloud console, a new tab). A disabled Error
  * Reporting API is explained with the way to enable it (Setup's analytics card). The selection is page state: Error
- * Reporting's group ids are never routed. The Setup card's `hcm-crash-groups` stays where it is.
+ * Reporting's group ids are never routed. The Setup card's `hcm-crash-groups` stays where it is. `#/crashes/statistics` is
+ * the Statistics view of the wizards' funnels (`statistics-view.ts`, §200), linked from the list's head.
  */
 import type { UiLocale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
@@ -17,6 +18,7 @@ import { formatWhen, loadingTemplate } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type { CrashesIntentsPort, CrashesViewState, CrashGroupPort, CrashPeriodPort } from './crashes-port.js';
+import { loadStatisticsLive, statisticsLiveReady, statisticsStyles, statisticsView } from './statistics-view.js';
 
 export const HCM_CRASHES_LIST_PAGE_TAG = 'hcm-crashes-list-page';
 
@@ -31,8 +33,40 @@ export function errorGroupUrl(projectId: string, groupId: string): string {
 
 const PERIODS: readonly CrashPeriodPort[] = [24, 168, 720];
 
+/** The shell's facts the Statistics view reads, before the shell's state arrives. */
+const NO_SHELL = { analytics: false, projectId: '', authDomain: '' } as const;
+
+/** A count as text, or undefined without one. */
+function countText(count: number | undefined): string | undefined {
+    return count === undefined ? undefined : String(count);
+}
+
+/** The optional facts of a group, by their catalogue keys. */
+const FACT_KEYS = {
+    page: 'adminContent.crashes.page',
+    client: 'adminContent.crashes.client',
+    affectedUsers: 'adminContent.crashes.affectedUsers',
+} as const;
+
+const RELEASE_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/;
+
+/** The engine release's notes on GitHub for a semantic version, else null (a build without a release). */
+export function releaseUrl(version: string | undefined): string | null {
+    return version !== undefined && RELEASE_VERSION.test(version)
+        ? `https://github.com/ventura8/historic-city-map-maker/releases/tag/v${version}`
+        : null;
+}
+
 const crashStyles = css`
     .message {
+        overflow-wrap: anywhere;
+    }
+
+    ol.frames {
+        margin: 0;
+        padding-inline-start: 1.5em;
+        font-family: var(--hcm-font-mono, ui-monospace, monospace);
+        font-size: 0.875em;
         overflow-wrap: anywhere;
     }
 
@@ -56,7 +90,7 @@ const crashStyles = css`
 `;
 
 export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntentsPort> {
-    static override readonly styles = [...editingStyles, crashStyles];
+    static override readonly styles = [...editingStyles, crashStyles, statisticsStyles];
 
     protected readonly route: AdminRouteIdPort = 'crashes';
 
@@ -66,6 +100,9 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
 
     override render(): TemplateResult {
         const view = this.view;
+        if (this.params[0] === 'statistics') {
+            return this.#statistics(view);
+        }
         if (view === null) {
             return EMPTY;
         }
@@ -87,6 +124,20 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
         </hcm-list-detail>`;
     }
 
+    /** `#/crashes/statistics` (§200, §203): the guide, Google Analytics' numbers and the period's error groups. */
+    #statistics(view: CrashesViewState | null): TemplateResult {
+        if (!statisticsLiveReady()) {
+            void loadStatisticsLive().then(() => {
+                this.requestUpdate();
+            });
+        }
+        const { analytics, projectId, authDomain } = this.state ?? NO_SHELL;
+        return statisticsView(this.locale, {
+            ...{ analytics, projectId, authDomain, view, intents: this.intents },
+            groupUrl: (groupId) => errorGroupUrl(projectId, groupId),
+        });
+    }
+
     #list(locale: UiLocale, view: CrashesViewState): TemplateResult {
         const choose = (event: CustomEvent<{ readonly value: string }>): void => {
             this.intents?.setPeriod(Number(event.detail.value) as CrashPeriodPort);
@@ -96,6 +147,7 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
             label: contentText(locale, `adminContent.crashes.period.${String(period) as '24'}`),
         }));
         return html`<div class="list-head">
+                <a href="#/crashes/statistics" data-statistics-link>${contentText(locale, 'adminContent.statistics.link')}</a>
                 <hcm-segmented-button
                     .label=${contentText(locale, 'adminContent.crashes.periodLabel')}
                     .options=${options}
@@ -182,16 +234,51 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
                 <dt>${contentText(locale, 'adminContent.crashes.lastSeen')}</dt>
                 <dd>${formatWhen(locale, group.lastSeen)}</dd>
                 <dt>${contentText(locale, 'adminContent.crashes.service')}</dt>
-                <dd>${group.version === undefined ? group.service : `${group.service} ${group.version}`}</dd>
+                <dd>${[group.service, group.version ?? ''].join(' ').trim()}</dd>
                 <dt>${contentText(locale, 'adminContent.crashes.state')}</dt>
                 <dd>${contentText(locale, `adminContent.crashes.resolution.${group.resolution}`)}</dd>
+                ${this.#fact(locale, 'page', group.page)}${this.#fact(locale, 'client', group.client)}
+                ${this.#fact(locale, 'affectedUsers', countText(group.affectedUsers))}
             </dl>
+            ${this.#frames(locale, group)} ${this.#release(locale, group.version)}
             <p>
                 <a class="external" href=${errorGroupUrl(projectId, group.groupId)} target="_blank" rel="noopener noreferrer"
                     >${contentText(locale, 'adminContent.crashes.openConsole')}<hcm-icon name="open_in_new"></hcm-icon
                 ></a>
             </p>
         </div>`;
+    }
+
+    #fact(locale: UiLocale, key: 'page' | 'client' | 'affectedUsers', value: string | undefined): TemplateResult {
+        const term = contentText(locale, FACT_KEYS[key]);
+        return value === undefined
+            ? EMPTY
+            : html`<dt>${term}</dt>
+                  <dd class="message">${value}</dd>`;
+    }
+
+    #frames(locale: UiLocale, group: CrashGroupPort): TemplateResult {
+        const frames = group.frames ?? [];
+        if (frames.length === 0) {
+            return html`<p>${contentText(locale, 'adminContent.crashes.noFrames')}</p>`;
+        }
+        return html`<h3>${contentText(locale, 'adminContent.crashes.frames')}</h3>
+            <ol class="frames">
+                ${frames.map((frame) => html`<li>${frame}</li>`)}
+            </ol>`;
+    }
+
+    #release(locale: UiLocale, version: string | undefined): TemplateResult {
+        const url = releaseUrl(version);
+        return url === null
+            ? EMPTY
+            : html`<p>
+                  <a class="external" href=${url} target="_blank" rel="noopener noreferrer"
+                      >${contentText(locale, 'adminContent.crashes.release', { version: version ?? '' })}<hcm-icon
+                          name="open_in_new"
+                      ></hcm-icon
+                  ></a>
+              </p>`;
     }
 }
 

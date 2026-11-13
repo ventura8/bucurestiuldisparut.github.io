@@ -481,7 +481,9 @@ describe('<hcm-layers-page> link dialog: Check (M3)', () => {
         const { element } = await page('layers', layers);
 
         expect(deep(element, '[data-probe="failed"]').getAttribute('role')).toBe('alert');
-        expect(deep(element, '[data-probe="failed"]').textContent).toContain('The source has no tiles at this address.');
+        expect(deep(element, '[data-probe="failed"]').textContent).toContain(
+            'The source has no map pieces at this address. Check the address copied from the source.',
+        );
         expect(linkButton(element).disabled).toBe(true);
     });
 });

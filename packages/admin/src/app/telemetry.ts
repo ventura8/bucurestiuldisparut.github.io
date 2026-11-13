@@ -73,6 +73,12 @@ export interface AdminTelemetryDeps {
     /** Expires GA4's cookies on a withdrawal (never throws). */
     readonly clearCookies: () => void;
     readonly log: Logger;
+    /**
+     * The browser asks not to be tracked (Do Not Track, Global Privacy Control: `privacySignal` of `@hcm/shared`): without a
+     * stored answer the admin counts as having declined, so no banner asks and nothing is sent until it accepts in the
+     * account menu.
+     */
+    readonly privacySignal?: boolean;
 }
 
 export class AdminTelemetry {
@@ -82,7 +88,8 @@ export class AdminTelemetry {
 
     constructor(deps: AdminTelemetryDeps) {
         this.#deps = deps;
-        this.#consent = parseConsent(deps.local.get(CONSENT_KEY));
+        const stored = parseConsent(deps.local.get(CONSENT_KEY));
+        this.#consent = stored === 'unknown' && deps.privacySignal === true ? 'denied' : stored;
         deps.analytics?.setConsent(this.#consent === 'granted');
     }
 

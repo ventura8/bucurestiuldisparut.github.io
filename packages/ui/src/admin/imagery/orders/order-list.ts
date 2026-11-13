@@ -107,7 +107,7 @@ function paidFrameKey(ordered: SceneItemPort | undefined): AdminContentKey {
  * order reads Order it again).
  * In the Imagery chunk, beside the orders' other rows: the join's chunk has no room for it.
  */
-function paidFrame(context: ImageryContext, entityId: string): TemplateResult {
+function paidFrame(context: ImageryContext, entityId: string, cloudy: number | undefined): TemplateResult {
     const { locale } = context;
     const ordered = openOrder(context, entityId);
     const key = paidFrameKey(ordered);
@@ -116,12 +116,28 @@ function paidFrame(context: ImageryContext, entityId: string): TemplateResult {
             >${contentText(locale, key, { frame: frameName(entityId) })}</a
         >
         ${withValue(ordered, (scene) => orderTag(locale, scene))}
+        ${withValue(
+            cloudy,
+            (percent) =>
+                html`<p class="note" data-state="join-cloudy">
+                    ${contentText(locale, 'adminContent.imagery.cloudy.beforeBuying', { percent: String(percent) })}
+                </p>`,
+        )}
     </li>`;
 }
 
-/** Every paid frame of a whole-city date, each with its own Buy this scan (M8's row, `join-card.ts`). */
-export function paidFrameList(context: ImageryContext, entityIds: readonly string[]): TemplateResult {
+/** A frame the plan found probably cloudy over the city (`cloudyFrames` of the row). */
+interface CloudyFrame {
+    readonly entityId: string;
+    readonly percent: number;
+}
+
+/**
+ * Every paid frame of a whole-city date, each with its own Buy this scan (M8's row, `join-card.ts`); one probably cloudy over the
+ * city warns before anyone buys it (the owner's report of 2026-11-13).
+ */
+export function paidFrameList(context: ImageryContext, entityIds: readonly string[], cloudy: readonly CloudyFrame[] = []): TemplateResult {
     return html`<ul class="steps" data-join-paid-frames>
-        ${entityIds.map((entityId) => paidFrame(context, entityId))}
+        ${entityIds.map((entityId) => paidFrame(context, entityId, cloudy.find((frame) => frame.entityId === entityId)?.percent))}
     </ul>`;
 }

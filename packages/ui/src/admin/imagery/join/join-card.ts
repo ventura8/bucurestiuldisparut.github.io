@@ -79,7 +79,7 @@ function paidFrames(context: ImageryContext, row: DatePlanRow): TemplateResult {
         count > 0,
         () =>
             html`<span class="note" data-state="join-paid">${contentText(locale, key, { count: String(count) })}</span>
-                ${paidFrameList(context, row.paidFrames)}`,
+                ${paidFrameList(context, row.paidFrames, row.cloudyFrames)}`,
     );
 }
 

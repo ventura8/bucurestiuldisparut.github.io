@@ -83,7 +83,8 @@ describe('the role table', () => {
         expect(table.find((policy) => policy.resource === 'mapbox-sk-bootstrap')?.bindings.map((binding) => binding.member)).not.toContain(
             'serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com',
         );
-        expect(REQUIRED_APIS).toHaveLength(33);
+        expect(REQUIRED_APIS).toHaveLength(34);
+        expect(REQUIRED_APIS).toContain('analyticsdata.googleapis.com');
     });
 
     it('happyPath_theM4AssistsAndPushHaveTheirApisAndRoles', () => {

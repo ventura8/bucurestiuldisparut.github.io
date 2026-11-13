@@ -63,6 +63,12 @@ export async function runCallable<N extends CallableName, D extends CallableDeps
     const caller = await requireAccess(spec.access, request.auth, deps.admins, 'workerToken' in spec ? workerClaims : noWorkerClaims);
     const input = validate<unknown>(spec.request, request.data);
     if (!input.ok) {
+        const fields = input.issues.slice(0, 5).map((issue) => `${issue.path || '(request)'}: ${issue.code}`);
+        deps.log.warn('callable request refused: invalid fields', {
+            callable: name,
+            count: input.issues.length,
+            fields: fields.join(', '),
+        });
         throw new ApiError('apiError.invalidRequest', undefined, input.issues);
     }
     requireCityRole(spec.access, caller, input.value);

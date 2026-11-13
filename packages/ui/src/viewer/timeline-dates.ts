@@ -1,11 +1,11 @@
 /**
  * V13: a timeline year with several historical layers (several dates, or several images of one date). Its stop carries a
- * small badge with the count; the badge, or Enter on the timeline's slider standing on that year, asks for the date
- * picker (`hcm-dates-open`), which lists the year's layers by date (`<hcm-date-menu>`); picking one brings it to the front
- * (the store's `pickLayer`, V15's mechanism). The stops, the badge's template and the picker's items are here; the timeline
- * and the viewer only call them.
+ * small badge with the count, a hint for the eye only; selecting that year (a tap, a click, the end of a drag or a scrub,
+ * Enter, the gamepad's A: the owner, 2026-11-13) asks for the date picker (`hcm-dates-open`), which lists the year's
+ * layers by date (`<hcm-date-menu>`); picking one brings it to the front (the store's `pickLayer`, V15's mechanism). The
+ * stops, the badge's template and the picker's items are here; the timeline and the viewer only call them.
  */
-import { translate, type Layer, type Locale } from '@hcm/shared';
+import { localized, translate, type Layer, type ViewerLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
@@ -31,7 +31,7 @@ export interface DatesOpenDetail {
     readonly anchor: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
 }
 
-/** The event that asks for the picker of `year`, beside `from` (the badge or the slider's thumb). */
+/** The event that asks for the picker of `year`, beside `from` (the slider's thumb). */
 export function datesOpenEvent(year: number, from: Element): CustomEvent<DatesOpenDetail> {
     const box = from.getBoundingClientRect();
     const anchor = { x: box.x, y: box.y, width: box.width, height: box.height };
@@ -40,21 +40,18 @@ export function datesOpenEvent(year: number, from: Element): CustomEvent<DatesOp
 
 /**
  * The badge of a stop with `count` dates: a number in a small circle, for the eye only (the slider says it in its value
- * text); a press on it opens the picker of `year`.
+ * text). It takes no press (too small for a finger or a mouse, the owner 2026-11-13): a press through it lands on the
+ * year's point, and selecting the year opens its dates.
  */
-export function dateBadge(year: TimelineStop, count: number, open: (year: number, from: Element) => void): TemplateResult {
+export function dateBadge(year: TimelineStop, count: number): TemplateResult {
     if (year === null || count < 2) {
         return EMPTY;
     }
-    const onClick = (event: Event): void => {
-        event.stopPropagation();
-        open(year, event.currentTarget as Element);
-    };
-    return html`<span class="badge" aria-hidden="true" @click=${onClick}>${String(count)}</span>`;
+    return html`<span class="badge" aria-hidden="true">${String(count)}</span>`;
 }
 
 /** The slider's value text: the year, and on a year with several dates how many and that Enter lists them. */
-export function datesValueText(locale: Locale, yearText: string, count: number): string {
+export function datesValueText(locale: ViewerLocale, yearText: string, count: number): string {
     return count < 2 ? yearText : `${yearText}, ${translate(locale, 'timeline.datesHint', { count: String(count) })}`;
 }
 
@@ -66,7 +63,7 @@ export interface DateItem {
 }
 
 /** A layer's date in the visitor's language (`12 aprilie 1966`), else its year; the date is `YYYY`, `YYYY-MM` or `YYYY-MM-DD`. */
-export function dateText(layer: Pick<Layer, 'year' | 'date'>, locale: Locale): string {
+export function dateText(layer: Pick<Layer, 'year' | 'date'>, locale: ViewerLocale): string {
     const [, month, day] = (layer.date ?? '').split('-').map(Number);
     if (month === undefined) {
         return String(layer.year);
@@ -82,13 +79,13 @@ export function dateText(layer: Pick<Layer, 'year' | 'date'>, locale: Locale): s
 export function dateItems(
     layers: readonly Pick<Layer, 'id' | 'year' | 'date' | 'label'>[],
     year: number,
-    locale: Locale,
+    locale: ViewerLocale,
 ): readonly DateItem[] {
     return layers
         .filter((layer) => layer.year === year)
         .map((layer, at) => ({ layer, at, key: layer.date ?? '￿' }))
         .sort((a, b) => a.key.localeCompare(b.key) || a.at - b.at)
-        .map(({ layer }) => ({ id: layer.id, date: dateText(layer, locale), label: layer.label[locale] }));
+        .map(({ layer }) => ({ id: layer.id, date: dateText(layer, locale), label: localized(layer.label, locale) }));
 }
 
 /**

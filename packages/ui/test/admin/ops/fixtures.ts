@@ -148,6 +148,10 @@ export function crashesState(overrides: Partial<CrashesViewState> = {}): Crashes
                 service: 'admin',
                 version: '1.2.3',
                 count: 1234,
+                frames: ['at draw (https://demo-hcm.web.app/admin/assets/index.js:10:5)', 'at <b>run</b> (index.js:2:1)'],
+                page: 'https://demo-hcm.web.app/admin/',
+                client: 'Firefox 145 mobile',
+                affectedUsers: 3,
                 firstSeen: '2026-10-10T10:00:00.000Z',
                 lastSeen: '2026-10-17T10:00:00.000Z',
                 resolution: 'OPEN',
@@ -167,6 +171,7 @@ export function crashesState(overrides: Partial<CrashesViewState> = {}): Crashes
         failure: null,
         apiDisabled: false,
         selected: null,
+        statistics: { days: 28, status: 'idle', problem: null, notice: null, numbers: null },
         ...overrides,
     };
 }
