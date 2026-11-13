@@ -6,7 +6,9 @@ content box from its own scan, straight at its size on the canvas (GDAL's averag
 read, the pixels this sheet owns set and written back. A pixel belongs to the covering sheet whose centre is nearest (a hard seam, never
 a feather: blending line art doubles its lines), worked out per window from the sheets' boxes alone. Peak memory is one sheet at the
 canvas's scale, one band and two windows, never a whole scan, whatever the series' size; GDAL's own block cache is held to
-`CANVAS_CACHE_BYTES` while the canvas is written.
+`CANVAS_CACHE_BYTES` while the canvas is written, and the C heap's free pages are given back before the first sheet and after each
+one (`heap.give_back`: with GDAL's threads, the layout's reads and each sheet's stayed resident in their malloc arenas, 870 MB
+against the 800 MB budget for two 12,000 px colour sheets on 16 threads; 666 MB now).
 """
 
 from collections.abc import Iterator, Sequence
@@ -17,6 +19,7 @@ from typing import Final
 import cv2
 import numpy
 
+from hcm_pipeline.heap import give_back
 from hcm_pipeline.placing.raster_io import RGB, read_box
 from hcm_pipeline.placing.sheetwork import Box, oriented, swaps
 from hcm_pipeline.placing.streets import UInt8Array, grey_of
@@ -134,9 +137,11 @@ def render(tiles: Sequence[Tile], canvas: Canvas) -> Path:
         dataset = driver_of("GTiff").Create(str(canvas.target), width, height, bands, gdal.GDT_Byte, list(GTIFF_OPTIONS))
         for band in range(1, bands + 1):
             dataset.GetRasterBand(band).Fill(PAPER)
+        give_back()
         for index, tile in enumerate(tiles):
             _paste(dataset, tiles, index, picture(tile, canvas.colour), canvas.size)
             dataset.FlushCache()
+            give_back()
         dataset.Close()
     finally:
         gdal.SetCacheMax(previous)

@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import pytest
 from hcm_pipeline.governor.backends import Backend, Matcher, choose
-from hcm_pipeline.governor.budget import GPU_FRACTION, MEMORY_SHARE, budget_for, gpu_room, reserve
+from hcm_pipeline.governor.budget import GPU_FRACTION, MEMORY_SHARE, MEMORY_STEP_MB, budget_for, gpu_room, reserve, thermal_share
 from hcm_pipeline.governor.signals import Cpu, Gpu, Memory, Profile, Signals, Usage
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -35,7 +35,7 @@ def test_the_laptop_full_and_quiet() -> None:
 
 def test_a_small_computer_keeps_one_core_and_few_tile_processes() -> None:
     full = budget_for("full", SMALL_NO_GPU)
-    assert (full.threads, full.memory_mb, full.tile_processes) == (1, 1843, 1)
+    assert (full.threads, full.memory_mb, full.tile_processes) == (1, 1792, 1)
     assert (full.gdal_cache_mb, full.warp_mb) == (128, 256)
     assert budget_for("quiet", SMALL_NO_GPU).threads == 1
 
@@ -43,6 +43,31 @@ def test_a_small_computer_keeps_one_core_and_few_tile_processes() -> None:
 def test_the_container_limit_caps_memory() -> None:
     limited = replace(SMALL_NO_GPU, memory=Memory(4096, 3072, 1000))
     assert budget_for("full", limited).memory_mb == 1000
+
+
+def test_heat_shrinks_the_threads_before_the_limit() -> None:
+    """The laptop of 2026-11-13: 93 to 96 °C with other programs at work; the worker's share falls from 80 °C, smoothly."""
+
+    def threads(temp: float) -> int:
+        return budget_for("full", replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, temp_c=temp))).threads
+
+    assert [threads(t) for t in (70.0, 80.0, 85.0, 90.0, 93.0, 95.0)] == [14, 14, 9, 4, 1, 1]
+    assert thermal_share(None) == 1.0
+    assert thermal_share(99.0) == 0.0
+    assert budget_for("paused", replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, temp_c=93.0))).threads == 0
+
+
+def test_other_programs_take_their_cores_off_the_top() -> None:
+    busy = replace(LINUX_NVIDIA_CDI, usage=Usage(others_cpu_pct=50.0))
+    assert budget_for("full", busy).threads == 6
+    assert budget_for("quiet", busy).threads == 4
+    assert budget_for("full", replace(LINUX_NVIDIA_CDI, usage=Usage(others_cpu_pct=100.0))).threads == 1
+
+
+def test_a_few_megabytes_more_or_less_never_change_the_budget() -> None:
+    budgets = {budget_for("full", replace(LINUX_NVIDIA_CDI, memory=Memory(30_720, 23_040 + delta))) for delta in range(0, 200, 7)}
+    assert len(budgets) == 1
+    assert budget_for("full", LINUX_NVIDIA_CDI).memory_mb % MEMORY_STEP_MB == 0
 
 
 @settings(max_examples=100, deadline=None)

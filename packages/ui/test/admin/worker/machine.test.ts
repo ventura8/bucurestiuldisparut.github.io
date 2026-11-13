@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { defineHcmButton } from '../../../src/components/button.js';
 import { defineHcmSegmentedButton } from '../../../src/components/segmented-button.js';
 import { defineWorkerLocal } from '../../../src/admin/worker/hcm-worker-local.js';
-import { defineWorkerMachine } from '../../../src/admin/worker/hcm-worker-machine.js';
+import { defineWorkerMachine, NVIDIA_DRIVERS_URL } from '../../../src/admin/worker/hcm-worker-machine.js';
 import { cleanup, fixture } from '../../helpers.js';
 import { deep, deepAll, deepText, updated } from '../shell/fake-app.js';
 import { FakeLocal } from './fake-local.js';
@@ -87,6 +87,35 @@ describe('<hcm-worker-machine>', () => {
         expect(text).toContain(t('ro', 'adminWorkerLocal.machine.why.battery'));
         expect(text).toContain(t('ro', 'adminWorkerLocal.machine.noGpu'));
         expect(text).toContain(t('ro', 'adminWorkerLocal.machine.failed'));
+    });
+
+    it('badPath_anNvidiaCardWithoutItsDriverSaysWhatToInstallAndWhere @S-A141-BAD-NO-DRIVER', async () => {
+        const local = new FakeLocal();
+        const machine: WorkerMachine = {
+            ...LAPTOP,
+            gpus: [{ vendor: 'nvidia', name: 'GA104M [GeForce RTX 3080 Mobile]', vramMb: 0, via: null, why: 'no-driver' }],
+            backend: { matcher: 'cpu', why: 'no-gpu' },
+        };
+        local.set({ phase: 'connected', machine: { kind: 'known', machine, failed: false } });
+        for (const locale of ['en', 'ro'] as const) {
+            const element = await shown(local, locale);
+            const text = deepText(card(element));
+
+            expect(text).toContain(t(locale, 'adminWorkerLocal.machine.noDriver'));
+            const link = deep(card(element), 'a.external') as HTMLAnchorElement;
+            expect(link.href).toBe(NVIDIA_DRIVERS_URL);
+            expect(link.textContent.trim()).toBe(t(locale, 'adminWorkerLocal.machine.getDriver'));
+            expect(await axeViolations(element)).toEqual([]);
+            cleanup();
+        }
+    });
+
+    it('happyPath_aCardWithItsDriverHasNoDriverLine', async () => {
+        const local = new FakeLocal();
+        local.set({ phase: 'connected', machine: { kind: 'known', machine: LAPTOP, failed: false } });
+        const element = await shown(local);
+
+        expect(deepText(card(element))).not.toContain(t('en', 'adminWorkerLocal.machine.noDriver'));
     });
 
     it('badPath_anOlderWorkerAsksToBeUpdatedAndNothingShowsBeforeTheComputerIsConnected @S-A141-BAD-OLD-WORKER', async () => {

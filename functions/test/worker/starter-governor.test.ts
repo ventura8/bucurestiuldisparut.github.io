@@ -4,7 +4,7 @@
  * through the worker's own container, and sets the worker's CPU quota to the budget's threads only when they change.
  */
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -17,8 +17,51 @@ interface GovernorWorld {
     readonly threads: readonly (number | null)[];
     /** What `docker info` lists. */
     readonly info?: string;
-    /** Whether this computer has an NVIDIA card (nvidia-smi answers). */
-    readonly nvidia?: boolean;
+    /** Whether this computer has an NVIDIA card nvidia-smi answers for, or one whose driver is missing (`fails`: nvidia-smi prints its
+     * failure on stdout and exits 9, as on the NUC). */
+    readonly nvidia?: boolean | 'fails';
+    /** The cards in /sys/class/drm, by PCI vendor id, each with its render node. */
+    readonly drm?: readonly string[];
+}
+
+const NVIDIA_FAILURE = "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver.";
+const MODELS: Readonly<Record<string, string>> = {
+    '0x8086': 'Arrow Lake-P [Arc Pro 130T/140T]',
+    '0x10de': 'GA104M [GeForce RTX 3080 Mobile / Max-Q 8GB/16GB]',
+};
+
+function nvidiaSmi(world: GovernorWorld): string {
+    if (world.nvidia === 'fails') {
+        return `echo "${NVIDIA_FAILURE}"\nexit 9`;
+    }
+    return world.nvidia === true ? "echo 'NVIDIA GeForce RTX 3080 Laptop GPU, 8192, 6400, 83, 81'" : 'exit 127';
+}
+
+/** A fake /sys/class/drm and /dev: card<n>/device -> a PCI slot folder with its vendor; /dev/dri for the render nodes. */
+function fakeDrm(folder: string, vendors: readonly string[]): { readonly drm: string; readonly dev: string } {
+    const drm = join(folder, 'drm');
+    const dev = join(folder, 'dev');
+    mkdirSync(join(dev, 'dri'), { recursive: true });
+    vendors.forEach((vendor, index) => {
+        const slot = join(folder, 'pci', `0000:0${String(index)}:02.0`);
+        mkdirSync(slot, { recursive: true });
+        writeFileSync(join(slot, 'vendor'), `${vendor}\n`);
+        mkdirSync(join(drm, `card${String(index)}`), { recursive: true });
+        symlinkSync(slot, join(drm, `card${String(index)}`, 'device'));
+    });
+    return { drm, dev };
+}
+
+/** lspci -mm -s <slot>: the model of the slot's vendor. */
+function lspci(folder: string): string {
+    return [
+        `vendor=$(cat "${folder}/pci/$3/vendor" 2>/dev/null) || exit 1`,
+        'case "$vendor" in',
+        ...Object.entries(MODELS).map(
+            ([id, model]) => `${id}) echo '00:02.0 "VGA compatible controller" "Vendor" "${model}" -r03 "Sub" "Device"' ;;`,
+        ),
+        'esac',
+    ].join('\n');
 }
 
 function stateOf(threads: number | null): string {
@@ -54,7 +97,8 @@ async function governorLoop(
             'esac',
             'exit 0',
         ].join('\n'),
-        'nvidia-smi': world.nvidia === true ? "echo 'NVIDIA GeForce RTX 3080 Laptop GPU, 8192, 6400, 83, 81'" : 'exit 127',
+        'nvidia-smi': nvidiaSmi(world),
+        lspci: lspci(folder),
         xprintidle: 'echo 42000',
         sleep: `echo "sleep $1" >>"${log}"\n[ "$(grep -c '^sleep' "${log}")" -ge ${String(world.threads.length)} ] && kill -9 "$PPID"\nexit 0`,
     };
@@ -64,9 +108,10 @@ async function governorLoop(
     }
     const script = join(folder, 'hcm-worker.sh');
     writeFileSync(script, (await file('linux', 'install')).body);
+    const roots = fakeDrm(folder, world.drm ?? []);
     const run = spawnSync('/bin/sh', [script, 'governor'], {
         encoding: 'utf8',
-        env: { PATH: `${bin}:/usr/bin:/bin`, HOME: folder },
+        env: { PATH: `${bin}:/usr/bin:/bin`, HOME: folder, HCM_DRM_ROOT: roots.drm, HCM_DEV_ROOT: roots.dev },
         timeout: 20_000,
     });
     return {
@@ -121,6 +166,27 @@ describe("the governor's loop in the starter (M26)", () => {
         expect(hints).toMatchObject({ gpus: [], npus: [] });
     });
 
+    it('badPath_aFailingNvidiaSmiIsNeverACardAndAnNvidiaCardWithoutItsDriverSaysSo @S-A141-BAD-NO-DRIVER', async () => {
+        const nuc = await governorLoop({ threads: [4], nvidia: 'fails', drm: ['0x8086'] });
+
+        expect(nuc.hints).toMatchObject({
+            gpus: [{ vendor: 'intel', name: 'Arrow Lake-P [Arc Pro 130T/140T]', vramMb: 0, via: 'openvino' }],
+        });
+        expect(JSON.stringify(nuc.hints)).not.toContain('NVIDIA-SMI');
+        const noDriver = await governorLoop({ threads: [4], nvidia: 'fails', drm: ['0x10de'] });
+
+        expect(noDriver.hints).toMatchObject({
+            gpus: [{ vendor: 'nvidia', name: 'GA104M [GeForce RTX 3080 Mobile / Max-Q 8GB/16GB]', via: null, why: 'no-driver' }],
+        });
+    });
+
+    it('happyPath_aWorkingNvidiaCardIsListedOnceAndAnAmdCardRocmCannotReachIsNot', async () => {
+        const { hints } = await governorLoop({ threads: [4], nvidia: true, drm: ['0x10de', '0x1002'] });
+
+        expect(hints).toMatchObject({ gpus: [{ vendor: 'nvidia', name: 'NVIDIA GeForce RTX 3080 Laptop GPU', vramMb: 8192 }] });
+        expect((hints as { readonly gpus: readonly unknown[] }).gpus).toHaveLength(1);
+    });
+
     it('happyPath_theWindowsFileHasTheSameLoop', async () => {
         const text = (await file('windows', 'install')).body;
 
@@ -129,5 +195,6 @@ describe("the governor's loop in the starter (M26)", () => {
         expect(text).toContain('Start-Process -FilePath \'powershell.exe\' -ArgumentList "$Run governor $PID" -WindowStyle Hidden');
         expect(text).toContain('& docker update --cpus $threads $Name');
         expect(text).toContain("'governor' { Start-GovernorLoop ([int]$args[1]) }");
+        expect(text).toContain('if ($LASTEXITCODE -ne 0) { $rows = @() }');
     });
 });

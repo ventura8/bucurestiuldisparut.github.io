@@ -3847,3 +3847,21 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: another file in the same worker had loaded the colour library, and the module's state is shared by every test of that worker.
     - Fix and pin: the test takes a fresh copy (`vi.resetModules()` and a dynamic `import`) before asserting the unloaded state.
     - **A test of a module's initial state imports a fresh copy; never trust module state left by whoever ran before.**
+
+665. **The NUC's worker listed nvidia-smi's error sentence as a graphics card, and the admin called the worker out of date.**
+    - Seen: 2026-11-13, the NUC (Intel Arc, NVIDIA's tools installed, no NVIDIA driver): `/state` listed a card named "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver…" and a second with an empty name; the empty name failed `workerMachineSchema`, so "This computer" asked to update a current worker.
+    - Found by: the owner reading `/state`; the starter's test only faked an nvidia-smi that succeeds or is missing, never one that fails on stdout.
+    - Fix and pin: the starter keeps nvidia-smi's rows only on exit 0 and in shape, names cards by `lspci`, says `no-driver` for an NVIDIA card it cannot reach; the worker drops a card with an empty, multi-line or overlong name; the card links to NVIDIA's drivers. `S-A141-BAD-NO-DRIVER` (`starter-governor.test.ts`, `test_governor_probe.py`, `machine.test.ts`).
+    - **A command's output is data only when the command succeeded and the output has the expected shape; never parse a failure's text as a value.**
+
+666. **The worker's governor logged the same line every five seconds, for ever.**
+    - Seen: 2026-11-13, `docker logs hcm-worker` on the laptop: "this computer: quiet (user-active), 4 threads, 5880 MB", then 5881, 5856, … one line a tick.
+    - Cause: the line was written whenever the budget changed, and the memory budget (35 % of what is free) moved by a few megabytes each tick.
+    - Fix and pin: the memory budget counts whole 256 MB steps, and the line is written only when the profile, its reason or the threads change (`test_the_log_says_a_change_of_state_only`).
+    - **Log a state's change, not each reading of a noisy number; quantise a budget that follows a measurement.**
+
+667. **The canvas test passed on one thread and the worker needed 870 MB on sixteen.**
+    - Seen: 2026-11-13, the worker on the laptop and the NUC: two large colour sheets mosaicked past the 800 MB budget that `test_placing_canvas_window.py` held, because the test's child ran GDAL on one thread and the worker runs it on the cores but one.
+    - Cause: GDAL's threads allocate from glibc's per-thread malloc arenas, which keep freed pages; about 115 MB of the layout's reads stayed resident while the canvas read its own.
+    - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
+    - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**

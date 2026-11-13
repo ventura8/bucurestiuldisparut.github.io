@@ -112,6 +112,7 @@ class Worker:
             owner_threads(os.environ),
         )
         state.machine = governor.machine
+        state.pace.headroom = governor.headroom
         runtime.matcher_budget = governor.matcher_budget
         actions.choose_profile = governor.choose
         loop.connect_with(connector)

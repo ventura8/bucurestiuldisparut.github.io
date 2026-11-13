@@ -66,3 +66,27 @@ def test_bad_path_a_server_that_names_no_longest_wait_is_asked_every_poll_and_a_
     real = Pace(clock)
     clock.now += AWAKE_SECONDS
     assert 54.0 <= idle_waits(real, 1)[0] <= 66.0
+
+
+def test_happy_path_a_computer_with_room_asks_first_and_a_hot_or_busy_one_up_to_four_times_later() -> None:
+    """Scenarios: S-P31-HAPPY-CLAIM-HEADROOM"""
+    clock = Clock()
+    pace = Pace(clock, lambda: 0.0)
+    room = iter([1.0, 0.5, 0.0, 1.0])
+    pace.headroom = lambda: next(room)
+
+    # Awake: the cool one every 30 s, a half-busy one every 75 s, a paused or hot one every 120 s; then room again.
+    assert [pace.wait(POLL, SLOWEST) for _ in range(4)] == [POLL, 75.0, 120.0, POLL]
+    clock.now += AWAKE_SECONDS
+    pace.idle_pass()
+    pace.headroom = lambda: 0.0
+    assert pace.wait(POLL, SLOWEST) == 240.0
+
+
+def test_bad_path_a_headroom_out_of_range_is_held_within_zero_and_one() -> None:
+    """Scenarios: S-P31-BAD-CLAIM-HEADROOM-RANGE"""
+    pace = Pace(Clock(), lambda: 0.0)
+    pace.headroom = lambda: 7.0
+    assert pace.wait(POLL, SLOWEST) == POLL
+    pace.headroom = lambda: -3.0
+    assert pace.wait(POLL, SLOWEST) == 4 * POLL
