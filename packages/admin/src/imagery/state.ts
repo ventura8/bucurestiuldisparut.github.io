@@ -100,8 +100,8 @@ export interface ImageryIntents {
     more(): void;
     /** Try again after a listener's failure. */
     retry(): void;
-    /** `imagery.import` of a free scene: the new version's id (the page opens it), or null when refused. */
-    importScene(id: string): Promise<string | null>;
+    /** `imagery.import` of a free scene: the new version's id (the page opens it), or null when refused. `again`: an imported one, once more. */
+    importScene(id: string, again?: boolean): Promise<string | null>;
     retryBrowse(id: string): void;
     /** M16: `acceptWorse`: the owner chose a recalibration not shown better. */
     approve(acceptWorse?: boolean): Promise<boolean>;

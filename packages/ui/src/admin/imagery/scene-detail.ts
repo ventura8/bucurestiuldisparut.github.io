@@ -78,11 +78,27 @@ function facts(locale: UiLocale, scene: SceneItemPort): TemplateResult {
     </dl>`;
 }
 
-/** An imported scene's link: its version while it is unfinished, else its layer. */
+/** An imported scene's link: its version while it is unfinished, else its layer; and, while it is free, Import again. */
 function importedLink(context: ImageryContext, scene: SceneItemPort): TemplateResult {
     const version = context.view.versions.items.find((candidate) => candidate.layerId === scene.layerId);
     const href = version === undefined ? ['#/layers', scene.layerId ?? ''].join('/') : context.href(['version', version.id]);
-    return html`<p><a href=${href}>${contentText(context.locale, 'adminContent.imagery.importedOpen')}</a></p>`;
+    return html`<p><a href=${href}>${contentText(context.locale, 'adminContent.imagery.importedOpen')}</a></p>
+        ${when(scene.free && scene.layerId !== null && context.view.usgs === 'ok', () => importAgainButton(context, scene))}`;
+}
+
+/** Import again (lesson 645): the scene downloaded and processed once more, a new version that replaces the old one once approved. */
+function importAgainButton(context: ImageryContext, scene: SceneItemPort): TemplateResult {
+    const { locale } = context;
+    return html`<div class="actions">
+            <hcm-button
+                variant="tonal"
+                icon="refresh"
+                ?disabled=${context.view.importing !== null || context.readOnly}
+                @click=${() => void importScene(context, scene.id, true)}
+                >${contentText(locale, 'adminContent.imagery.importAgain')}</hcm-button
+            >
+        </div>
+        <p>${contentText(locale, 'adminContent.imagery.importAgainHint')}</p>`;
 }
 
 /**
@@ -124,8 +140,12 @@ export function importable(context: ImageryContext, scene: SceneItemPort): boole
     return importShown(scene) && scene.status !== 'imported' && context.view.usgs === 'ok';
 }
 
-async function importScene(context: ImageryContext, id: string): Promise<void> {
-    const versionId = (await context.intents?.importScene(id)) ?? null;
+async function importScene(context: ImageryContext, id: string, again = false): Promise<void> {
+    const intents = context.intents;
+    if (intents === null) {
+        return;
+    }
+    const versionId = again ? await intents.importScene(id, true) : await intents.importScene(id);
     if (versionId !== null) {
         context.go(['version', versionId]);
     }

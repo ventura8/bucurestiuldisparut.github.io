@@ -44,7 +44,7 @@ const TIMEOUT_SECONDS: Readonly<Record<string, number>> = {
     'publish.buildManifest': 300,
     'assist.geocode': 60,
     'imagery.onRasterUpload': 120,
-    'imagery.search': 300,
+    'imagery.search': 540,
 };
 
 /** The largest memory a function may ask for, and the longest any schedule waits between runs (minutes) at the least. */

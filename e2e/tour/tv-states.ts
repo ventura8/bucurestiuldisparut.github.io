@@ -3,7 +3,7 @@ import { expect, type BrowserContext, type Page } from '@playwright/test';
 
 import { connectPad, installFakePads, pressButton } from '../support/gamepad.js';
 import { focused } from '../support/layout.js';
-import { openViewer, t } from '../support/viewer.js';
+import { dismissToast, openViewer, t } from '../support/viewer.js';
 
 /**
  * The 10-foot view's states in the tour's inventory (behaviours V65, V66; docs/research/viewer-input.md §6), visited by
@@ -37,6 +37,9 @@ async function bootTvJourney({ page, context, lang }: TvTour): Promise<void> {
     }
     await openViewer(page, { lang, hash: '15/44.42700/26.08530&layers=e2e-1966' });
     await connectPad(page);
+    // The pad's greeting goes before the states: a toast that times out during the Tab round is not a state of these.
+    await expect(page.locator('hcm-snackbar').getByText(t(lang, 'gamepad.ready'))).toBeVisible();
+    await dismissToast(page, lang);
 }
 
 async function ringWidth(page: Page): Promise<number> {

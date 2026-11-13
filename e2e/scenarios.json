@@ -1116,6 +1116,20 @@
             "source": "docs/research/viewer-input.md §6; the owner's request of 2026-11-13"
         },
         {
+            "id": "V67",
+            "area": "viewer",
+            "name": "On a phone the timeline rests collapsed to the pill of its year, opens on a tap and covers none of the map's other controls",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-13 (beta.1, V12 of reports/OPEN-ISSUES-beta1.md): on phones the vertical timeline collapses to a year pill when idle"
+        },
+        {
+            "id": "V68",
+            "area": "viewer",
+            "name": "A timeline year with several dates carries a badge; the badge or Enter opens a menu of its dates, and the date picked comes to the front",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-13 (beta.1, V13 of reports/OPEN-ISSUES-beta1.md): a year with several dates or layers lets the visitor pick the date (badge + compact chooser)"
+        },
+        {
             "id": "P31",
             "area": "pipeline",
             "name": "The pipeline and the worker on somebody's own computer stay within a memory and processor budget, and an idle worker asks rarely",
@@ -5389,6 +5403,17 @@
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/search.test.ts (fn-imagery, 2026-10-23)."
         },
         {
+            "id": "S-A11-BAD-SEARCH-CUT-OFF",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A slow USGS search answers in time, and one the server cut off says so and what to do next",
+            "asserts": "every USGS page slower than the search budget -> imagery.search stops asking, stores what it found and answers; a search that failed with no reason after 5 minutes or more -> the admin reads adminContent.imagery.searchTimedOut with the minutes and the next step; one that failed at once -> adminContent.imagery.searchFailed",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 646 (live 2026-11-13: the harvest ran over 7 minutes, past the 300 s timeout, and the admin read 'Something went wrong on the server'). Tests: functions/test/imagery/search.test.ts, packages/admin/test/imagery/search.test.ts."
+        },
+        {
             "id": "S-A11-BAD-BROWSE-HOST-REFUSED",
             "behaviour": "A11",
             "area": "admin",
@@ -5695,6 +5720,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/import.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A12-HAPPY-IMPORT-AGAIN",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "An imported free scene can be imported again into a new version of its layer",
+            "asserts": "imagery.import with again: true on an imported scene -> a second usgs-import job and version in the same layer, the scene still imported there; the scene page offers Import again (free) and opens the new version",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 645 (the 1966 KH-7 strip was imported before its stitch was fixed and had no way back in). Tests: functions/test/imagery/import.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-IMPORT-AGAIN-MOVED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "Import again is refused when the scene moved meanwhile, and not offered for a scene to order or without downloads",
+            "asserts": "the scene's layer changes between the check and the transaction -> apiError.conflict and no second job; a scene that must be ordered, or USGS downloads not approved -> no Import again button",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 645. Tests: functions/test/imagery/import.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
         },
         {
             "id": "S-A12-BAD-GUARD-PAUSED",
@@ -11239,6 +11286,28 @@
             "title": "A copy of the next segment's edge far above its place does not shift the frame",
             "asserts": "the right segment's strip copied into the overlap's columns 8 % of the height higher -> the pair's vertical offset stays within 3 % of the height (a scanner keeps the film straight)",
             "notes": "Finding 83 of docs/research/manual-test-2026-10-25.md (the 1972 frame's false 2,774 px step). In pipeline/tests/unit/test_frames.py."
+        },
+        {
+            "id": "S-P01-HAPPY-KH7-TWO-SEGMENTS",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A strip scanned right to left is joined whole, both halves",
+            "asserts": "a KH-7-like delivery of two segments lettered right to left (`_a` the right half), each with the scanner's bright edge band -> stitch places `_b` left of `_a` by the true overlap, the frame spans the whole strip and its preview is the strip's pixels; a delivery lettered left to right keeps its order",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 645 (the 1966 KH-7 strip DZB00403000026H017001 covered 49 % of Bucharest: its two segments were joined the wrong way). In pipeline/tests/unit/test_stitch_order.py; the generator is pipeline/tests/synthetic/scenes.py (`kh7_segments`, `scanner_edges`, `SceneSpec.right_to_left`)."
+        },
+        {
+            "id": "S-P01-BAD-SEGMENT-OTHER-FRAME",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A segment of another frame is refused, and edge bands never pass for an overlap",
+            "asserts": "a delivery whose second segment comes from another frame -> stitch fails with apiError.imagery.processingFailed naming the segment and no frame.json is written; the strip's halves in the wrong order (the two edge bands side by side) score under MIN_PAIR_SCORE",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 645. In pipeline/tests/unit/test_stitch_order.py."
         },
         {
             "id": "S-P01-HAPPY-ALL-SEGMENTS",
@@ -19176,8 +19245,8 @@
             "behaviour": "V66",
             "area": "viewer",
             "path": "happy",
-            "title": "A ring twice as thick, read from across the room",
-            "asserts": "1920 x 1080 with a coarse pointer: the focused control's outline is 6 px",
+            "title": "A ring twice as thick and 48 px buttons, read from across the room",
+            "asserts": "1920 x 1080 with a coarse pointer: the focused control's outline is 6 px, Zoom in is 48 px tall",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/specs/viewer/consoles.spec.ts."
@@ -19188,7 +19257,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "A large screen with a mouse keeps the desk ring",
-            "asserts": "1920 x 1080 with a fine pointer: the outline stays 3 px",
+            "asserts": "1920 x 1080 with a fine pointer: the outline stays 3 px, Zoom in stays 40 px",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/specs/viewer/consoles.spec.ts."
@@ -19214,6 +19283,94 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/tour/viewer.tour.ts, journey tv (e2e/tour/tv-states.ts)."
+        },
+        {
+            "id": "S-V67-HAPPY-PILL-ON-PHONE",
+            "behaviour": "V67",
+            "area": "viewer",
+            "path": "happy",
+            "title": "On a phone the timeline rests as its year pill and opens on a tap",
+            "asserts": "at 375x812 the timeline is a 68 x 48 pill 16 px from the leading edge, the slider says the year; it overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution; a tap opens the standing card with the year unchanged, and a tap on the map collapses it again",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dock.ts, timeline-dock-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/timeline-dock.test.ts and hcm-timeline-dates.test.ts. Test: e2e/specs/viewer/timeline-pill.spec.ts."
+        },
+        {
+            "id": "S-V67-HAPPY-PILL-LANDSCAPE",
+            "behaviour": "V67",
+            "area": "viewer",
+            "path": "happy",
+            "title": "On a short landscape phone the pill keeps the trailing foot, clear of the menu, the zoom, the compass and the legal line",
+            "asserts": "at 915x412 and at 568x270 the collapsed timeline is 48 px tall on the trailing half and overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dock.ts, timeline-dock-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/timeline-dock.test.ts and hcm-timeline-dates.test.ts. Test: e2e/specs/viewer/timeline-pill.spec.ts."
+        },
+        {
+            "id": "S-V67-BAD-ESC-AND-LARGE-WINDOW",
+            "behaviour": "V67",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Esc collapses the open card with the focus kept; a larger window never collapses it",
+            "asserts": "at 360x800 the skip link opens the card with the focus on the slider; Esc collapses it, the focus stays and ArrowUp still changes the year; at 1280x800 the card is open and a press on the map leaves it open",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dock.ts, timeline-dock-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/timeline-dock.test.ts and hcm-timeline-dates.test.ts. Test: e2e/specs/viewer/timeline-pill.spec.ts."
+        },
+        {
+            "id": "S-V67-HAPPY-TOUR",
+            "behaviour": "V67",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The pill and the opened card pass the layout and accessibility checks on every phone",
+            "asserts": "expectStateSound on the journey timeline-dates (the pill, the card a tap opened) at every phone viewport, and on every other map state of a phone, which shows the pill",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dock.ts, timeline-dock-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/timeline-dock.test.ts and hcm-timeline-dates.test.ts. Test: e2e/tour/viewer.tour.ts (e2e/tour/timeline-states.ts)."
+        },
+        {
+            "id": "S-V68-HAPPY-PICK-DATE",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The badge of a year with two dates opens them; the date picked comes to the front",
+            "asserts": "a city whose 1980 has two opaque layers, the timeline on 1980: the slider's value names two dates, the pill's badge reads 2; a click opens the menu 'Dates in 1980' with two menuitemradio, the August one (on top) checked; picking March closes it, the focus back on the slider, the March tiles on top and layers= names it last",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/specs/viewer/timeline-dates.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-ESC-CHANGES-NOTHING",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Enter on the slider opens the dates; Esc closes them and changes nothing",
+            "asserts": "Enter on the slider of 1980 opens the menu with the checked date focused; Esc closes it, the focus back on the slider, the August tiles still on top and the hash unchanged",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/specs/viewer/timeline-dates.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-SINGLE-DATE",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A year with a single date has no badge, and Enter opens nothing",
+            "asserts": "the fixture's 1966 (one layer): no badge on the timeline, the slider's value is only the year, Enter opens no menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/specs/viewer/timeline-dates.spec.ts."
+        },
+        {
+            "id": "S-V68-HAPPY-TOUR",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The menu of a year's dates passes the layout and accessibility checks on every window",
+            "asserts": "expectStateSound on the journey timeline-dates (the menu opened by Enter) at every viewer viewport; Esc closes it and the focus returns to the slider",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/tour/viewer.tour.ts (e2e/tour/timeline-states.ts)."
         },
         {
             "id": "S-P31-HAPPY-GDAL-MEMORY",

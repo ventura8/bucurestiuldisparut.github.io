@@ -343,7 +343,7 @@ export interface ImageryIntentsPort {
     search(): Promise<void>;
     more(): void;
     retry(): void;
-    importScene(id: string): Promise<string | null>;
+    importScene(id: string, again?: boolean): Promise<string | null>;
     retryBrowse(id: string): void;
     /** M16: `acceptWorse`: the owner chose a recalibration not shown better. */
     approve(acceptWorse?: boolean): Promise<boolean>;

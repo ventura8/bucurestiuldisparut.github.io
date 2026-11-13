@@ -35,6 +35,7 @@ export function idleState(): ViewerState {
         webgl: true,
         view: VIEW,
         year: null,
+        front: null,
         overlays: [],
         selectedPhotoId: null,
         selectedPoiId: null,
@@ -120,6 +121,12 @@ export class FakeStore implements ViewerStorePort {
     setYear(year: number | null): void {
         this.#record('setYear', year);
         this.set({ year });
+    }
+
+    pickLayer(layerId: string): void {
+        this.#record('pickLayer', layerId);
+        const layer = this.#state.manifest?.layers.find((candidate) => candidate.id === layerId);
+        this.set({ front: layerId, year: layer?.year ?? this.#state.year });
     }
 
     toggleOverlay(overlayId: string, visible?: boolean): void {

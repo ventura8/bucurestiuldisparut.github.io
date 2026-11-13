@@ -90,6 +90,18 @@ export function viewer(page: Page): Locator {
     return page.locator('hcm-map-viewer');
 }
 
+/**
+ * On a phone the timeline rests as its year's pill (V67, `packages/ui/src/viewer/timeline-dock.ts`): a tap on it opens the
+ * whole card; elsewhere the card is always open and this does nothing.
+ */
+export async function openTimelineCard(page: Page): Promise<void> {
+    const timeline = viewer(page).locator('hcm-timeline');
+    if ((await timeline.getAttribute('collapsed')) !== null) {
+        await timeline.click();
+        await expect(timeline).not.toHaveAttribute('collapsed');
+    }
+}
+
 /** The floating menu button. */
 export function menuButton(page: Page, lang: ViewerLocale): Locator {
     return page.getByRole('button', { name: t(lang, 'action.menu'), exact: true });

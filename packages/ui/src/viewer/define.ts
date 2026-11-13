@@ -5,6 +5,7 @@
  * the engine side-loads them the first time one opens (`extras-loader.ts`).
  */
 import { defineHcmCompass, HCM_COMPASS_TAG } from './hcm-compass.js';
+import { defineHcmDateMenu, HCM_DATE_MENU_TAG } from './hcm-date-menu.js';
 import { defineHcmErrorCard, HCM_ERROR_CARD_TAG } from './hcm-error-card.js';
 import { defineHcmLayerPanel, HCM_LAYER_PANEL_TAG } from './hcm-layer-panel.js';
 import { defineHcmMapViewer, HCM_MAP_VIEWER_TAG } from './hcm-map-viewer.js';
@@ -27,6 +28,7 @@ export const VIEWER_TAGS = [
     HCM_STORIES_TAG,
     HCM_ERROR_CARD_TAG,
     HCM_COMPASS_TAG,
+    HCM_DATE_MENU_TAG,
 ] as const;
 
 const DEFINERS: readonly ((registry: CustomElementRegistry) => void)[] = [
@@ -40,6 +42,7 @@ const DEFINERS: readonly ((registry: CustomElementRegistry) => void)[] = [
     defineHcmStories,
     defineHcmErrorCard,
     defineHcmCompass,
+    defineHcmDateMenu,
 ];
 
 /** Registers the viewer elements in `registry`; calling it again is a no-op. */

@@ -12,6 +12,7 @@ import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { MY_LOCATION_STATES } from './my-location-states.js';
 import { ZOOM_JOURNEY, ZOOM_STATES } from './zoom-states.js';
 import { COMPASS_JOURNEY, COMPASS_STATES } from './compass-states.js';
+import { TIMELINE_JOURNEY, TIMELINE_STATES } from './timeline-states.js';
 import { TIMELINE_CHIP_JOURNEY, TIMELINE_CHIP_STATES } from './timeline-chip-states.js';
 import { PHOTO_VERSION_JOURNEY, PHOTO_VERSION_STATES } from './photo-version-states.js';
 import { MAP_MENU_JOURNEY, MAP_MENU_STATES } from './map-menu-states.js';
@@ -112,6 +113,7 @@ const VIEWER_STATES = {
     ...MY_LOCATION_STATES,
     ...ZOOM_STATES,
     ...COMPASS_STATES,
+    ...TIMELINE_STATES,
     ...TIMELINE_CHIP_STATES,
     ...PHOTO_VERSION_STATES,
     ...MAP_MENU_STATES,
@@ -423,6 +425,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     ...INPUT_JOURNEYS,
     ZOOM_JOURNEY,
     COMPASS_JOURNEY,
+    TIMELINE_JOURNEY,
     TIMELINE_CHIP_JOURNEY,
     PHOTO_VERSION_JOURNEY,
     MAP_MENU_JOURNEY,
@@ -455,12 +458,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         },
         states: ['toast'],
     },
-    {
-        title: 'Loading',
-        id: 'loading',
-        boot: openWithManifestHeld,
-        states: ['loading'],
-    },
+    { title: 'Loading', id: 'loading', boot: openWithManifestHeld, states: ['loading'] },
 ];
 
 /** The error journeys: each boots the viewer into one error (the console errors they cause are claimed by the test). */

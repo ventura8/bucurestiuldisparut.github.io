@@ -3787,6 +3787,32 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: both offsets follow `--hcm-focus-ring-width` (`viewer-styles.ts`), the full attribution's padding too.
     - **A ring width that changes must change every offset written for the old width; search the styles for the old number.**
 
+645. **A strip scanned right to left was joined left to right, and the layer ended at the seam: half the city.**
+    - Seen: 2026-11-13, live: the KH-7 GAMBIT frame DZB00403000026H017001 (12 July 1966) covers all of Bucharest, but its layer `kh-7-gambit-12-iulie-1966` covered 49 % (lat 44.437 to 44.55); the crop stopped at a white edge.
+    - Cause: USGS letters the strip's two segments in the film's order, right to left (`_b` lies left of `_a`), and `stitch` always put `_b` right of `_a`. Its match strip was the segment's first 160 px, the scanner's bright edge band, and it matched the other segment's band at 0.90, so the wrong join looked sure; `locate` then proved the city on `_a` alone.
+    - Found by: the rehearsal's own copies on the NUC (`frame.json` placed `_b` at x 36 046 of `_a`'s 36 346) and the preview, where the city lay at `_a`'s left edge and `_b`'s right one; the first pair matched both ways on every real multi-segment frame.
+    - Fix and pin: the matched strip starts `EDGE_SKIP_SHARE` in from the edge; the first pair is matched both ways and the better way holds for the frame; a pair under `MIN_PAIR_SCORE` either way is a segment of another frame and fails the step (S-P01-HAPPY-KH7-TWO-SEGMENTS, S-P01-BAD-SEGMENT-OTHER-FRAME; the generator's `kh7_segments`). An imported scene had no way back in: the scene page's **Import again (free)** (`imagery.import` with `again`) makes a new version of its layer that replaces the old one once approved (S-A12-HAPPY-IMPORT-AGAIN, S-A12-BAD-IMPORT-AGAIN-MOVED).
+    - **A delivery's file order is the film's, not the image's: find the order from the pixels, and never match on a scan's own edge.**
+
+646. **A search that outgrew its timeout told the owner only "Something went wrong on the server".**
+    - Seen: 2026-11-13, live: Search USGS again on the scene page failed; `imagery-search` logged Cloud Run's "maximum request timeout" while the harvest went on for over 7 minutes (five datasets, two at the 500 cap and searched again per target year, ten years).
+    - Cause: every dataset, target year and scene write ran one after another, with nothing to stop it before the 300 s timeout; the cut-off reached the browser without the callable's details, which reads as `apiError.internal`.
+    - Found by: the function's logs (`mcp__firebase__functions_get_logs`, read only).
+    - Fix and pin: datasets at once, target years two at a time, writes 25 at a time, no USGS page after `SEARCH_BUDGET_MS` (360 s), timeouts 540 s and 550 s; a search that failed with no reason after 5 minutes says it was cut off and what to do next (S-A11-BAD-SEARCH-CUT-OFF).
+    - **A long call needs a budget of its own inside its timeout, and a failure the browser cannot read must still be told from the call's own context.**
+
+647. **A press meant to open the collapsed timeline also moved its year.**
+    - Seen: 2026-11-13, track/timeline-b, `timeline-dock.test.ts`: a press on the pill (V67) opened the card and called `setYear(null)`.
+    - Cause: the dock's `@pointerdown` listened in the bubbling phase, after the timeline's own track listener inside its shadow root had already selected the stop under the press.
+    - Fix and pin: the dock catches the press in the capture phase (`{ capture: true, handleEvent }`), stops it and opens the card; the test asserts no `setYear` call.
+    - **A wrapper that must take a press away from the element it wraps listens in the capture phase; a bubbling listener runs after the element has acted.**
+
+648. **Tab from the timeline skipped the photos chip whenever the year had several dates.**
+    - Seen: 2026-11-13, track/timeline-b, the tour's journey `timeline-dates` at c320, c360 and c915l: "Tab never reaches Fotografii din jurul anului 1980".
+    - Cause: the keyboard's year chip shows while the slider has the focus on a year of several dates, and the photos chip under it stepped aside with `visibility: hidden`, which also takes it out of the Tab order; the next Tab went past it.
+    - Fix and pin: under the keyboard's chip (`tipping="focus"`) it steps aside with `opacity: 0` and no pointer (`dock-styles.ts`), so it keeps its place in the Tab order and shows again as the focus reaches it; under a finger's or a mouse's chip it is still hidden; the collapsed pill shows no year chip at all.
+    - **To move a control out of sight for a moment while the keyboard is nearby, never use `visibility: hidden` or `display: none`: they take it out of the Tab order.**
+
 649. **The engine's build emptied the Romanian catalogue, and one module that read it as it loaded broke every page.**
     - Seen: 2026-11-09 (track/langs), the first e2e run after the catalogues left the bundle: every viewer test failed on "uncaught TypeError: Cannot convert undefined or null to object" before `hcm-ready`.
     - Cause: `schemas/validation.ts` built its set of `validation.*` codes from `Object.keys(ro)` at load; the engine's build resolves `ro.ts` to `export const ro = undefined`.

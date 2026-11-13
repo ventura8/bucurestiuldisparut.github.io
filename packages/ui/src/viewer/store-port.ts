@@ -59,6 +59,8 @@ export interface ViewerState {
     readonly view: MapView;
     /** The timeline stop; null is "today" (no historical layer). */
     readonly year: number | null;
+    /** V15: the layer the visitor brought to the front (a layer switched on, a date picked); null: the year's last on top. */
+    readonly front: string | null;
     /** Every overlay in list order (historical layers, photos, POI categories); `[]` before the manifest loads. */
     readonly overlays: readonly Overlay[];
     readonly selectedPhotoId: string | null;
@@ -104,6 +106,8 @@ export interface ViewerStorePort {
     retry(): Promise<void>;
     setLocale(locale: ViewerLocale): void;
     setYear(year: number | null): void;
+    /** V13: a date of a timeline year picked: that layer's year, the layer on top. */
+    pickLayer(layerId: string): void;
     toggleOverlay(overlayId: string, visible?: boolean): void;
     setOverlayOpacity(overlayId: string, opacity: number, final?: boolean): void;
     openPhoto(photoId: string | null): void;

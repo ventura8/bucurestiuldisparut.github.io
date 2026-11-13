@@ -215,6 +215,24 @@ export function withYear(state: ViewerState, year: number | null): ViewerState {
     return sameStop(state, next) ? state : next;
 }
 
+/**
+ * V13: a date picked on the timeline's year (a year with several layers): the timeline at that layer's year, exactly that
+ * year's layers visible, the picked one on top (V15's front); an unknown id leaves the state as it is.
+ */
+export function withFrontLayer(state: ViewerState, layerId: string): ViewerState {
+    const layer = state.manifest?.layers.find((candidate) => candidate.id === layerId);
+    if (layer === undefined) {
+        return state;
+    }
+    const next = { ...withYear(state, layer.year), front: layer.id };
+    return sameFront(state, next) ? state : next;
+}
+
+/** Whether two states stand on the same stop with the same layers and the same chosen front. */
+function sameFront(state: ViewerState, next: ViewerState): boolean {
+    return next.year === state.year && next.overlays === state.overlays && state.front === next.front;
+}
+
 /** Whether two states stand on the same stop with the same layers and no chosen front. */
 function sameStop(state: ViewerState, next: ViewerState): boolean {
     return next.year === state.year && next.overlays === state.overlays && state.front === null;

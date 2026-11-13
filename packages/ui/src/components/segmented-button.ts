@@ -73,7 +73,7 @@ export class HcmSegmentedButton extends LitElement {
                 justify-content: center;
                 box-sizing: border-box;
                 min-width: min-content;
-                min-height: 40px;
+                min-height: var(--hcm-control-size, 40px);
                 padding-inline: 12px;
                 padding-block: 0;
                 text-align: center;
