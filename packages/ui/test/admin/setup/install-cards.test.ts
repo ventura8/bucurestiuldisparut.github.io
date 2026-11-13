@@ -144,9 +144,7 @@ describe('<hcm-setup-deploy>: Install the server', () => {
         cleanup();
 
         const newer = await card('deploy', { server: { state: 'newerInstalled', installedRelease: '9.0.0' } });
-        expect(shadowPart(newer.element, '.body').textContent).toContain(
-            'This page is older than the installed version (9.0.0). Reload the page to get the new admin.',
-        );
+        expect(shadowPart(newer.element, '.body').textContent).toContain('What is installed (9.0.0) is newer than this admin.');
         // The downgrade guard: no Update; only the override, behind its confirmation.
         expect(newer.element.renderRoot.querySelector('hcm-button')).toBeNull();
         expect(newer.element.renderRoot.querySelector('hcm-install-over')).not.toBeNull();
