@@ -29,7 +29,7 @@ function viewOf(overrides: Record<string, unknown>) {
 }
 
 describe('the version view: a series to stitch again', () => {
-    it('happyPath_aPublishedSeriesPlacedByPairsWithPiecesLeftOutIsRestitchable @S-A122-HAPPY-RESTITCH', () => {
+    it('happyPath_aPublishedSeriesWithPiecesLeftOutIsRestitchable @S-A122-HAPPY-RESTITCH', () => {
         expect(viewOf({}).restitchable).toBe(true);
     });
 
@@ -37,7 +37,6 @@ describe('the version view: a series to stitch again', () => {
         ['nothing left out', { help: { reason: 'no-scale', note: 'n', at: AT, stitched: stitched('overview', 0) } }],
         ['another mosaic', { help: { reason: 'no-scale', note: 'n', at: AT, stitched: stitched('pieces', 3) } }],
         ['no help', { help: undefined }],
-        ['automatic pairs', { georef: versionDoc()['georef'] }],
         ['waiting for approval', { state: 'awaiting_approval' }],
     ])('badPath_notRestitchable_%s @S-A122-BAD-RESTITCH-NOTHING-LEFT', (_name, overrides) => {
         expect(viewOf(overrides).restitchable).toBe(false);

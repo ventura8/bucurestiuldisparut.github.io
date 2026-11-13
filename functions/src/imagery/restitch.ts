@@ -9,10 +9,10 @@ import type { RegeorefDeps } from './regeoref.js';
 import { createWork, jobIdFor, type NewWork } from './versions.js';
 
 /**
- * M20 (`docs/research/M20-import-local.md` §15, DECISIONS-for-review.md §204; S-A122-HAPPY-RESTITCH): an archive series that was placed
- * from the owner's pairs on its overview mosaic, with pieces left out of that mosaic, is laid on its overview again in a **new version of
- * the same layer**, the owner's pairs kept. **Locate again** asks it (the published version stays on the map until the new one is
- * approved). The pairs hold because the mosaic's frame is the overview's: the scan's pixels name the same overview pixels before and
+ * M20 (`docs/research/M20-import-local.md` §15, DECISIONS-for-review.md §204; S-A122-HAPPY-RESTITCH): a published archive series stitched
+ * on its overview with pieces left out of that mosaic is laid on its overview again in a **new version of the same layer**, the owner's
+ * pairs kept when it was placed from them (one placed on its own is placed again by its class's placer). **Locate again** asks it
+ * (the published version stays on the map until the new one is approved). The pairs hold because the mosaic's frame is the overview's: the scan's pixels name the same overview pixels before and
  * after (`placing/restitch.py`). The new job runs where the archive's files are (`runOn: 'local'`, as the import's); a series stitched any
  * other way, or with nothing left out, is not offered it.
  */
@@ -26,15 +26,10 @@ function leftOutOfOverview(version: LayerVersionDoc): boolean {
     return stitched?.method === 'overview' && stitched.leftOutCount > 0;
 }
 
-/** Placed from the owner's pairs on its scan. */
-function placedByPairs(version: LayerVersionDoc): boolean {
-    return version.georef?.method === 'gcps' && version.scan !== undefined;
-}
-
-/** A placed archive series from the owner's pairs, stitched on its overview with at least one piece left out. */
+/** A published archive series stitched on its overview with at least one piece left out. */
 export function restitchable(version: LayerVersionDoc, job: JobDoc): boolean {
     const series = job.type === 'archive-series' && version.origin === 'archive' && PLACED.has(version.state);
-    return series && leftOutOfOverview(version) && placedByPairs(version);
+    return series && leftOutOfOverview(version);
 }
 
 /** What the new version starts with: the base's label, year, source, rights, scan, pairs and help (the pipeline maps them on the new mosaic). */

@@ -18262,7 +18262,7 @@
             "area": "admin",
             "path": "happy",
             "title": "A placed series with pieces left out of its overview mosaic offers Locate again, which lays it on the overview again in a new version",
-            "asserts": "the version view marks a published series placed from the owner's pairs with pieces left out of its overview mosaic restitchable; the button calls imagery.locateAgain; a new archive-series job (restitch, runOn local) and its processing version on the same layer carry the base's pairs, scan, rights and help; the layer marks it pending and keeps the published version",
+            "asserts": "the version view marks a published series with pieces left out of its overview mosaic restitchable; the button calls imagery.locateAgain; a new archive-series job (restitch, runOn local) and its processing version on the same layer carry the base's pairs, scan, rights and help; the layer marks it pending and keeps the published version",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "DECISIONS-for-review.md §204, layer 1895-1899. Tests: functions/test/imagery/restitch.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
@@ -18272,7 +18272,7 @@
             "behaviour": "A122",
             "area": "admin",
             "path": "bad",
-            "title": "A series with nothing left out, not stitched on an overview, placed automatically or on a busy layer is not stitched again",
+            "title": "A series with nothing left out, not stitched on an overview, not published or on a busy layer is not stitched again",
             "asserts": "no Locate again button; imagery.locateAgain answers apiError.imagery.versionState (or apiError.layers.busy for a layer with a version on its way) and writes nothing",
             "tier": "e2e-admin",
             "status": "exists",

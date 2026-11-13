@@ -146,9 +146,9 @@ describe('imagery.locateAgain: a placed series with pieces left out of its overv
         expect(await failureOf(locateAgain(ready))).toMatchObject({ details: { code: 'apiError.guardPaused' } });
     });
 
-    it('a series placed without the owner pairs or still waiting is not stitched again', async () => {
+    it('a series placed on its own is stitched again too, and an unknown version is refused', async () => {
         const automatic = await world({ georef: goldenGeoref() });
-        expect(await failureOf(locateAgain(automatic))).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
+        await expect(locateAgain(automatic)).resolves.toEqual({ status: 'queued', attempt: 0 });
         const unknown = await readyWorld();
         expect(await failureOf(locateAgainFunction(() => unknown.deps).run(adminCall({ cityId: CITY, versionId: 'none' })))).toMatchObject({
             details: { code: 'apiError.imagery.versionState' },

@@ -103,7 +103,7 @@ export interface VersionView {
     readonly archive: ArchiveReport | null;
     /** An archive series waiting with `layout-check`: the tile-import wizard opens it (`helpItemsOf`, M20 §19). */
     readonly layoutCheck: boolean;
-    /** M20 (§204): published from the owner's pairs with pieces left out of its overview mosaic: Locate again lays it on it again. */
+    /** M20 (§204): published with pieces left out of its overview mosaic: Locate again lays it on it again. */
     readonly restitchable: boolean;
     /**
      * M20 (§7): the series' rights as the approval card shows them (null: no rights, USGS and uploads). Approve waits
@@ -214,15 +214,9 @@ function sourceOf(source: LayerVersionDoc['source']): Pick<VersionView, 'entityI
     return { entityId: source?.kind === 'usgs' ? source.entityId : null, parts: [] };
 }
 
-/** Pieces left out of its overview mosaic. */
-function leftOutOfOverview(version: LayerVersionDoc): boolean {
-    const stitched = version.help?.stitched;
-    return stitched?.method === 'overview' && stitched.leftOutCount > 0;
-}
-
-/** M20 (§204): what `imagery.locateAgain` lays on its overview again (`functions/src/imagery/restitch.ts`). */
-function restitchableOf(version: LayerVersionDoc): boolean {
-    return version.state === 'published' && version.georef?.method === 'gcps' && leftOutOfOverview(version);
+/** M20 (§204): published with pieces left out of its overview mosaic, which `imagery.locateAgain` lays on it again (`restitch.ts`). */
+function restitchableOf({ state, help }: LayerVersionDoc): boolean {
+    return state === 'published' && help?.stitched?.method === 'overview' && help.stitched.leftOutCount > 0;
 }
 
 export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
