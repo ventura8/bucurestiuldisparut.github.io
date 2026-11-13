@@ -90,8 +90,12 @@ def test_happy_path_a_queued_import_becomes_a_version_awaiting_approval(
     # One clear date is all the catalogue holds: taken, and recorded as unchecked.
     assert dig(reference, "s2Check", "status") == "unchecked"
     assert alignment_shift_m(world, world.scene, tmp_path) < 10
+    # The sharper scan exists only for a crop longer than its preview (`publish_scan`); the version says which.
+    scan = version["scan"]
+    assert isinstance(scan, dict)
+    absent = {"stitched.jpg"} | (set() if scan.get("detailPath") else {"scan-tiles.bin"})
     assert world.gcs.names(f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/") == [
-        f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/{name}" for name in sorted(set(VERSION_FILES) - {"stitched.jpg"})
+        f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/{name}" for name in sorted(set(VERSION_FILES) - absent)
     ]
     assert world.gcs.names(WORK) == []
     # The delivery was fetched whole, then deleted once the city crop existed (M7 §5: S-P01-HAPPY-RAW-DELETED).
