@@ -3609,3 +3609,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the emulator builds the report whole in its heap: 582 MB of indented JSON, and the HTML view of the same data was asked for at once. The JVM's default heap is a quarter of the container's cap (3 GB); with the JSON alone 3 and 4 GB still ran out.
     - Found by: sampling the emulator's resident memory per heap ceiling on the NUC (§178g). Fix: `-Xmx6g` in `npm test`, the JSON alone streamed to disk, the values dropped as the check parses them; a stubbed short body then showed that `HTTPResponse.read(n)` returns quietly when a transfer breaks, so the save compares what was announced with what came.
     - **A report a gate needs is sized under the cap the gate runs with; a sized read of an HTTP body does not raise on a short body: check `response.length`.**
+
+615. **Three merges on one day left three tests that each branch had passed: a file list, an export fixture and a function count.**
+    - Seen: 2026-11-13, the `tests` stage of track/optdev after merging `origin/feat/engine-rewrite`: `test_import_job.py` expected `scan-tiles.bin` (track/georefux) for a crop that track/stripfix now keeps under the preview's 4,096 px; the shared API fixture lacked the governor's eight exports (track/hwgov); `packages/admin/src/setup/controller.ts` fell to 89 % of its functions after the install override (track/prerelease).
+    - Cause: each branch ran its targeted tests; nothing ran the whole `tests` stage on the merged tree.
+    - Fix and pin: the import test asks the version whether a sharper scan was written; the fixture names the exports (`exports-m7.ts`); `controller-intents.test.ts` drives the install cards' intents. The same run found the colour library's inline option missing in all but one project (§178h).
+    - **After merging branches that each passed alone, run the full `tests` stage on the merge before pushing it.**
