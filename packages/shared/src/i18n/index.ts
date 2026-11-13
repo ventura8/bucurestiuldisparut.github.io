@@ -22,8 +22,8 @@ export type Locale = (typeof LOCALES)[number];
 /**
  * The public viewer's languages (docs/ENGINE_API.md → Language): every interface language of `locales.ts`, Romanian the
  * default and the source of every key. The engine bundles none of their catalogues: each is fetched once, when first shown,
- * from `i18n/<locale>.json` next to the engine (`docs/research/DECISIONS-for-review.md` §204); a language whose file lacks a
- * key shows it in English (§205).
+ * from `i18n/<locale>.json` next to the engine (`docs/research/DECISIONS-for-review.md` §218); a language whose file lacks a
+ * key shows it in English (§219).
  */
 export const VIEWER_LOCALES = UI_LOCALES;
 

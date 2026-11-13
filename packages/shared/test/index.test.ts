@@ -17,7 +17,7 @@ import { MIGRATION_EXPORTS } from './fixtures/exports-migration.js';
 
 /** The public API, by module: a removed or renamed export breaks the engine, the admin and the functions. */
 const EXPORTS = {
-    // Romanian and English, the logger, and the viewer's sixteen languages (DECISIONS-for-review.md §204): ./fixtures/exports-ui-i18n.ts.
+    // Romanian and English, the logger, and the viewer's sixteen languages (DECISIONS-for-review.md §218): ./fixtures/exports-ui-i18n.ts.
     i18nAndLogging: I18N_AND_LOGGING_EXPORTS,
     viewerI18n: VIEWER_I18N_EXPORTS,
     // The interface's twenty-five languages (docs/I18N.md).
