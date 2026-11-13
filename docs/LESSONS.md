@@ -3888,3 +3888,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: GDAL's threads allocate from glibc's per-thread malloc arenas, which keep freed pages; about 115 MB of the layout's reads stayed resident while the canvas read its own.
     - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
     - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**
+
+662. **Every Linux worker refused its own local AI: the starter read the worker's image instead of the AI's.**
+    - Seen: 2026-11-13, the owner's PC (WSL) and the laptop: `local AI: refused an unexpected program image` every 20 s (286 times on the PC), the sidecar never started and every locate waited 30 minutes, then "the sidecar did not come up"; the frames fell to the admin's points.
+    - Cause: `ai_image` in `hcm-worker.sh` took the last `"image": "…"` of the whole `/state` line with a greedy `sed`; since the worker added its own `image` (`sha256:…`, after `ai`), that was the match, and the check refused it. The tests fed `/state` as the `ai` record alone, so they never saw the second field. The Windows starter parses the JSON and was right.
+    - Fix and pin: the starter reads `image` inside `"ai": {…}` only; the sidecar tests now feed the worker's whole `/state` (its own `image` and `starter` after `ai`). Starter version `fae0e8664ab5`.
+    - **A test of a parser feeds the producer's real, whole output, never the one field the parser wants; a shell `sed` over JSON is greedy across fields.**

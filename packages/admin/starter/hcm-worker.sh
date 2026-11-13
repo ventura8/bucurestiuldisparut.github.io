@@ -25,7 +25,7 @@ set -u
 
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-STARTER_VERSION=7d4d3f94aee3
+STARTER_VERSION=fae0e8664ab5
 
 HCM_PROJECT='__HCM_PROJECT__'
 HCM_CITY='__HCM_CITY__'
@@ -123,9 +123,11 @@ current_image() {
 }
 
 # The local AI's image as the worker's /state names it: pytorch/pytorch by digest, or `worker` (the worker's own image, on a computer
-# with no NVIDIA card) and nothing else; nothing when it says otherwise.
+# with no NVIDIA card) and nothing else; nothing when it says otherwise. Read inside `ai` only: /state's own `image` (the worker's,
+# sha256:…) comes later, and a match over the whole line took it, refused every frame and left the sidecar down (2026-11-13).
 ai_image() {
-	found=$(printf '%s' "$1" | sed -n 's/.*"image": *"\([^"]*\)".*/\1/p')
+	ai=$(printf '%s' "$1" | sed -n 's/.*"ai": *{\([^}]*\)}.*/\1/p')
+	found=$(printf '%s' "$ai" | sed -n 's/.*"image": *"\([^"]*\)".*/\1/p')
 	case "$found" in
 	worker)
 		printf worker
