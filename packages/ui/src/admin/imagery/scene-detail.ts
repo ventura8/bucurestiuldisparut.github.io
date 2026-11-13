@@ -5,6 +5,8 @@
  * whose USGS downloads are not approved yet each say why Import is not offered. M4 (A13): a scene that must be bought has
  * the order card instead (`orders/order-card.ts`, a chunk fetched on first need: `orders/lazy-card.ts`), and so has one
  * USGS just delivered (the server imports it). M8: a frame that leaves part of the city out is offered its date's others.
+ * The owner's report of 2026-11-13: a frame probably cloudy over the city says so before Import or Buy, and Not useful sets a
+ * scene aside (`scene-unusable.ts`).
  */
 import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -19,6 +21,7 @@ import { lazyJoin } from './join/lazy-card.js';
 import { lazyOrderCard } from './orders/lazy-card.js';
 import { notFoundPane } from './not-found.js';
 import { sceneRefusal, usgsSetupLink } from './scene-refusal.js';
+import { cloudyWarning, unusableSection } from './scene-unusable.js';
 import { when } from './when.js';
 
 /** Why there is no image, with Try again; a preview that could not be made too: the row's small crop is not the browse image. */
@@ -72,6 +75,9 @@ function facts(locale: Locale, scene: SceneItemPort): TemplateResult {
         ${fact(locale, 'adminContent.imagery.fact.camera', scene.sensorName)}
         ${fact(locale, 'adminContent.imagery.fact.date', dayText(locale, scene.date))}
         ${fact(locale, 'adminContent.imagery.fact.cloud', cloud)}
+        ${when(scene.cloudCity !== null, () =>
+            fact(locale, 'adminContent.imagery.fact.cloudCity', `${numberText(locale, scene.cloudCity ?? 0, 0)} %`),
+        )}
         ${fact(locale, 'adminContent.imagery.fact.resolution', `${numberText(locale, scene.resolutionM)} m`)}
         ${fact(locale, 'adminContent.imagery.fact.coverage', `${numberText(locale, scene.coverage * 100, 0)} %`)}
         ${fact(locale, 'adminContent.imagery.fact.id', scene.displayId)}
@@ -179,9 +185,9 @@ function sceneBody(context: ImageryContext, scene: SceneItemPort): TemplateResul
     return html`<div class="pane" data-scene=${scene.id}>
         <h2 tabindex="-1" data-detail-heading>${scene.sensorName} · ${dayText(locale, scene.date)}</h2>
         <p>${contentText(locale, 'adminContent.imagery.score', { score: String(scene.score) })}</p>
-        ${browseImage(context, scene)} ${lazyOrderCard(context, scene)}
+        ${browseImage(context, scene)} ${cloudyWarning(locale, scene)} ${lazyOrderCard(context, scene)}
         ${when(importShown(scene), () => noImport(context, scene) ?? importButton(context, scene))} ${importRefusal(context, scene)}
-        ${lazyJoin(context, null, (chunk) => chunk.sceneOffer(context, scene))}
+        ${lazyJoin(context, null, (chunk) => chunk.sceneOffer(context, scene))} ${unusableSection(context, scene)}
         <h3>${contentText(locale, 'adminContent.imagery.why')}</h3>
         <ul class="reasons">
             ${scene.reasons.map((reason) => html`<li>${reasonText(locale, reason)}</li>`)}

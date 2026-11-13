@@ -74,7 +74,11 @@ export const en: ApiMessages = {
     'apiError.imagery.notScanned': 'This frame is not scanned yet: it must be ordered from USGS before it can be imported.',
     'apiError.imagery.alreadyImported': 'The scene is already imported as the layer “{layer}”.',
     'apiError.imagery.dailyLimit': 'Today’s processing jobs reached the daily limit ({limit}). Try again tomorrow.',
-    'apiError.imagery.browseUnavailable': 'The USGS preview cannot be fetched right now. Try again.',
+    'apiError.imagery.browseUnavailable': 'USGS did not answer when we asked for the preview. Try again in a few minutes.',
+    'apiError.imagery.browseTooLarge':
+        'USGS’s preview of this frame is too large for us to copy (over 30 MB), so trying again will not help. To see it, open the frame in EarthExplorer.',
+    'apiError.imagery.browseNotImage':
+        'USGS sent a web page instead of the preview picture, usually during its maintenance. Try again later; if it keeps happening, open the frame in EarthExplorer.',
     'apiError.imagery.notTiff': 'The file is not a GeoTIFF. Upload a .tif file.',
     'apiError.imagery.unreadableRaster': 'The image could not be read. Check the file and upload it again.',
     'apiError.imagery.processingFailed': 'The image could not be processed. Try again; if it fails again, open the job’s log.',

@@ -213,4 +213,33 @@ describe('the Imagery area with orders', () => {
         // A frame scanned meanwhile loses its card with the order: the snackbar says why too (S-A13-BAD-SCANNED-WHILE-MARKING).
         expect(notices).toEqual([{ key: 'apiError.usgs.alreadyAvailable' }]);
     });
+
+    it('happyPath_notUsefulWithWhyThenTheSnackbarsUndo @S-A152-HAPPY-UNDO', async () => {
+        const { services, callables, notices } = seeded();
+        callables.answer('imagery.markScene', (request) => ({ status: request.unusable === null ? 'candidate' : 'rejected' }));
+        const imagery = IMAGERY_MODULE.create(services);
+
+        await expect(imagery.intents.markUnusable('DS-TO-BUY', 'clouds')).resolves.toBe(true);
+        expect(notices.map((notice) => notice.key)).toEqual(['adminContent.imagery.unusable.marked']);
+        notices[0]?.action?.run();
+        await settle();
+
+        expect(callables.calls.map((call) => [call.name, call.request])).toEqual([
+            ['imagery.markScene', { cityId: CITY, entityId: 'DS-TO-BUY', unusable: 'clouds' }],
+            ['imagery.markScene', { cityId: CITY, entityId: 'DS-TO-BUY', unusable: null }],
+        ]);
+        expect(notices.map((notice) => notice.key)).toContain('adminContent.imagery.unusable.restored');
+        expect(imagery.state.ordering).toBeNull();
+    });
+
+    it('badPath_aMarkTheServerRefusedStaysOnTheScene', async () => {
+        const { services, callables, notices } = seeded();
+        callables.fail('imagery.markScene', failure('already-exists', 'apiError.imagery.alreadyImported'));
+        const imagery = IMAGERY_MODULE.create(services);
+
+        await expect(imagery.intents.markUnusable('a', 'haze')).resolves.toBe(false);
+
+        expect(imagery.state.orderRefusal).toEqual({ id: 'a', notice: { key: 'apiError.imagery.alreadyImported' }, action: 'unusable' });
+        expect(notices).toEqual([]);
+    });
 });

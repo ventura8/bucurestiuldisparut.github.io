@@ -47,7 +47,7 @@ function inspectBytes(bytes: Uint8Array, maxInputPixels: number): Inspection {
 
 /** The fake; `maxInputPixels` mirrors `PHOTO_LIMITS.maxInputPixels` (200 MP). */
 export function createFakeImageProcessor(maxInputPixels = 200_000_000) {
-    const recorder = new PortRecorder<'inspect' | 'webp' | 'iconPng'>();
+    const recorder = new PortRecorder<'inspect' | 'webp' | 'iconPng' | 'grey' | 'jpeg'>();
     const images: ImageProcessor = {
         inspect: (bytes) =>
             promised(() => {
@@ -71,6 +71,17 @@ export function createFakeImageProcessor(maxInputPixels = 200_000_000) {
             promised(() => {
                 recorder.enter('iconPng', ['upload' in source ? 'upload' : 'ownSvg', size]);
                 return encoder.encode(`HCM-FAKE-PNG:${String(size)}`);
+            }),
+        // The photos' handlers never ask for a grey copy; the cloud estimate is tested with sharp on generated images.
+        grey: (_bytes, longEdge) =>
+            promised(() => {
+                recorder.enter('grey', [longEdge]);
+                throw new UpstreamError('image', 'invalid');
+            }),
+        jpeg: (_bytes, longEdge) =>
+            promised(() => {
+                recorder.enter('jpeg', [longEdge]);
+                throw new UpstreamError('image', 'invalid');
             }),
     };
     return { images, recorder };

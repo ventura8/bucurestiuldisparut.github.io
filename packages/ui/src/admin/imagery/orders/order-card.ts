@@ -16,7 +16,7 @@ import { contentText, noticeOf } from '../../shell/text.js';
 import type { ImageryContext } from '../context.js';
 import type { SceneItemPort, SceneOrderPort } from '../imagery-port.js';
 import { numberText } from '../imagery-text.js';
-import { sceneRefusal, usgsSetupLink } from '../scene-refusal.js';
+import { orderRefusalOf, sceneRefusal, usgsSetupLink } from '../scene-refusal.js';
 import { when, withValue } from '../when.js';
 
 /** EarthExplorer's home, for a scene whose page is not known yet (the admin searches its entity id there). */
@@ -134,7 +134,7 @@ function buyCard(context: ImageryContext, scene: SceneItemPort): TemplateResult 
             })}
             ${when(again, () => takeBack(context, scene))}
         </div>
-        ${sceneRefusal(context, context.view.orderRefusal, scene)}
+        ${sceneRefusal(context, orderRefusalOf(context.view), scene)}
     </section>`;
 }
 
@@ -217,7 +217,7 @@ function watchCard(context: ImageryContext, scene: SceneItemPort): TemplateResul
                     })}
                     ${takeBack(context, scene)}
                 </div>
-                ${sceneRefusal(context, context.view.orderRefusal, scene)}
+                ${sceneRefusal(context, orderRefusalOf(context.view), scene)}
             </section>`,
     );
 }

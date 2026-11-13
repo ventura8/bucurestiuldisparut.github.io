@@ -32,6 +32,7 @@ import {
     type CityDoc,
     type ImagerySearchRequest,
     type ImagerySearchResponse,
+    type RankedScene,
     type UsgsDataset,
     type UsgsSceneDoc,
 } from '@hcm/shared';
@@ -40,7 +41,7 @@ import { ApiError } from '../api/api-error.js';
 import { compact } from '../api/objects.js';
 import type { Ports } from '../ports/index.js';
 import { copyBrowse } from './browse.js';
-import { IMAGERY_WRITER, requireCity, stampOf } from './records.js';
+import { IMAGERY_WRITER, pickDefined, requireCity, stampOf } from './records.js';
 import { browseSourceOf, sceneFields, type SceneFields, type SceneRecord } from './scene-record.js';
 import { recordHarvest } from './harvest-state.js';
 import { searchOf } from './harvest-landsat.js';
@@ -49,7 +50,7 @@ import { rewriteDatePlan } from './join-plan.js';
 import { requireUsgs, usgsError, withUsgs } from './usgs-session.js';
 import { rankContextOf, shownYears, type ShownYear } from './versions.js';
 
-export type HarvestDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'secrets' | 'usgs' | 'scenes' | 'setup' | 'remote' | 'blobs'>;
+export type HarvestDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'secrets' | 'usgs' | 'scenes' | 'setup' | 'remote' | 'blobs' | 'images'>;
 
 const PAGE_SIZE = 100;
 /** Browse copies made at once by the prefetch. */
@@ -158,7 +159,7 @@ interface RankWorld {
 }
 
 /** A scene's rank against the city's target years and the years its layers show (its own import left out). */
-function rankOf(fields: SceneFields, layerId: string | undefined, world: RankWorld): UsgsSceneDoc['rank'] {
+function rankOf(fields: RankedScene, layerId: string | undefined, world: RankWorld): UsgsSceneDoc['rank'] {
     const others = world.shown.filter((shown) => shown.layerId !== layerId);
     return rankScene(fields, rankContextOf(world.targetYears, others));
 }
@@ -168,18 +169,19 @@ interface Harvested {
     readonly sourceUrl: string | undefined;
 }
 
-type Kept = Pick<UsgsSceneDoc, 'status' | 'createdAt' | 'note' | 'layerId' | 'order' | 'eeDatasetId'>;
+type Kept = Pick<UsgsSceneDoc, 'status' | 'createdAt' | 'note' | 'layerId' | 'order' | 'eeDatasetId' | 'unusable' | 'cloudEstimate'>;
 
 /**
  * What a harvest keeps of a scene it knew: the admin's triage and note, the layer of its import, its creation, and (M4)
- * its order, which only the order callables and the watch write, and the EarthExplorer id an earlier run or order read.
+ * its order, which only the order callables and the watch write, and the EarthExplorer id an earlier run or order read; the
+ * owner's "not useful" and the clouds measured on its browse image (2026-11-13).
  */
 function keptOf(existing: UsgsSceneDoc | undefined, at: UsgsSceneDoc['harvestedAt']): Kept {
     if (existing === undefined) {
         return { status: 'candidate', createdAt: at };
     }
-    const { status, note, layerId, order, eeDatasetId } = existing;
-    return compact<Kept>({ status, note, layerId, order, eeDatasetId, createdAt: existing.createdAt ?? at });
+    const { status, note, layerId, order, eeDatasetId, unusable, cloudEstimate } = existing;
+    return compact<Kept>({ status, note, layerId, order, eeDatasetId, unusable, cloudEstimate, createdAt: existing.createdAt ?? at });
 }
 
 /** The scene's EarthExplorer dataset id: this run's for its dataset, else the one it kept. */
@@ -196,7 +198,7 @@ function sceneDoc(harvested: Harvested, existing: UsgsSceneDoc | undefined, worl
         ...kept,
         ...eeDatasetIdOf(harvested.fields.dataset, kept, world),
         browse: browseFor(existing, harvested.sourceUrl, now),
-        rank: rankOf(harvested.fields, kept.layerId, world),
+        rank: rankOf({ ...harvested.fields, ...pickDefined(kept, ['cloudEstimate']) }, kept.layerId, world),
         harvestedAt: at,
         ...stampOf(IMAGERY_WRITER, now),
     };
@@ -256,13 +258,16 @@ async function rerankUnseen(deps: HarvestDeps, cityId: string, unseen: readonly 
     );
 }
 
-/** The best-ranked frames without a browse copy get one, each on its own (a failure is recorded on the scene). */
+/**
+ * The best-ranked frames without a browse copy get one, each on its own (a failure is recorded on the scene), and its clouds
+ * measured; the plan is written once after them.
+ */
 async function prefetchBrowse(deps: HarvestDeps, cityId: string, scenes: readonly UsgsSceneDoc[]): Promise<void> {
     const pending = scenes
         .filter((scene) => scene.browse.state === 'none' && scene.browse.sourceUrl !== undefined)
         .sort((left, right) => right.rank.score - left.rank.score)
         .slice(0, BROWSE_PREFETCH);
-    await inBatches(pending, BROWSE_CONCURRENCY, (scene) => copyBrowse(deps, cityId, scene).catch(() => undefined));
+    await inBatches(pending, BROWSE_CONCURRENCY, (scene) => copyBrowse(deps, cityId, scene, false).catch(() => undefined));
 }
 
 /**
