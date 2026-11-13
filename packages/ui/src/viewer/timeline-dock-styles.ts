@@ -16,6 +16,12 @@ export const timelineDockStyles = css`
         inset-block-start: auto;
     }
 
+    .frame[data-compact-height][data-timeline-collapsed] .dock.timeline {
+        inset-inline: auto max(var(--hcm-gutter), 50% - 356px);
+        max-inline-size: none;
+        margin-inline: 0;
+    }
+
     /*
      * Upright the larger pill (96 px or more) is wider than the 68 px column the open menu keeps clear, and at 320 x 568
      * the six items do not fit above its row: while the menu is open the pill steps aside, as a short window's whole dock
@@ -23,11 +29,5 @@ export const timelineDockStyles = css`
      */
     .frame[data-timeline='vertical'][data-timeline-collapsed]:has(.dock.menu > [open]) .dock.timeline {
         visibility: hidden;
-    }
-
-    .frame[data-compact-height][data-timeline-collapsed] .dock.timeline {
-        inset-inline: auto max(var(--hcm-gutter), 50% - 356px);
-        max-inline-size: none;
-        margin-inline: 0;
     }
 `;
