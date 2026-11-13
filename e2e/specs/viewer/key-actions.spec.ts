@@ -29,7 +29,8 @@ test(
         const passed: string[] = [];
         for (let step = 0; step < 4; step += 1) {
             await timeline.press('ArrowLeft');
-            passed.push((await timeline.getAttribute('aria-valuetext')) ?? '');
+            // The slider says "Year 1966"; GA4 gets the year itself (or `today`).
+            passed.push(/\d{3,4}/.exec((await timeline.getAttribute('aria-valuetext')) ?? '')?.[0] ?? 'today');
         }
         const last = passed.at(-1) ?? '';
         const before = passed.filter((year) => year !== last);
