@@ -85,8 +85,8 @@ export const timelineStyles = [
             mask-image: linear-gradient(
                 var(--hcm-fade-to),
                 transparent,
-                #000 var(--hcm-fade-start, 0px),
-                #000 calc(100% - var(--hcm-fade-end, 0px)),
+                CanvasText var(--hcm-fade-start, 0%),
+                CanvasText calc(100% - var(--hcm-fade-end, 0%)),
                 transparent
             );
         }
@@ -185,6 +185,11 @@ export const timelineStyles = [
             display: none;
         }
 
+        :host([orientation='vertical']) .label {
+            padding-block: 2px;
+            background: var(--md-sys-color-surface-container, Canvas);
+        }
+
         /* Standing, an unlabelled year is a tick on the rail, centred on its place. */
         :host([orientation='vertical']) .stop.minor:not(.selected) .label {
             display: none;
@@ -192,11 +197,6 @@ export const timelineStyles = [
 
         :host([orientation='vertical']) .stop.minor:not(.selected) .tick {
             display: block;
-        }
-
-        :host([orientation='vertical']) .label {
-            padding-block: 2px;
-            background: var(--md-sys-color-surface-container, Canvas);
         }
 
         .thumb {

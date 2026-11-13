@@ -47,9 +47,9 @@ export function photosNearYear<T extends Pick<Photo, 'year' | 'yearEnd'>>(
 export type TimelineDensity = 'roomy' | 'dense' | 'scroll';
 
 /** Px between two stops that leaves room for every label lying, and for half the pill and half a label standing. */
-export const ROOMY_GAP_PX = 30;
+const ROOMY_GAP_PX = 30;
 /** Px between two stops below which every other label would touch the next one: the track then scrolls. */
-export const DENSE_GAP_PX = 14;
+const DENSE_GAP_PX = 14;
 /** Px between two stops of a scrolling track. */
 export const SCROLL_GAP_PX = 16;
 
