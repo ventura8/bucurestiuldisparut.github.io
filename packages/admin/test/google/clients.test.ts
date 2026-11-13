@@ -210,8 +210,8 @@ describe('the deployment', () => {
         // M16: `imagery.recalibrate`. M17: the stories' `history.onStoryWrite` and `publish.onStoryWrite`. M20: the local
         // archive's `worker.archiveReport`, `imagery.archiveImport` and `imagery.confirmRights`;
         // `imagery.deleteVersion`. The tab icon's `cities.setIcon`. M20 §19.10: the tile wizard's `imagery.saveLayout` and
-        // `imagery.acceptLayout`. The owner's not-useful mark `imagery.markScene`. M20 (2026-11-13): `worker.archiveCopy`.
-        expect(expected).toHaveLength(102);
+        // `imagery.acceptLayout`. The owner's not-useful mark `imagery.markScene`. M20 (2026-11-13): `worker.archiveCopy`. W5: `worker.manage`.
+        expect(expected).toHaveLength(103);
         expect(expected).toEqual(
             expect.arrayContaining([
                 'worker-hello',
@@ -225,6 +225,7 @@ describe('the deployment', () => {
                 'worker-starter',
                 'worker-archiveReport',
                 'worker-archiveCopy',
+                'worker-manage',
                 'imagery-archiveImport',
                 'imagery-confirmRights',
                 'imagery-deleteVersion',
@@ -233,7 +234,7 @@ describe('the deployment', () => {
                 'imagery-markScene',
             ]),
         );
-        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 102, total: 102, failed: [] });
+        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 103, total: 103, failed: [] });
     });
 
     it('badPath_someMissingIsPendingAndOneFailedIsInvalid', () => {

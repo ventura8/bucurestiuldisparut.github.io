@@ -20723,15 +20723,15 @@
             "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/fetch-script.test.ts."
         },
         {
-            "id": "S-A160-BAD-FOREIGN-REDIRECT",
+            "id": "S-A160-BAD-STALE-OLD-ADDRESS-TAB",
             "behaviour": "A160",
             "area": "admin",
             "path": "bad",
-            "title": "A bundle redirected anywhere but the project's admin site stops the build",
-            "asserts": "the bundle URL answers 301 to another origin -> fetch fails naming where it was sent; nothing is unpacked",
+            "title": "An admin tab left on the old address names the new one instead of installing",
+            "asserts": "Update the map in a tab still on <project>.web.app/admin/ after the move -> no build is submitted; the card says a newer admin (https://<project>-admin.web.app/admin/) is out and to reload, which lands there",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/fetch-script.test.ts."
+            "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/cloud-build-installer.test.ts."
         }
     ]
 }

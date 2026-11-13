@@ -3969,5 +3969,5 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 
 675. **A redirect added for people broke a download that refuses redirects.**
     - Seen: 2026-11-13, track/adminsite: once the public map's `/admin/…` answered 301 to the admin's own site, Update the map from a tab on the old address failed at "Download and check the install files" with `unexpected redirect`: the build's `fetch` uses `redirect: 'error'` and the tab named its own (old) origin as the bundle's.
-    - Fix: the `fetch` step follows one redirect, only to `HCM_REDIRECT_ORIGIN` (the project's admin site); a tab on the old address then installs as from the new one (a reload lands on the new address anyway) (`packages/admin/src/install/fetch-script.ts`).
+    - Fix: the `fetch` step follows one redirect, only to `HCM_REDIRECT_ORIGIN` (the project's admin site), and a tab on the old address refuses to submit with `apiError.install.adminOutdated` naming the new address (a reload lands there) (`packages/admin/src/install/fetch-script.ts`, `cloud-build-installer.ts`).
     - **Before a path starts to redirect, list every client that fetches it, including build steps and tabs already open.**
