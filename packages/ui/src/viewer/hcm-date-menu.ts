@@ -1,16 +1,22 @@
 /**
  * `<hcm-date-menu>`: the date picker of a timeline year with several dates (V13, the owner 2026-11-13). An M3 menu beside
  * the badge or the slider that asked for it (`hcm-dates-open`, `timeline-dates.ts`): above a lying timeline, on the
- * trailing side of a standing one, kept inside the viewer and clear of the strip of Mapbox's legal line. Each date is a
+ * trailing side of a standing one, kept inside the viewer and clear of the strip of Mapbox's legal line and of the floating
+ * controls it is given (`avoid`, `date-menu-clear.ts`). Each date is a
  * `menuitemradio` (48 px tall), the one on top checked. It is modal: a transparent scrim takes a press anywhere else and
  * closes it, the viewer makes the frame under it inert and gives the focus back to the slider. The arrow keys, Home and End
  * move between the dates, Tab walks them as any button, Esc closes, Enter or a press picks one.
  *
- * Events (viewer-internal): `hcm-date-pick` (`{layerId}`), `hcm-close`.
+ * A peek (`peek`: a mouse or a scrubbing finger resting on the year, `timeline-peek.ts`) is not modal: no scrim, the focus
+ * stays where it was, the frame stays live. The mouse entering or leaving it says so (`hcm-date-menu-pointer`), so the dock
+ * keeps it open on the way from the year; a finger sliding over it marks the date under it (`touchAt`) and lifting picks it.
+ *
+ * Events (viewer-internal): `hcm-date-pick` (`{layerId}`), `hcm-close`, `hcm-date-menu-pointer` (`{inside}`).
  */
 import { LitElement, css, html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
+import { clearOf } from './date-menu-clear.js';
 import { closeEvent } from './sheet-frame.js';
 import { baseStyles } from './shared-styles.js';
 import type { DateItem, DatesOpenDetail } from './timeline-dates.js';
@@ -21,15 +27,21 @@ export const HCM_DATE_MENU_TAG = 'hcm-date-menu';
 const EDGE = 8;
 /** The strip at the foot of the map kept for Mapbox's logo and attribution (`--hcm-map-chrome`). */
 const LEGAL_STRIP = 42;
+/** The menu's width limits (M3 menus: 112 to 280 px). */
+const MIN_WIDTH = 112;
+const MAX_WIDTH = 280;
 
 type Box = DatesOpenDetail['anchor'];
+
+/** The side of the timeline the menu opens on: above a lying one, past or before a standing one. */
+type Side = 'above' | 'end' | 'start';
 
 /** Where the menu's corner goes in the viewer (px from its top-left): beside the anchor, moved back inside when it would leave. */
 export function dateMenuOrigin(
     anchor: Box,
     menu: { readonly width: number; readonly height: number },
     room: { readonly width: number; readonly height: number },
-    side: 'above' | 'end' | 'start',
+    side: Side,
 ): { readonly x: number; readonly y: number } {
     const centreX = anchor.x + anchor.width / 2 - menu.width / 2;
     const centreY = anchor.y + anchor.height / 2 - menu.height / 2;
@@ -40,6 +52,17 @@ export function dateMenuOrigin(
     }[side];
     const within = (at: number, length: number, end: number): number => Math.max(EDGE, Math.min(at, end - length));
     return { x: within(wanted.x, menu.width, room.width - EDGE), y: within(wanted.y, menu.height, room.height - LEGAL_STRIP) };
+}
+
+/** Whether the point (`x`, `y`) is in `rect`, its edges included. */
+function contains(rect: DOMRect, x: number, y: number): boolean {
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
+/** The widest the menu may be (px) beside a standing timeline (the room past it), or above a lying one (the viewer). */
+export function sideRoom(anchor: Box, width: number, side: Side): number {
+    const room = { above: width, end: width - (anchor.x + anchor.width), start: anchor.x }[side] - 2 * EDGE;
+    return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, room));
 }
 
 const NEXT: Readonly<Record<string, (index: number, count: number) => number>> = {
@@ -55,7 +78,9 @@ export class HcmDateMenu extends LitElement {
         selected: { attribute: false },
         label: { type: String },
         anchor: { attribute: false },
+        avoid: { attribute: false },
         vertical: { type: Boolean },
+        peek: { type: Boolean },
     };
 
     static override readonly styles = [
@@ -108,7 +133,8 @@ export class HcmDateMenu extends LitElement {
             }
 
             .item:hover,
-            .item:focus-visible {
+            .item:focus-visible,
+            .item[data-armed] {
                 background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
                 outline: 2px solid var(--md-sys-color-secondary);
                 outline-offset: -2px;
@@ -145,8 +171,12 @@ export class HcmDateMenu extends LitElement {
     declare label: string;
     /** The box (client px) the menu opens beside; null: closed. */
     declare anchor: Box | null;
+    /** The floating controls (client px) the menu keeps clear of, measured each time it is placed (`timeline-dock.ts`). */
+    declare avoid: () => readonly Box[];
     /** The timeline stands (a phone held upright): the menu opens on its trailing side, else above it. */
     declare vertical: boolean;
+    /** Shown by a resting pointer, not by selecting the year: not modal. */
+    declare peek: boolean;
 
     constructor() {
         super();
@@ -154,37 +184,86 @@ export class HcmDateMenu extends LitElement {
         this.selected = null;
         this.label = '';
         this.anchor = null;
+        this.avoid = () => [];
         this.vertical = false;
+        this.peek = false;
     }
 
     override render(): TemplateResult {
         if (this.anchor === null) {
             return EMPTY;
         }
-        return html`<div class="scrim" @pointerdown=${this.#close}></div>
-            <div class="menu" role="menu" aria-label=${this.label} data-layout-check="date-menu" @keydown=${this.#onKey}>
+        return html`${this.#scrim()}
+            <div
+                class="menu"
+                role="menu"
+                aria-label=${this.label}
+                data-layout-check="date-menu"
+                @keydown=${this.#onKey}
+                @pointerenter=${this.#onPointer}
+                @pointerleave=${this.#onPointer}
+            >
                 ${this.items.map((item) => this.#item(item))}
             </div>`;
     }
 
+    /** The modal menu's scrim, which takes a press anywhere else and closes it; a peek has none. */
+    #scrim(): TemplateResult {
+        return this.peek ? EMPTY : html`<div class="scrim" @pointerdown=${this.#close}></div>`;
+    }
+
+    /** Places the menu again when it or the viewer changes size (a window resized, larger text spacing). */
+    readonly #resize = new ResizeObserver(() => {
+        const menu = this.renderRoot.querySelector<HTMLElement>('.menu');
+        if (menu !== null && this.anchor !== null) {
+            this.#place(menu, this.anchor);
+        }
+    });
+
+    override connectedCallback(): void {
+        super.connectedCallback();
+        this.#resize.observe(this);
+    }
+
+    override disconnectedCallback(): void {
+        this.#resize.disconnect();
+        super.disconnectedCallback();
+    }
+
     protected override updated(changed: PropertyValues<this>): void {
         const menu = this.renderRoot.querySelector<HTMLElement>('.menu');
-        if (menu !== null && this.anchor !== null && changed.has('anchor')) {
+        if (menu === null || this.anchor === null) {
+            return;
+        }
+        this.#resize.observe(menu);
+        if (changed.has('anchor')) {
             this.#place(menu, this.anchor);
+            this.#focusChecked();
         }
     }
 
-    /** Beside `at` (client px), inside the viewer; the checked date, else the first, takes the focus. */
-    #place(menu: HTMLElement, at: Box): void {
-        const host = this.getBoundingClientRect();
-        const anchor = { ...at, x: at.x - host.x, y: at.y - host.y };
-        const origin = dateMenuOrigin(anchor, { width: menu.offsetWidth, height: menu.offsetHeight }, host, this.#side());
-        menu.style.setProperty('left', `${String(origin.x)}px`);
-        menu.style.setProperty('top', `${String(origin.y)}px`);
-        (this.#items().find((item) => item.getAttribute('aria-checked') === 'true') ?? this.#items()[0])?.focus();
+    /** A modal menu takes the focus to the checked date, else the first; a peek leaves it where it is. */
+    #focusChecked(): void {
+        if (!this.peek) {
+            (this.#items().find((item) => item.getAttribute('aria-checked') === 'true') ?? this.#items()[0])?.focus();
+        }
     }
 
-    #side(): 'above' | 'end' | 'start' {
+    /** Beside `at` (client px), inside the viewer, clear of the controls to avoid. */
+    #place(menu: HTMLElement, at: Box): void {
+        const host = this.getBoundingClientRect();
+        const local = (box: Box): Box => ({ x: box.x - host.x, y: box.y - host.y, width: box.width, height: box.height });
+        const anchor = local(at);
+        const side = this.#side();
+        menu.style.setProperty('max-inline-size', `${String(sideRoom(anchor, host.width, side))}px`);
+        const size = { width: menu.offsetWidth, height: menu.offsetHeight };
+        const wanted = { ...dateMenuOrigin(anchor, size, host, side), ...size };
+        const origin = clearOf(wanted, [anchor, ...this.avoid().map(local)], host, LEGAL_STRIP);
+        menu.style.setProperty('left', `${String(origin.x)}px`);
+        menu.style.setProperty('top', `${String(origin.y)}px`);
+    }
+
+    #side(): Side {
         if (!this.vertical) {
             return 'above';
         }
@@ -207,6 +286,30 @@ export class HcmDateMenu extends LitElement {
             <span class="text"><span class="date">${item.date}</span><span class="label">${item.label}</span></span>
         </button>`;
     }
+
+    /**
+     * A finger at (`x`, `y`) client px: over the menu it marks the date under it, and picks it when `lifted`; false when the
+     * finger is not over the menu (no date marked then).
+     */
+    touchAt(x: number, y: number, lifted: boolean): boolean {
+        const inside = (box: Element | null): boolean => box !== null && contains(box.getBoundingClientRect(), x, y);
+        const over = inside(this.renderRoot.querySelector('.menu'));
+        const item = over ? this.#items().find(inside) : undefined;
+        for (const each of this.#items()) {
+            each.toggleAttribute('data-armed', each === item);
+        }
+        if (lifted && item !== undefined) {
+            item.click();
+        }
+        return over;
+    }
+
+    readonly #onPointer = (event: PointerEvent): void => {
+        if (event.pointerType !== 'touch') {
+            const detail = { inside: event.type === 'pointerenter' };
+            this.dispatchEvent(new CustomEvent('hcm-date-menu-pointer', { bubbles: true, composed: false, detail }));
+        }
+    };
 
     #items(): HTMLElement[] {
         return [...this.renderRoot.querySelectorAll<HTMLElement>('.item')];
