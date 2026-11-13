@@ -861,7 +861,7 @@ whose allow-list adds the job's own copy folder (`isOwnArchiveCopy`).
 
 ## Addendum of 2026-11-13: Pause (a job, every job, a computer)
 
-The owner, 2026-11-13: "I want the user to be able to pause jobs, and to pause using a machine". DECISIONS-for-review.md §215.
+The owner, 2026-11-13: "I want the user to be able to pause jobs, and to pause using a machine". DECISIONS-for-review.md §216.
 
 **A job.** On the Jobs page's open job and on a version's page (`<hcm-job-pause>`, the lazy `worker` chunk), a pipeline job that is
 queued, starting or running has **Pause**, and a paused one **Resume**; the Jobs list has **Pause all** and **Resume all**, and a

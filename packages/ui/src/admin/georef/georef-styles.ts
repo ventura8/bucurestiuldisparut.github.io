@@ -28,15 +28,20 @@ export const georefStyles = [
             padding: 16px;
         }
 
+        /* The scan and the map share one grid's rows (subgrid): a pane's header (the map's list of what it shows), the view,
+           the turn buttons and the note. Both views keep the same top, height and width share whatever one pane shows above
+           or below them (the owner's report of 2026-11-13: the map's list pushed the map 80 px below the scan). */
         .panes {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            gap: 12px;
+            grid-template-rows: auto minmax(0, 1fr) auto auto;
+            gap: 8px 12px;
 
             /* M22 (§13.2): room to work, about seven tenths of the window and never under 420 px. */
             block-size: max(420px, 70vh);
         }
 
+        /* Compact: one pane at a time under the Scan | Map switch, both in the same cell, so switching keeps the view in place. */
         .panes[data-compact] {
             grid-template-columns: minmax(0, 1fr);
             block-size: max(320px, 70dvh);
@@ -55,26 +60,62 @@ export const georefStyles = [
             block-size: max(320px, calc(100dvh - 200px));
         }
 
-        /* 8 px between a pane's switch and its map or scan: the switch's 48 px target stays clear (CR-M3-35 i). */
         .scan-pane,
         .map-pane {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            display: grid;
+            grid-row: 1 / -1;
+            grid-template-rows: subgrid;
             min-block-size: 0;
+            min-inline-size: 0;
+        }
+
+        .panes[data-compact] .scan-pane,
+        .panes[data-compact] .map-pane {
+            grid-column: 1;
         }
 
         .panes[data-compact][data-pane='scan'] .map-pane,
         .panes[data-compact][data-pane='map'] .scan-pane {
-            display: none;
+            visibility: hidden;
+        }
+
+        /* The map's list on one 48 px row beside its label (it wraps under it on a narrow pane). */
+        .shows {
+            grid-row: 1;
+            flex-flow: row wrap;
+            align-items: center;
+            gap: 4px 8px;
+            min-inline-size: 0;
+        }
+
+        /* The list takes the row's rest and shrinks with a narrow pane (a long layer name scrolled a phone sideways). */
+        .shows select {
+            flex: 1 1 12rem;
+            max-inline-size: 100%;
         }
 
         hcm-scan-viewer,
         hcm-admin-map {
-            flex: 1 1 auto;
+            grid-row: 2;
             min-block-size: 0;
             border-radius: var(--md-sys-shape-corner-medium, 12px);
             overflow: hidden;
+        }
+
+        .scan-pane > .turn,
+        .map-pane > .turn {
+            grid-row: 3;
+        }
+
+        .scan-pane > p.note,
+        .map-pane > p.note {
+            grid-row: 4;
+            margin: 0;
+        }
+
+        /* A version without a scan says so where the scan would be. */
+        .scan-pane > p.note[data-state='no-scan'] {
+            grid-row: 2;
         }
 
         .guide {

@@ -388,3 +388,19 @@ describe('imagery.import: the city’s share', () => {
         });
     });
 });
+
+describe('imagery.import of a scene harvested before the id rules', () => {
+    it('happyPath_anArgonFrameHarvestedAsKh4aIsImportedAsKh5 @S-A12-HAPPY-STALE-CAMERA', async () => {
+        const world = await readyWorld();
+        const argon = 'DS09065A073MC043';
+        await seedScene(world, argon, { sensor: 'KH-4A', acquisitionDate: '1964-06-18' });
+        world.scenes.options.set(argon, { entityId: argon, available: true, bytes: 1 });
+
+        const { jobId, layerId } = await importScene(world, argon);
+
+        expect(layerId).toBe('kh-5-argon-18-iunie-1964');
+        expect((await readJob(world, jobId))?.params).toEqual({ entityId: argon, dataset: 'corona2', sensor: 'KH-5' });
+        expect(await readVersion(world, jobId)).toMatchObject({ sensor: 'KH-5', label: { en: 'KH-5 Argon, 18 June 1964' } });
+        expect(await readScene(world, argon)).toMatchObject({ sensor: 'KH-5', status: 'imported' });
+    });
+});

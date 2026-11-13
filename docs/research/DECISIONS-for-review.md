@@ -6975,6 +6975,7 @@ The owner: "take me to the analytics permission button", then: the page must sho
 - **203e Errors**: Cloud Error Reporting (not Crashlytics, which is for mobile apps) through the existing `telemetry.listGroups`: the server's `fn-admin@` account already holds `roles/errorreporting.viewer` (Provision's role table), so the owner gives no extra consent; it returns aggregates and the redacted first line only (no stack is shown on this page); admins only; now limited to 20 lists a minute per admin and 60 per instance (`LIST_GROUPS_LIMITS`, salted and hashed uids in memory). The view's period moves the groups' period (7 days, else 30, Error Reporting's longest).
 - **203f The installer**: Provision's `apis` item turns on `analyticsdata.googleapis.com`; `PROVISION_SET_VERSION` 4 makes **Update the map** apply it to a prepared project in the same click.
 - **203g Messages**: consent refused, the window blocked, another account, the Data API off (with Setup and the API's console page), no property, no access, the names not registered (step g), Google Analytics not set up, Google silent, a blocked host, the server's own refusal: each in words with its fix and link (`adminContent.statistics.problem.*`, ro and en).
+- **203h Names GA4 cannot use yet** (the owner's live test, 2026-11-13): every 400 of `batchRunReports` was said as "Google Analytics does not know the map's measurement names yet", while step g reported all 23 registered; the names the view asks for (`wizard_id`, `step_id`, `error_code`, `app_surface`, `route`, `duration_ms`) are all among them, and an hour later the same read worked with no values for them yet. GA4 rejects the whole batch for one field its Data API does not list yet, and a newly registered name takes hours to be listed. Now the read asks the property's metadata (`getMetadata`, read-only scope) first, sends only the reports whose names it lists, and says why the rest are missing (`analytics-fields.ts`): not registered at all (the Admin API's list, Setup's step g as the fix), registered but not usable yet (look again tomorrow), or usable with no values yet (24 to 48 hours after use). Another 400 is `refused` (the admin's fault, Google Analytics as the way meanwhile). Each reason is a `ui_error` `statistics_<reason>` and a log line with the names. The admin screens leave out `(not set)` (the public map's page views and the admin's before `route` was registered); the guide's last line says whether GA4 knows the codes, from the last read.
 - **Verify**: S-A153-HAPPY-NUMBERS, S-A153-BAD-CONSENT-REFUSED, S-A153-BAD-API-DISABLED; Vitest `packages/admin/test/crashes/statistics.test.ts`, `packages/admin/test/google/analytics-data.test.ts`, `packages/admin/test/app/statistics-wiring.test.ts`, `packages/ui/test/admin/ops/statistics.test.ts`, `functions/test/telemetry/list-groups.test.ts`.
 
 ## 204. Any computer runs an archive series: the hand-back and the copy through the bucket (live report of 2026-11-13) — APPLIED, step 1
@@ -6993,20 +6994,42 @@ The owner: "take me to the analytics permission button", then: the page must sho
   short-lived read-only token from a callable, archive files only), and pre-seeding under the governor; the bucket stays the fallback.
 - **Verify**: S-A120-HAPPY-ARCHIVE-COPY, S-A120-BAD-ARCHIVE-COPY, S-P20-HAPPY-ARCHIVE-COPY, S-P20-BAD-ARCHIVE-COPY.
 
-## 215. Pause a job, every job or a computer (track/pause, the owner 2026-11-13) — APPLIED, one callable added
+## 216. Pause a job, every job or a computer (track/pause, the owner 2026-11-13) — APPLIED, one callable added
 
 - **Asked**: "I want the user to be able to pause jobs, and to pause using a machine!!!!" (the owner, 2026-11-13).
-- **215a No new job status.** A paused job keeps its status (`queued`, or the run's own until its step boundary) and gains
+- **216a No new job status.** A paused job keeps its status (`queued`, or the run's own until its step boundary) and gains
   `paused: {by, at, inRun?}`; the claim, the dispatcher and the tick's no-computer mark skip it. A new status would have touched every
   status switch, filter and catalogue for one meaning the field already carries; the rules still let no client write it (`paused`,
   `releaseRequested` are `imagery.pause`'s alone), and a paused job can still be cancelled.
-- **215b A job stops between steps, a computer at the next checkpoint.** The owner's job pause keeps the step's work (the step
+- **216b A job stops between steps, a computer at the next checkpoint.** The owner's job pause keeps the step's work (the step
   finishes); a paused computer must free the processor now, so its step stops at a checkpoint and starts again elsewhere.
-- **215c No attempt is spent by a pause.** The job's Resume gives back the attempt a paused run counted (`inRun`); a computer's hand-back
+- **216c No attempt is spent by a pause.** The job's Resume gives back the attempt a paused run counted (`inRun`); a computer's hand-back
   (`worker.end` `released`) gives it back only while the computer is paused or the job was asked back, so it is never a way round
   the attempts. It mirrors M20's `returned` (§204, archivehost) with its own outcome: a paused computer's job waits for no copy.
-- **215d The server is the truth of a computer's pause**; the worker mirrors the claim's answer into the governor's new `paused`
+- **216d The server is the truth of a computer's pause**; the worker mirrors the claim's answer into the governor's new `paused`
   choice (M26 §3), and the computer's own page sends its pause with the next claim or end (`pause` command), so either side pauses it.
-- **215e Until tomorrow is 08:00 tomorrow** on the clock of whoever clicked; a pause ends within 48 hours at most
+- **216e Until tomorrow is 08:00 tomorrow** on the clock of whoever clicked; a pause ends within 48 hours at most
   (`PAUSE_UNTIL_MAX_HOURS`, `apiError.imagery.pauseUntil`).
 - **Verify**: S-A160-*, S-A161-*, S-P32-*; `docs/research/M7-local-worker.md` → *Pause*.
+## 205. Under WSL the starter reads Windows' idle time, not logind's (the owner's PC, 2026-11-13) — APPLIED, no gate relaxed
+
+- **205a The fault**: in WSL logind's `IdleHint` is always `no`, which the starter wrote as `"idleS":0` every 5 s; the governor read `user-active` and Automatic never left Quiet (4 of 16 threads).
+- **205b The reading**: under WSL only `GetLastInputInfo` through `powershell.exe -EncodedCommand` (parity with `hcm-worker.bat`), at most every 30 s, from the first `/run/WSL/*_interop` whose process runs in a session other than 0 (session 0 reads the uptime); none answering is an empty `idleS`. Measured on the PC inside a systemd user unit: 1722 s through `4597_interop` in 1.7 s.
+- **205c Cost**: the Automatic profile goes quiet up to 30 s after the owner returns instead of 5 s; the owner's guidance accepted a 30 s cache.
+- **205d Release**: starter version `0428b9113175`; the worker image must match (`ai_state.never_here` refuses the AI with an older starter), so Setup's **Update the map** follows the deploy.
+- **Verify**: S-A141-HAPPY-WSL-IDLE, S-A141-BAD-WSL-NO-INTEROP; Vitest `functions/test/worker/starter-governor.test.ts`.
+
+## 209. A scene harvested before the id rules is imported as the camera its id names (track/coronacrop, the owner 2026-11-13) — APPLIED
+
+The owner: "There is no Bucharest in the left screen" on `DS09065A073MC043` (18 June 1964, labelled KH-4A Corona). It is neither a strip cut in the wrong place nor a wrong footprint: the frame is a **KH-5 Argon** mapping-camera frame (`MC`, mission 9065A), 550 km square at about 140 m on the ground, and its footprint (41.3 to 49.2 N, 22.6 to 33.4 E) holds Bucharest at 28 % and 63 % of its sides. Every `corona2` scene of Bucharest (249) was harvested on 2026-10-25, before the id rules of 2026-11-09, so each still says KH-4A (the dataset's fallback): 33 Argon frames, 12 KH-4B (DS11xx) and the KH-4 ones. The import copied that label into the job, so `locate` searched a square frame as a Corona strip for 35 minutes, timed out and offered the whole frame shrunk twice (8218 x 8227 px), in which the city is about 370 pixels wide next to the Black Sea.
+
+- **209a**: `trueSensor` (`functions/src/imagery/scene-record.ts`): a stored scene whose camera is its dataset's fallback takes the camera its id names; a camera named otherwise, or an id of no known form, is kept. `imagery.import` (and the order watch's `startImport`, Import again) use it for the job's params, the version's sensor and label, the reserved layer id and the scene it marks imported.
+- **209b**: a new harvest (Imagery → Search USGS) relabels every stored scene as well (`sceneDoc` writes the harvested camera); not run by the agent.
+- **209c**: the Argon frames already imported as KH-4A (MC043, MC038, MC039, MC042, MC015) were not re-imported: as KH-5 the search is held to 10 minutes and an unproved frame is still offered whole, with the city a few hundred pixels across at 140 m a pixel. Whether Argon is worth a layer is the owner's call (Not useful → Other, or rough points on the city).
+- **209d DS1103-1058DF026 (1968, stitched right to left)**: its crop around the rough points showed farmland. The mapping is not mirrored: the whole scan (`SegmentReader`) and the crop (`write_crop`) read the same `frame.json` window by window, and `WholeFrame.to_film` is the scan's own shrink and left edge; the log's crop, film columns 80,028 to 109,449 of 128,514, holds the points at 73 to 74 % along, where they were placed. A regression test pins this for a strip lettered either way (S-P01-HAPPY-RECROP-RIGHT-TO-LEFT, S-P01-BAD-RECROP-MIRRORED). The crop holds a single-runway airfield near its left edge (about 67 % along, row 7,140 of 8,631), likely Otopeni, while the point named Otopeni sits at 74 %, row 2,398: the points were placed on other features. The frame covers only about 17 km north to south, so most of the city lies on DF027, and the join is what holds it.
+- **Verify**: S-A12-HAPPY-STALE-CAMERA, S-A12-BAD-STALE-CAMERA-KEPT, S-P01-HAPPY-RECROP-RIGHT-TO-LEFT, S-P01-BAD-RECROP-MIRRORED; pytest `pipeline/tests/unit/test_recrop_order.py`; Vitest `functions/test/imagery/scene-record.test.ts`, `functions/test/imagery/import.test.ts`.
+
+## 215. The join card's budget is 4 KB (the owner, 2026-11-13: "raise the limits you need to raise") — APPLIED, gate relaxed with approval
+
+`scripts/ci/check_bundle_budget.py`: `join-card` 3 → 4 KB, `statistics-live` 4 → 6 KB (Material 3 redesign, 4.6 KB), `funnels` 2 → 3 KB (2.8 KB), `imagery` 18 → 20 KB (18.0 KB). The chunk measured 3.0 KB after the cloud estimate and the plain
+messages, failing the budget gate for every track. The owner approved raising budgets that block beta.1.

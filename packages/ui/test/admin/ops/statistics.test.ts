@@ -37,7 +37,7 @@ describe('the Statistics view', () => {
         await updated(element);
 
         expect(deepAll(element, '[data-wizard]').map((item) => item.dataset['wizard'])).toEqual([...WIZARD_IDS]);
-        expect(deepText(deep(element, '[data-wizard="new_city"]'))).toMatch(/The area on the map \( ?area ?\)/);
+        expect(deepText(deep(element, '[data-wizard="new_city"]'))).toMatch(/The area on the map ?area/);
         expect(deepText(deep(element, '[data-wizard="setup"]'))).toContain('One step per Setup card');
         expect(deepAll(element, 'a.external').some((link) => link.getAttribute('href') === GA_HOME_URL)).toBe(true);
         expect(deepAll(element, '[data-statistics-off]')).toEqual([]);
@@ -101,15 +101,18 @@ describe('the Statistics view with the numbers', () => {
         expect(text).toContain('The admin: the owner');
         expect(text).toContain('Before this release');
         expect(text).toContain('Not measured: the start page loads no statistics.');
-        expect(text).toContain('Year changed: 50');
-        expect(text).toContain('Phone: 4');
+        expect(text).toMatch(/Year changed ?50 ?100\s?%/);
+        expect(text).toMatch(/Phone ?4 ?80\s?%/);
+        expect(text).toMatch(/The public map ?\/ ?300/);
+        expect(text).toMatch(/Home ?12/);
+        expect(text).toContain('Visits per visitor');
         const funnel = deepText(deep(element, '[data-funnel="new_city"]'));
         expect(funnel).toMatch(/The city’s names/);
         expect(funnel).toContain('3 (30 %)');
         expect(funnel).toContain('2.5 min');
         expect(funnel).toContain('30 s');
         expect(funnel).toContain('(apiError.invalidRequest)');
-        expect(funnel).toMatch(/e2e_unknown_code ?: 1/);
+        expect(funnel).toContain('e2e_unknown_code');
         expect(deepAll(element, 'svg.daily').length).toBeGreaterThan(0);
         expect(deepAll(element, '[data-surface="start"]')).toHaveLength(1);
         deepAll(element, '[data-statistics-numbers] hcm-button')[0]?.click();
@@ -125,7 +128,7 @@ describe('the Statistics view with the numbers', () => {
             ['#/setup', 'https://console.cloud.google.com/apis/library/analyticsdata.googleapis.com?project=demo-hcm'],
         ],
         ['noAccess', 'cannot read', ['https://analytics.google.com/analytics/web/']],
-        ['noReports', 'Create the measurement reports', ['#/setup/analytics']],
+        ['refused', 'refused the way the admin asked', ['https://analytics.google.com/analytics/web/']],
         ['notSetUp', 'not set up', ['#/setup/analytics']],
         ['blocked', 'never left this browser', []],
     ] as const)('badPath_theProblem_%s_isSaidWithItsFix', async (problem, words, link) => {
@@ -208,6 +211,37 @@ describe('the Statistics view with the error groups', () => {
         crashes.set({ statistics: statistics({ status: 'error', problem: 'noProperty' }) });
         await updated(element);
         expect(deepAll(element, '[data-statistics-numbers] a').map((link) => link.getAttribute('href'))).toEqual(['#/setup/analytics']);
+    });
+
+    it.each([
+        ['notRegistered', 'lacks some measurement names', ['#/setup/analytics'], 'Codes missing'],
+        ['notReady', 'cannot report on them yet', [], 'up to 48 hours later'],
+        ['noData', 'No values yet', [], '24 to 48 hours after use'],
+    ] as const)('badPath_incompleteNumbers_%s_sayWhyAndWhatToDo_andTheGuideFollows', async (reason, words, link, codes) => {
+        const numbers = { ...NUMBERS, pending: { reason, names: ['app_surface'] } };
+        const crashes = new FakeArea<CrashesViewState, CrashesIntentsPort>(
+            crashesState({ statistics: statistics({ status: 'ready', numbers }) }),
+        );
+        const { element } = await page('crashes', crashes, { params: ['statistics'] });
+
+        const note = deep(element, '[data-statistics-pending]');
+        expect(note.dataset['statisticsPending']).toBe(reason);
+        expect(deepText(note)).toContain(words);
+        expect(deepAll(element, '[data-statistics-numbers] p > a').map((item) => item.getAttribute('href'))).toEqual(link);
+        expect(deepText(deep(element, '[data-statistics-codes]'))).toContain(codes);
+        expect(deepAll(element, '[data-statistics-visitors]')).toHaveLength(1);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('happyPath_theGuideSaysWhetherGoogleKnowsTheCodes_unknownBeforeARead_readyAfterACompleteOne', async () => {
+        const crashes = new FakeArea<CrashesViewState, CrashesIntentsPort>(crashesState({}));
+        const { element } = await page('crashes', crashes, { params: ['statistics'] });
+        expect(deep(element, '[data-statistics-codes]').dataset['statisticsCodes']).toBe('unknown');
+
+        crashes.set({ statistics: statistics({ status: 'ready', numbers: NUMBERS }) });
+        await updated(element);
+        expect(deep(element, '[data-statistics-codes]').dataset['statisticsCodes']).toBe('ready');
+        expect(deepAll(element, '[data-statistics-pending]')).toEqual([]);
     });
 
     it('badPath_beforeTheStoreIsThereOnlyTheGuideShows', async () => {
