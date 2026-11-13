@@ -12,6 +12,7 @@ import { MY_LOCATION_STATES } from './my-location-states.js';
 import { ZOOM_JOURNEY, ZOOM_STATES } from './zoom-states.js';
 import { COMPASS_JOURNEY, COMPASS_STATES } from './compass-states.js';
 import { TIMELINE_JOURNEY, TIMELINE_STATES } from './timeline-states.js';
+import { TIMELINE_CHIP_JOURNEY, TIMELINE_CHIP_STATES } from './timeline-chip-states.js';
 import { PHOTO_VERSION_JOURNEY, PHOTO_VERSION_STATES } from './photo-version-states.js';
 import { MAP_MENU_JOURNEY, MAP_MENU_STATES } from './map-menu-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
@@ -111,6 +112,7 @@ const VIEWER_STATES = {
     ...ZOOM_STATES,
     ...COMPASS_STATES,
     ...TIMELINE_STATES,
+    ...TIMELINE_CHIP_STATES,
     ...PHOTO_VERSION_STATES,
     ...MAP_MENU_STATES,
     ...SETTINGS_STATES,
@@ -153,24 +155,6 @@ const VIEWER_STATES = {
             await holdToast(page, t(lang, 'error.geolocate.denied'));
         },
         announcements: (lang) => [t(lang, 'error.geolocate.denied')],
-    },
-    year: {
-        title: 'A historical year: its layer, the photos-near-this-year chip (an icon button under a standing timeline)',
-        enter: async ({ page, lang }) => {
-            await expect(page.getByRole('button', { name: t(lang, 'photos.nearYear', { year: '1966' }) })).toBeVisible();
-        },
-    },
-    'timeline-step': {
-        title: 'The timeline moved by the keyboard: the slider says its new year',
-        enter: async ({ page, lang }) => {
-            const slider = page.getByRole('slider', { name: t(lang, 'timeline.label'), exact: true });
-            const before = await slider.getAttribute('aria-valuetext');
-            await slider.focus();
-            await expect(slider).toBeFocused();
-            await slider.press('ArrowRight');
-            await expect(slider).not.toHaveAttribute('aria-valuetext', before ?? '');
-            await mapIdle(page);
-        },
     },
     ...unplacedStates(sheetEscape),
     ...storyStates(sheetEscape),
@@ -454,6 +438,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     ZOOM_JOURNEY,
     COMPASS_JOURNEY,
     TIMELINE_JOURNEY,
+    TIMELINE_CHIP_JOURNEY,
     PHOTO_VERSION_JOURNEY,
     MAP_MENU_JOURNEY,
     THEME_MENU_JOURNEY,
