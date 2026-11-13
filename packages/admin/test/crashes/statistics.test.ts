@@ -10,7 +10,8 @@ import {
     type StatisticsSource,
     type StatisticsState,
 } from '../../src/crashes/statistics.js';
-import { StatisticsProblem, type StatisticsNumbers } from '../../src/google/analytics-data.js';
+import type { StatisticsNumbers } from '../../src/google/analytics-data.js';
+import { StatisticsProblem } from '../../src/google/statistics-problem.js';
 import { GoogleApiError } from '../../src/google/failure.js';
 import { failure } from '../app/fakes.js';
 import { contentWorld } from '../content/world.js';
@@ -201,7 +202,10 @@ describe('the crashes area with the Statistics view', () => {
 
         expect(crashes.state.statistics).toMatchObject({ status: 'error', problem: 'unavailable' });
         await expect(NO_STATISTICS_SOURCE.measurementId()).resolves.toBeNull();
-        await expect(NO_STATISTICS_SOURCE.read(TOKEN, 'G-E2E0000000', 7)).rejects.toEqual(new StatisticsProblem('noProperty'));
+        await expect(NO_STATISTICS_SOURCE.read(TOKEN, 'G-E2E0000000', 7)).rejects.toMatchObject({
+            name: 'StatisticsProblem',
+            problem: 'noProperty',
+        });
     });
 
     it('happyPath_aPeriodWithTheSameErrorPeriodListsNothingAgain', async () => {

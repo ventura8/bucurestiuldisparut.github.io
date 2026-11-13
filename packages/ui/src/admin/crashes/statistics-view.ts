@@ -13,8 +13,27 @@ import { css, html, type TemplateResult } from 'lit';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import type { CrashesIntentsPort, CrashesViewState } from './crashes-port.js';
-import { crashesSection } from './statistics-crashes.js';
-import { numbersSection } from './statistics-numbers.js';
+import type * as Live from './statistics-live.js';
+import { loadingTemplate } from '../editing/states.js';
+
+type LiveModule = typeof Live;
+
+let live: LiveModule | null = null;
+let loading: Promise<LiveModule> | null = null;
+
+/** The live sections' chunk, fetched once (§203: a chunk of its own, so the crashes page stays within its budget). */
+export function loadStatisticsLive(): Promise<LiveModule> {
+    loading ??= import('./statistics-live.js').then((module) => {
+        live = module;
+        return module;
+    });
+    return loading;
+}
+
+/** Whether the live sections' chunk is there (the page asks for it once, then renders again). */
+export function statisticsLiveReady(): boolean {
+    return live !== null;
+}
 
 /** Google Analytics' home: the owner picks the project's property there (its id is not kept by the admin). */
 export const GA_HOME_URL = 'https://analytics.google.com/analytics/web/';
@@ -144,19 +163,21 @@ export interface StatisticsContext {
     readonly groupUrl: (groupId: string) => string;
 }
 
-/** §203: the numbers and the errors, once the page's store is there. */
+/** §203: the numbers and the errors, once the page's store and the sections' chunk are there. */
 function liveSections(locale: Locale, context: StatisticsContext): TemplateResult {
     const view = context.view;
     if (view === null) {
         return EMPTY;
     }
-    const numbers = numbersSection({
-        ...{ locale, projectId: context.projectId, authDomain: context.authDomain, state: view.statistics, intents: context.intents },
+    if (live === null) {
+        return loadingTemplate(locale);
+    }
+    return live.liveSections(locale, view, {
+        ...{ projectId: context.projectId, authDomain: context.authDomain, intents: context.intents, groupUrl: context.groupUrl },
         order: (wizard) => WIZARD_STEPS[wizard],
         stepName: (step) => (STEP_IDS.has(step) ? contentText(locale, `adminContent.statistics.step.${step as StepId}`) : step),
         wizardName: (wizard) => wizardName(locale, wizard),
     });
-    return html`${numbers} ${crashesSection(locale, view, context.intents, context.groupUrl)}`;
 }
 
 /** The whole view. */

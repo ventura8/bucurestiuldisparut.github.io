@@ -40,7 +40,7 @@ async function openStatistics(page: Page, lang: 'ro' | 'en') {
 test(
     'Show the numbers here: one read-only consent, then the overview, the apps and the new city funnel; a period read once',
     { tag: ['@S-A153-HAPPY-NUMBERS'] },
-    async ({ page, lang, consent, inputBudget, upstream }) => {
+    async ({ page, lang, consent, inputBudget, upstream, consoleErrors }) => {
         await upstream.scenario('analytics-data.sample', 'browser');
         await upstream.scenario('error-reporting.twoGroups', 'server');
         const { numbers, show } = await openStatistics(page, lang);
@@ -63,6 +63,14 @@ test(
         await expect(numbers.locator('[data-statistics-visitors]')).toHaveText('120');
         expect(await upstream.calls('browser', 'analytics-data')).toHaveLength(6);
         expect(await consent.requests()).toHaveLength(1);
+
+        // Refresh lists the period's error groups again: Error Reporting off is said with the way to Setup.
+        await upstream.fail('error-reporting', 'apiDisabled', 'server');
+        await numbers.getByRole('button', { name: contentText(lang, 'adminContent.statistics.numbers.refresh') }).click();
+        await expect(
+            page.locator('[data-statistics-crashes]').getByText(contentText(lang, 'adminContent.crashes.apiDisabled')),
+        ).toBeVisible();
+        await expect.poll(() => consoleErrors.takeMatching(/status of 400/).length).toBeGreaterThan(0);
     },
 );
 

@@ -8,7 +8,7 @@
  */
 import type { NoticeInput } from '../state/state.js';
 import { GoogleApiError } from '../google/failure.js';
-import { StatisticsProblem, type StatisticsDays, type StatisticsNumbers } from '../google/analytics-data.js';
+import type { StatisticsDays, StatisticsNumbers } from '../google/analytics-data.js';
 import { CallableFailure } from '../firebase/ports.js';
 
 export type { StatisticsDays } from '../google/analytics-data.js';
@@ -94,9 +94,17 @@ function callableProblem({ details }: CallableFailure): Pick<StatisticsState, 'p
     return { problem: 'server', notice: params === undefined ? { key: code } : { key: code, params } };
 }
 
+/**
+ * A `StatisticsProblem` of the lazy `analytics-data` chunk (`../google/statistics-problem.ts`), told by its name so this
+ * chunk never imports that module.
+ */
+function isStatisticsProblem(error: unknown): error is Error & { readonly problem: 'noAccess' | 'noProperty' } {
+    return error instanceof Error && error.name === 'StatisticsProblem';
+}
+
 /** Any failure of a read as the page's problem and, for the server's own refusals, its message. */
 export function problemOf(error: unknown): Pick<StatisticsState, 'problem' | 'notice'> {
-    if (error instanceof StatisticsProblem) {
+    if (isStatisticsProblem(error)) {
         return { problem: error.problem, notice: null };
     }
     if (error instanceof GoogleApiError) {
@@ -110,7 +118,7 @@ export const NO_STATISTICS_SOURCE: StatisticsSource = {
     ask: () => Promise.resolve({ granted: false, failure: 'failed' }),
     live: () => null,
     measurementId: () => Promise.resolve(null),
-    read: () => Promise.reject(new StatisticsProblem('noProperty')),
+    read: () => Promise.reject(Object.assign(new Error('statistics: noProperty'), { name: 'StatisticsProblem', problem: 'noProperty' })),
 };
 
 export interface StatisticsIntents {

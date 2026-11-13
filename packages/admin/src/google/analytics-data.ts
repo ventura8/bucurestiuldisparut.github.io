@@ -1,4 +1,4 @@
-import { propertyOf, visibleProperties } from './analytics-reports.js';
+import { StatisticsProblem } from './statistics-problem.js';
 import { at, list, records, stringAt } from './json.js';
 import { createGoogleTransport, type GoogleTransport, type GoogleTransportOptions } from './transport.js';
 
@@ -60,14 +60,6 @@ export interface StatisticsNumbers {
     readonly countries: readonly NamedCount[];
     readonly surfaces: readonly SurfaceNumbers[];
     readonly steps: readonly StepNumbers[];
-}
-
-/** Why the numbers could not be read when it is not one of Google's own failures. */
-export class StatisticsProblem extends Error {
-    constructor(readonly problem: 'noAccess' | 'noProperty') {
-        super(`statistics: ${problem}`);
-        this.name = 'StatisticsProblem';
-    }
 }
 
 type Filter = Readonly<Record<string, unknown>>;
@@ -206,6 +198,8 @@ function surfacesOf(totals: unknown, daily: unknown): readonly SurfaceNumbers[] 
 
 /** The property of `measurementId`, or a {@link StatisticsProblem}: no property at all is no access, another one is no property. */
 async function findProperty(transport: GoogleTransport, measurementId: string): Promise<string> {
+    // Setup's own chunk (`analytics-reports`), fetched as it is: sharing it statically would move it into `editor-shared`.
+    const { propertyOf, visibleProperties } = await import('./analytics-reports.js');
     const properties = await visibleProperties(transport, VIEWER_ROLE);
     if (properties.length === 0) {
         throw new StatisticsProblem('noAccess');

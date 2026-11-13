@@ -3,9 +3,9 @@ import { WIZARD_IDS } from '@hcm/shared/funnels';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CrashesIntentsPort, CrashesViewState } from '../../../src/admin/crashes/crashes-port.js';
-import { GA_HOME_URL } from '../../../src/admin/crashes/statistics-view.js';
+import { GA_HOME_URL, loadStatisticsLive, statisticsLiveReady, statisticsView } from '../../../src/admin/crashes/statistics-view.js';
 import { FakeArea } from '../editing/fake-area.js';
-import { cleanup, deep, deepAll, deepText, defineAll, updated } from '../shell/fake-app.js';
+import { cleanup, deep, deepAll, deepText, defineAll, mount, updated } from '../shell/fake-app.js';
 import { crashesState, page } from './fixtures.js';
 import { NUMBERS, statistics } from './statistics-fixtures.js';
 
@@ -13,6 +13,21 @@ import { NUMBERS, statistics } from './statistics-fixtures.js';
 describe('the Statistics view', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
+
+    it('happyPath_theLiveSectionsArriveInAChunkOfTheirOwn', async () => {
+        // The first test of the file: before the sections' chunk is there, the view shows the loading line in their place.
+        expect(statisticsLiveReady()).toBe(false);
+        const context = { analytics: true, projectId: 'demo-hcm', authDomain: '', intents: null, groupUrl: (id: string) => id };
+        const before = await mount<HTMLElement>(statisticsView('en', { ...context, view: crashesState({}) }));
+        expect(deepAll(before, '[role="status"]')).toHaveLength(1);
+        expect(deepAll(before, '[data-statistics-numbers]')).toEqual([]);
+
+        await loadStatisticsLive();
+        const after = await mount<HTMLElement>(statisticsView('en', { ...context, view: crashesState({}) }));
+
+        expect(statisticsLiveReady()).toBe(true);
+        expect(deepAll(after, '[data-statistics-numbers]')).toHaveLength(1);
+    });
 
     it('happyPath_everyWizardWithItsStepsAndTheWayToItsFunnel', async () => {
         // @S-A151-HAPPY-STATISTICS
@@ -48,7 +63,10 @@ describe('the Statistics view', () => {
 
 /** §203: Google Analytics' numbers and Error Reporting's groups on the same view. */
 describe('the Statistics view with the numbers', () => {
-    beforeAll(defineAll);
+    beforeAll(async () => {
+        defineAll();
+        await loadStatisticsLive();
+    });
     afterEach(cleanup);
 
     it('happyPath_theButtonAsksForTheNumbersWithGooglesNote_andThePeriodIsChosen', async () => {
@@ -136,7 +154,10 @@ describe('the Statistics view with the numbers', () => {
 
 /** §203: the period's error groups and the view before its store. */
 describe('the Statistics view with the error groups', () => {
-    beforeAll(defineAll);
+    beforeAll(async () => {
+        defineAll();
+        await loadStatisticsLive();
+    });
     afterEach(cleanup);
 
     it('happyPath_theErrorGroupsOfThePeriodWithTheirConsoleLinks', async () => {

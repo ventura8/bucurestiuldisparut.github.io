@@ -18,7 +18,7 @@ import { formatWhen, loadingTemplate } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type { CrashesIntentsPort, CrashesViewState, CrashGroupPort, CrashPeriodPort } from './crashes-port.js';
-import { statisticsStyles, statisticsView } from './statistics-view.js';
+import { loadStatisticsLive, statisticsLiveReady, statisticsStyles, statisticsView } from './statistics-view.js';
 
 export const HCM_CRASHES_LIST_PAGE_TAG = 'hcm-crashes-list-page';
 
@@ -126,6 +126,11 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
 
     /** `#/crashes/statistics` (§200, §203): the guide, Google Analytics' numbers and the period's error groups. */
     #statistics(view: CrashesViewState | null): TemplateResult {
+        if (!statisticsLiveReady()) {
+            void loadStatisticsLive().then(() => {
+                this.requestUpdate();
+            });
+        }
         const { analytics, projectId, authDomain } = this.state ?? NO_SHELL;
         return statisticsView(this.locale, {
             ...{ analytics, projectId, authDomain, view, intents: this.intents },

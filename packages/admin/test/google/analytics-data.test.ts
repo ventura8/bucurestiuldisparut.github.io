@@ -3,7 +3,8 @@ import { createUpstreamFakes, GOOGLE_TOKENS } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
 import { createMeasurementReports } from '../../src/google/analytics-reports.js';
-import { readStatistics, StatisticsProblem, type StatisticsDays } from '../../src/google/analytics-data.js';
+import { readStatistics, type StatisticsDays } from '../../src/google/analytics-data.js';
+import { StatisticsProblem } from '../../src/google/statistics-problem.js';
 
 /**
  * §203: the Statistics view's numbers against the fake Analytics Admin and Data APIs: the property found from the
