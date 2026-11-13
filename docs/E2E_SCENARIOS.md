@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 160 | 1661 | 693 | 968 | 1659 | 2 | 427 |
+| 162 | 1669 | 698 | 971 | 1667 | 2 | 429 |
 
 ## Viewer
 
@@ -323,6 +323,14 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V66-HAPPY-TV-RING` | V66 | happy | A ring twice as thick, read from across the room | 1920 x 1080 with a coarse pointer: the focused control's outline is 6 px | e2e-viewer | exists | `e2e/specs/viewer/consoles.spec.ts` |
 | `S-V66-BAD-FINE-POINTER` | V66 | bad | A large screen with a mouse keeps the desk ring | 1920 x 1080 with a fine pointer: the outline stays 3 px | e2e-viewer | exists | `e2e/specs/viewer/consoles.spec.ts` |
 | `S-V66-BAD-NO-WEBGL-CONSOLE` | V66 | bad | A console's browser without WebGL says what it lacks and where the map works | Xbox user agent without WebGL: the card says the console's browser lacks the 3D graphics, the photo list still works, see the photos below or open the map on a phone; no 'WebGL' word; the photo list is there | e2e-viewer | exists | `e2e/specs/viewer/no-webgl.spec.ts` |
+| `S-V67-HAPPY-PILL-LANDSCAPE` | V67 | happy | On a short landscape phone the pill keeps the trailing foot, clear of the menu, the zoom, the compass and the legal line | at 915x412 and at 568x270 the collapsed timeline is 48 px tall on the trailing half and overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution | e2e-viewer | exists | `e2e/specs/viewer/timeline-pill.spec.ts` |
+| `S-V67-HAPPY-PILL-ON-PHONE` | V67 | happy | On a phone the timeline rests as its year pill and opens on a tap | at 375x812 the timeline is a 68 x 48 pill 16 px from the leading edge, the slider says the year; it overlaps none of the chip, the menu button, the zoom group, the compass, Mapbox's logo and attribution; a tap opens the standing card with the year unchanged, and a tap on the map collapses it again | e2e-viewer | exists | `e2e/specs/viewer/timeline-pill.spec.ts` |
+| `S-V67-HAPPY-TOUR` | V67 | happy | The pill and the opened card pass the layout and accessibility checks on every phone | expectStateSound on the journey timeline-dates (the pill, the card a tap opened) at every phone viewport, and on every other map state of a phone, which shows the pill | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |
+| `S-V67-BAD-ESC-AND-LARGE-WINDOW` | V67 | bad | Esc collapses the open card with the focus kept; a larger window never collapses it | at 360x800 the skip link opens the card with the focus on the slider; Esc collapses it, the focus stays and ArrowUp still changes the year; at 1280x800 the card is open and a press on the map leaves it open | e2e-viewer | exists | `e2e/specs/viewer/timeline-pill.spec.ts` |
+| `S-V68-HAPPY-PICK-DATE` | V68 | happy | The badge of a year with two dates opens them; the date picked comes to the front | a city whose 1980 has two opaque layers, the timeline on 1980: the slider's value names two dates, the pill's badge reads 2; a click opens the menu 'Dates in 1980' with two menuitemradio, the August one (on top) checked; picking March closes it, the focus back on the slider, the March tiles on top and layers= names it last | e2e-viewer | exists | `e2e/specs/viewer/timeline-dates.spec.ts` |
+| `S-V68-HAPPY-TOUR` | V68 | happy | The menu of a year's dates passes the layout and accessibility checks on every window | expectStateSound on the journey timeline-dates (the menu opened by Enter) at every viewer viewport; Esc closes it and the focus returns to the slider | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |
+| `S-V68-BAD-ESC-CHANGES-NOTHING` | V68 | bad | Enter on the slider opens the dates; Esc closes them and changes nothing | Enter on the slider of 1980 opens the menu with the checked date focused; Esc closes it, the focus back on the slider, the August tiles still on top and the hash unchanged | e2e-viewer | exists | `e2e/specs/viewer/timeline-dates.spec.ts` |
+| `S-V68-BAD-SINGLE-DATE` | V68 | bad | A year with a single date has no badge, and Enter opens nothing | the fixture's 1966 (one layer): no badge on the timeline, the slider's value is only the year, Enter opens no menu | e2e-viewer | exists | `e2e/specs/viewer/timeline-dates.spec.ts` |
 
 ## Admin
 
