@@ -107,5 +107,15 @@ export const lightboxStyles = [
             gap: 24px;
             padding: 8px;
         }
+
+        /*
+         * Tab goes from the last arrow (Next) round to Close at the top: on a 320 px window the 24 px gaps put Next under
+         * Close, so the wrap read as a step back up one column (the tour at c320). 16 px keeps the row clear of Close's column.
+         */
+        @media (width < 360px) {
+            .nav {
+                gap: 16px;
+            }
+        }
     `,
 ];
