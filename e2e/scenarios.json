@@ -1135,6 +1135,13 @@
             "name": "The pipeline and the worker on somebody's own computer stay within a memory and processor budget, and an idle worker asks rarely",
             "milestone": "M7",
             "source": "the owner, 2026-11-12: reports/resource-audit.md (the machines are short of memory); docs/research/M7-local-worker.md, Addendum of 2026-11-12"
+        },
+        {
+            "id": "A152",
+            "area": "admin",
+            "name": "Not useful on a scene, and a scene its preview shows cloudy over the city is ranked down and warned",
+            "milestone": "M4",
+            "source": "the owner, 2026-11-13: \"This scan is useless (too many clouds!!!)\", DS09066A047MC019, a 1964 scan the whole-city plan kept offering to buy; docs/research/M4-interfaces.md, Not useful and the cloud estimate"
         }
     ],
     "scenarios": [
@@ -19551,6 +19558,83 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The review of 2026-11-13 (W1). Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-gcps.test.ts; Vitest packages/ui/test/admin/imagery/tiles-link.test.ts."
+        },
+        {
+            "id": "S-A152-HAPPY",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "happy",
+            "title": "A scene marked Not useful leaves the whole-city plan and its Buy this scan, and the list hides it",
+            "asserts": "the scene's page offers Not useful with four reasons, one click each; Clouds -> imagery.markScene stores status rejected and unusable {reason, at}, writes the plan again at once: the date's row keeps the free frames that complete it and lists no Buy this scan for it; Find hides it under Hide not useful and shows it with its Not useful chip once that is off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: e2e/admin/specs/imagery/unusable.spec.ts; functions/test/imagery/mark-scene.test.ts; packages/ui/test/admin/imagery/scene-unusable.test.ts."
+        },
+        {
+            "id": "S-A152-HAPPY-UNDO",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "happy",
+            "title": "Not useful is taken back from the scene's page or the snackbar",
+            "asserts": "the marked scene's page says what the mark did and offers It is useful after all; clicked (or the snackbar's Undo) -> imagery.markScene with null: a candidate again, no unusable field, the plan's Buy this scan is back",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: e2e/admin/specs/imagery/unusable.spec.ts; functions/test/imagery/mark-scene.test.ts; packages/admin/test/imagery/orders.test.ts."
+        },
+        {
+            "id": "S-A152-BAD-CLOUDY",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "bad",
+            "title": "A scene its preview shows cloudy over the city is ranked down and warned before an import or a purchase",
+            "asserts": "imagery.browse measures the clouds over the city on a 128 px grey copy of the browse image (bright, flat pixels inside the city's bounds placed through the frame's corners) and stores cloudEstimate; at 40 % or more the rank keeps only its clear share and says so first, the plan's row lists it in cloudyFrames, its card reads Probably cloudy over the city: N %, its page warns what to do, and the date's Buy this scan warns beside the link",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: e2e/admin/specs/imagery/unusable.spec.ts; functions/test/imagery/cloud-estimate.test.ts; packages/shared/test/imagery/ranking.test.ts; packages/shared/test/imagery/join.test.ts; packages/ui/test/admin/imagery/scene-unusable.test.ts."
+        },
+        {
+            "id": "S-A152-BAD-NOT-EDITOR",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "bad",
+            "title": "A moderator or an uploader cannot mark a scene, nor can anyone mark an imported one",
+            "asserts": "imagery.markScene by a moderator or an uploader -> apiError.city.notEditor; of an imported scene -> apiError.imagery.alreadyImported; of no scene -> apiError.notFound; an unknown reason -> invalid-argument; the scene is unchanged; a plan that cannot be written leaves the mark standing (logged by code)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: functions/test/imagery/mark-scene.test.ts; packages/admin/test/imagery/orders.test.ts."
+        },
+        {
+            "id": "S-A152-BAD-CLIENT-MARK",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "bad",
+            "title": "No client writes a scene's Not useful mark or its cloud estimate",
+            "asserts": "an admin's update of usgsScenes setting or removing unusable, or setting cloudEstimate, is denied (imagery.markScene and imagery.browse write them); candidate and rejected with a note stay allowed",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: firebase/rules-tests/test/jobs.test.ts."
+        },
+        {
+            "id": "S-A12-HAPPY-LARGE-BROWSE",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A KH-9 panoramic preview over 5 MB is copied, shrunk",
+            "asserts": "USGS's Declass 3 browse images are 7 to 13 MB: imagery.browse fetches up to 30 MB in 30 s and stores one over 5 MB as a JPEG at most 4,096 px long, so its card and page show it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13: every Declass 3 card said the preview could not be fetched. Tests: functions/test/imagery/browse.test.ts; functions/test/adapters/image.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-BROWSE-SPECIFIC",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A preview that cannot be copied says what failed and what to do",
+            "asserts": "a web page in place of the picture -> apiError.imagery.browseNotImage; a file over 30 MB, or one that cannot be shrunk -> apiError.imagery.browseTooLarge (trying again will not help: open the frame in EarthExplorer); USGS not answering -> apiError.imagery.browseUnavailable (try again in a few minutes); each recorded on the scene and answered",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13. Tests: functions/test/imagery/browse.test.ts."
         }
     ]
 }

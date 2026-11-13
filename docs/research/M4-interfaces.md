@@ -217,6 +217,27 @@ tick at once never import twice: the version's id is the job's, created with `cr
 - **States** for the tour (§7.3): `orders.order-card`, `orders.ordered`, `orders.reminder`, `orders.delivered`,
   `orders.expired`.
 
+### 1.9 Not useful, and a scan probably cloudy over the city (the owner's report of 2026-11-13)
+
+"This scan is useless (too many clouds!!!)": DS09066A047MC019 (1964), which the whole-city plan kept offering as **Buy this scan**.
+
+- **The scene's page** is the route `#/imagery/scene/<entityId>` (M3 §10.2; the list's cards and every Buy this scan link to it):
+  its preview, date, coverage, free or paid, score, reasons and actions. Under them **Not useful?**: four buttons, Clouds, Haze or
+  blur, Wrong area, Other, one click each (`packages/ui/src/admin/imagery/scene-unusable.ts`); once marked, what that did and
+  **It is useful after all**; the snackbar's Undo does the same. An imported scene has none (its layer is what to reject or delete).
+- **`imagery.markScene`** (`cityEditor`, `functions/src/imagery/mark-scene.ts`) `{cityId, entityId, unusable}`: a reason stores
+  `status: 'rejected'` and `unusable {reason, at}`; `null` stores `candidate` and removes `unusable`; in a transaction, then the
+  plan is written again at once (`rewriteDatePlan`: rejected scenes take no part), so the date's row says what else completes it
+  and lists no Buy this scan for it. Refusals: `apiError.imagery.alreadyImported`, `apiError.notFound`, `apiError.city.notEditor`.
+  The admin runs it through `OrderActions.markUnusable` (one action at a time with the order card's; its refusal, `action:
+  'unusable'`, shows in its own section only).
+- **The list**: Find's filter **Hide not useful** (`hideRejected`, on by default; it read Hide deleted) hides it; off, its card
+  carries **Not useful**.
+- **The cloud estimate** (M3 §3.4): a card reads **Probably cloudy over the city: N %** at `CLOUDY_CITY_PERCENT` (40) or more, its
+  page warns what is wrong and what to do before Import or the order card, and the plan's row lists it in `cloudyFrames`, so its
+  **Buy this scan** carries the same warning. Its rank keeps only its clear share (M3 §3.3, `RANKING_VERSION` 5).
+- Rules: `unusable` and `cloudEstimate` are server-owned (`S-A152-BAD-CLIENT-MARK`). Behaviour A152; DECISIONS §201.
+
 ### 1.8 Rules and indexes (orders)
 
 - `usgsScenes`: the client triage keeps `status` (`candidate`, `rejected`) and `note`; `ordered` and `available` leave

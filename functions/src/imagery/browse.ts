@@ -125,7 +125,9 @@ export async function copyBrowse(
         const fetched = await fetchAndStore(deps, scene, sourceUrl);
         const path = RASTER_PATHS.browse(scene.dataset, scene.entityId);
         await recordBrowse(deps, cityId, scene.entityId, { state: 'copied', sourceUrl, path, checkedAt });
-        await measureClouds(deps, cityId, scene, () => Promise.resolve(fetched.bytes), rewritePlan);
+        if (scene.cloudEstimate?.version !== CLOUD_ESTIMATE_VERSION) {
+            await measureClouds(deps, cityId, scene, () => Promise.resolve(fetched.bytes), rewritePlan);
+        }
         return { path, contentType: fetched.type };
     } catch (error) {
         const code = browseErrorOf(error);

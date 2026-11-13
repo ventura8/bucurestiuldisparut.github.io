@@ -220,7 +220,7 @@ describe('planDate', () => {
         expect(row?.coveragePct).toBe(50);
     });
 
-    it('badPath_aCloudyPaidFrameIsListedWithItsWarning @S-A13-BAD-CLOUDY-SCAN', () => {
+    it('badPath_aCloudyPaidFrameIsListedWithItsWarning @S-A152-BAD-CLOUDY', () => {
         const row = planDate([band('free', 0, 0.5, { cloudPercent: 39 }), band('paid', 0.5, 1, { free: false, cloudPercent: 70 })], CITY);
 
         expect(row?.paidFrames).toEqual(['paid']);
