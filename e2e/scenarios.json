@@ -5594,6 +5594,28 @@
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/import.test.ts (fn-imagery, 2026-10-23)."
         },
         {
+            "id": "S-A12-HAPPY-IMPORT-AGAIN",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "An imported free scene can be imported again into a new version of its layer",
+            "asserts": "imagery.import with again: true on an imported scene -> a second usgs-import job and version in the same layer, the scene still imported there; the scene page offers Import again (free) and opens the new version",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 645 (the 1966 KH-7 strip was imported before its stitch was fixed and had no way back in). Tests: functions/test/imagery/import.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-IMPORT-AGAIN-MOVED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "Import again is refused when the scene moved meanwhile, and not offered for a scene to order or without downloads",
+            "asserts": "the scene's layer changes between the check and the transaction -> apiError.conflict and no second job; a scene that must be ordered, or USGS downloads not approved -> no Import again button",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 645. Tests: functions/test/imagery/import.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
             "id": "S-A12-BAD-GUARD-PAUSED",
             "behaviour": "A12",
             "area": "admin",

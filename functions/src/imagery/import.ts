@@ -113,11 +113,11 @@ export function refuseWithoutDownloads(usgs: Awaited<ReturnType<typeof requireUs
     }
 }
 
-/** The scene, once it is known, not imported yet and already scanned, with USGS downloads approved. */
+/** The scene, once it is known, not imported yet (or imported and asked `again`) and already scanned, with USGS downloads approved. */
 async function importableScene(deps: ImportDeps, request: Request): Promise<UsgsSceneDoc> {
     const usgs = await requireUsgs(deps.setup);
     const scene = await requireScene(deps, request);
-    if (scene.status === 'imported' && scene.layerId !== undefined) {
+    if (scene.status === 'imported' && scene.layerId !== undefined && request.again !== true) {
         throw await alreadyImported(deps, request.cityId, scene.layerId);
     }
     if (!scene.downloadAvailable) {
@@ -153,6 +153,26 @@ export function importWork(start: ImportStart, layerId: string): NewWork {
 }
 
 /**
+ * The scene imported once more into its own layer (`again`): a new version beside the old one, which it replaces once approved.
+ * The transaction reads the scene again: it must still be imported into that layer.
+ */
+async function startImportAgain(
+    deps: Pick<Ports, 'documents'>,
+    start: ImportStart,
+    layerId: string,
+): Promise<{ jobId: string; layerId: string }> {
+    const work = importWork(start, layerId);
+    await deps.documents.transaction(async (transaction) => {
+        const current = await transaction.get(FIRESTORE_PATHS.usgsScene(start.cityId, start.scene.entityId), usgsSceneDocSchema);
+        if (current?.layerId !== layerId) {
+            throw new ApiError('apiError.conflict');
+        }
+        await writeImport(transaction, work, current);
+    });
+    return { jobId: work.jobId, layerId };
+}
+
+/**
  * The import of a scanned scene once every check passed: a layer id reserved from its label, then the job, its version
  * and the scene (and its order) in one transaction. Used by `imagery.import` and by the order watch (M4).
  */
@@ -172,8 +192,17 @@ async function imageryImport(deps: ImportDeps, caller: VerifiedCaller, request: 
     const now = deps.clock.now();
     const placement = await refuseNewRasterJob(deps.documents, now, request.cityId);
     await confirmScanned(deps, request.cityId, scene);
-    const { jobId, layerId } = await startImport(deps, { cityId: request.cityId, scene, createdBy: caller.uid, now, ...placement });
-    deps.log.info('usgs scene imported', { uid: caller.uid, cityId: request.cityId, entityId: scene.entityId, jobId, layerId });
+    const start = { cityId: request.cityId, scene, createdBy: caller.uid, now, ...placement };
+    const again = request.again === true && scene.status === 'imported' ? scene.layerId : undefined;
+    const { jobId, layerId } = again === undefined ? await startImport(deps, start) : await startImportAgain(deps, start, again);
+    deps.log.info('usgs scene imported', {
+        uid: caller.uid,
+        cityId: request.cityId,
+        entityId: scene.entityId,
+        jobId,
+        layerId,
+        again: again !== undefined,
+    });
     return { jobId, versionId: jobId, layerId };
 }
 
