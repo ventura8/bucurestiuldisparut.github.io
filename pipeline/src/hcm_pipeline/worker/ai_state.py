@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Final
 
 # The starter files' version of this release (scripts/site/src/admin/starter.ts: the SHA-256 of their content; a test holds it equal).
-STARTER_VERSION: Final = "99ac91535d4c"
+STARTER_VERSION: Final = "5b61f80891bb"
 ENV_STARTER: Final = "HCM_STARTER"
 # What the starter's last look for a newer one said (`WORKER_STARTER_UPDATES` of @hcm/shared).
 ENV_STARTER_UPDATE: Final = "HCM_STARTER_UPDATE"

@@ -19942,6 +19942,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "docs/research/M7-local-worker.md, Household computers (Windows). Tests: functions/test/worker/starter-windows.test.ts (structure: the quality image has no PowerShell)."
+        },
+        {
+            "id": "S-A143-HAPPY-MAC-COLIMA",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "macOS without Docker: Colima installed with Homebrew and started at each login",
+            "asserts": "with Homebrew: the disk checked, brew install colima docker (Homebrew checks each download), the note colima, colima start with Rosetta on Apple silicon (vz) and its size, brew services start colima (Homebrew's launchd agent); the removal takes Colima only by the note, with no password",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers (macOS). Tests: functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-MAC-COLIMA",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "macOS without Homebrew: why the helper does not install Docker itself, and where to get it",
+            "asserts": "no Homebrew: the helper says it installs Colima with Homebrew, which this Mac lacks, opens brew.sh and names Docker Desktop's page; it never runs Homebrew's installer script itself",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers (macOS). Tests: functions/test/worker/starter-household.test.ts."
         }
     ]
 }

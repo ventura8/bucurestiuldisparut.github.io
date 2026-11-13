@@ -223,6 +223,50 @@ describe('Docker installed when it is missing', () => {
     });
 });
 
+describe('macOS: Colima with Homebrew when Docker is missing', () => {
+    /** brew installs Colima and docker: afterwards both answer (stand-ins written into the same folder). */
+    function brew(log: string): string {
+        const docker = `printf '#!/bin/sh\\necho "docker $*" >>"${log}"\\nexit 0\\n' >"$(dirname "$0")/docker"`;
+        const colima = `printf '#!/bin/sh\\necho "colima $*" >>"${log}"\\nexit 0\\n' >"$(dirname "$0")/colima"`;
+        return [
+            `echo "brew $*" >>"${log}"`,
+            `case "$*" in install*) ${docker}; ${colima}; chmod 755 "$(dirname "$0")/docker" "$(dirname "$0")/colima" ;; esac`,
+            'exit 0',
+        ].join('\n');
+    }
+
+    const mac = {
+        uname: '[ "$1" = -s ] && { echo Darwin; exit 0; }\n[ "$1" = -m ] && { echo arm64; exit 0; }\necho studio',
+        launchctl: 'exit 0',
+        open: 'exit 0',
+        df: "echo h; echo '/dev/x 100 1 52428800 1% /'",
+        docker: null,
+    };
+
+    it('happyPath_homebrewInstallsColimaWithRosettaAndANote @S-A143-HAPPY-MAC-COLIMA', async () => {
+        const folder = mkdtempSync(join(tmpdir(), 'hcm-brew-'));
+        const log = join(folder, 'brew.log');
+        writeFileSync(log, '');
+        const run = await starter([], { tools: { ...mac, brew: brew(log) } });
+        const calls = readFileSync(log, 'utf8');
+
+        expect(run.output).toContain('Step 1 of 2: installing Colima and the docker command with Homebrew');
+        expect(calls).toContain('brew install colima docker');
+        expect(calls).toContain('colima start --vm-type vz --vz-rosetta --cpu 4 --memory 6 --disk 40');
+        expect(calls).toContain('brew services start colima');
+        expect(readFileSync(join(run.folder, 'Library/Application Support/hcm-worker/installed-docker'), 'utf8')).toBe('colima\n');
+    });
+
+    it('badPath_withoutHomebrewItSaysWhyAndWhereToGetIt @S-A143-BAD-MAC-COLIMA', async () => {
+        const run = await starter([], { tools: mac });
+
+        expect(run.status).toBe(1);
+        expect(run.output).toContain('which this Mac does not have');
+        expect(run.output).toContain('https://brew.sh');
+        expect(run.output).toContain('https://docs.docker.com/desktop/setup/install/mac-install/');
+    });
+});
+
 describe('Remove this computer, on the computer', () => {
     async function removal(code: number, marker: string | null): Promise<Run> {
         const tools: Record<string, string> = {

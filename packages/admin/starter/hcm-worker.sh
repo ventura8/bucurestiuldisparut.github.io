@@ -32,7 +32,7 @@ set -u
 
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-STARTER_VERSION=99ac91535d4c
+STARTER_VERSION=5b61f80891bb
 
 HCM_PROJECT='__HCM_PROJECT__'
 HCM_CITY='__HCM_CITY__'
@@ -45,8 +45,9 @@ OUTDATED=75
 USAGE=2
 REFUSALS=3
 LABEL=org.historiccitymap.worker
-GET_DOCKER=https://docs.docker.com/get-started/get-docker/
 GET_DOCKER_LINUX=https://docs.docker.com/engine/install/
+GET_DOCKER_MAC=https://docs.docker.com/desktop/setup/install/mac-install/
+GET_HOMEBREW=https://brew.sh
 # W5 (household computers): the disk Docker and the pipeline's image need, how long the first start may take before the one-time
 # code runs out, the worker's own word that it was asked to remove this computer (76 + 1 with Docker + 2 keeping the scanned maps),
 # and the note that this helper installed Docker (so removing it may take Docker too, never one the owner had).
@@ -154,8 +155,16 @@ package_remove() {
 	dnf) sudo -n dnf remove -y -q moby-engine ;;
 	zypper) sudo -n zypper --non-interactive remove docker ;;
 	pacman) sudo -n pacman -R --noconfirm docker ;;
+	colima) remove_colima ;;
 	*) return 1 ;;
 	esac </dev/null >/dev/null 2>&1
+}
+
+# macOS: Colima's machine and the two Homebrew packages this helper installed (no password: Homebrew's own folder).
+remove_colima() {
+	brew services stop colima
+	colima delete -f
+	brew uninstall colima docker
 }
 
 free_kb() {
@@ -208,20 +217,59 @@ install_docker_linux() {
 	return 1
 }
 
-# Docker must be installed and running, and usable by this account: on Linux this helper installs it when it is missing.
+# W5, macOS: Colima (a small free Docker) through Homebrew, which checks every download; its machine set for this Mac's chip (Apple
+# silicon runs the pipeline's amd64 image through Rosetta) and started at each login by Homebrew's own launchd agent. Without
+# Homebrew the helper does not install it for you (its installer asks for the administrator's password and is a script from the
+# internet): it says so and opens its page, or Docker Desktop's.
+install_docker_mac() {
+	if ! command -v brew >/dev/null 2>&1; then
+		say "Docker is missing. On a Mac this helper installs Colima, a small free Docker, with Homebrew, which this Mac does not have."
+		say "Install Homebrew first (it asks your password once): $GET_HOMEBREW, then open this file again."
+		say "Or install Docker Desktop instead: $GET_DOCKER_MAC"
+		open_url "$GET_HOMEBREW"
+		return 1
+	fi
+	free=$(free_kb /)
+	if [ "${free:-0}" -lt "$DOCKER_MIN_FREE_KB" ]; then
+		say "Docker and the map's pipeline need 10 GB free on this Mac; it has $((${free:-0} / 1048576)) GB. Free some space, then open this file again."
+		return 1
+	fi
+	if ! command -v colima >/dev/null 2>&1; then
+		say 'Step 1 of 2: installing Colima and the docker command with Homebrew, which checks each download (about 3 minutes, 1 GB).'
+		if ! brew install colima docker </dev/null; then
+			say "Homebrew could not install Colima (no internet, or Homebrew needs an update: brew update). Help: $GET_HOMEBREW"
+			return 1
+		fi
+		mkdir -p "$(home_dir)"
+		printf 'colima\n' >"$(home_dir)/$DOCKER_MARKER"
+	fi
+	say "Step 2 of 2: starting Colima, a small Linux for Docker that runs in the background and starts when you log in (about 2 minutes)."
+	if [ "$(uname -m)" = arm64 ]; then
+		set -- --vm-type vz --vz-rosetta
+	else
+		set --
+	fi
+	colima start "$@" --cpu 4 --memory 6 --disk 40 </dev/null >/dev/null 2>&1 || true
+	brew services start colima </dev/null >/dev/null 2>&1 || true
+	if docker_ok; then
+		return 0
+	fi
+	say 'Colima is installed but Docker does not answer. Restart the Mac, then open this file again.'
+	say "Help: https://github.com/abiosoft/colima#readme"
+	return 1
+}
+
+# Docker must be installed and running, and usable by this account: this helper installs it when it is missing (Linux: the
+# system's packages; macOS: Colima with Homebrew).
 check_docker() {
 	if docker_ok; then
 		return 0
 	fi
-	if ! is_mac; then
+	if is_mac; then
+		install_docker_mac
+	else
 		install_docker_linux
-		return
 	fi
-	say 'Docker is not installed or not running (or this account may not use it).'
-	say "Get Docker: $GET_DOCKER"
-	say 'Start Docker, then open this file again.'
-	open_url "$GET_DOCKER"
-	return 1
 }
 
 host_os() {
@@ -966,7 +1014,7 @@ remove_by_order() {
 	drop=false
 	left=false
 	if [ $((flags % 2)) = 1 ] && [ -n "$marker" ]; then
-		if sudo -n true >/dev/null 2>&1; then drop=true; else left=true; fi
+		if [ "$marker" = colima ] || sudo -n true >/dev/null 2>&1; then drop=true; else left=true; fi
 	fi
 	docker run --rm --name "$NAME" -v "$NAME:/work" -e HCM_REMOVAL=done -e HCM_REMOVAL_DOCKER_LEFT="$left" "$2" \
 		worker --city "$HCM_CITY" --project "$HCM_PROJECT" --supervised --image "sha256:${2##*@sha256:}" >/dev/null 2>&1 || true

@@ -918,7 +918,14 @@ computer it takes the job at its quiet pace: nothing waits for a computer that i
 no pressure.
 
 **Increments**: one (the list, headless pairing, Docker on Linux, the remote removal by the POSIX starter, the governor); two, Windows
-(below); three, macOS (Colima through Homebrew, launchd), not built yet: a Mac joins with Docker Desktop or Colima set up by its owner.
+(below); three, macOS: without Docker the POSIX file (as `hcm-worker.command`) installs **Colima** with Homebrew (`brew install colima docker`:
+Homebrew checks each bottle's SHA-256; Homebrew's current versions, not pinned by us), notes `colima` in `installed-docker`, starts it
+sized for the pipeline (`--cpu 4 --memory 6 --disk 40`; on Apple silicon `--vm-type vz --vz-rosetta`, so the amd64 pipeline image
+runs through Rosetta) and keeps it at each login with `brew services start colima` (Homebrew's own launchd agent). Without Homebrew it
+installs nothing (Homebrew's installer is a script from the internet that asks for the administrator's password): it says why, opens
+brew.sh and names Docker Desktop. The removal takes Colima (`brew services stop`, `colima delete -f`, `brew uninstall colima docker`)
+only by the note, with no password. **UNVERIFIED** until a real Mac: Colima with Rosetta for the pipeline image, Colima's docker
+context in the LaunchAgent's environment.
 
 **Windows without Docker Desktop (increment 2).** `hcm-worker.bat` uses Docker Desktop when it runs. Otherwise, each step said with its
 time and size: 20 GB free on the system drive (else how much and what to free); virtualization on in the firmware (`Win32_Processor.
