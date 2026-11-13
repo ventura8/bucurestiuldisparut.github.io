@@ -246,3 +246,37 @@ describe('follow-ups of a change', () => {
         expect(harness.cloud.doctor).toHaveBeenCalledWith(harness.google.current, ['scheduler'], expect.any(Function));
     });
 });
+
+describe('intents: the install cards through the controller', () => {
+    it('happyPath_recheckAndContinueOnPipelineAndSiteAskTheInstallerAgain', async () => {
+        const { harness, controller } = await started('normal');
+        harness.google.grant('cloudPlatform');
+        harness.installer.observe.mockClear();
+
+        await controller.intents.recheck('pipeline');
+        await controller.intents.recheck('site');
+        await controller.intents.continueGoogle('pipeline');
+        await controller.intents.continueGoogle('site');
+        await flush();
+
+        const targets = harness.installer.observe.mock.calls.map(([target]) => target);
+        expect(targets.filter((target) => target === 'pipeline').length).toBeGreaterThanOrEqual(2);
+        expect(targets.filter((target) => target === 'site').length).toBeGreaterThanOrEqual(2);
+        controller.dispose();
+    });
+
+    it('happyPath_installUpdateAndInstallOverReachTheInstallCards', async () => {
+        const { harness, controller } = await started('normal');
+        harness.google.grant('cloudPlatform');
+        harness.installer.observe.mockClear();
+
+        await controller.intents.install('site');
+        await controller.intents.updateMap('pipeline');
+        await controller.intents.installOver('server');
+        await controller.intents.postponeUsgs();
+        await flush();
+
+        expect(harness.installer.observe.mock.calls.length + harness.installer.submit.mock.calls.length).toBeGreaterThan(0);
+        controller.dispose();
+    });
+});
