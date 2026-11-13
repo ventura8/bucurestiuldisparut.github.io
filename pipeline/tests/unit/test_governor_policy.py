@@ -57,14 +57,16 @@ def test_on_battery_it_is_quiet_and_pauses_low_unless_allowed() -> None:
 
 
 def test_heat_steps_down_one_level_and_back_ten_degrees_below() -> None:
-    hot = replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, temp_c=91.0))
+    # A mobile processor at work reads 90 °C (the laptop, 2026-11-13): no step down there.
+    assert not is_hot(replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, temp_c=90.0)), was_hot=False)
+    hot = replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, temp_c=96.0))
     state = decide(hot, AUTO, PolicyState(), 0.0)
     assert effective(state) == ("quiet", "thermal")
     assert effective(decide(hot, Choice("quiet"), PolicyState(), 0.0)) == ("paused", "thermal")
-    warm = replace(hot, cpu=Cpu(16, temp_c=85.0))
+    warm = replace(hot, cpu=Cpu(16, temp_c=90.0))
     state = decide(warm, AUTO, state, 1.0)
     assert state.hot
-    cool = replace(hot, cpu=Cpu(16, temp_c=80.0))
+    cool = replace(hot, cpu=Cpu(16, temp_c=84.0))
     assert not decide(cool, AUTO, state, 2.0).hot
 
 

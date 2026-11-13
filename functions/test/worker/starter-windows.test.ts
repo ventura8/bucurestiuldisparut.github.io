@@ -135,6 +135,23 @@ describe('the Windows starter under Windows PowerShell 5.1', () => {
         expect(text).toContain("$arguments = @('run', '--rm', '--name', $Name) + (Get-WorkerLimits) + @('-p',");
     });
 
+    it('happyPath_aComputerWithNoNvidiaCardGetsTheWorkersOwnImageAsUnderThePosixStarter @S-P07-HAPPY-CPU-IMAGE', async () => {
+        const text = await powerShell();
+
+        expect(text).toContain("if ((& nvidia-smi -L 2> $null) -match '^GPU') { return 'gpu' }");
+        expect(text).toContain(`$arguments += @('-e', "HCM_AI_VARIANT=$(Get-AiVariant)", $image)`);
+        expect(text).toContain("if ($wanted -ceq 'worker' -and $workerImage) { $wanted = $workerImage }");
+        expect(text).toContain("$script:AiLib = 'lib-cpu'");
+        expect(text).toContain('$path = "PYTHONPATH=/ai/files/code:/ai/files/$script:AiLib"');
+    });
+
+    it('badPath_onlyTheWorkersOwnImageOrPyTorchsByDigestIsRun @S-P07-BAD-CPU-IMAGE', async () => {
+        const text = await powerShell();
+
+        expect(text).toContain('if ($wanted -cnotmatch $AiImagePattern -and $wanted -ne $workerImage) {');
+        expect(text).toContain("if ($env:HCM_AI_VARIANT -ceq 'gpu' -or $env:HCM_AI_VARIANT -ceq 'cpu') { return $env:HCM_AI_VARIANT }");
+    });
+
     it('happyPath_theWorkerIsToldWhatDockerRunsOn @S-P07-BAD-ARM-HOST', async () => {
         const text = await powerShell();
 

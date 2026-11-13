@@ -25,7 +25,7 @@ from .box import (
     write_failure,
     write_status,
 )
-from .search import search
+from .search import CPU_DECIMATION, search
 from .torch_backend import OUT_OF_MEMORY, AlikedLightGlue, TamperedWeightsError, cap_gpu, device_for, free_memory, out_of_memory
 
 LOG = logging.getLogger("hcm-matcher")
@@ -74,7 +74,8 @@ def answer(request_path: Path, weights: Path, kind: str, why: str, tick: Callabl
         if kind == "gpu":
             cap_gpu(request.budget.gpu_fraction)
         backend = AlikedLightGlue(device, weights, weight_pins(), request.budget.keypoints)
-        found = search(request, backend, tick)
+        # On the processor, the search at half resolution (M26 h2): about a ninth of the time.
+        found = search(request, backend, tick, CPU_DECIMATION if kind == "cpu" else 1)
     except out_of_memory():
         free_memory()
         return OUT_OF_MEMORY

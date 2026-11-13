@@ -41,6 +41,8 @@ AI_FILES=hcm-ai-files
 AI_BOX=hcm-ai-box
 AI_MIN_FREE_KB=31457280
 AI_SECONDS=20
+# The sidecar's folder of unpacked packages in the AI's volume: lib for PyTorch's image, lib-cpu for the worker's own (ai_start).
+AI_LIB=lib
 # The governor (docs/research/M26-governor.md): what only the host can say, every few seconds, and the worker's CPU quota.
 GOVERN_SECONDS=5
 HINTS=/work/host-hints.json
@@ -107,10 +109,15 @@ current_image() {
 	printf '%s' "$image"
 }
 
-# The local AI's image as the worker's /state names it: pytorch/pytorch by digest and nothing else; nothing when it says otherwise.
+# The local AI's image as the worker's /state names it: pytorch/pytorch by digest, or `worker` (the worker's own image, on a computer
+# with no NVIDIA card) and nothing else; nothing when it says otherwise.
 ai_image() {
 	found=$(printf '%s' "$1" | sed -n 's/.*"image": *"\([^"]*\)".*/\1/p')
 	case "$found" in
+	worker)
+		printf worker
+		return 0
+		;;
 	pytorch/pytorch@sha256:* | pytorch/pytorch:*@sha256:*) ;;
 	*) return 1 ;;
 	esac
@@ -122,6 +129,22 @@ ai_image() {
 	*[!A-Za-z0-9/:._-]*) return 1 ;;
 	esac
 	printf '%s' "$found"
+}
+
+# Which sidecar this computer gets (docs/research/M26-governor.md §5): gpu when an NVIDIA card answers here, PyTorch's own image of
+# about 10 GB; else cpu, the worker's own image and PyTorch for the processor in the AI's volume, about 1 GB. HCM_AI_VARIANT decides.
+ai_variant() {
+	case "${HCM_AI_VARIANT:-}" in
+	gpu | cpu)
+		printf '%s' "$HCM_AI_VARIANT"
+		return
+		;;
+	esac
+	if nvidia-smi -L 2>/dev/null | grep -q '^GPU'; then
+		printf gpu
+	else
+		printf cpu
+	fi
 }
 
 # The image the worker's container runs: what prepares the volumes and reads the disk, since a host's own tools may not see Docker's disk.
@@ -188,7 +211,7 @@ ai_probe() {
 	image=$1
 	shift
 	docker run --rm "$@" --network none --cap-drop ALL --security-opt no-new-privileges -u 10001:10001 -e HOME=/tmp --tmpfs /tmp \
-		-e HCM_AI_ROOT=/ai -e PYTHONPATH=/ai/files/code:/ai/files/lib \
+		-e HCM_AI_ROOT=/ai -e PYTHONPATH=/ai/files/code:/ai/files/$AI_LIB \
 		-v "$AI_FILES:/ai/files:ro" -v "$AI_BOX:/ai/box" --entrypoint python "$image" -m matcher.child probe gpu none >/dev/null 2>&1
 	code=$?
 	if [ "$code" -ne 0 ]; then
@@ -207,7 +230,7 @@ ai_run() {
 	docker rm -f "$MATCHER" >/dev/null 2>&1 || true
 	docker run --rm --name "$MATCHER" "$@" --network none --cap-drop ALL \
 		--security-opt no-new-privileges --memory 4g --memory-swap 4g --cpu-shares 128 --shm-size 1g --pids-limit 512 \
-		--tmpfs /tmp -u 10001:10001 -e HOME=/tmp -e HCM_AI_ROOT=/ai -e PYTHONPATH=/ai/files/code:/ai/files/lib \
+		--tmpfs /tmp -u 10001:10001 -e HOME=/tmp -e HCM_AI_ROOT=/ai -e PYTHONPATH=/ai/files/code:/ai/files/$AI_LIB \
 		-e HCM_AI_DEVICE="$device" -e HCM_AI_WHY="$why" \
 		-v "$AI_FILES:/ai/files:ro" -v "$AI_BOX:/ai/box" --entrypoint python "$image" -m matcher.serve &
 }
@@ -216,7 +239,12 @@ ai_run() {
 # sidecar lives only while a frame wants it, so a driver installed later, or a card back from a suspend, is found by the next frame. A
 # silent processor run is impossible: the sidecar refuses HCM_AI_DEVICE=cpu without a reason.
 ai_start() {
-	if ai_probe "$1" --gpus all; then
+	AI_LIB=lib
+	if [ "$1" = "$(worker_image)" ]; then
+		AI_LIB=lib-cpu
+		say "local AI: on the processor, in the worker's own image (no NVIDIA card on this computer, so nothing big to fetch)"
+		ai_run "$1" cpu no-gpu
+	elif ai_probe "$1" --gpus all; then
 		say 'local AI: graphics card through --gpus all'
 		ai_run "$1" gpu '' --gpus all
 	elif docker info 2>/dev/null | grep -q nvidia.com/gpu && ai_probe "$1" --device nvidia.com/gpu=all; then
@@ -293,8 +321,13 @@ matcher_pass() {
 		return 0
 	}
 	worker=$(worker_image) || return 0
+	if [ "$wanted" = worker ]; then
+		wanted=$worker
+	fi
 	if [ "$pulled" != "$wanted" ]; then
-		ai_pull "$worker" "$wanted" || return 0
+		if [ "$wanted" != "$worker" ]; then
+			ai_pull "$worker" "$wanted" || return 0
+		fi
 		ai_volumes "$worker"
 		pulled=$wanted
 	fi
@@ -426,7 +459,7 @@ start_worker() {
 		set -- "$@" -e "GDAL_NUM_THREADS=$HCM_WORKER_THREADS"
 	fi
 	docker run --rm --name "$NAME" "$@" -p "127.0.0.1:$PORT:$PORT" -v "$NAME:/work" \
-		-v "$AI_FILES:/ai/files" -v "$AI_BOX:/ai/box" -e HCM_STARTER=2 -e HCM_DOCKER_ARCH="$(docker_arch)" "$image" \
+		-v "$AI_FILES:/ai/files" -v "$AI_BOX:/ai/box" -e HCM_STARTER=2 -e HCM_DOCKER_ARCH="$(docker_arch)" -e HCM_AI_VARIANT="$(ai_variant)" "$image" \
 		worker --city "$HCM_CITY" --project "$HCM_PROJECT" --supervised --image "sha256:${image##*@sha256:}"
 }
 

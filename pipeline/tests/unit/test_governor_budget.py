@@ -29,7 +29,7 @@ def test_the_laptop_full_and_quiet() -> None:
     assert (full.gdal_cache_mb, full.warp_mb) == (864, 1728)
     assert full.tile_processes == 13
     quiet = budget_for("quiet", LINUX_NVIDIA_CDI)
-    assert (quiet.threads, quiet.gpu_fraction, quiet.keypoints) == (4, 0.4, 1024)
+    assert (quiet.threads, quiet.gpu_fraction, quiet.keypoints) == (4, 0.4, 2048)
     assert budget_for("paused", LINUX_NVIDIA_CDI).as_record() == {"threads": 0, "memoryMb": 0, "gpuFraction": 0.0}
 
 

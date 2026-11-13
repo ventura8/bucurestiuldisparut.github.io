@@ -120,6 +120,7 @@ def lightglue_module(torch: ModuleType, fail: BaseException | None = None) -> Mo
 
     def aliked(**options: object) -> Network:
         assert options["max_num_keypoints"] in {1024, 2048}
+        module.__dict__.setdefault("asked", []).append(options["max_num_keypoints"])
         return Network(torch, "https://example.invalid/models/aliked-n16.pth", None)
 
     def lightglue(features: str) -> Network:
@@ -251,7 +252,7 @@ def test_bad_path_out_of_memory_frees_the_card_and_says_75(world: World, monkeyp
     monkeypatch.setattr(
         world.child,
         "search",
-        lambda _request, backend, _tick: backend.match(({"keypoints": Tensor(numpy.zeros((1, 2, 2)))},) * 2, ((1, 1), (1, 1))),
+        lambda _request, backend, _tick, _decimation: backend.match(({"keypoints": Tensor(numpy.zeros((1, 2, 2)))},) * 2, ((1, 1), (1, 1))),
     )
 
     assert world.child.answer(path, world.weights, "gpu", "", lambda: None) == world.backend.OUT_OF_MEMORY
@@ -340,3 +341,26 @@ def test_bad_path_a_card_others_hold_sends_the_request_to_the_processor_and_says
     assert world.fake.threads == [3]
     assert niced == [10]
     assert world.fake.fractions == []
+
+
+def test_happy_path_the_processor_searches_lighter_and_the_card_as_before(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    """M26 h2: on the processor, half the resolution with the budget's keypoints; the card keeps the full search.
+
+    Scenarios: S-P07-HAPPY-CPU-FALLBACK, S-P07-HAPPY-GPU
+    """
+    monkeypatch.setattr(world.backend.os, "nice", lambda _steps: None)
+    lightglue = lightglue_module(world.torch)
+    monkeypatch.setitem(sys.modules, "lightglue", lightglue)
+    asked: list[int] = []
+
+    def search(_request: object, _backend: object, _tick: object, decimation: int) -> tuple[()]:
+        asked.append(decimation)
+        return ()
+
+    monkeypatch.setattr(world.child, "search", search)
+
+    assert world.child.answer(request_in(world.box, MatcherBudget(2, 2048)), world.weights, "cpu", "no-gpu", lambda: None) == 0
+    assert world.child.answer(request_in(world.box, MatcherBudget(0, 2048)), world.weights, "gpu", "", lambda: None) == 0
+
+    assert asked == [2, 1]
+    assert lightglue.__dict__["asked"] == [2048, 2048]

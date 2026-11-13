@@ -732,3 +732,12 @@ in its own hidden process): every 5 s it writes the host's hints (input idle tim
 cards and NPUs Docker could pass) into the volume through `docker exec` into the worker's container, and runs
 `docker update --cpus <threads> hcm-worker` when the budget's threads change. A paused worker holds its step at the next
 checkpoint (its time limit moved by the wait). Behaviour A141.
+
+## Addendum of 2026-11-13: the starter picks the sidecar by the computer's card (M26 item i)
+
+`hcm-worker.sh` (`ai_variant`) and `hcm-worker.bat` (`Get-AiVariant`) start the worker with `-e HCM_AI_VARIANT=gpu` when
+`nvidia-smi -L` names a GPU, else `cpu`; the owner's own `HCM_AI_VARIANT` (`gpu` or `cpu`, exactly) wins. With `cpu` the
+worker's `/state` names the AI's image `worker`: the starter runs the sidecar from the worker's own image (no pull, no
+probe of a card) with `PYTHONPATH=/ai/files/code:/ai/files/lib-cpu`; PyTorch's image keeps `lib`. A starter downloaded
+before this passes no variant, so its worker keeps PyTorch's image as before. Scenarios `S-P07-HAPPY-CPU-IMAGE`,
+`S-P07-BAD-CPU-IMAGE`; details in `docs/research/M26-governor.md` §5.

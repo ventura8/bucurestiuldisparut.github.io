@@ -58,7 +58,8 @@ One pure function, `decide(signals, choice, before, now) -> PolicyState`, and `e
   after 120 s** with none of those (a calm timer), so it never flaps (a hypothesis property test drives it with any
   sequence of activity).
 - On battery under 30 % it **pauses**, unless the owner allowed work on battery (`batteryAllowed` in `POST /profile`).
-- Heat steps **down one level** (full to quiet, quiet to paused) at 90 °C on the processor or 83 °C on a card, and
+- Heat steps **down one level** (full to quiet, quiet to paused) at 95 °C on the processor (90 until 2026-11-13: the
+  laptop's package reads 90 with only a local model running, so every mobile processor at work stepped down) or 83 °C on a card, and
   back up only 10 °C below both (`why: thermal`).
 - A card the matcher must leave (§5) reads `why: gpu-busy` while the profile stays full for the processor.
 
@@ -71,7 +72,7 @@ One pure function, `decide(signals, choice, before, now) -> PolicyState`, and `e
 | GDAL cache, warp memory | `rasters.gdal_memory` of the budget: a sixteenth and an eighth (128 to 1,024 MB, 256 to 2,048 MB) | the same | unchanged |
 | Tile processes | min(threads, memory ÷ 4 ÷ 256 MB) | the same | 0 |
 | OpenCV's threads | the threads | the threads | unchanged |
-| Matcher keypoints | 2048 | 1024 | — |
+| Matcher keypoints | 2048 | 2048 (1,024 lost a frame the card finds: §11) | — |
 | Card's memory share (`gpuFraction`) | ≤ 0.7 | ≤ 0.4 | 0 |
 | A running step | runs | runs | waits at its next checkpoint |
 
@@ -101,7 +102,7 @@ Actuators:
 ## 5. Where the matcher runs (`backends.py`)
 
 Order: CUDA, ROCm, OpenVINO on an Intel card, OpenVINO on the NPU (ALIKED's extractor only, at a fixed size: an NPU
-needs static shapes; LightGlue stays on a card or the processor), then the processor with fewer keypoints.
+needs static shapes; LightGlue stays on a card or the processor), then the processor, searching at half resolution.
 
 - A runtime counts only when the release ships the sidecar image for it (`IMAGES`; today `cuda` and `cpu`, the
   `pytorch/pytorch` image of M10). A card with no image says `no-image`; one Docker cannot pass in says
@@ -110,6 +111,17 @@ needs static shapes; LightGlue stays on a card or the processor), then the proce
   2 GB, the next request runs on the processor with `fallback: gpu-busy` (said in the proposer's record, which the
   calibration schema now accepts), and the card says `gpu-busy`. The laptop's 3080 on 2026-11-12 (6.4 of 8 GB held by
   someone else's job) is the test's case.
+- **The processor's sidecar (item i, 2026-11-13).** A computer where `nvidia-smi -L` names no GPU gets
+  `HCM_AI_VARIANT=cpu` from the starter (`ai_variant`, `Get-AiVariant`; the owner's `HCM_AI_VARIANT` wins). The worker
+  then fetches `matcher/pins-cpu.json` with the same `AiFiles` (the same weights and LightGlue; PyTorch 2.15.0 for the
+  processor, torchvision 0.29.2, kornia, kornia_rs, Pillow, SymPy, mpmath and typing_extensions as cp314 wheels, hosts
+  `download.pytorch.org` and `files.pythonhosted.org`) into `lib-cpu/`, a folder of its own so PyTorch's image never imports
+  the processor's PyTorch, and names the image `worker`. The starter maps `worker` to the worker's own image, pulls
+  nothing, and runs the sidecar from it on the processor (`/opt/venv/bin/python` on its `PATH`), under the same flags
+  (`--network none`, `--cap-drop ALL`, `-u 10001`, 4 GB). Any other word is refused as before.
+- **The processor's search (item h2).** On the processor `search` runs at half resolution (`CPU_DECIMATION`, tiles of
+  768 px at 30 m, a window under two tiles a side as it is) with the budget's keypoints. Quiet keeps 2,048 keypoints:
+  1,024 lost a frame (§9, lesson 613).
 
 ## 6. Contract
 
@@ -168,18 +180,43 @@ is niced by 10, and the starter's `docker update --cpus` sits beside the memory 
 | Laptop (16 threads, 30 GB, RTX 3080 8 GB) | the CUDA path and NVML-style yield (seen live: 6.4 GB held by another job) |
 | None of them | AMD ROCm, DirectML, Qualcomm, Core ML / ANE: fake probes only, **unproved** |
 
-## 9. Measured
+## 9. Measured (2026-11-13)
 
-See the addendum below (filled from the NUC run).
+**The load test** (`governor_load.py`, the NUC in an 8-CPU slot, so 8 cores to the governor): the person's input sent the
+worker quiet in 0.03 s (one tick at most: 0.30 s in the first run); full ran 6 threads, about 4 cores, quiet 2 threads,
+about 2.5 cores; the worker's process held 174 MB. The "user"'s timer was late at p99 0.50 ms governed against 4.40 ms
+ungoverned, and kept 110 % of its alone rate against 93 % (first run: 86 % against 91 %, p99 1.6 against 2.8 ms). Runs
+while another agent loaded the NUC to 34 read `paused` throughout (others over 40 % and a processor at 95 °C): the
+governor's rule, but no measurement. The report no longer counts a paused pass's memory as over its budget of 0.
+
+**Where the matcher runs**, one R1 request (F006 on Fetești, its true orientation; a 7,841 px film, 1,125 pairs):
+
+| Backend | Machine | Time | Found |
+| --- | --- | --- | --- |
+| CUDA, PyTorch's image | laptop RTX 3080, beside a local model holding 6.4 of 8 GB at 80 to 88 % | 43.4 s, 1,086 MB of the card under a 0.2 share | 3 pairs, 46 points, as gate R1 (20.4 s alone) |
+| Processor, before h2 | NUC, 8 threads, cp314 PyTorch 2.15.0+cpu | 553 s (529 s on a wrong orientation) | 2 pairs, 29 points, 36 m from the card's |
+| Processor, half resolution, 2,048 keypoints (shipped) | the same, in the worker's image with `lib-cpu` as `AiFiles` fetched it | 64 s (62 to 71 s on the wrong ones) | 2 pairs, 40 points; second proposal 322 m from the card's |
+| Processor, half resolution, 1,024 keypoints | the same | 38 s | **nothing** (rejected) |
+| Processor, full resolution, 1,024 keypoints | the same | 206 s | **nothing** (rejected) |
+| OpenVINO 2026.4.1 (CPU, GPU, NPU) | NUC, ALIKED exported to ONNX | — | the model does not load: no conversion rule for `DeformConv-19` |
+
+The shipped processor search on F007 and F003 on Bucharest: 54 s and 68 s, 8 and 11 pairs, 23 m and 54 m from the
+card's proposal; all six wrong orientations proposed nothing, as on the card. A frame of four orientations: about 4.3
+minutes against 36 on the NUC (49.5 on the laptop in M10), never above 2.3 GB of memory.
+
+**The processor's sidecar on disk:** `AiFiles` with `pins-cpu.json` fetched 276 MB from the real hosts in 19 s and
+unpacked 830 MB into `lib-cpu/`, beside the 49 MB of weights; PyTorch's CUDA image it replaces is 9.68 GB on the laptop.
 
 ## 10. Not done (and why)
 
-- **ONNX Runtime and OpenVINO sidecar images** (`matcher/ort_backend.py`, `matcher/export.py`, images `openvino`,
-  `cpu`): not built. ALIKED's deformable convolution must first be shown to export to ONNX (or through OpenVINO's
-  `convert_model`) with the M9 proof's parity marks (same verdict, scale within 0.5 %, rotation within 0.2°, ≥ 90 % of
-  the reference's inliers); that needs the pinned packages downloaded and measured, which this run did not do. Until
-  then `IMAGES` is `{cuda, cpu}` and an Intel or AMD card reads `no-image`; the starter still passes only `--gpus all`
-  or CDI to the sidecar.
+- **ONNX Runtime and OpenVINO sidecar images** (`matcher/ort_backend.py`, `matcher/export.py`, image `openvino`): not
+  built. ALIKED exports to ONNX, but OpenVINO 2026.4.1 has no conversion rule for its `DeformConv-19` (measured on the
+  NUC, 2026-11-13), so neither the Arc nor the NPU can run it as it is; a rewrite of the deformable convolution, and the
+  M9 proof's parity marks (same verdict, scale within 0.5 %, rotation within 0.2°, ≥ 90 % of the reference's inliers),
+  come first. ONNX Runtime's own providers (ROCm, DirectML, CoreML) were not run. Until then `IMAGES` is `{cuda, cpu}`,
+  an Intel or AMD card reads `no-image`, and the starter still passes only `--gpus all` or CDI to the sidecar.
+- **Unproved:** AMD ROCm, DirectML, Core ML, any NPU, the processor's sidecar on Windows (only the text of its PowerShell
+  is tested) and on an arm computer (no cp314 arm wheels are pinned; arm stays `unavailable`, as before).
 - The sidecar's memory (`--memory 4g`) and the worker's own memory cap stay the starter's fixed numbers (stripfix's 60 %).
 - The ours/others split of a card's memory counts our own sidecar as "others" while a request runs (nvidia-smi on the
   host cannot tell the container's processes apart); the yield is decided before a request starts, when ours is 0.
