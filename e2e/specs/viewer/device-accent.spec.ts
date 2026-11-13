@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
 import { siteManifestData } from '../../fixtures/manifest.js';
+import { emulateDeviceAccent } from '../../support/device-accent.js';
 import { expect, test } from '../../support/test.js';
 import { chooseMenuItem, openViewer, t, viewer, waitForEngineEvent } from '../../support/viewer.js';
 
@@ -16,13 +17,6 @@ const TOKENS = (siteManifestData()['city'] as { theme: { tokens: Record<string, 
 const PRIMARY = '--md-sys-color-primary';
 const ON_PRIMARY = '--md-sys-color-on-primary';
 const GREEN = '#1e8e3e';
-
-/** Names the device's accent on the page's root before any script of the page runs. */
-async function emulateAccent(page: Page, accent: string): Promise<void> {
-    await page.addInitScript((value) => {
-        document.documentElement.style.setProperty('--hcm-device-accent', value);
-    }, accent);
-}
 
 interface Shown {
     readonly primary: string;
@@ -86,7 +80,7 @@ for (const scheme of ['light', 'dark'] as const) {
         { tag: '@S-V12-HAPPY-DEVICE-ACCENT' },
         async ({ page, lang }) => {
             await page.emulateMedia({ colorScheme: scheme });
-            await emulateAccent(page, GREEN);
+            await emulateDeviceAccent(page, GREEN);
             await openViewer(page, { lang });
             const own = TOKENS[scheme]?.[PRIMARY]?.toLowerCase() ?? '';
 
@@ -96,7 +90,8 @@ for (const scheme of ['light', 'dark'] as const) {
             expect(Math.abs(colours.hue - colours.accentHue)).toBeLessThan(0.15);
             expect(Math.abs(colours.luminance - colours.cityLuminance)).toBeLessThan(0.01);
             await chooseMenuItem(page, lang, t(lang, 'settings.title'));
-            const settings = page.getByRole('dialog', { name: t(lang, 'settings.title') });
+            await expect(page.getByRole('dialog', { name: t(lang, 'settings.title') })).toBeVisible();
+            const settings = viewer(page).locator('hcm-about-dialog');
             await expect(settings.getByRole('radio', { name: t(lang, 'theme.system'), exact: true })).toHaveAttribute(
                 'aria-checked',
                 'true',
@@ -117,7 +112,7 @@ for (const scheme of ['light', 'dark'] as const) {
 
 test("Map colours keeps the city's own, and the choice persists", { tag: '@S-V12-HAPPY-DEVICE-ACCENT' }, async ({ page, lang }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
-    await emulateAccent(page, GREEN);
+    await emulateDeviceAccent(page, GREEN);
     await openViewer(page, { lang });
     const own = TOKENS['dark']?.[PRIMARY]?.toLowerCase() ?? '';
 
@@ -138,7 +133,7 @@ test(
         // A Chromium tab: Chrome's AccentColor is its constant there, never the device's.
         await expect.poll(async () => (await shown(page, own)).primary).toBe(own);
 
-        await emulateAccent(page, '#808080');
+        await emulateDeviceAccent(page, '#808080');
         await page.reload();
         await waitForEngineEvent(page, 'hcm-ready');
         await expect.poll(async () => (await shown(page, own)).primary).toBe(own);

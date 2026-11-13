@@ -1,6 +1,7 @@
 import { translate, translateAdminShell } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
+import { emulateDeviceAccent } from '../../../support/device-accent.js';
 import { expect, test } from '../../support/content-test.js';
 import type { ContentWorld } from '../../support/content.js';
 import { seedPhotosCity } from '../../support/photos.js';
@@ -16,9 +17,7 @@ const PRIMARY = '--md-sys-color-primary';
 
 async function openAdmin(page: Page, content: ContentWorld, accent: string | null): Promise<void> {
     if (accent !== null) {
-        await page.addInitScript((value) => {
-            document.documentElement.style.setProperty('--hcm-device-accent', value);
-        }, accent);
+        await emulateDeviceAccent(page, accent);
     }
     await seedPhotosCity(content, AT);
     await page.goto(content.address('en', 'photos', { map: false }));

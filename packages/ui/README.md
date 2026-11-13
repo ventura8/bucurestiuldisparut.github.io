@@ -69,6 +69,10 @@ passed in already localized (the kit has no catalogue of its own).
   plus every system token into one constructable stylesheet per target, through the CSSOM (no inline style, so the strict
   CSP holds and a token value cannot escape its declaration). `system` follows `prefers-color-scheme`; every mode follows
   `prefers-contrast: more`; `prefers-reduced-motion: reduce` turns the spatial springs off. `clearTheme` removes it.
+- `src/theme/device-accent.ts`: **Device accent**, the default colours of the viewer and the admin (DECISIONS-for-review.md
+  §222). `readDeviceAccent` reads the page's `--hcm-device-accent`, else CSS `AccentColor` where it is the device's own
+  (Firefox, an installed Chromium app); `withAccent` turns a theme's schemes to the accent's OKLCH hue with every colour's
+  WCAG luminance kept, so every contrast ratio stays the city's; `accentTokens(tokens, 'device' | 'map', document)`.
 - `src/theme/system.ts`: the shape scale (with 20, 32 and 48 px), the type scale and its emphasized weights, the
   Expressive springs as Google's web cubic-bezier curves, elevation shadows and state-layer opacities, from
   `@material/web@2.5.0` `tokens/versions/latest` (design system 34.0.21).
