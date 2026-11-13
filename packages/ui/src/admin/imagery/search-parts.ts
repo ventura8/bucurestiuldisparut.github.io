@@ -11,11 +11,12 @@ import type { SearchPartPort } from './imagery-port.js';
 import { datasetText } from './imagery-text.js';
 
 function partText(locale: Locale, part: SearchPartPort): string {
-    const params = { dataset: datasetText(locale, part.dataset), found: String(part.found) };
-    if (part.state === 'done') {
-        return `${params.dataset}: ${params.found}`;
+    const dataset = datasetText(locale, part.dataset);
+    if (part.state === 'searching') {
+        return `${dataset}: ${contentText(locale, 'adminContent.imagery.searchingButton')}`;
     }
-    return contentText(locale, part.state === 'searching' ? 'adminContent.imagery.part.searching' : 'adminContent.imagery.part.stopped', params);
+    const found = String(part.found);
+    return part.state === 'done' ? `${dataset}: ${found}` : contentText(locale, 'adminContent.imagery.partStopped', { dataset, found });
 }
 
 /** One line per searched dataset, or nothing before a search. */

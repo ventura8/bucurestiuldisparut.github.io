@@ -19,7 +19,7 @@ describe('the search’s parts', () => {
 
         expect([...host.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
             'Landsat 8–9 OLI: 2',
-            'Corona (Declass 1): searching…',
+            'Corona (Declass 1): Searching…',
         ]);
         expect(host.querySelector('[data-dataset="corona2"]')?.getAttribute('data-part')).toBe('searching');
     });
@@ -33,7 +33,7 @@ describe('the search’s parts', () => {
         const ro = shown([{ dataset: 'corona2', state: 'partial', found: 100, reason: 'outOfTime' }], 'ro');
 
         const [slow, refused, late] = [...en.querySelectorAll('li')].map((item) => item.textContent);
-        expect(slow).toContain('100 kept; USGS did not answer in time');
+        expect(slow).toContain('100 kept; USGS was too slow');
         expect(refused).toContain('0 kept');
         expect(late).toContain('The rest comes in 15 minutes');
         expect(ro.textContent).toContain('100 păstrate');
