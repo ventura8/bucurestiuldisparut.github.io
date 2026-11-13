@@ -6,6 +6,7 @@ outer end. Joined left to right, the two bands matched each other and the frame 
 
 from pathlib import Path
 
+import cv2
 import numpy
 import pytest
 from hcm_pipeline.contract import Errors
@@ -89,3 +90,34 @@ def test_bad_path_the_scanners_edge_bands_never_match_each_other(true_order: boo
     _dx, _dy, score = stitch.coarse_match(left, right, 1)
 
     assert (score >= stitch.MIN_PAIR_SCORE) is true_order
+
+
+def corona_pair(overlap: int) -> tuple[numpy.ndarray, numpy.ndarray]:
+    """Two segments of a wide Corona-like frame (3.2 times as wide as tall), overlapping by `overlap` columns."""
+    rng = numpy.random.default_rng(68)
+    height, width = 1400, 4480
+    noise = rng.normal(128, 60, (height, 2 * width)).astype(numpy.float32)
+    frame = numpy.clip(cv2.GaussianBlur(noise, (0, 0), 3) * 3 - 256, 0, 255).astype(numpy.uint8)
+    return frame[:, :width], frame[:, width - overlap : 2 * width - overlap]
+
+
+@pytest.mark.parametrize("overlap", [300, 1300])
+def test_happy_path_a_wide_segments_overlap_beyond_its_height_share_is_found(overlap: int) -> None:
+    """Scenarios: S-P01-HAPPY-CORONA-WIDE-OVERLAP"""
+    # Lesson 671: an overlap of 29 % of the width lies past the former fixed reach of 1200 shrunk pixels.
+    left, right = corona_pair(overlap)
+
+    dx, dy, score = stitch.coarse_match(left, right, 1)
+
+    assert (dx, dy) == (left.shape[1] - overlap, 0)
+    assert score > 0.9
+
+
+def test_bad_path_the_reach_never_passes_the_overlap_share_of_a_wide_segment() -> None:
+    """Scenarios: S-P01-HAPPY-CORONA-WIDE-OVERLAP"""
+    # An overlap wider than `MAX_OVERLAP_SHARE` of the segment lies outside the search: the match lands elsewhere.
+    left, right = corona_pair(1700)
+
+    dx, _dy, _score = stitch.coarse_match(left, right, 1)
+
+    assert dx != left.shape[1] - 1700

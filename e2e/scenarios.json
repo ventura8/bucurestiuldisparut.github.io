@@ -11279,6 +11279,17 @@
             "notes": "Lesson 645 (the 1966 KH-7 strip DZB00403000026H017001 covered 49 % of Bucharest: its two segments were joined the wrong way). In pipeline/tests/unit/test_stitch_order.py; the generator is pipeline/tests/synthetic/scenes.py (`kh7_segments`, `scanner_edges`, `SceneSpec.right_to_left`)."
         },
         {
+            "id": "S-P01-HAPPY-CORONA-WIDE-OVERLAP",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A wide Corona segment's overlap is found however far it reaches",
+            "asserts": "two segments 3.2 times as wide as tall overlapping by 7 % or 29 % of their width (past the former fixed reach of 1200 px) -> the coarse match finds the true offset with a score over 0.9; an overlap wider than the overlap share is not searched",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 671 (the 1968 Corona DS1103-1058DF026 repeated a third of itself: a fixed reach of 1200 shrunk pixels stopped short of its 23 % overlaps). In pipeline/tests/unit/test_stitch_order.py."
+        },
+        {
             "id": "S-P01-BAD-SEGMENT-OTHER-FRAME",
             "behaviour": "P01",
             "area": "pipeline",

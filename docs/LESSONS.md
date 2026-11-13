@@ -3942,3 +3942,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-13, track/adminsite: forwarding the public map's `/admin/**` to the admin's own site would also have forwarded `/admin/starter.json`, which Linux starters already installed fetch with `curl` and no `-L`; RE2 has no lookahead to leave it out.
     - Fix: the forward's pattern lists every string but that name (`everyStringBut`, `scripts/site/src/hosting/admin-site.ts`) and the file stays in the public tree.
     - **Before a redirect replaces a path, list every client already installed that reads it and whether it follows redirects.**
+
+671. **A search reach in fixed shrunk pixels stopped short of a wide segment's overlap.**
+    - Seen: 2026-11-13, track/corona68: the 1968 Corona frames DS1103-1058DF026 and DF027 (four 36 070 × 11 374 px segments, lettered right to left) overlap by about 23 % of a segment's width (8 200 px). `coarse_match` searched only the last 1 200 shrunk pixels (6 000 px at the 5 times shrink), so every pair matched a wrong place at 0.8 or so, the frame repeated a third of itself and looked mirrored where the repeats met, and DF027's city fell outside its crop.
+    - Fix: the reach is the segment's shrunk height (`SEARCH_HEIGHT_SHARE`), capped at `MAX_OVERLAP_SHARE` of its width (`pipeline/src/hcm_pipeline/steps/stitch.py`; `pipeline/tests/unit/test_stitch_order.py`, S-P01-HAPPY-CORONA-WIDE-OVERLAP). Measured on the real segments: the true offsets score 0.96 to 0.99.
+    - **Scale every search window with the image it searches, and check a stitch's offsets against a direct match of the real segments before blaming the film's orientation.**
