@@ -60,7 +60,7 @@ await build({
 const KIT_DIR = here('dist/export-kit/');
 const ENGINE_DIST = here('../packages/engine/dist/');
 const ENGINE_FILES = ['engine.iife.js', 'engine.extras.js', 'engine.css', 'THIRD_PARTY_NOTICES.txt'];
-// The IIFE loads its extras from its own folder with their integrity (DECISIONS-for-review.md §181): the export carries them.
+// The IIFE loads its extras from its own folder with their integrity (DECISIONS-for-review.md §183): the export carries them.
 const ENGINE_EXTRA = /^extra-[\w-]+\.js$/;
 const ENGINE_VERSION = /^export const ENGINE_VERSION = '(\d{1,4}\.\d{1,4}\.\d{1,6}(?:-(?:beta|rc)\.(?:0|[1-9]\d{0,5}))?)';$/m;
 const engineVersion = ENGINE_VERSION.exec(await readFile(here('../packages/engine/src/index.ts'), 'utf8'))?.[1];
@@ -79,7 +79,7 @@ try {
         await copyFile(`${ENGINE_DIST}${file}`, `${KIT_DIR}engine/${file}`);
     }
     await cp(`${ENGINE_DIST}fonts`, `${KIT_DIR}engine/fonts`, { recursive: true });
-    // The languages' texts the engine fetches when it shows one (DECISIONS-for-review.md §183).
+    // The languages' texts the engine fetches when it shows one (DECISIONS-for-review.md §185).
     await cp(`${ENGINE_DIST}i18n`, `${KIT_DIR}engine/i18n`, { recursive: true });
 } catch (error) {
     throw new Error(`the export kit needs the engine's build (npm run build --workspace @hcm/engine first): ${String(error)}`, {

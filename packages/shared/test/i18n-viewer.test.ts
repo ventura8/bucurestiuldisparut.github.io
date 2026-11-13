@@ -1,4 +1,4 @@
-/** The viewer's 25 languages (sixteen complete, nine being translated): the registry, the tags, the endonyms and every catalogue (DECISIONS-for-review.md §183). */
+/** The viewer's 25 languages (sixteen complete, nine being translated): the registry, the tags, the endonyms and every catalogue (DECISIONS-for-review.md §185). */
 import { describe, expect, it } from 'vitest';
 
 import {

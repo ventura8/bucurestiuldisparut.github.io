@@ -1,4 +1,4 @@
-/** The viewer's catalogues out of the engine's bundle and into `i18n/<locale>.json` (DECISIONS-for-review.md §183). */
+/** The viewer's catalogues out of the engine's bundle and into `i18n/<locale>.json` (DECISIONS-for-review.md §185). */
 import { VIEWER_LOCALES } from '@hcm/shared';
 import { VIEWER_CATALOGUES } from '@hcm/shared/viewer-catalogues';
 import { describe, expect, it } from 'vitest';

@@ -90,7 +90,7 @@ export async function switchLanguage(languageSwitch: LanguageSwitch, chosen: str
 export type LatestLanguage = (languageSwitch: LanguageSwitch, chosen: string) => Promise<void>;
 
 /**
- * A page's language switch where the latest choice wins (as the viewer's, DECISIONS-for-review.md §183b): French chosen on
+ * A page's language switch where the latest choice wins (as the viewer's, DECISIONS-for-review.md §185b): French chosen on
  * a slow network, then English (bundled, shown at once), stays English when the French file arrives; the boot's fetch of
  * the stored language never undoes a choice made in the picker meanwhile. A superseded switch neither shows, remembers nor
  * reports anything.

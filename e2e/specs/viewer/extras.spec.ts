@@ -8,7 +8,7 @@ import { expect, test } from '../../support/test.js';
 import { serveManifest, t, viewer } from '../../support/viewer.js';
 
 /**
- * The IIFE's extras on demand (behaviour V63, docs/ENGINE_API.md → *Extras on demand*, DECISIONS-for-review.md §181): a
+ * The IIFE's extras on demand (behaviour V63, docs/ENGINE_API.md → *Extras on demand*, DECISIONS-for-review.md §183): a
  * page that loads `engine.iife.js` fetches no extra for its first paint; the first Compare adds swipe compare's
  * `extra-compare-<hash>.js` beside the engine as a script with its integrity, once, and compare works. An extra that does
  * not arrive closes compare with a message that says to try again, and the next Compare fetches it afresh. The other

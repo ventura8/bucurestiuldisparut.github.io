@@ -28,7 +28,7 @@ const SITE_DATA = join(ROOT, E2E_SITE_DIR, 'bucharest', 'data');
 const ENGINE_DIST = join(ROOT, 'packages', 'engine', 'dist');
 const KIT = join(ROOT, 'templates', 'starter-kit');
 const ENGINE_FILES = ['engine.iife.js', 'engine.extras.js', 'engine.css', 'THIRD_PARTY_NOTICES.txt'];
-/** The IIFE's extras, which it loads from its own folder (DECISIONS-for-review.md §181). */
+/** The IIFE's extras, which it loads from its own folder (DECISIONS-for-review.md §183). */
 const ENGINE_EXTRA = /^extra-[\w-]+\.js$/;
 const PUBLIC_PREFIX = publicObjectUrl(E2E_PUBLIC_BUCKET, '');
 

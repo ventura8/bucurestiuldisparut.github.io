@@ -938,7 +938,7 @@
             "area": "viewer",
             "name": "The IIFE loads its extras (swipe compare, the gamepad, the consented Firebase SDK and field chunk) beside it on first use, each with its integrity, and says to try again when one does not arrive",
             "milestone": "M5",
-            "source": "the owner, 2026-11-12: the IIFE at 124.9 KB of its 125 KB budget left no room for photo versions, the map's context menu and numbered dots; DECISIONS-for-review.md §181, docs/ENGINE_API.md → Extras on demand"
+            "source": "the owner, 2026-11-12: the IIFE at 124.9 KB of its 125 KB budget left no room for photo versions, the map's context menu and numbered dots; DECISIONS-for-review.md §183, docs/ENGINE_API.md → Extras on demand"
         },
         {
             "id": "A100",
@@ -2065,7 +2065,7 @@
             "asserts": "Settings' list shows the 16 languages by their own names, each with its lang, the current one checked; German, Arabic and Japanese chosen in turn relabel the whole viewer with no text of another language, the hash keeps lang=<code> and a reload keeps the last; each language's file is fetched once; every other language boots from ?lang=",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §183). Test: e2e/specs/viewer/languages.spec.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts."
         },
         {
             "id": "S-V11-HAPPY-RTL",
@@ -2076,7 +2076,7 @@
             "asserts": "?lang=ar: html and the viewer dir=rtl, the map container left to right, the timeline's today on the left, no text of another language",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §183). Test: e2e/specs/viewer/languages.spec.ts, packages/ui/test/viewer/languages.test.ts, packages/ui/test/components/rtl.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts, packages/ui/test/viewer/languages.test.ts, packages/ui/test/components/rtl.test.ts."
         },
         {
             "id": "S-V11-HAPPY-FALLBACK-TEXT",
@@ -2087,7 +2087,7 @@
             "asserts": "German viewer, a photo whose title is only in Romanian: the Romanian title and the note 'Sprache des Textes: Română (noch nicht übersetzt)'; a text with English shows the English one with lang=en (unit: languages.test.ts)",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §183). Test: e2e/specs/viewer/languages.spec.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts."
         },
         {
             "id": "S-V11-HAPPY-TRANSLATING-FALLS-BACK",
@@ -2098,7 +2098,7 @@
             "asserts": "the Settings list names the 25 languages (LANGUAGE_NAMES); Persian chosen: html and the viewer dir=rtl, fa.json and en.json fetched (the file says fallback: en), the menu and the timeline named in English, no text of a third language",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback, DECISIONS-for-review.md §184). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts, packages/shared/test/i18n-viewer.test.ts."
+            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback, DECISIONS-for-review.md §186). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts, packages/shared/test/i18n-viewer.test.ts."
         },
         {
             "id": "S-V11-BAD-MISSING-KEY-FALLS-BACK",
@@ -2120,7 +2120,7 @@
             "asserts": "tour: a photo, home and the language list in Arabic, right to left, through the layout, accessibility and i18n checkers at the phone, the phone held landscape, the laptop and the 4K screen",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §183). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
         },
         {
             "id": "S-V11-HAPPY-CJK-TOUR",
@@ -2131,7 +2131,7 @@
             "asserts": "tour: home and the Layers panel in Japanese, in the system's Japanese font, through the layout, accessibility and i18n checkers at the per-push viewports",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §183). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
         },
         {
             "id": "S-V11-BAD-CATALOGUE-404",
@@ -2142,7 +2142,7 @@
             "asserts": "i18n/ko.json answers 404: Korean chosen from the list leaves the page in its language, the list's selection back on it, the hash without lang=ko, and the snackbar says the language could not be loaded",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §183). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/store-language.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/store-language.test.ts."
         },
         {
             "id": "S-V11-BAD-CATALOGUE-STALE",
@@ -2153,7 +2153,7 @@
             "asserts": "i18n/fr.json names engine 0.0.1: French is refused like a missing file, with the same message",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §183). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts."
         },
         {
             "id": "S-V11-BAD-BOOT-CATALOGUE",
@@ -2164,7 +2164,7 @@
             "asserts": "?lang=hi with i18n/hi.json refused: the viewer boots in Romanian and says the language could not be loaded; every file refused: the engine's one bilingual card (Romanian and English lines, each with its lang) and a Retry that reloads",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §183). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
         },
         {
             "id": "S-V11-BAD-UNKNOWN-HASH-LANG",
@@ -2175,7 +2175,7 @@
             "asserts": "#…&lang=xx -> Romanian, the hash's view still applied; setLang('xx') is ignored too",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §183). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
         },
         {
             "id": "S-V12-HAPPY",
@@ -16519,7 +16519,7 @@
             "asserts": "a page with engine.iife.js mounts the viewer and requests no extra-*.js; openCompare(null) adds one head script extra-compare-<hash>.js with integrity sha384-… and crossorigin anonymous, the compare bar shows and the second map is created (2 made, 0 removed); closing and comparing again requests nothing more",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §181. Tests: e2e/specs/viewer/extras.spec.ts; the loader in packages/engine/test/extras/loader.test.ts, the build in scripts/site/test/engine-extras.test.ts."
+            "notes": "DECISIONS-for-review.md §183. Tests: e2e/specs/viewer/extras.spec.ts; the loader in packages/engine/test/extras/loader.test.ts, the build in scripts/site/test/engine-extras.test.ts."
         },
         {
             "id": "S-V63-HAPPY-EXTRAS-CONSENT-AND-PAD",
@@ -16530,7 +16530,7 @@
             "asserts": "a page with engine.iife.js and a city with GA4 requests no extra-*.js before an answer; after Accept it requests extra-firebase-sdk-<hash>.js and extra-field-sdk-<hash>.js once each, as head scripts with integrity sha384-… and crossorigin anonymous, and GA4 receives viewer_timing; a connected pad adds extra-gamepad-<hash>.js once the same way and the toast 'gamepad.ready' shows",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §181. Tests: e2e/specs/viewer/extras.spec.ts; a release's own entry on the host and the ready mark in packages/engine/test/extras/."
+            "notes": "DECISIONS-for-review.md §183. Tests: e2e/specs/viewer/extras.spec.ts; a release's own entry on the host and the ready mark in packages/engine/test/extras/."
         },
         {
             "id": "S-V63-BAD-EXTRAS-CHUNK-FAILS",
@@ -16541,7 +16541,7 @@
             "asserts": "extra-compare-<hash>.js refused -> a toast 'error.extraLoad', no compare bar, no extra script left in head, one map only and the map still shown; once the file is served again, Compare requests it a second time and opens with the second map",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §181. Tests: e2e/specs/viewer/extras.spec.ts; packages/engine/test/extras/loader.test.ts (a failing chunk is logged, removed and retried) and packages/engine/test/compare/session.test.ts."
+            "notes": "DECISIONS-for-review.md §183. Tests: e2e/specs/viewer/extras.spec.ts; packages/engine/test/extras/loader.test.ts (a failing chunk is logged, removed and retried) and packages/engine/test/compare/session.test.ts."
         },
         {
             "id": "S-A100-BAD-REVIEW-EMPTY",
