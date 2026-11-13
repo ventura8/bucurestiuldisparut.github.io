@@ -8,10 +8,15 @@ the engine script (`engineBase`), together with this file.
 | --- | --- | --- | --- | --- |
 | `roboto-flex-latin-wght.woff2` | Roboto Flex (variable, weight axis), `latin` range | `@fontsource-variable/roboto-flex@5.3.0`, `files/roboto-flex-latin-wght-normal.woff2` | SIL Open Font License 1.1 | none (copied as is) |
 | `roboto-flex-latin-ext-wght.woff2` | Roboto Flex (variable, weight axis), `latin-ext` range | `@fontsource-variable/roboto-flex@5.3.0`, `files/roboto-flex-latin-ext-wght-normal.woff2` | SIL Open Font License 1.1 | none (copied as is) |
+| `roboto-flex-cyrillic-wght.woff2` | Roboto Flex (variable, weight axis), `cyrillic` range | `@fontsource-variable/roboto-flex@5.3.0`, `files/roboto-flex-cyrillic-wght-normal.woff2` | SIL Open Font License 1.1 | none (copied as is) |
 | `material-symbols-rounded.woff2` | Material Symbols Rounded | `material-symbols@0.48.2`, `material-symbols-rounded.woff2` (Google's font, packaged by marella/material-symbols) | Apache License 2.0 | subset to the ligatures listed in `packages/ui/src/icons.ts`, hinting dropped, instanced at `wght` 400, `GRAD` 0, `opsz` 24 (the `FILL` axis is kept) with HarfBuzz, re-encoded as WOFF2 |
 
 Roboto Flex: Copyright 2017 The Roboto Flex Project Authors (<https://github.com/googlefonts/roboto-flex>).
 Material Symbols: Copyright Google LLC (<https://github.com/google/material-design-icons>).
+
+The browser tab icon of the map's pages (`MAP_GLYPH_PATH` and `DEFAULT_FAVICON_DATA_URL` of `packages/shared/src/kit/map-icon.ts`,
+and each city's default icon the functions draw) reuses the outline of this subset's `map` glyph, drawn white on a coloured
+rounded square and rendered to PNG; it is a derivative of Material Symbols Rounded under the Apache License 2.0 below.
 
 The pages that load these fonts register them under the namespaced families `HCM Roboto Flex` and
 `HCM Material Symbols Rounded` (`packages/ui/src/fonts/font-files.ts`); the fonts' own names are unchanged.

@@ -3769,3 +3769,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-12, the viewer tour at 360 × 800 and 915 × 412: the Layers strip pinned on 2026-11-10 covered the overlay switches and sliders the list scrolled under it (focus obscured, targets of 52 × 32 and 4 × 44), and at peek height Tab reached the strip's switches where nobody could see them; the overlay rows' 48 px rings also overlapped one another (52 × 40).
     - Fix and pin: the strip is sticky in the docked pane only; the overlay rows and the map-label rows are 48 px each (`packages/ui/test/viewer/hcm-layer-panel.test.ts`, the tour's Layers states).
     - **Pin a strip only where the pane is tall enough; a modal sheet's content scrolls whole, and rows of 48 px targets are 48 px apart.**
+
+642. **Two tracks that each moved code into a lazily loaded part left the part asking for bindings its host never gave.**
+    - Seen: 2026-11-13, the merge queue (track/mergequeue): after track/extras, then track/langs25, the engine's build refused swipe compare's extra (`compare carries packages/shared/src/i18n/...`, then `compare imports localized from @hcm/shared: the host does not export it`), and the full-size view's side part imported `live`, `logicalKey`, `fallbackNote`, `LANGUAGE_NAMES`, `localized`, `resolveViewerLocale` and `shownLanguage`, which its kit did not hold.
+    - Cause: track/extras listed the host's bindings for the code compare had when it branched; `feat/engine-rewrite` then gave compare `@hcm/shared/credits` and `overlayLabel`, and track/langs25 gave the viewer's components new helpers, none of which either list knew.
+    - Found by: the extras' own build check (`scripts/site/src/engine-extras.ts`) for compare; for the side part, a script over its imports before the release build (`packages/ui/test/viewer/extras-loader.test.ts`, *every name the part imports is in the kit*, pins it). Fix: `@hcm/shared/credits` maps to the same host entry, `host-shared.ts` and `extras-kit.ts` export the new names.
+    - **After merging branches that touch a lazily loaded part or what it imports, build the engine and run the part's kit test before anything else: its binding lists are written by hand and go stale silently.**
+
+643. **A merge of three tracks that renumbered the same lessons and decisions moved some references and missed others.**
+    - Seen: 2026-11-13, the merge queue: stale-text's lessons 594 and 595 became 621 and 622, but `.agent/skills/web/i18n_skill.md` and `ci_quality_gates_skill.md` still cited `LESSONS.md` 594, 595 (now an unrelated release-channel lesson).
+    - Cause: the renumbering matched `lesson N` and `§N` only, not `` `docs/LESSONS.md` N ``.
+    - Fix and pin: every reference a merged track added is renumbered by the lines that track added, in each of the forms `lesson N`, `lessons N, M`, `` LESSONS.md` N ``, `§N` and `DECISIONS §N`; the merge note under each renumbered decision says the old and new numbers.
+    - **When a merge renumbers a lesson or a decision, search the track's own added lines for every way the repository cites one, not only the common one.**

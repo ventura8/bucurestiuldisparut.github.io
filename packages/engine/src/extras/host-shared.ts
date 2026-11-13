@@ -12,6 +12,7 @@ export {
     findOverlay,
     isHttpsUrl,
     isPhotoNearYear,
+    localized,
     observeWebVitals,
     overlayLabel,
     poiIcon,
