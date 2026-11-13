@@ -26,7 +26,7 @@ async function boot(page: Page, size: { width: number; height: number }, lang: '
 const FLOATING = [
     '.dock.timeline hcm-timeline',
     '.dock.menu hcm-fab-menu',
-    '.dock.chip hcm-button',
+    '.dock.chip [data-layout-check="near-year"]',
     '.dock.zoom',
     'a.mapboxgl-ctrl-logo',
     '.mapboxgl-ctrl-attrib',

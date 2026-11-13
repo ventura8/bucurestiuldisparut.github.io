@@ -131,8 +131,8 @@ test(
                 description: `${size.name}: FCP ${String(Math.round(load.fcp))} ms, mapbox-gl.js ${String(Math.round(load.mapboxGlEnd))} ms`,
             });
 
+            // Relative, not the budget: the happy row holds the budget; this one asks only that Mapbox GL is not waited for.
             expect(load.fcp, `${size.name}: painted before mapbox-gl.js arrived`).toBeLessThan(load.mapboxGlEnd);
-            expect(load.fcp, `${size.name}: the first contentful paint`).toBeLessThan(FCP_BUDGET_MS);
         }
     },
 );

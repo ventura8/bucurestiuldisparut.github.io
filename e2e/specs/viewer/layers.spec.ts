@@ -199,7 +199,8 @@ test(
         await expect(viewer(page).locator('.mapboxgl-ctrl-attrib-inner')).toContainText(credit);
         await openLayers(page, lang);
         await expect(page.getByText(t(lang, 'layers.attribution', { attribution: credit }), { exact: true })).toHaveCount(1);
-        await expect(page.getByText(t('en', 'layers.attribution.usgs'))).toHaveCount({ ro: 0, en: 1 }[lang]);
+        // The English words nowhere on the Romanian map; in English once in the panel and once in Mapbox's line.
+        await expect(page.getByText(t('en', 'layers.attribution.usgs'))).toHaveCount({ ro: 0, en: 2 }[lang]);
     },
 );
 

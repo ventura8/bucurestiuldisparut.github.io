@@ -17,7 +17,9 @@ import { menuButton, openViewer, serveManifest, t, viewer } from '../../support/
 const OBOR_VIEW = '16/44.44763/26.13822';
 /** The owner's city on 2026-11-08: eleven layer years and today. */
 const OWNERS_YEARS = [1966, 1967, 1972, 1976, 1977, 1978, 1979, 1980, 1982, 1983, 1984] as const;
-const FLOATING = ['[role="menu"]', '.dock.chip hcm-button', 'hcm-timeline'];
+/** The photos-near-the-year button: a text chip or an icon button (`viewer-near-year.ts`). */
+const NEAR_YEAR = '.dock.chip [data-layout-check="near-year"]';
+const FLOATING = ['[role="menu"]', NEAR_YEAR, 'hcm-timeline'];
 
 function slider(page: Page, lang: 'ro' | 'en') {
     return page.getByRole('slider', { name: t(lang, 'timeline.label'), exact: true });
@@ -52,6 +54,21 @@ async function expectOpenMenuClear(page: Page, lang: 'ro' | 'en'): Promise<void>
     expect(menu.y).toBeGreaterThanOrEqual(0);
 }
 
+/**
+ * On a short window the open menu's rows take the map's width (P1, the Pixel 9 Pro on its side): the card and the chip
+ * step aside while it is open (`dock-styles.ts`) and come back when it closes; the menu stays on screen.
+ */
+async function expectOpenMenuAlone(page: Page, lang: 'ro' | 'en'): Promise<void> {
+    await menuButton(page, lang).click();
+    await expect(page.getByRole('menu', { name: t(lang, 'action.menu') })).toBeVisible();
+    expect(await visibleBoxes(page, FLOATING), 'only the menu while it is open').toHaveLength(1);
+    const menu = await boxOf(page, '[role="menu"]');
+    expect(menu.y).toBeGreaterThanOrEqual(0);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu', { name: t(lang, 'action.menu') })).toBeHidden();
+    expect(await visibleBoxes(page, FLOATING)).toHaveLength(2);
+}
+
 test(
     'On a phone held upright the timeline stands on the leading edge with the chip under it',
     { tag: '@S-V04-HAPPY-VERTICAL-ON-PHONE' },
@@ -62,11 +79,12 @@ test(
 
         await walk(page, lang, 'ArrowUp', 'ArrowDown');
         const timeline = await boxOf(page, 'hcm-timeline');
-        const chip = await boxOf(page, '.dock.chip hcm-button');
+        const chip = await boxOf(page, NEAR_YEAR);
         const fab = (await menuButton(page, lang).boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 };
         expect(timeline.height).toBeGreaterThan(timeline.width);
         expect(Math.abs(timeline.x - 16), 'on the leading edge').toBeLessThanOrEqual(1);
-        expect(Math.abs(chip.x - timeline.x), "the chip on the card's leading edge").toBeLessThanOrEqual(1);
+        // An icon button centred under the card (the owner, 2026-11-12: no text pill on a phone).
+        expect(Math.abs(chip.x + chip.width / 2 - (timeline.x + timeline.width / 2)), 'centred under the card').toBeLessThanOrEqual(1);
         expect(Math.abs(chip.y - (timeline.y + timeline.height) - 8), '8 px under its foot').toBeLessThanOrEqual(1);
         expect(Math.abs(375 - 16 - (fab.x + fab.width)), 'the menu button on the trailing edge').toBeLessThanOrEqual(1);
         expect(fab.y, 'the menu button below the chip').toBeGreaterThanOrEqual(chip.y + chip.height + 8);
@@ -85,12 +103,12 @@ test(
 
         await walk(page, lang, 'ArrowRight', 'ArrowLeft');
         const timeline = await boxOf(page, 'hcm-timeline');
-        const chip = await boxOf(page, '.dock.chip hcm-button');
+        const chip = await boxOf(page, NEAR_YEAR);
         expect(timeline.width).toBeGreaterThan(timeline.height);
         expect(Math.abs(chip.x + chip.width - (timeline.x + timeline.width)), "on the card's trailing edge").toBeLessThanOrEqual(1);
         expect(Math.abs(timeline.y - (chip.y + chip.height) - 8), '8 px above the card').toBeLessThanOrEqual(1);
 
-        await expectOpenMenuClear(page, lang);
+        await expectOpenMenuAlone(page, lang);
     },
 );
 
@@ -111,12 +129,12 @@ test(
         await slider(page, lang).press('Home');
 
         const timeline = await boxOf(page, 'hcm-timeline');
-        const chip = await boxOf(page, '.dock.chip hcm-button');
+        const chip = await boxOf(page, NEAR_YEAR);
         expect(Math.abs(chip.x + chip.width - (timeline.x + timeline.width)), "on the card's trailing edge").toBeLessThanOrEqual(1);
         expect(Math.abs(568 - 16 - (chip.x + chip.width)), 'the card and the chip end at the gutter').toBeLessThanOrEqual(1);
         expect(holds(chip, { x: 284, y: 160 }), "the chip on the map's centre").toBe(false);
 
-        await expectOpenMenuClear(page, lang);
+        await expectOpenMenuAlone(page, lang);
     },
 );
 
