@@ -23,6 +23,10 @@
             "types": "./src/i18n/admin-worker-local/index.ts",
             "default": "./src/i18n/admin-worker-local/index.ts"
         },
+        "./credits": {
+            "types": "./src/overlays/credits.ts",
+            "default": "./src/overlays/credits.ts"
+        },
         "./tab-icon": {
             "types": "./src/kit/tab-icon.ts",
             "default": "./src/kit/tab-icon.ts"

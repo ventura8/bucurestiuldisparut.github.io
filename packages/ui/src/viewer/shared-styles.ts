@@ -107,8 +107,12 @@ export const detailStyles = css`
         margin-block-start: 4px;
     }
 
-    /* A link of a list is a target of its own: 48 px tall like every touch target (a link inside a sentence is exempt). */
-    .details li > a {
+    /*
+     * A link of a list, or a link alone on its line (p.link: Street View, Suggest a correction), is a target of its own: 48 px
+     * tall like every touch target (a link inside a sentence is exempt). The Pixel Tablet found the two lone links 19 px tall.
+     */
+    .details li > a,
+    .details .link > a {
         display: inline-flex;
         align-items: center;
         min-block-size: 48px;

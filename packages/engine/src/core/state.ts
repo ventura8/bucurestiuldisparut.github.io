@@ -92,6 +92,8 @@ export interface ViewerState {
     readonly layersHidden: boolean;
     readonly windowClass: WindowClass;
     readonly compactHeight: boolean;
+    /** The viewer is wide enough to dock a sheet beside the map (`isDockable`: a medium window from 760 px docks it too). */
+    readonly dockable: boolean;
     readonly theme: ThemeMode;
     readonly consent: ConsentState;
     readonly toast: Toast | null;
@@ -129,6 +131,7 @@ export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentS
         layersHidden: false,
         windowClass: 'compact',
         compactHeight: false,
+        dockable: false,
         theme,
         consent,
         toast: null,

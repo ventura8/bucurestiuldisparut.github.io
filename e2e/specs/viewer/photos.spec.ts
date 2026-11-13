@@ -5,7 +5,7 @@ import { siteManifestData, type Json } from '../../fixtures/manifest.js';
 import { mapFacts, mapIdle, renderedFeatureIds, renderedPoints, screenPointOf, type LngLat } from '../../support/map.js';
 import { isColour, probePixel, sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
-import { chooseMenuItem, engineEvents, openViewer, serveManifest, t, viewer, windowClassOf } from '../../support/viewer.js';
+import { chooseMenuItem, engineEvents, isDocked, openViewer, serveManifest, t, viewer, windowClassOf } from '../../support/viewer.js';
 
 /**
  * Photos on the map (behaviour V07) and the lightbox (V08): clustered camera markers that expand when the visitor zooms
@@ -46,15 +46,11 @@ const NO_BEARING = 'intrarea-in-fabrica-luceafarul-nufarul';
 const NO_BEARING_VIEW = '18.5/44.43082/26.08578';
 
 /**
- * The detail sheet of a photo: a modal bottom sheet (compact) or side sheet (medium) is a dialog; from expanded it is
- * a docked pane, a labelled region.
+ * The detail sheet of a photo: a modal bottom sheet (compact) or side sheet (medium below 760 px) is a dialog; wider it
+ * is a docked pane, a labelled region.
  */
 function detailSheet(page: Page, name: string): Locator {
-    const width = page.viewportSize()?.width ?? 0;
-    return page.getByRole(windowClassOf(width) === 'compact' || windowClassOf(width) === 'medium' ? 'dialog' : 'region', {
-        name,
-        exact: true,
-    });
+    return page.getByRole(isDocked(page) ? 'region' : 'dialog', { name, exact: true });
 }
 
 /** The visible variant of the sheet: `bottom`, `side` (both modal) or `docked`. */
@@ -64,9 +60,10 @@ async function sheetVariant(page: Page): Promise<string> {
 }
 
 function expectedVariant(page: Page): string {
-    const windowClass = windowClassOf(page.viewportSize()?.width ?? 0);
-    const modal: Partial<Record<string, string>> = { compact: 'bottom', medium: 'side' };
-    return modal[windowClass] ?? 'docked';
+    if (isDocked(page)) {
+        return 'docked';
+    }
+    return windowClassOf(page.viewportSize()?.width ?? 0) === 'compact' ? 'bottom' : 'side';
 }
 
 interface ListLine {

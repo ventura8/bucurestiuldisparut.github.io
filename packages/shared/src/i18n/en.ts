@@ -75,6 +75,8 @@ export const en: Messages = {
     'layers.opacityValue': '{percent}%',
     'layers.photos': 'Photos',
     'layers.attribution': 'Source: {attribution}',
+    'layers.attribution.usgs': 'USGS EROS, declassified imagery (public domain)',
+    'layers.attribution.landsat': 'Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey',
     'layers.empty': 'Historical layers will appear here soon.',
     'layers.group.historical': 'Historical layers',
     'layers.group.places': 'Places',

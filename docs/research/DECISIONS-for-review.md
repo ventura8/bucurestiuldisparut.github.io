@@ -6630,3 +6630,49 @@ The owner's device review (`reports/devices/FINDINGS.md`, section *Pixel 9 Pro*)
 - **Rejected, measured**: 1,024 keypoints (38 s at half resolution, 206 s at full) lost F006, which the card finds with 3 pairs; so the governor's quiet profile now keeps 2,048 keypoints too (slower, never blinder; lesson 613). The governor's processor heat limit rose from 90 to 95 °C (lesson 612): the laptop reads 90 with only a local model running.
 - **Measured backends**: CUDA on the laptop's 3080 beside a local model holding 6.4 of 8 GB, 43.4 s and 1,086 MB under a 0.2 share (20.4 s alone in R1); OpenVINO 2026.4.1 cannot load the exported ALIKED (`DeformConv-19` has no conversion rule), so Intel's GPU and NPU stay `no-image`. Unproved: ROCm, DirectML, Core ML, NPUs, the processor's sidecar on Windows and arm.
 - **Verify**: `pipeline/tests/unit/test_matcher_search.py`, `test_matcher_torch.py`, `test_ai_files.py`, `test_governor_policy.py`, `test_governor_budget.py`; `functions/test/worker/starter.test.ts`, `starter-sidecar.test.ts`, `starter-windows.test.ts`; the NUC bench in `docs/research/M26-governor.md` §9.
+
+## 178. The Pixel Tablet's findings on the public map (track/viewer-device, 2026-11-12) — APPLIED, no budget raised
+
+The owner's real-device test (Pixel Tablet, Chrome; `reports/devices/FINDINGS.md` T1–T6 and the cold load). No gate was
+relaxed; one new e2e budget.
+
+- **178a Timeline density** (T1). The track fits the card; the gap between stops decides the density
+  (`packages/ui/src/viewer/timeline-model.ts`): `roomy` from 30 px (every year named), `dense` from 14 px (every other
+  year, the ends always, the selected one on the pill), `scroll` below 14 px (16 px per gap, the card scrolls under a
+  finger along the timeline, the edge with more years beyond fades 24 px, the selected year is centred unless a drag is
+  on). The thumb keeps `touch-action: none` so it still drags on a scrolling track; elsewhere a finger taps a year.
+- **178b Slider under a finger** (T2). `hcm-slider` is `touch-action: pan-y`; a finger moves the value only once it has
+  gone 8 px (`TOUCH_SLOP_PX`) more sideways than up or down, a tap still sets it, `pointercancel` ends the press without a
+  change. Mouse, pen and keyboard are unchanged.
+- **178c Docked pane from 760 px** (T3). A medium window at least 760 px wide (`DOCKED_PANE_MIN_PX`) and not of compact
+  height docks the sheets beside the map like expanded (the map keeps 400 px beside a 360 px pane); below it, or short,
+  the modal sheets stay. `ViewerState.dockable` carries it; the e2e helpers' `sheetsDock` mirror it (the 768 px tablet
+  project now docks).
+- **178d Credits in the visitor's language, once** (T5). The pipeline keeps writing the English constants
+  (`USGS_ATTRIBUTION`, `LANDSAT_ATTRIBUTION`); the viewer shows a known credit by its text key
+  (`layers.attribution.usgs`, `layers.attribution.landsat`) in the visitor's language and an unknown one as written, each
+  once (`@hcm/shared/credits`: a subpath export, so the shared index stays within 400 lines; lesson 591). The Layers
+  panel, Mapbox's attribution line (each raster source's credit in the language of the first load, `rasterSpec`; its text
+  rewritten on a language switch, `relabelMapbox`) and swipe compare's bar use it. New keys exist in `ro` and `en` only (the viewer's two
+  locales).
+- **178e Lone links 48 px tall** (T6): `.details .link > a` in the detail sheets.
+- **178f The cold load.** Traced on a local build with CDP (Fast 4G, 4x CPU, cache off): the engine is a module
+  script, which runs in document order after the deferred `mapbox-gl.js` (1.9 MB, 526 KB gzip, from a new origin), so
+  nothing was painted before Mapbox GL had arrived and run. The page now loads Mapbox GL `async`; the engine renders the
+  viewer at once and `mapboxOf` hands the map adapter a promise of `mapboxgl` when the script is still loading (no global
+  and no loading script: the old error). The same trace with Mapbox's CDN two seconds slower found the second cause: the
+  page's `<link rel="stylesheet">` of `mapbox-gl.css` in the head blocked the first paint (2.9 s) until api.mapbox.com had
+  answered, and no one needed it: the viewer links that stylesheet inside its shadow root, where the head's copy cannot
+  reach. The city pages now link none (`scripts/site/src/page.ts`; only mapbox-gl.js keeps its SRI hash). Measured on the
+  local build at the phone size, three runs each: FCP 1,408–1,668 ms before (deferred script), 760–796 ms after. The e2e
+  budget `S-V01-HAPPY-COLD-FIRST-PAINT` (FCP under 1,800 ms at a phone
+  and a tablet) and `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT` (the viewer paints before Mapbox GL arrives) measure it with the
+  same method; Mapbox's files are answered by the firewall (`route.fulfill`, out of the throttling's reach), so the test
+  gives them a modelled cold CDN time (three round trips and their gzip bytes at Fast 4G) — the only timed wait in the
+  e2e suite, a network model rather than a wait for the page. The starter kit's own `index.html` keeps its order (it
+  works either way).
+- **178g The photos-near-the-year button** (the owner, 2026-11-13): its text only on a large screen. The text chip
+  shows on an expanded or wider window that is not short and whose main pointer is a mouse (`finePointer` of
+  `<hcm-map-viewer>`, from `(pointer: fine)` and its changes: a tablet on its side, 1280 px, is as wide as a laptop);
+  everywhere else, phones and tablets, the icon button, whose accessible name and tooltip are the full text
+  (`packages/ui/src/viewer/viewer-near-year.ts` `textChip`; `S-V04-HAPPY-TABLET-ICON-CHIP`).

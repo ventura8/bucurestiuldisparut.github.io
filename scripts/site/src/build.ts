@@ -109,12 +109,10 @@ function engineFiles(files: SiteFileSystem, engineDir: string): PlannedFile[] {
     return files.listFiles(engineDir).map((name) => ({ from: `${engineDir}/${name}`, to: `${ENGINE_FOLDER}/${name}` }));
 }
 
-function integrity(files: SiteFileSystem, mapboxGlDir: string): { script: string; stylesheet: string } {
+/** The page's only file from another origin is mapbox-gl.js (`page.ts`: the viewer links mapbox-gl.css itself). */
+function integrity(files: SiteFileSystem, mapboxGlDir: string): { script: string } {
     const hint = 'install the dependencies (mapbox-gl is a pinned devDependency of @hcm/e2e)';
-    return {
-        script: subresourceIntegrity(files.readBytes(requireFile(files, `${mapboxGlDir}/mapbox-gl.js`, hint))),
-        stylesheet: subresourceIntegrity(files.readBytes(requireFile(files, `${mapboxGlDir}/mapbox-gl.css`, hint))),
-    };
+    return { script: subresourceIntegrity(files.readBytes(requireFile(files, `${mapboxGlDir}/mapbox-gl.js`, hint))) };
 }
 
 /** `value` as a plain object, or null. */

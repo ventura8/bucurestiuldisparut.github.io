@@ -295,7 +295,7 @@ describe('the generic city page', () => {
         files.write('infra/project.json', JSON.stringify({ projectId: 'demo-hcm', region: 'us-central1' }));
 
         const planned = planCityPage(
-            { bucket: 'demo-hcm-public', mapboxGlIntegrity: { script: 'sha384-s', stylesheet: 'sha384-c' }, themeColor: '#8B5E3C' },
+            { bucket: 'demo-hcm-public', mapboxGlIntegrity: { script: 'sha384-s' }, themeColor: '#8B5E3C' },
             files,
         );
 
@@ -324,9 +324,9 @@ describe('the generic city page', () => {
         const files = nodeFileSystem(temporaryDir());
         files.write('infra/project.json', JSON.stringify({ projectId: 'demo-hcm', region: 'us-central1' }));
 
-        expect(() =>
-            planCityPage({ bucket: 'Not A Bucket', mapboxGlIntegrity: { script: 's', stylesheet: 'c' }, themeColor: '#8B5E3C' }, files),
-        ).toThrow(/names no public object/);
+        expect(() => planCityPage({ bucket: 'Not A Bucket', mapboxGlIntegrity: { script: 's' }, themeColor: '#8B5E3C' }, files)).toThrow(
+            /names no public object/,
+        );
     });
 });
 

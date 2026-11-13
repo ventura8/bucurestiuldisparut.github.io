@@ -4,7 +4,8 @@ import type { Locator, Page } from '@playwright/test';
 import { siteManifestData } from '../../fixtures/manifest.js';
 import { SITE_ORIGIN } from '../../fixtures/world.js';
 import { expect, test } from '../../support/test.js';
-import { openViewer, t, viewer } from '../../support/viewer.js';
+import { openViewer, serveManifest, t, viewer } from '../../support/viewer.js';
+import { UNPLACED_CONTRIBUTE_URL } from '../../tour/unplaced-states.js';
 
 /**
  * The map's menu (behaviour V62; the owner on 2026-11-09): a right click, a long press on a touch screen or the ContextMenu
@@ -208,6 +209,25 @@ test(
 
         await expect(link).toHaveAttribute('href', new RegExp(`&heading=${String(Math.round(photo?.bearing ?? 0) % 360)}$`));
         expect(viewpointOf(await link.getAttribute('href')).lat).toBeCloseTo(photo?.location.lat ?? 0, 5);
+    },
+);
+
+test(
+    "A photo's sheet keeps its lone links, Street View and Suggest a correction, 48 px tall",
+    { tag: '@S-V62-BAD-LONE-LINKS-SMALL' },
+    async ({ page, lang }) => {
+        // The Pixel Tablet, 2026-11-12: both links were 19 px tall, a line of text, too small for a finger.
+        const manifest = siteManifestData();
+        const photos = manifest['photos'] as { id: string; bearing?: number; location: { lat: number; lng: number } }[];
+        const photo = photos.find((candidate) => candidate.bearing !== undefined);
+        await serveManifest(page, { ...manifest, contributeUrl: UNPLACED_CONTRIBUTE_URL });
+        await openViewer(page, { lang, hash: `18/${String(photo?.location.lat)}/${String(photo?.location.lng)}&photo=${photo?.id ?? ''}` });
+
+        for (const name of [t(lang, 'mapMenu.streetView'), t(lang, 'photo.suggest')]) {
+            const link = viewer(page).locator('hcm-photo-sheet').getByRole('link', { name, exact: true });
+            await expect(link).toBeVisible();
+            expect((await link.boundingBox())?.height ?? 0, `${name}: a finger's target`).toBeGreaterThanOrEqual(48);
+        }
     },
 );
 

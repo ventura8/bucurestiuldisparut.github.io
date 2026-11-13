@@ -7,7 +7,9 @@
  * 2026-11-08: "1980" over 1979 and 1982): lying, the labels are a row below it; standing, the years are the ruler in
  * the pill's lane, whose stops the phone's height spaces wider than the pill. The list of stops has no margin of its own: the
  * browser's 1em of an `ol` collapsed through the track, made the timeline 100 px tall with a 16 px page font and more
- * with a larger one, and left no room for the open FAB menu above it on a 568 px phone.
+ * with a larger one, and left no room for the open FAB menu above it on a 568 px phone. The card holds a scroller with
+ * the padding: the track fits it unless the years are closer than 14 px (`density`, `timeline-model.ts`), and only then
+ * scrolls, under a finger too, behind a mask that fades the edge with more years beyond (`--hcm-fade-start`, `-end`).
  */
 import { css } from 'lit';
 
@@ -27,29 +29,35 @@ export const timelineStyles = [
 
             display: block;
             box-sizing: border-box;
-            padding-block: 8px 28px;
-            padding-inline: 44px;
             border-radius: var(--md-sys-shape-corner-extra-large, 28px);
             background: var(--md-sys-color-surface-container, Canvas);
             box-shadow: 0 4px 12px color-mix(in srgb, var(--md-sys-color-shadow, CanvasText) 30%, transparent);
             touch-action: none;
             user-select: none;
-
-            /*
-             * More years than the card holds scroll (the review, 2026-11-08: twenty-two stops 17 px apart, the pill over
-             * its neighbours): the stops keep 30 px apart, half the pill and half a label standing, a label and a gap
-             * lying, and the selected one snaps into view unless a drag is on (it would run under the finger).
-             */
-            overflow: auto;
-            scroll-snap-type: both mandatory;
-            scrollbar-width: none;
         }
 
         :host(:dir(rtl)) {
             --hcm-x: 50%;
         }
 
+        .scroller {
+            --hcm-fade-to: to right;
+
+            box-sizing: border-box;
+            padding-block: 8px 28px;
+            padding-inline: 44px;
+            border-radius: inherit;
+            overflow: auto;
+            scrollbar-width: none;
+        }
+
         :host([orientation='vertical']) {
+            block-size: 100%;
+        }
+
+        :host([orientation='vertical']) .scroller {
+            --hcm-fade-to: to bottom;
+
             block-size: 100%;
             padding: 24px 8px;
         }
@@ -57,12 +65,38 @@ export const timelineStyles = [
         .track {
             position: relative;
             block-size: 48px;
-            min-inline-size: calc(var(--hcm-gaps) * 30px);
             cursor: pointer;
         }
 
-        .selected {
-            scroll-snap-align: center;
+        /*
+         * Years closer than 14 px (the review, 2026-11-08: twenty-two stops 17 px apart, the pill over its neighbours):
+         * the stops keep 16 px apart, every other one labelled, and the card scrolls; a finger may scroll it along the
+         * timeline (it drags the thumb itself), and the edge with more years beyond fades.
+         */
+        :host([density='scroll']) {
+            touch-action: pan-x;
+        }
+
+        :host([density='scroll'][orientation='vertical']) {
+            touch-action: pan-y;
+        }
+
+        :host([density='scroll']) .scroller {
+            mask-image: linear-gradient(
+                var(--hcm-fade-to),
+                transparent,
+                CanvasText var(--hcm-fade-start, 0%),
+                CanvasText calc(100% - var(--hcm-fade-end, 0%)),
+                transparent
+            );
+        }
+
+        :host([density='scroll']:dir(rtl)) .scroller {
+            --hcm-fade-to: to left;
+        }
+
+        :host([density='scroll']) .track {
+            min-inline-size: calc(var(--hcm-gaps) * 16px);
         }
 
         /* No margin, padding or marker: the stops are placed on the track, the list only holds them. */
@@ -74,7 +108,10 @@ export const timelineStyles = [
             inline-size: 52px;
             min-inline-size: 0;
             block-size: 100%;
-            min-block-size: calc(var(--hcm-gaps) * 30px);
+        }
+
+        :host([density='scroll'][orientation='vertical']) .track {
+            min-block-size: calc(var(--hcm-gaps) * 16px);
         }
 
         .rail,
@@ -138,7 +175,9 @@ export const timelineStyles = [
             background: var(--md-sys-color-on-secondary-container, GrayText);
         }
 
-        .stop.selected .label {
+        /* The pill names the selected year; a dense track names every other year (a minor stop keeps its tick, unlabelled). */
+        .stop.selected .label,
+        .stop.minor .label {
             visibility: hidden;
         }
 
@@ -149,6 +188,15 @@ export const timelineStyles = [
         :host([orientation='vertical']) .label {
             padding-block: 2px;
             background: var(--md-sys-color-surface-container, Canvas);
+        }
+
+        /* Standing, an unlabelled year is a tick on the rail, centred on its place. */
+        :host([orientation='vertical']) .stop.minor:not(.selected) .label {
+            display: none;
+        }
+
+        :host([orientation='vertical']) .stop.minor:not(.selected) .tick {
+            display: block;
         }
 
         .thumb {
@@ -169,6 +217,9 @@ export const timelineStyles = [
             cursor: grab;
             transition: 350ms var(--hcm-timeline-spring);
             transition-property: inset-inline-start, inset-block-end, border-radius, transform;
+
+            /* The thumb drags under a finger also where the card scrolls. */
+            touch-action: none;
         }
 
         :host([orientation='vertical']) .thumb {
@@ -177,11 +228,6 @@ export const timelineStyles = [
             min-inline-size: 100%;
             padding: 0;
             transform: translateY(50%);
-        }
-
-        /* A drag does not snap: the selected stop would run away under the finger. */
-        :host([dragging]) {
-            scroll-snap-type: none;
         }
 
         :host([dragging]) .thumb {

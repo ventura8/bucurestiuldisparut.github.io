@@ -2,6 +2,7 @@ import { createLogger } from '@hcm/shared';
 import { FakeMap, FakeMapboxGl } from '@hcm/test-support/fake-map';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { mapboxOf } from '../src/mapbox-global.js';
 import { autoBoot, browserEnvironment, engineBaseOf, startEngine, type EngineRelease } from '../src/mount.js';
 import { recordingLog } from './core/support.js';
 import { FakeContainer, config, testEnvironment } from './mount-support.js';
@@ -43,7 +44,12 @@ function fakePage(change: Record<string, unknown> = {}): FakePage {
             },
         },
         localStorage: { getItem: () => 'stored', setItem: () => undefined, removeItem: () => undefined },
-        document: { baseURI: 'https://example.org/city/', fonts: { add: (face: FontFaceDouble) => fonts.push(face.source) } },
+        document: {
+            baseURI: 'https://example.org/city/',
+            readyState: 'interactive',
+            querySelector: () => null,
+            fonts: { add: (face: FontFaceDouble) => fonts.push(face.source) },
+        },
         FontFace: FontFaceDouble,
         fetch: (url: string) => Promise.resolve(new Response(url)),
         matchMedia: (query: string) => ({ matches: query.includes('reduce') }),
@@ -214,6 +220,39 @@ describe('browserEnvironment', () => {
         expect([withCity.consent, withoutCity.consent]).toEqual(['unknown', 'unknown']);
         withCity.destroy();
         withoutCity.destroy();
+    });
+});
+
+/** A page whose `mapbox-gl.js` loads `async`: its script element, and the page's `readyState`. */
+function loadingPage(readyState: DocumentReadyState): { readonly window: Window & { mapboxgl?: unknown }; readonly script: EventTarget } {
+    const script = new EventTarget();
+    const page = { document: { readyState, querySelector: (selector: string) => (selector.includes('mapbox-gl-js') ? script : null) } };
+    return { window: page as unknown as Window & { mapboxgl?: unknown }, script };
+}
+
+describe('mapboxOf', () => {
+    it('happyPath_aMapboxGlStillLoadingIsAwaited', async () => {
+        // The cold load of 2026-11-12: the page loads Mapbox GL async, so the engine may run before it.
+        const { window: page, script } = loadingPage('interactive');
+        const pending = mapboxOf(page, '3.34.1');
+        const gl = new FakeMapboxGl();
+        page.mapboxgl = gl;
+        script.dispatchEvent(new Event('load'));
+
+        await expect(pending).resolves.toBe(gl);
+    });
+
+    it('badPath_aScriptThatFailsOrDefinesNothingRejects', async () => {
+        const failed = loadingPage('interactive');
+        const pending = mapboxOf(failed.window, '3.34.1');
+        failed.script.dispatchEvent(new Event('error'));
+        const empty = loadingPage('interactive');
+        const loaded = mapboxOf(empty.window, '3.34.1');
+        empty.script.dispatchEvent(new Event('load'));
+
+        await expect(pending).rejects.toThrow('mapboxgl is not defined');
+        await expect(loaded).rejects.toThrow('mapboxgl is not defined');
+        expect(() => mapboxOf(loadingPage('complete').window, '3.34.1')).toThrow('mapboxgl is not defined');
     });
 });
 

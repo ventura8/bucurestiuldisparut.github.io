@@ -1152,6 +1152,28 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V01-HAPPY-COLD-FIRST-PAINT",
+            "behaviour": "V01",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A cold load on Fast 4G with a slow CPU paints the viewer within its budget, on a phone and a tablet",
+            "asserts": "cache off, Chrome DevTools' Fast 4G (CDP Network.emulateNetworkConditions) and a 4x CPU slowdown; Mapbox GL JS's files given a cold CDN fetch's time (three round trips and their gzip bytes at Fast 4G) -> the first contentful paint under 1,800 ms at 412x915 and at 800x1280",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel Tablet, 2026-11-12: a cold first paint of 5,376 ms against 764 ms warm. DECISIONS-for-review.md §178. scripts/site/src/page.ts (Mapbox GL async), packages/engine/src/mount.ts (mapboxOf), packages/ui/src/map/mapbox-adapter.ts; e2e/specs/viewer/cold-load.spec.ts."
+        },
+        {
+            "id": "S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT",
+            "behaviour": "V01",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A slow Mapbox CDN does not hold back the first paint: the viewer paints before Mapbox GL JS has arrived",
+            "asserts": "the same profile with two more seconds on Mapbox GL JS -> at 412x915 and 800x1280 the first contentful paint comes before mapbox-gl.js has arrived (resource timing) and within the budget",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Before the fix the engine, a module script, ran only after the deferred mapbox-gl.js (526 KB gzip): the first paint waited for it; then, with the CDN slow, the page's render-blocking mapbox-gl.css (2.9 s; the viewer links its own in the shadow root). Unit tests in packages/engine/test/mount-browser.test.ts, packages/ui/test/map/mapbox-adapter-pending.test.ts, scripts/site/test/page.test.ts."
+        },
+        {
             "id": "S-V01-BAD-MANIFEST404",
             "behaviour": "V01",
             "area": "viewer",
@@ -1306,6 +1328,17 @@
             "notes": "Milestone M1. Mapbox GL parses a source attribution as HTML (keeping links); the engine escapes it (packages/engine/src/map/rasters.ts attributionText)."
         },
         {
+            "id": "S-V03-BAD-ATTRIBUTION-REPEATED",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Two layers with the same USGS credit name their source once, in the visitor's language, in the panel and on the map",
+            "asserts": "both fixture layers credited USGS_ATTRIBUTION and shown -> the map's attribution contains layers.attribution.usgs in the page's language; the Layers panel has exactly one 'Sursa: …' line, and the English credit appears only in English",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel Tablet, 2026-11-12: the line repeated once per layer and stayed English on the Romanian map. packages/shared/src/overlays/credits.ts (localizedCredit, creditParts; @hcm/shared/credits), packages/ui/src/viewer/hcm-layer-panel.ts, hcm-map-attribution.ts, packages/engine/src/core/map-specs.ts; unit tests in packages/shared/test/overlays/credits.test.ts."
+        },
+        {
             "id": "S-V03-HAPPY-3D-OFF",
             "behaviour": "V03",
             "area": "viewer",
@@ -1443,10 +1476,21 @@
             "area": "viewer",
             "path": "bad",
             "title": "On a phone no year, or a year without photos, shows no button; a wide window keeps the text chip",
-            "asserts": "at 390x844 at today (the year is null) there is no chip dock and no button; back at today after a year with photos the button is gone; the same year at 1024x768 shows the text chip and no icon button",
+            "asserts": "at 390x844 at today (the year is null) there is no chip dock and no button; back at today after a year with photos the button is gone; the same year at 1024x768 shows the text chip under a mouse (the icon button in a touch project)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-12. Tests: e2e/specs/viewer/timeline.spec.ts; packages/ui/test/viewer/kit-timeline-layout.test.ts."
+        },
+        {
+            "id": "S-V04-HAPPY-TABLET-ICON-CHIP",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A tablet gets the icon button named in full, upright and on its side under a finger; only a mouse gets the text",
+            "asserts": "at 800x1280 the photos-near-the-year button is the icon button, its name and tooltip the full text, no text chip; at 1280x800 a mouse sees the text chip, and with touch emulation ((pointer: coarse)) the icon button again",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: the text only on large screens. packages/ui/src/viewer/viewer-near-year.ts (textChip), hcm-map-viewer.ts (finePointer from (pointer: fine)). Tests: e2e/specs/viewer/timeline.spec.ts; packages/ui/test/viewer/viewer-near-year.test.ts."
         },
         {
             "id": "S-V04-HAPPY-VERTICAL-ON-PHONE",
@@ -1465,7 +1509,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "A short window lays the timeline at the foot of the map",
-            "asserts": "at 915x412 the slider is aria-orientation horizontal and wider than tall; Right selects the later year and Left the earlier; the chip sits 8 px above the card on its trailing edge; the open two-column menu on the leading edge covers neither the chip nor the timeline",
+            "asserts": "at 915x412 the slider is aria-orientation horizontal and wider than tall; Right selects the later year and Left the earlier; the chip (an icon button: a short window) sits 8 px above the card on its trailing edge; while the menu is open only it is shown (the card and the chip step aside, P1) and both are back once Escape closes it",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08: 'when height is short, we should display the timeline horizontally'. packages/ui/src/viewer/layout.ts (COMPACT_HEIGHT), viewer-styles.ts."
@@ -1487,7 +1531,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "On a narrow short phone the chip ends at the gutter, off the map's centre and clear of the open menu",
-            "asserts": "at 568x320 the lying card and the chip end 16 px from the trailing edge, the chip on the card's trailing edge and off the map's centre point; the open three-column menu's items end above the chip's row and cover neither the chip nor the timeline",
+            "asserts": "at 568x320 the lying card and the chip end 16 px from the trailing edge, the chip on the card's trailing edge and off the map's centre point; while the menu is open only it is shown, on screen (the card and the chip step aside, P1), and both are back once Escape closes it",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The review of track/yearchip, 2026-11-08: at 568x320 the chip sat on the map's centre and 'Distribuie' and 'Despre' covered it. packages/ui/src/viewer/viewer-styles.ts; unit tests in packages/ui/test/viewer/kit-timeline-layout.test.ts."
@@ -1497,11 +1541,22 @@
             "behaviour": "V04",
             "area": "viewer",
             "path": "bad",
-            "title": "With more years than the card holds the timeline scrolls, its labels legible and the selected year in view",
-            "asserts": "with twenty-two stops (1964 … 1984, today) at 320x568, 568x320 and 768x1024 the card scrolls; after Home, End and Home the thumb is inside the card and no label meets the pill or another label",
+            "title": "With more years than the card holds the timeline scrolls under a finger, its edge fades and the selected year stays in view",
+            "asserts": "with sixty-two stops (1924 … 1984, today) at 320x568, 568x320 and 768x1024 the card scrolls and takes a finger along the timeline (touch-action pan-y standing, pan-x lying); after Home, End and Home the thumb is inside the card, the edge with more years beyond fades (24 px) and no label meets the pill or another label",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The review of track/yearchip, 2026-11-08: twenty-two stops squeezed 17 px apart. The stops keep 30 px apart and the selected one snaps into view when no drag is on. packages/ui/src/viewer/timeline-styles.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts."
+            "notes": "The review of track/yearchip, 2026-11-08 (stops 17 px apart) and the Pixel Tablet, 2026-11-12 (no finger scroll). Below 14 px per gap the stops keep 16 px apart, every other one labelled, and the selected one is centred when no drag is on. packages/ui/src/viewer/timeline-model.ts, timeline-styles.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts, timeline-model.test.ts."
+        },
+        {
+            "id": "S-V04-BAD-MANY-YEARS-FIT",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Twenty-two years fit the card, every other one labelled and none clipped, on a phone, a tablet and a desktop",
+            "asserts": "with twenty-two stops (1964 … 1984, today) at 360x800, 568x320, 800x1280, 1280x800 and 1440x900, after Home and after End: the card does not scroll, its density is not scroll, the thumb is inside the card, no label shown sticks out of the card or meets the pill or another label, and at least eight years are named",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two stops overflowed the card and 1847 showed as \"7\". packages/ui/src/viewer/timeline-model.ts (timelineDensity, labelShown), hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts."
         },
         {
             "id": "S-V04-HAPPY-NO-LAYERS-NOTE",
@@ -2219,6 +2274,28 @@
             "notes": "Milestone M1; generic checker since 2026-10-17. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
         },
         {
+            "id": "S-V15-HAPPY-TABLET-PORTRAIT-DOCKED",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A tablet held upright docks the Layers panel beside the map, which keeps its timeline, Menu and zoom in view",
+            "asserts": "at 800x1280 the Layers panel is a labelled region, no dialog; the timeline, the Menu button and the zoom buttons are shown, none overlaps the pane and each is on top where it is drawn; no horizontal overflow",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel Tablet, 2026-11-12: the modal side sheet covered the timeline, Menu and zoom. packages/ui/src/theme/tokens.ts (DOCKED_PANE_MIN_PX, isDockable), packages/ui/src/viewer/layout.ts; unit tests in packages/ui/test/viewer/layout.test.ts, tokens.test.ts."
+        },
+        {
+            "id": "S-V15-BAD-NARROW-OR-SHORT-MODAL",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A window under 760 px wide, or wide but short, still opens the Layers panel as a modal sheet",
+            "asserts": "at 759x1024 and at 915x412 the Layers panel opens as a dialog and Esc closes it",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The dock threshold of the Pixel Tablet fix (760 px wide, not compact height). packages/ui/src/viewer/layout.ts."
+        },
+        {
             "id": "S-V15-BAD-COMPACT-LANDSCAPE",
             "behaviour": "V15",
             "area": "viewer",
@@ -2646,6 +2723,28 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
+        },
+        {
+            "id": "S-V22-HAPPY-TOUCH-DRAG",
+            "behaviour": "V22",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A finger dragged sideways along an opacity slider moves its value",
+            "asserts": "Chromium's own touch events (CDP Input.dispatchTouchEvent) from the 100 % end to 30 % of the fixture raster's slider -> aria-valuenow 30",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel Tablet, 2026-11-12. packages/ui/src/components/slider.ts (touchIntent, TOUCH_SLOP_PX); unit tests in packages/ui/test/components/slider.test.ts. e2e/specs/viewer/slider-touch.spec.ts."
+        },
+        {
+            "id": "S-V22-BAD-TOUCH-VERTICAL-SWIPE",
+            "behaviour": "V22",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A finger swiping up or down across an opacity slider leaves its value alone",
+            "asserts": "a 120 px downward and a 120 px upward touch swipe, 6 px slanted, starting on the track's left third -> aria-valuenow unchanged and the slider not focused (touch-action pan-y; the value moves only after 8 px more sideways than up or down; pointercancel ends the press)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel Tablet, 2026-11-12: a swipe meant to scroll the Layers panel set 1977 to 4 %. packages/ui/src/components/slider.ts; unit tests in packages/ui/test/components/slider.test.ts."
         },
         {
             "id": "S-V22-HAPPY-PHOTOS",
@@ -18288,6 +18387,17 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-BAD-LONE-LINKS-SMALL",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A photo's sheet keeps its lone links, Street View and Suggest a correction, 48 px tall",
+            "asserts": "a photo with a bearing and a manifest with contributeUrl -> the sheet's Street View and Suggest a correction links are visible and at least 48 px tall",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel Tablet, 2026-11-12: both were 19 px tall. packages/ui/src/viewer/shared-styles.ts (.details .link > a), hcm-photo-sheet.ts; unit tests in packages/ui/test/viewer/hcm-photo-sheet.test.ts."
         },
         {
             "id": "S-V62-HAPPY-KEYBOARD-COPY",

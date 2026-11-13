@@ -6,6 +6,7 @@
  * hidden (one Mapbox logo and attribution on the map, the viewer map's). Pure; texts in the state's language.
  */
 import { translate, type Manifest } from '@hcm/shared';
+import { localizedCredit } from '@hcm/shared/credits';
 import type { CompareChoice, CompareUiProps } from '@hcm/ui/viewer/compare';
 
 import { compareModeOf, overlayName, type CompareView, type ViewerState } from '../core/state.js';
@@ -47,7 +48,9 @@ export function compareChoices(state: ViewerState, manifest: Manifest): readonly
 /** "Sursa: USGS EROS" for a compared layer; `''` for today. */
 export function compareCredit(state: ViewerState, manifest: Manifest, layerId: string | null): string {
     const layer = manifest.layers.find((candidate) => candidate.id === layerId);
-    return layer === undefined ? '' : translate(state.locale, 'layers.attribution', { attribution: layer.attribution });
+    return layer === undefined
+        ? ''
+        : translate(state.locale, 'layers.attribution', { attribution: localizedCredit(layer.attribution, state.locale) });
 }
 
 /** The surface's props for `state` while it compares (`compare` is the state's). */

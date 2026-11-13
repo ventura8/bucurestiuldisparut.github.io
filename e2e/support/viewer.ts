@@ -169,9 +169,16 @@ export function windowClassOf(width: number): 'compact' | 'medium' | 'expanded' 
     return width < 1600 ? 'large' : 'extra-large';
 }
 
-/** Expanded and wider windows dock the detail sheet in a pane; compact and medium ones open it as a modal sheet. */
+/**
+ * Windows from 760 px wide (a medium one too: the Pixel Tablet upright, 2026-11-12) dock the detail sheet in a pane unless
+ * they are short (a phone on its side); the others open it as a modal sheet (packages/ui/src/viewer/layout.ts).
+ */
+export function sheetsDock(size: { readonly width: number; readonly height: number } | null): boolean {
+    return size !== null && size.width >= 760 && size.height >= 480;
+}
+
 export function isDocked(page: Page): boolean {
-    return (page.viewportSize()?.width ?? 0) >= 840;
+    return sheetsDock(page.viewportSize());
 }
 
 /**

@@ -214,7 +214,7 @@ export class HcmPhotoSheet extends LitElement {
         const locale = this.locale;
         return html`<div class="details">
             ${this.#image(photo)} ${this.#locate(photo)}
-            <p>${externalLink(streetViewUrl(photo.location, photo.bearing), translate(locale, 'mapMenu.streetView'))}</p>
+            <p class="link">${externalLink(streetViewUrl(photo.location, photo.bearing), translate(locale, 'mapMenu.streetView'))}</p>
             ${this.#date(photo)} ${photoRights(photo, locale)} ${this.#source(photo)}
             ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`} ${this.#links(photo)}
             ${this.#suggestion(photo)} ${relatedStories(this.stories, 'photoIds', photo.id, this.locale)}
@@ -272,7 +272,7 @@ export class HcmPhotoSheet extends LitElement {
             return EMPTY;
         }
         const url = `${this.contributeUrl}/${photo.id}`;
-        return html`<p>${externalLink(url, translate(this.locale, 'photo.suggest'))}</p>`;
+        return html`<p class="link">${externalLink(url, translate(this.locale, 'photo.suggest'))}</p>`;
     }
 
     #image(photo: Photo): TemplateResult {

@@ -127,8 +127,8 @@ function cityPageSpec(themeColor: string): SiteSpec {
 
 export interface CityPageInputs {
     readonly bucket: string;
-    /** `sha384-…` of the pinned mapbox-gl.js and mapbox-gl.css. */
-    readonly mapboxGlIntegrity: { readonly script: string; readonly stylesheet: string };
+    /** `sha384-…` of the pinned mapbox-gl.js (the page links no mapbox-gl.css: `page.ts`). */
+    readonly mapboxGlIntegrity: { readonly script: string };
     /** The root site's theme colour. */
     readonly themeColor: string;
 }

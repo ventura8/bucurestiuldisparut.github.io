@@ -120,7 +120,7 @@ function buildSites(context: HostingCliContext, bucket: string): { sites: Hostin
     return { sites, themeColor };
 }
 
-function mapboxGlIntegrity(files: SiteFileSystem): { script: string; stylesheet: string } {
+function mapboxGlIntegrity(files: SiteFileSystem): { script: string } {
     const read = (name: string): Uint8Array => {
         const path = `${DEFAULT_MAPBOX_GL_DIR}/${name}`;
         if (!files.isFile(path)) {
@@ -128,7 +128,7 @@ function mapboxGlIntegrity(files: SiteFileSystem): { script: string; stylesheet:
         }
         return files.readBytes(path);
     };
-    return { script: subresourceIntegrity(read('mapbox-gl.js')), stylesheet: subresourceIntegrity(read('mapbox-gl.css')) };
+    return { script: subresourceIntegrity(read('mapbox-gl.js')) };
 }
 
 function build(options: HostingCliOptions, context: HostingCliContext): number {

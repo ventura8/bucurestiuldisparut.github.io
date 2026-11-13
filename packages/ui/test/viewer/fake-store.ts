@@ -3,7 +3,7 @@
  * engine store uses (`@hcm/shared`), records every action in `calls`, and lets a test move the state with `set`.
  * The engine's real store is tested in `packages/engine`; this one only has to be faithful enough to drive the UI.
  */
-import { isCompactHeight, windowClassFor } from '../../src/theme/tokens.js';
+import { isCompactHeight, isDockable, windowClassFor } from '../../src/theme/tokens.js';
 import type { MyLocationState, SheetName, ThemeMode, ViewerState, ViewerStorePort } from '../../src/viewer/store-port.js';
 import {
     overlaysFromManifest,
@@ -45,6 +45,7 @@ export function idleState(): ViewerState {
         layersHidden: false,
         windowClass: 'compact',
         compactHeight: false,
+        dockable: false,
         theme: 'system',
         consent: 'unknown',
         toast: null,
@@ -207,7 +208,7 @@ export class FakeStore implements ViewerStorePort {
 
     setWindowSize(width: number, height: number): void {
         this.#record('setWindowSize', width, height);
-        this.set({ windowClass: windowClassFor(width), compactHeight: isCompactHeight(height) });
+        this.set({ windowClass: windowClassFor(width), compactHeight: isCompactHeight(height), dockable: isDockable(width) });
     }
 
     setTheme(theme: ThemeMode): void {

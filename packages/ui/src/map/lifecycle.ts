@@ -4,6 +4,7 @@
  * events (a style error before `load` fails the mount; source and tile errors never do).
  */
 import { translate, type Locale } from '@hcm/shared';
+import { localizedCredit } from '@hcm/shared/credits';
 
 import type { MapOptions, MapEventMap } from './map-port.js';
 import type { MapboxEvent, MapboxMap, MapboxMapOptions } from './mapbox-types.js';
@@ -72,6 +73,22 @@ export function relabelMapbox(container: Pick<ParentNode, 'querySelectorAll'>, l
         for (const element of container.querySelectorAll(selector)) {
             element.setAttribute(attribute, strings[key]);
         }
+    }
+    for (const credits of container.querySelectorAll('.mapboxgl-ctrl-attrib-inner')) {
+        localizeText(credits, locale);
+    }
+}
+
+/**
+ * The layers' credits in Mapbox's attribution line in `locale` (the viewer hands Mapbox each credit in the language of
+ * the page's first load, `map-specs.ts` `rasterSpec`): every text node, so the links in the line stay links.
+ */
+function localizeText(node: Node, locale: Locale): void {
+    if (node.nodeType === Node.TEXT_NODE) {
+        node.nodeValue = localizedCredit(node.nodeValue ?? '', locale);
+    }
+    for (const child of node.childNodes) {
+        localizeText(child, locale);
     }
 }
 

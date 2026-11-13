@@ -9,6 +9,7 @@ import { expect, test } from '../../support/test.js';
 import {
     callController,
     hashParam,
+    isDocked,
     menuButton,
     openLayers,
     openViewer,
@@ -283,14 +284,52 @@ test(
         await slider.press('Home');
         await page.setViewportSize({ width: 1024, height: 768 });
         await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('orientation', 'horizontal');
-        await expect(chip.locator('hcm-icon-button')).toHaveCount(0);
-        await expect(chip.locator('hcm-button')).toContainText(t(lang, 'photos.nearYear', { year: '1966' }));
+        // A large window: the text chip under a mouse; a touch project's finger keeps the icon button (`(pointer: coarse)`).
+        const name = t(lang, 'photos.nearYear', { year: '1966' });
+        const finger = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
+        await expect(chip.locator(finger ? 'hcm-icon-button' : 'hcm-button')).toHaveCount(1);
+        await expect(chip.locator(finger ? 'hcm-button' : 'hcm-icon-button')).toHaveCount(0);
+        await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
     },
 );
 
-/** Expanded and wider windows dock the sheets in a pane (a labelled region); narrower ones open modal dialogs. */
+test(
+    'A tablet gets the icon button named in full, upright and on its side under a finger; only a mouse gets the text',
+    { tag: '@S-V04-HAPPY-TABLET-ICON-CHIP' },
+    async ({ page, lang }) => {
+        // The owner, 2026-11-13: the text chip only on large screens; a tablet on its side is as wide as a laptop.
+        const name = t(lang, 'photos.nearYear', { year: '1966' });
+        const chip = viewer(page).locator('.dock.chip');
+        const showsIcon = async (where: string): Promise<void> => {
+            const button = page.getByRole('button', { name, exact: true });
+            await expect(button, where).toBeVisible();
+            await expect(chip.locator('hcm-icon-button'), where).toHaveAttribute('title', name);
+            await expect(chip.locator('hcm-button'), where).toHaveCount(0);
+            await expect(chip, where).not.toContainText(name);
+        };
+
+        await page.setViewportSize({ width: 800, height: 1280 });
+        await openViewer(page, { lang, hash: OBOR_VIEW });
+        const slider = timelineSlider(page, lang);
+        await slider.focus();
+        await slider.press('Home');
+        await showsIcon('800x1280');
+
+        await page.setViewportSize({ width: 1280, height: 800 });
+        // A mouse sees the text there; a touch project's finger already keeps the icon button.
+        const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
+        await expect(chip.locator(coarse ? 'hcm-icon-button' : 'hcm-button')).toBeVisible();
+        const cdp = await page.context().newCDPSession(page);
+        await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+        await cdp.send('Emulation.setEmitTouchEventsForMouse', { enabled: true, configuration: 'mobile' });
+        await expect.poll(() => page.evaluate(() => matchMedia('(pointer: coarse)').matches), 'a finger').toBe(true);
+        await showsIcon('1280x800, a finger');
+    },
+);
+
+/** Windows from 760 px wide dock the sheets in a pane (a labelled region); narrower ones open modal dialogs. */
 function viewportIsDocked(page: Page): boolean {
-    return (page.viewportSize()?.width ?? 0) >= 840;
+    return isDocked(page);
 }
 
 test(

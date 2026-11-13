@@ -195,6 +195,25 @@ describe('<hcm-photo-sheet>: the source', () => {
         expect(shadowQueryAll(element, '.source')).toEqual([]);
     });
 
+    it('happyPath_theLoneLinksAreFullTouchTargets', async () => {
+        // The Pixel Tablet (2026-11-12): "Street View" and "Propune o corectură" were 19 px tall, too small for a finger.
+        await sheet({ photo: photo('mihai-voda-1978'), contributeUrl: 'https://example.test/contribute' });
+
+        for (const name of ['Deschide în Google Street View', 'Propune o corectură']) {
+            const link = page.getByRole('link', { name });
+            await expect.element(link).toBeVisible();
+            expect(link.element().getBoundingClientRect().height).toBeGreaterThanOrEqual(48);
+        }
+    });
+
+    it('badPath_aLinkInsideASentenceKeepsItsLineHeight', async () => {
+        await sheet({ photo: { ...photo('mihai-voda-1978'), source: { url: 'https://arhiva.example/foto/1', label: 'Arhiva' } } });
+
+        const link = page.getByRole('link', { name: 'Arhiva' });
+        await expect.element(link).toBeVisible();
+        expect(link.element().getBoundingClientRect().height).toBeLessThan(48);
+    });
+
     it('badPath_aSourceThatIsNotHttpsIsNoLink', async () => {
         const element = await sheet({ photo: { ...photo('mihai-voda-1978'), source: { url: 'javascript:alert(1)', label: 'Arhiva' } } });
 
