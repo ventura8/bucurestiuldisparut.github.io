@@ -20,7 +20,7 @@ from typing import IO, Final, NoReturn
 import httpx
 
 from hcm_pipeline.objects import READ_BYTES, ObjectInfo, ObjectStoreError, StreamReader, md5_of, transported
-from hcm_pipeline.worker.api import URLS, WorkerApi
+from hcm_pipeline.worker.api import ARCHIVE_COPY, URLS, WorkerApi
 from hcm_pipeline.worker.documents import JobIds
 
 GENERATION_HEADER: Final = "x-goog-generation"
@@ -96,6 +96,11 @@ def _checked(response: httpx.Response, what: str) -> httpx.Response:
 class SignedObjectStore:
     """The claimed job's version files (PUT) and inputs (GET), one signed URL per operation."""
 
+    # Which callable signs, and the field its request names the objects in: `worker.urls`, or M20's `worker.archiveCopy`
+    # (`copy_store`: the holder's side of an archive series' copy, for a job it does not hold).
+    callable: str = URLS
+    field: str = "request"
+
     def __init__(self, api: WorkerApi, ids: JobIds, http: httpx.Client) -> None:
         self._api = api
         self._ids = ids
@@ -103,7 +108,7 @@ class SignedObjectStore:
 
     def _sign(self, path: str, method: str, content_type: str | None = None) -> SignedObject:
         wanted: dict[str, object] = {"path": path, "method": method, **({"contentType": content_type} if content_type else {})}
-        answer = self._api.call(URLS, {**self._ids.body(), "request": {"kind": "objects", "objects": [wanted]}})
+        answer = self._api.call(self.callable, {**self._ids.body(), self.field: {"kind": "objects", "objects": [wanted]}})
         return SignedObject.of(path, answer)
 
     def _readable(self, path: str) -> SignedObject:
@@ -168,3 +173,10 @@ class SignedObjectStore:
 
     def write_chunk(self, session: str, offset: int, data: bytes, size: int) -> int | ObjectInfo:
         self._refused("a resumable session")
+
+
+def copy_store(api: WorkerApi, ids: JobIds, http: httpx.Client) -> SignedObjectStore:
+    """M20 (2026-11-13): the objects of an archive series' copy, signed by `worker.archiveCopy` for the job another worker waits on."""
+    store = SignedObjectStore(api, ids, http)
+    store.callable, store.field = ARCHIVE_COPY, "copy"
+    return store

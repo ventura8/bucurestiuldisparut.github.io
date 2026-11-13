@@ -12757,6 +12757,17 @@
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-dates.spec.ts, functions/test/imagery/join*.test.ts."
         },
         {
+            "id": "S-A66-BAD-REWRITES-AT-ONCE",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "bad",
+            "title": "Frames that end together keep the whole-city dates up to date without running the function out of memory",
+            "asserts": "three rewrites of one city's plan asked at once -> the city is read twice, not three times, and the plan lists the frame written while the first ran; a rewrite that fails fails its waiters and the next call reads again; another city is not held behind it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Cloud Error Reporting, 2026-11-13: imagery-onJobWrite over its 256 MiB (docs/LESSONS.md 663). Test: functions/test/imagery/join-plan-flight.test.ts."
+        },
+        {
             "id": "S-A66-BAD-NO-NEIGHBOUR",
             "behaviour": "A66",
             "area": "admin",
@@ -17190,6 +17201,28 @@
             "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: functions/test/imagery/archive-import.test.ts, packages/ui/test/admin/archive/archive.test.ts."
         },
         {
+            "id": "S-A120-HAPPY-ARCHIVE-COPY",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "Any computer runs an archive series; the computer with the archive sends a copy of its sheets",
+            "asserts": "a second worker claims an archive series; one waiting archive-copy is claimed by nobody, the holder's claim (archives names it) is answered copy, worker.archiveCopy signs only the job's copy files and done puts it back to worker with archiveCopy {by, bytes}; the job's worker reads its copy through worker.urls",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 §20 (live report of 2026-11-13; DECISIONS §204). Tests: functions/test/worker/archive-host.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-ARCHIVE-COPY",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "A computer without the sheets hands the series back without failing it or spending an attempt",
+            "asserts": "worker.end returned -> queued, attempt - 1, archiveReturns + 1, waitReason archive-copy, no lease, worker or error; the dispatcher keeps archive-copy; a copy is refused for a job not waiting, another job's folder, a name that is no SHA-256, a PUT without a type, the guard red; the archive's own computer and the fifth return fail archiveMissing",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 §20 (live report of 2026-11-13; DECISIONS §204). Tests: functions/test/worker/archive-host.test.ts."
+        },
+        {
             "id": "S-A121-HAPPY-PANEL",
             "behaviour": "A121",
             "area": "admin",
@@ -18361,7 +18394,7 @@
             "area": "admin",
             "path": "bad",
             "title": "On a low battery the worker pauses; a hot computer steps down; the user at the keyboard gets the computer back",
-            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; from 80 C on the processor the threads shrink in proportion to the degrees left to 95 C (at least one), and other programs' busy cores come off the top; at 95 C on the processor or 83 C on the card one level down, back 5 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test); the log says a change of profile, reason, threads or memory step only, never every tick",
+            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; from 80 C on the processor the threads shrink in proportion to the degrees left to 95 C (at least one), and other programs' busy cores come off the top; at 95 C on the processor or 83 C on the card one level down for at least two minutes, back 5 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test); the log says a change of profile, reason, threads or memory step only, never every tick",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_governor_budget.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
@@ -18585,6 +18618,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-HAPPY-ARCHIVE-COPY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Another computer runs a series from the copy of its sheets",
+            "asserts": "the holder puts each sheet by its SHA-256 and the manifest, then says done with the bytes; the other worker downloads, checks every SHA-256, keeps the sheets as a partial record (never named as held whole) and gather runs; a claim names the whole archives and a copy duty is sent before any job",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §20 (live report of 2026-11-13). Tests: pipeline/tests/unit/test_archive_copy.py, test_worker_copying.py, test_worker_loop.py."
+        },
+        {
+            "id": "S-P20-BAD-ARCHIVE-COPY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "No copy, or a copy that is not the scan's bytes, hands the job back",
+            "asserts": "no manifest, a sheet whose SHA-256 differs or a manifest that is not JSON -> ArchiveElsewhereError, nothing kept; the run ends RETURNED without a write and worker.end says returned",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §20 (live report of 2026-11-13). Tests: pipeline/tests/unit/test_archive_copy.py, test_worker_loop.py."
         },
         {
             "id": "S-A65-HAPPY-JOINED-FRAME",

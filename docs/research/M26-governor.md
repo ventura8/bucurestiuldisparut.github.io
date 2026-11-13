@@ -72,7 +72,8 @@ One pure function, `decide(signals, choice, before, now) -> PolicyState`, and `e
 - Heat steps **down one level** (full to quiet, quiet to paused) at 95 °C on the processor (90 until 2026-11-13: the
   laptop's package reads 90 with only a local model running, so every mobile processor at work stepped down) or 83 °C on a card, and
   back up only 5 °C below both (`why: thermal`; 10 until 2026-11-13: with a local model, pytest and Prettier holding the laptop at
-  88 to 93 °C, a resume at 85 never came and the worker paused for hours).
+  88 to 93 °C, a resume at 85 never came and the worker paused for hours); once hot it stays hot at least two minutes, `HOT_HOLD_S`: on battery at 90 to 95 °C the laptop paused and resumed
+  about once a minute).
 - **Before the limit** the budget already gives way (§4): from `WARM_C` (80 °C) the threads shrink in proportion to the degrees
   left to 95 (14 threads at 80, 9 at 85, 4 at 90, 1 at 93), so the worker's own load seldom takes the processor to the step-down,
   and a resume at 90 runs on the one or few threads the heat leaves, not on a full profile.
