@@ -6,7 +6,7 @@
  * (pois), so the real ones satisfy them structurally; until the factory is wired the page shows the unavailable map and
  * every field still works. DOM-free: an `HTMLElement` only travels from the page to the map factory.
  */
-import type { BBox, Locale, LngLat, MapView } from '@hcm/shared';
+import type { BBox, UiLocale, LngLat, MapView } from '@hcm/shared';
 
 import type { Unsubscribe } from '../app/ports.js';
 import type { ContentServices } from '../content/services.js';
@@ -89,7 +89,7 @@ export type PhotoMapResult =
 export interface PhotoMapFactory {
     create(
         container: HTMLElement,
-        options: { readonly bounds: BBox; readonly view: MapView; readonly locale: Locale },
+        options: { readonly bounds: BBox; readonly view: MapView; readonly locale: UiLocale },
     ): Promise<PhotoMapResult>;
 }
 

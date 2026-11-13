@@ -7,7 +7,7 @@
  * draft fills the field, or why there is none. Every text is plain text; a status region exists before its text, so it is
  * announced.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { visuallyHidden } from '../../components/styles.js';
@@ -19,7 +19,7 @@ import type { AssistActionsPort, AssistFieldPort, AssistViewPort, DraftPort, Tit
 export const OSM_COPYRIGHT_URL = 'https://osm.org/copyright';
 
 export interface TitleAssistInput {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly view: AssistViewPort;
     readonly actions: AssistActionsPort;
     /** The ids of the slot's parts (`photo-title`). */
@@ -27,7 +27,7 @@ export interface TitleAssistInput {
     readonly readOnly: boolean;
 }
 
-function statusText(locale: Locale, titles: TitleSuggestionsPort): string {
+function statusText(locale: UiLocale, titles: TitleSuggestionsPort): string {
     const asking = titles.status === 'asking' || titles.status === 'queued';
     if (asking) {
         return contentText(locale, 'adminContent.assist.waiting');
@@ -103,7 +103,7 @@ export interface PairTextPort {
 }
 
 export interface DraftAssistInput {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly view: AssistViewPort;
     readonly actions: AssistActionsPort;
     readonly field: AssistFieldPort;
@@ -131,14 +131,14 @@ function draftedSide(input: DraftAssistInput): Side | null {
 }
 
 /** What a done draft says: the model that proposed it, and that it was shortened when it was. */
-function doneNote(locale: Locale, draft: DraftPort): TemplateResult {
+function doneNote(locale: UiLocale, draft: DraftPort): TemplateResult {
     const truncated = draft.truncated ? html` ${contentText(locale, 'adminContent.assist.truncated')}` : nothing;
     return html`<p class="note" data-draft-note>
         ${contentText(locale, 'adminContent.assist.draftNote', { model: draft.model ?? '' })}${truncated}
     </p>`;
 }
 
-function draftNote(locale: Locale, draft: DraftPort | undefined): TemplateResult {
+function draftNote(locale: UiLocale, draft: DraftPort | undefined): TemplateResult {
     if (draft === undefined || draft.status === 'working') {
         return EMPTY;
     }
@@ -147,7 +147,7 @@ function draftNote(locale: Locale, draft: DraftPort | undefined): TemplateResult
         : doneNote(locale, draft);
 }
 
-function draftLabel(locale: Locale, to: Side): string {
+function draftLabel(locale: UiLocale, to: Side): string {
     return contentText(locale, to === 'en' ? 'adminContent.assist.draftToEn' : 'adminContent.assist.draftToRo');
 }
 

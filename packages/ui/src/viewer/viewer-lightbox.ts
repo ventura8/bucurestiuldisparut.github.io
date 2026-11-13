@@ -3,7 +3,7 @@
  * opens (`extras-loader.ts`); until then the tag is an unknown element that keeps the properties set on it. The map's
  * menu (V62) is side-loaded the same way, the first time it opens.
  */
-import type { Locale, Photo, PhotoView } from '@hcm/shared';
+import type { ViewerLocale, Photo, PhotoView } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { MenuPoint } from './map-menu-trigger.js';
@@ -20,7 +20,7 @@ export interface MapMenuHandlers {
 
 /** The map's menu over the map (side-loaded with the full-size view; closed while `point` is null). */
 export function mapMenu(
-    view: { readonly locale: Locale; readonly mapMenu: MenuPoint | null },
+    view: { readonly locale: ViewerLocale; readonly mapMenu: MenuPoint | null },
     state: ViewerState,
     handlers: MapMenuHandlers,
 ): TemplateResult {
@@ -59,7 +59,7 @@ export function lightboxPhotos<P extends Pick<Photo, 'id' | 'year' | 'yearEnd'>>
 export function lightbox(
     state: ViewerState,
     all: readonly Photo[],
-    view: { readonly locale: Locale; readonly manifestUrl: string },
+    view: { readonly locale: ViewerLocale; readonly manifestUrl: string },
     handlers: LightboxHandlers,
 ): TemplateResult {
     return html`<hcm-lightbox

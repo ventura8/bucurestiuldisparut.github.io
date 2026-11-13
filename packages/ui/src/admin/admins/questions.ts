@@ -2,7 +2,7 @@
  * The questions the admins page asks before an irreversible step (M2c §9.1; M5 `docs/research/M5-interfaces.md` §1.7):
  * removing an admin, cancelling an invitation, or changing an admin's role in the city.
  */
-import type { CityRole, Locale } from '@hcm/shared';
+import type { CityRole, UiLocale } from '@hcm/shared';
 
 import { contentText, shellText } from '../shell/text.js';
 import type { RevokeInputPort } from './admins-port.js';
@@ -23,7 +23,7 @@ export interface Question {
 }
 
 /** What the question before a role change says (M5). */
-function roleQuestion(locale: Locale, name: string, role: CityRole, city: string): Question {
+function roleQuestion(locale: UiLocale, name: string, role: CityRole, city: string): Question {
     return {
         headline: shellText(locale, 'adminShell.admins.roleConfirm', { name, role: roleText(locale, role).toLowerCase(), city }),
         body: shellText(locale, 'adminShell.admins.roleOf', { name, city }),
@@ -34,7 +34,7 @@ function roleQuestion(locale: Locale, name: string, role: CityRole, city: string
 }
 
 /** What the question before a removal, a cancellation or a role change says. */
-export function questionOf(locale: Locale, pending: Pending | null, city: string): Question {
+export function questionOf(locale: UiLocale, pending: Pending | null, city: string): Question {
     if (pending?.request.kind === 'role') {
         return roleQuestion(locale, pending.name, pending.request.role, city);
     }

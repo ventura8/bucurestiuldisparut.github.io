@@ -9,7 +9,7 @@
  * (failed, cancelled or rejected) or an archive series waiting for points (`imagery.deleteVersion`, asked first; the page then returns to the list). M12: what the map shows of it, its share of the city, Actual pixels and See
  * the image (`image-view.ts`). M16: Calibrate again, and a recalibration's figures (`recalibrate/`).
  */
-import { JOB_MAX_ATTEMPTS, type AdminContentKey, type Locale } from '@hcm/shared';
+import { JOB_MAX_ATTEMPTS, type AdminContentKey, type UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { errorTemplate, formatWhen, loadingTemplate, reconnectingStatus } from '../editing/states.js';
@@ -52,7 +52,7 @@ function percentOf(job: JobViewPort): string | null {
     return job.progress === null ? null : String(Math.round(job.progress * 100));
 }
 
-function bar(locale: Locale, job: JobViewPort): TemplateResult {
+function bar(locale: UiLocale, job: JobViewPort): TemplateResult {
     return withValue(
         percentOf(job),
         (percent) =>
@@ -63,7 +63,7 @@ function bar(locale: Locale, job: JobViewPort): TemplateResult {
     );
 }
 
-function waiting(locale: Locale, job: JobViewPort): TemplateResult {
+function waiting(locale: UiLocale, job: JobViewPort): TemplateResult {
     return withValue(
         // M8: a join waiting for its frames says so above them (`join/join-card.ts`).
         wordedWait(job.waitReason === 'parts' ? null : job.waitReason),
@@ -71,14 +71,14 @@ function waiting(locale: Locale, job: JobViewPort): TemplateResult {
     );
 }
 
-function progress(locale: Locale, job: JobViewPort | null): TemplateResult {
+function progress(locale: UiLocale, job: JobViewPort | null): TemplateResult {
     return withValue(job, (running) => when(!running.finished, () => html`${bar(locale, running)} ${waiting(locale, running)}`));
 }
 
 const GB = 1e9;
 
 /** A running transfer's bytes on its step line, ` · 1.2 of 3.4 GB` (` · 1.2 GB` while its total is unknown), else nothing. */
-function transferText(locale: Locale, transfer: JobViewPort['steps'][number]['transfer']): string {
+function transferText(locale: UiLocale, transfer: JobViewPort['steps'][number]['transfer']): string {
     if (transfer === null) {
         return '';
     }
@@ -87,7 +87,7 @@ function transferText(locale: Locale, transfer: JobViewPort['steps'][number]['tr
     return ` · ${total === null ? gb(received) : contentText(locale, 'adminContent.imagery.bytesOf', { received: gb(received), total: gb(total) })} GB`;
 }
 
-function steps(locale: Locale, job: JobViewPort | null): TemplateResult {
+function steps(locale: UiLocale, job: JobViewPort | null): TemplateResult {
     return withValue(
         job,
         (shown) =>
@@ -324,12 +324,12 @@ function imageView({ context, version }: Shown): TemplateResult {
     return withValue(version, (known) => withValue(known.output, (output) => imageControls(context, output, known.state)));
 }
 
-function line(locale: Locale, entry: JobLogLinePort): TemplateResult {
+function line(locale: UiLocale, entry: JobLogLinePort): TemplateResult {
     const step = entry.step === null ? '' : `${stepNameText(locale, entry.step)}: `;
     return html`<li class="note" data-seq=${entry.seq}>${formatWhen(locale, entry.at)} · ${step}${entry.message}</li>`;
 }
 
-function logs(locale: Locale, lines: readonly JobLogLinePort[]): TemplateResult {
+function logs(locale: UiLocale, lines: readonly JobLogLinePort[]): TemplateResult {
     if (lines.length === 0) {
         return html`<p class="note">${contentText(locale, 'adminContent.jobs.noLog')}</p>`;
     }
@@ -427,7 +427,7 @@ function outcome(shown: Shown): TemplateResult {
 }
 
 /** The version's title: its label, and its year when the label does not say it already ("KH-4A Corona, 12 July 1966"). */
-function titleOf(version: VersionViewPort, locale: Locale): string {
+function titleOf(version: VersionViewPort, locale: UiLocale): string {
     const label = labelText(version.label, locale);
     const year = String(version.year);
     const mark = versionMark(locale, version.origin, version.entityId ?? undefined);

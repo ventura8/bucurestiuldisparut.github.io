@@ -10,7 +10,7 @@
  * Events (viewer-internal): `hcm-close`, `hcm-map-menu-copy` (`{text}`, which the viewer copies and announces),
  * `hcm-map-menu-share` (the viewer shares the page's address, whose hash carries the view).
  */
-import { DEFAULT_LOCALE, streetViewUrl, translate, type Locale, type MapView, type MessageKey } from '@hcm/shared';
+import { DEFAULT_LOCALE, streetViewUrl, translate, type ViewerLocale, type MapView, type MessageKey } from '@hcm/shared';
 import { LitElement, css, html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
@@ -147,7 +147,7 @@ export class HcmMapMenu extends LitElement {
     /** Where the menu was asked for, in the map's px; null: closed. */
     declare point: MenuPoint | null;
     declare view: MapView;
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     /** What had the focus when the menu opened. */
     #opener: Element | null = null;
 

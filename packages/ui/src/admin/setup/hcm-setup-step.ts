@@ -15,7 +15,7 @@
  * the button. A count the card's body shows (`*.progress`) is not repeated as the step's reason. A deep link's label
  * says what its page does; advice for that page is a hint beside it, never in the link.
  */
-import { DEFAULT_LOCALE, type AdminSetupKey, type Locale, type ServiceState } from '@hcm/shared';
+import { DEFAULT_LOCALE, type AdminSetupKey, type UiLocale, type ServiceState } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
 import { defineHcmButton } from '../../components/button.js';
@@ -245,7 +245,7 @@ export class HcmSetupStep extends LitElement {
      * opens no popup now (a live token holds its scope: finding 7), so the card shows no note.
      */
     declare noteParams: ConsentNoteParams | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     declare mode: SetupStepMode;
     declare open: boolean;
 

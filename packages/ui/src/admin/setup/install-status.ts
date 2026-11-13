@@ -5,7 +5,7 @@
  * text only) and its page in the Google Cloud console, why the card's button is off, and the cost line. The cards'
  * bodies (`hcm-setup-deploy`, `hcm-setup-pipeline`, `hcm-setup-site`) render it with their own button.
  */
-import type { InstallState, InstallTarget, Locale } from '@hcm/shared';
+import type { InstallState, InstallTarget, UiLocale } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -213,7 +213,7 @@ export const installStatusStyles = css`
 export interface InstallStatusInput {
     readonly target: InstallTarget;
     readonly slice: InstallSliceView;
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly intents: SetupIntentsPort | null;
     /** The card's step (Update the map counts its click there). */
     readonly step: SetupStepId;

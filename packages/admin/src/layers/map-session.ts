@@ -6,7 +6,7 @@
  * loaded (§3.4). The settings page's map is one too (`../settings/settings-map.ts`): it shows the whole saved content
  * (`showContent`: the layers, the photos, the places by category) and reads the map itself (`port`: its clicks and view).
  */
-import { bboxCenter, bboxFromRecord, roundTo, type BBox, type CityDoc, type LayerDoc, type Locale, type MapView } from '@hcm/shared';
+import { bboxCenter, bboxFromRecord, roundTo, type BBox, type CityDoc, type LayerDoc, type UiLocale, type MapView } from '@hcm/shared';
 import type { MapPort, RasterLayerSpec } from '@hcm/ui/map';
 import type { MapDrawPort } from '@hcm/ui/map/draw';
 
@@ -51,7 +51,7 @@ export function rasterOf(id: string, layer: LayerDoc): RasterLayerSpec {
 
 export interface AreaMapDeps {
     readonly maps: AdminMapFactory | null;
-    readonly locale: () => Locale;
+    readonly locale: () => UiLocale;
     readonly preview: PreviewLayer;
     readonly status: (status: MapStatus) => void;
 }

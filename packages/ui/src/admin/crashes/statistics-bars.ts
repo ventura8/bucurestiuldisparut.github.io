@@ -5,7 +5,7 @@
  * the chart as a plain ordered list. The first five rows show; the rest open under **Show all** (a native `<details>`).
  * The bars' widths go through the CSSOM (`cssProperties`), never a `style` attribute, for the admin's strict CSP.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../../components/css-properties.js';
@@ -18,7 +18,7 @@ import { formatCount } from './statistics-format.js';
 const FIRST = 5;
 
 /** A share as the language writes a percentage (`62 %`, `62%`). */
-export function formatShare(locale: Locale, share: number): string {
+export function formatShare(locale: UiLocale, share: number): string {
     return new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 }).format(share);
 }
 
@@ -54,7 +54,7 @@ const PAGE_KEYS: Readonly<Record<string, 'adminContent.statistics.numbers.surfac
     };
 
 /** A page path in words (`/` is the public map, `/admin/` the admin); any other path stays as it is. */
-export function pageName(locale: Locale, path: string): string {
+export function pageName(locale: UiLocale, path: string): string {
     const key = PAGE_KEYS[path];
     return key === undefined ? path : contentText(locale, key);
 }
@@ -66,7 +66,7 @@ const SCREENS: ReadonlySet<string> = new Set([
 ]);
 
 /** An admin screen (`route`) by its name in the navigation; anything else stays as GA4 names it. */
-export function screenName(locale: Locale, route: string): string {
+export function screenName(locale: UiLocale, route: string): string {
     return SCREENS.has(route) ? shellText(locale, `adminShell.nav.${route as 'home'}`) : route;
 }
 
@@ -78,7 +78,7 @@ export interface BarNames {
 
 /** What every row of one list shares: the language, the list's largest number and its sum, and the rows' names. */
 interface BarScale extends BarNames {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly max: number;
     readonly total: number;
 }
@@ -111,7 +111,7 @@ function rest(items: readonly NamedCountPort[], scale: BarScale): TemplateResult
 }
 
 /** A ranked list as a card: its title, then a bar per row (the most first) with the number and its share of the list. */
-export function barCard(locale: Locale, title: string, items: readonly NamedCountPort[], names: BarNames): TemplateResult {
+export function barCard(locale: UiLocale, title: string, items: readonly NamedCountPort[], names: BarNames): TemplateResult {
     const max = Math.max(0, ...items.map((item) => item.count));
     const scale: BarScale = {
         locale,

@@ -4,6 +4,7 @@
  */
 import { z } from 'zod';
 
+import { UI_LOCALES } from '../i18n/locales.js';
 import { idSchema } from '../schemas/primitives.js';
 import {
     COMMON_EVENT_PARAMS,
@@ -34,7 +35,7 @@ export const VIEWER_EVENT_PARAMS = {
     compare_open: {},
     /** A story opened (M17), by its id; the visitor's own choices of language and theme, by their value. */
     story_open: { story_id: idSchema },
-    locale_change: { locale: z.enum(['ro', 'en']) },
+    locale_change: { locale: z.enum(UI_LOCALES) },
     theme_change: { theme: z.enum(['system', 'light', 'dark']) },
     /** The compass turned the map back to north (V64); a games console's pad or remote first used on the page (V65). */
     compass_reset: {},

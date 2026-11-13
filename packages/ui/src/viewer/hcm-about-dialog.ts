@@ -15,11 +15,23 @@
  * (`{decision: 'denied'}`, the kit banner's event) when the visitor withdraws consent, `hcm-help-open` and
  * `hcm-shortcuts-change` (`{enabled}`).
  */
-import { DEFAULT_LOCALE, LOCALES, resolveLocale, translate, type City, type Credit, type Locale } from '@hcm/shared';
+import {
+    DEFAULT_LOCALE,
+    LANGUAGE_NAMES,
+    localized,
+    resolveViewerLocale,
+    shownLanguage,
+    translate,
+    type City,
+    type Credit,
+    type ViewerLocale,
+} from '@hcm/shared';
 import { LitElement, css, html, type PropertyValues, type TemplateResult } from 'lit';
+import { live } from 'lit/directives/live.js';
 
 import { tabbableElements } from '../components/focus.js';
 import { EMPTY } from './empty.js';
+import { fallbackNote } from './fallback-note.js';
 import { externalLink, renderMarkdown } from './markdown.js';
 import { baseStyles, detailStyles } from './shared-styles.js';
 import { renderShortcutsHelp } from './shortcuts-help.js';
@@ -39,9 +51,13 @@ export type AboutMode = 'about' | 'help' | 'settings';
 const HEADLINES = { about: 'about.title', help: 'input.help', settings: 'settings.title' } as const;
 
 /** A credit line: a link when the credit names a page. */
-function creditText(credit: Credit, locale: Locale): TemplateResult | string {
-    return credit.url === undefined ? credit.label[locale] : externalLink(credit.url, credit.label[locale]);
+function creditText(credit: Credit, locale: ViewerLocale): TemplateResult | string {
+    const label = localized(credit.label, locale);
+    return credit.url === undefined ? label : externalLink(credit.url, label);
 }
+
+/** The language list: every viewer language by its own name, in its own language, in `LANGUAGE_NAMES`' fixed order. */
+const LANGUAGE_OPTIONS = Object.entries(LANGUAGE_NAMES).map(([value, label]) => ({ value, label, lang: value }));
 
 const THEME_ICONS: Readonly<Record<ThemeMode, string>> = { system: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' };
 const ACCENT_ICONS: Readonly<Record<AccentChoice, string>> = { device: 'palette', map: 'map' };
@@ -107,7 +123,7 @@ export class HcmAboutDialog extends LitElement {
     /** The single-key shortcuts are on (the help panel's switch). */
     declare shortcuts: boolean;
     declare city: City | null;
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare engineVersion: string;
     declare consent: ConsentState;
     /** True when the manifest configures analytics (a measurement id): only then is there a consent to show. */
@@ -167,13 +183,15 @@ export class HcmAboutDialog extends LitElement {
         const locale = this.locale;
         return html`<div class="details">
             <section>
-                <h3>${city.name[locale]}</h3>
-                ${renderMarkdown(city.about[locale])}
+                <h3 lang=${shownLanguage(city.name, locale)}>${localized(city.name, locale)}</h3>
+                <div lang=${shownLanguage(city.about, locale)}>${renderMarkdown(localized(city.about, locale))}</div>
+                ${fallbackNote(city.about, locale)}
             </section>
             ${this.#credits(city.credits)} ${this.#inputAndAccessibility()}
             <section>
                 <h3>${translate(locale, 'about.privacy')}</h3>
-                ${renderMarkdown(city.privacy[locale])} ${this.#consent()}
+                <div lang=${shownLanguage(city.privacy, locale)}>${renderMarkdown(localized(city.privacy, locale))}</div>
+                ${this.#consent()}
             </section>
             <p class="supporting engine">${translate(locale, 'about.engine', { version: this.engineVersion })}</p>
         </div>`;
@@ -209,7 +227,6 @@ export class HcmAboutDialog extends LitElement {
 
     #preferences(): TemplateResult {
         const locale = this.locale;
-        const languages = LOCALES.map((choice) => ({ value: choice, label: translate(locale, `language.${choice}`) }));
         // Full screen (compact width) leaves no room for an icon beside every Romanian theme label: only the
         // selected segment keeps its check mark there.
         const icons = (icon: string): { readonly icon?: string } => (this.fullscreen ? {} : { icon });
@@ -218,8 +235,12 @@ export class HcmAboutDialog extends LitElement {
             label: translate(locale, `theme.${choice}`),
             ...icons(THEME_ICONS[choice]),
         }));
+        // The list shows the page's language until the store has switched (`live`): a language whose texts cannot be
+        // fetched leaves it where it was, and its new value comes back with the page's.
         const onLanguage = (event: Event): void => {
-            this.#emit('hcm-locale-change', { locale: resolveLocale(changedValue(event)) });
+            const chosen = resolveViewerLocale(changedValue(event));
+            (event.currentTarget as HTMLElement & { value: string }).value = locale;
+            this.#emit('hcm-locale-change', { locale: chosen });
         };
         const onTheme = (event: Event): void => {
             const value = changedValue(event);
@@ -230,8 +251,8 @@ export class HcmAboutDialog extends LitElement {
         return html`<section class="preferences">
             <h3>${translate(locale, 'language.label')}</h3>
             <hcm-segmented-button
-                .options=${languages}
-                .value=${locale}
+                .options=${LANGUAGE_OPTIONS}
+                .value=${live(locale)}
                 .label=${translate(locale, 'language.label')}
                 @hcm-change=${onLanguage}
             ></hcm-segmented-button>

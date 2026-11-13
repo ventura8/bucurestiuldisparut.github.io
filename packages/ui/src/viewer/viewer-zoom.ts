@@ -7,7 +7,7 @@
  * Zoom out's limit is the higher of `city.minZoom` and the zoom at which the city's bounds just cover the map: Mapbox keeps
  * the view inside `maxBounds`, so on most screens it stops there first (Bucharest: about 10.8 on a phone, 11.6 at 1440 px).
  */
-import { translate, type BBox, type Locale, type Manifest, type MapView } from '@hcm/shared';
+import { translate, type BBox, type ViewerLocale, type Manifest, type MapView } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import type { CameraSource } from './hcm-compass.js';
@@ -56,7 +56,7 @@ export interface MapControlHandlers {
  * stopped. The compass's name is its tooltip, as the zoom buttons'.
  */
 export function zoomButtons(
-    { locale, mapSize, camera }: { readonly locale: Locale; readonly mapSize: MapSize | null; readonly camera: CameraSource | null },
+    { locale, mapSize, camera }: { readonly locale: ViewerLocale; readonly mapSize: MapSize | null; readonly camera: CameraSource | null },
     view: MapView,
     manifest: Manifest,
     { onZoom, onCompass }: MapControlHandlers,

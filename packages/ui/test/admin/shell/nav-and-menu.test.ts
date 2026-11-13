@@ -137,6 +137,12 @@ describe('<hcm-account-menu>', () => {
 
         language?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'ro' } }));
         language?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'en' } }));
+        // Any of the interface's 25 languages (docs/I18N.md); an unknown code is ignored, and the list keeps the admin's
+        // language until the app has switched.
+        language?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'fa' } }));
+        language?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'sv' } }));
+        expect(language?.options).toHaveLength(25);
+        expect(language?.value).toBe(app.state.locale);
         theme?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'dark' } }));
         theme?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'sepia' } }));
         accent?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'map' } }));
@@ -152,6 +158,7 @@ describe('<hcm-account-menu>', () => {
         expect(app.calls).toEqual([
             'setLocale "ro"',
             'setLocale "en"',
+            'setLocale "fa"',
             'setTheme "dark"',
             'setAccent "map"',
             'setAccent "device"',

@@ -6,7 +6,7 @@
  * assignable to `AdminAppPort`, which `packages/admin/test/app/admin-port.test.ts` checks at compile time. The elements
  * render `state` and call the intents; they never touch Firebase, Google or the address themselves.
  */
-import type { CityRole, Locale, ThemeTokens } from '@hcm/shared';
+import type { CityRole, UiLocale, ThemeTokens } from '@hcm/shared';
 
 import type { ThemeMode } from '../theme/apply.js';
 import type { AccentChoice } from '../theme/device-accent.js';
@@ -92,7 +92,7 @@ export interface AdminStatePort {
     readonly gate: { readonly reconsent: boolean; readonly issue: AdminNoticePort | null; readonly enableApi: string | null };
     readonly route: AdminRoutePort;
     readonly destinations: readonly AdminDestinationPort[];
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly theme: {
         readonly mode: ThemeMode;
         /** The colours: the device's accent (the default, also when absent) or the city's own. */
@@ -147,7 +147,7 @@ export interface AdminIntentsPort {
     switchCity?(cityId: string, route?: AdminRoutePort): void;
     /** M5: asks the server for the admin's cities again (the city menu opening: at most once a minute; `now`: at once). */
     refreshCities?(now?: boolean): Promise<void>;
-    setLocale(locale: Locale): void;
+    setLocale(locale: UiLocale): void;
     setTheme(mode: ThemeMode): void;
     /** The colours of the admin: the device's accent or the city's own, remembered on this browser. */
     setAccent(accent: AccentChoice): void;

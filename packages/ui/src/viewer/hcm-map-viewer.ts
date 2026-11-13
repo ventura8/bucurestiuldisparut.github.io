@@ -9,7 +9,7 @@
  * (`mapContainer`); mapbox-gl.css is linked inside the shadow root (`mapboxCssUrl`), the city theme is adopted on the
  * host (`applyTheme`). It listens on that container for what opens the map's menu (`watchMapMenu`).
  */
-import { resolveLocale, type MessageKey } from '@hcm/shared';
+import { isRtl, resolveViewerLocale, type MessageKey } from '@hcm/shared';
 import { LitElement, type TemplateResult } from 'lit';
 
 import { deepActiveElement, restoreFocus, tabbableElements } from '../components/focus.js';
@@ -233,8 +233,7 @@ export class HcmMapViewer extends LitElement {
 
     /** No map to move: not ready, no WebGL, or a modal surface over it (the gamepad's lazy chunk asks). */
     mapCovered(): boolean {
-        const state = this.viewState;
-        return state?.status !== 'ready' || !state.webgl || modalOpen(state, layoutOf(state).sheetMode);
+        return this.viewState?.status !== 'ready' || !this.viewState.webgl || modalOpen(this.viewState, layoutOf(this.viewState).sheetMode);
     }
 
     /** The D-pad (the gamepad's lazy chunk, the Xbox's key emulation): spatial navigation (`spatial-nav.ts`). */
@@ -249,9 +248,7 @@ export class HcmMapViewer extends LitElement {
 
     /** A toast from the gamepad's lazy chunk. */
     toast(key: MessageKey): void {
-        this.#act(null, (store) => {
-            store.showToast(key);
-        });
+        this.#store?.showToast(key);
     }
 
     /** Connects the viewer to a store (and the controller that drives it); the current state renders at once. */
@@ -322,8 +319,11 @@ export class HcmMapViewer extends LitElement {
     override attributeChangedCallback(name: string, old: string | null, value: string | null): void {
         super.attributeChangedCallback(name, old, value);
         if (name === 'lang') {
+            const locale = resolveViewerLocale(value);
+            // Arabic reads right to left: the whole viewer mirrors, its map container stays left to right (`viewer-render.ts`).
+            this.dir = isRtl(locale) ? 'rtl' : 'ltr';
             this.#act(null, (store) => {
-                syncLocale(store, resolveLocale(value));
+                syncLocale(store, locale);
             });
         }
     }
@@ -334,7 +334,7 @@ export class HcmMapViewer extends LitElement {
             state,
             bootError: this.bootError,
             layout: layoutOf(state),
-            locale: state === null ? resolveLocale(this.getAttribute('lang')) : state.locale,
+            locale: state === null ? resolveViewerLocale(this.getAttribute('lang')) : state.locale,
             stops: stopsOf(state),
             manifestUrl: this.manifestUrl,
             engineVersion: this.engineVersion,
@@ -394,6 +394,7 @@ export class HcmMapViewer extends LitElement {
         if (this.getAttribute('lang') !== state.locale) {
             this.setAttribute('lang', state.locale);
             this.ownerDocument.documentElement.lang = state.locale;
+            this.ownerDocument.documentElement.dir = this.dir;
         }
         if (themeChanged(previous, state)) {
             this.#applyTheme(state);

@@ -9,7 +9,7 @@ import {
     translateApiError,
     type AdminSetupKey,
     type AdminShellKey,
-    type Locale,
+    type UiLocale,
     type ProvisionItem,
 } from '@hcm/shared';
 
@@ -58,12 +58,12 @@ function isShellKey(key: SetupMessageKey): key is AdminShellKey {
 }
 
 /** A scope by Google's own label of it (anything else as it is). */
-function scopeLabel(locale: Locale, scope: string): string {
+function scopeLabel(locale: UiLocale, scope: string): string {
     return isScopeName(scope) ? translateAdminShell(locale, `adminShell.oauth.scope.${scope}`) : scope;
 }
 
 /** What a doctor item waits for: another item or a step, by its label (anything else as it is). */
-function itemLabel(locale: Locale, item: string): string {
+function itemLabel(locale: UiLocale, item: string): string {
     if (isItemName(item)) {
         return translateAdminSetup(locale, `adminSetup.provision.item.${item}`);
     }
@@ -74,7 +74,7 @@ function itemLabel(locale: Locale, item: string): string {
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
 /** A `time` parameter in ISO 8601 (finding 34's "Last checked {time}") is shown as a date and time in the page's language. */
-function timeParam(locale: Locale, time: string | undefined): Readonly<Record<string, string>> {
+function timeParam(locale: UiLocale, time: string | undefined): Readonly<Record<string, string>> {
     return time !== undefined && ISO_TIME.test(time) ? { time: formatDateTime(locale, time) } : {};
 }
 
@@ -82,7 +82,7 @@ function timeParam(locale: Locale, time: string | undefined): Readonly<Record<st
  * A `scope` parameter is shown by Google's label of the scope, an `item` parameter by the item's or step's label, an ISO
  * `time` as a date and time.
  */
-function localizedParams(locale: Locale, params: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
+function localizedParams(locale: UiLocale, params: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
     const { scope, item, time } = params;
     return {
         ...params,
@@ -93,7 +93,7 @@ function localizedParams(locale: Locale, params: Readonly<Record<string, string>
 }
 
 /** The message in `locale`. */
-export function setupText(locale: Locale, message: SetupMessage): string {
+export function setupText(locale: UiLocale, message: SetupMessage): string {
     const params = localizedParams(locale, message.params ?? {});
     const { key } = message;
     if (isSetupKey(key)) {
@@ -103,27 +103,32 @@ export function setupText(locale: Locale, message: SetupMessage): string {
 }
 
 /** Shorthand for a Setup Assistant key. */
-export function setupLabel(locale: Locale, key: AdminSetupKey, params?: Readonly<Record<string, string>>): string {
+export function setupLabel(locale: UiLocale, key: AdminSetupKey, params?: Readonly<Record<string, string>>): string {
     return translateAdminSetup(locale, key, params);
 }
 
-const INTL_LOCALES: Readonly<Record<Locale, string>> = { ro: 'ro-RO', en: 'en-GB' };
+/** The `Intl` tags where the bare code would not do (British English); any other language formats by its code. */
+const INTL_LOCALES: Partial<Readonly<Record<UiLocale, string>>> = { ro: 'ro-RO', en: 'en-GB' };
+
+function intlLocale(locale: UiLocale): string {
+    return INTL_LOCALES[locale] ?? locale;
+}
 
 /** "12 oct. 2026" / "12 Oct 2026" (Bucharest time: the map's city). */
-export function formatDate(locale: Locale, iso: string): string {
-    return new Intl.DateTimeFormat(INTL_LOCALES[locale], { dateStyle: 'medium', timeZone: 'Europe/Bucharest' }).format(new Date(iso));
+export function formatDate(locale: UiLocale, iso: string): string {
+    return new Intl.DateTimeFormat(intlLocale(locale), { dateStyle: 'medium', timeZone: 'Europe/Bucharest' }).format(new Date(iso));
 }
 
 /** "12 oct. 2026, 14:05" / "12 Oct 2026, 14:05". */
-export function formatDateTime(locale: Locale, iso: string): string {
-    return new Intl.DateTimeFormat(INTL_LOCALES[locale], { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Bucharest' }).format(
+export function formatDateTime(locale: UiLocale, iso: string): string {
+    return new Intl.DateTimeFormat(intlLocale(locale), { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Bucharest' }).format(
         new Date(iso),
     );
 }
 
 /** "5 USD" / "US$5": the budget in its currency, whole units. */
-export function formatMoney(locale: Locale, amount: number, currency: string): string {
-    return new Intl.NumberFormat(INTL_LOCALES[locale], {
+export function formatMoney(locale: UiLocale, amount: number, currency: string): string {
+    return new Intl.NumberFormat(intlLocale(locale), {
         style: 'currency',
         currency,
         minimumFractionDigits: 0,

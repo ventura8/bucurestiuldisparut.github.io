@@ -5,7 +5,7 @@
  * **Upload an image** (PNG or WebP) and, for an upload, **Use the default icon**. While a change is on its way the
  * buttons wait; a refusal (an SVG, an image too small) shows beside them and nothing changes.
  */
-import { type CityDoc, type Locale } from '@hcm/shared';
+import { type CityDoc, type UiLocale } from '@hcm/shared';
 import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared/tab-icon';
 import { html, nothing, type TemplateResult } from 'lit';
 
@@ -26,11 +26,11 @@ export function iconPreviewUrl(icon: IconRecord | undefined): string {
 }
 
 /** Before the city has an icon: when it is drawn. */
-function noneYet(locale: Locale, icon: IconRecord | undefined): TemplateResult {
+function noneYet(locale: UiLocale, icon: IconRecord | undefined): TemplateResult {
     return icon === undefined ? html`<p class="note">${contentText(locale, 'adminContent.settings.icon.none')}</p>` : EMPTY;
 }
 
-function preview(locale: Locale, icon: IconRecord | undefined): TemplateResult {
+function preview(locale: UiLocale, icon: IconRecord | undefined): TemplateResult {
     const source = icon?.source ?? 'default';
     const tag = source === 'custom' ? 'adminContent.settings.icon.custom' : 'adminContent.settings.icon.default';
     return html`<div class="actions">

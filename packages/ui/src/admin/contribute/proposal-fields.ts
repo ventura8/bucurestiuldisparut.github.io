@@ -2,7 +2,7 @@
  * The value fields of a proposal (M13, `docs/research/M13-roles.md` §§4, 8), shared by the Contribute page and the Review page's
  * adjust: latitude, longitude, direction and date, each the keyboard's way to what the map's pin says.
  */
-import type { Locale, SuggestionProposal } from '@hcm/shared';
+import type { UiLocale, SuggestionProposal } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { contentText } from '../shell/text.js';
@@ -20,7 +20,12 @@ function typedIn(event: Event): string {
 }
 
 /** Latitude or longitude: the keyboard's way to place the pin. */
-export function coordinateField(locale: Locale, axis: 'lat' | 'lng', location: SuggestionProposal['location'], edit: Edit): TemplateResult {
+export function coordinateField(
+    locale: UiLocale,
+    axis: 'lat' | 'lng',
+    location: SuggestionProposal['location'],
+    edit: Edit,
+): TemplateResult {
     const limit = axis === 'lat' ? 90 : 180;
     const change = (event: Event): void => {
         const value = numberIn(typedIn(event));
@@ -43,7 +48,7 @@ export function coordinateField(locale: Locale, axis: 'lat' | 'lng', location: S
     </div>`;
 }
 
-export function bearingField(locale: Locale, bearing: number | undefined, edit: Edit): TemplateResult {
+export function bearingField(locale: UiLocale, bearing: number | undefined, edit: Edit): TemplateResult {
     return html`<div class="field">
         <label for="bearing">${contentText(locale, 'adminContent.contribute.bearing')}</label>
         <input
@@ -61,7 +66,7 @@ export function bearingField(locale: Locale, bearing: number | undefined, edit: 
     </div>`;
 }
 
-function yearField(locale: Locale, key: 'year' | 'yearEnd', proposal: SuggestionProposal, edit: Edit): TemplateResult {
+function yearField(locale: UiLocale, key: 'year' | 'yearEnd', proposal: SuggestionProposal, edit: Edit): TemplateResult {
     return html`<div class="field">
         <label for=${key}>${contentText(locale, `adminContent.contribute.${key}`)}</label>
         <input
@@ -79,7 +84,7 @@ function yearField(locale: Locale, key: 'year' | 'yearEnd', proposal: Suggestion
 }
 
 /** A date: its years, and the words it was written in. */
-export function dateFields(locale: Locale, proposal: SuggestionProposal, edit: Edit): TemplateResult {
+export function dateFields(locale: UiLocale, proposal: SuggestionProposal, edit: Edit): TemplateResult {
     return html`${yearField(locale, 'year', proposal, edit)} ${yearField(locale, 'yearEnd', proposal, edit)}
         <div class="field">
             <label for="dateText">${contentText(locale, 'adminContent.contribute.dateText')}</label>

@@ -61,7 +61,8 @@ export function mountWorld(options: { readonly search?: string; readonly hash?: 
         location,
         log,
         visibility: new FakeVisibility(),
-        languages: ['de-DE'],
+        // A browser language the interface does not have (Swedish): the admin starts in Romanian.
+        languages: ['sv-SE'],
         pages,
         telemetry: () => new AdminTelemetry({ local, analytics, errors: { report: vi.fn() }, clearCookies: vi.fn(), log }),
         setup,

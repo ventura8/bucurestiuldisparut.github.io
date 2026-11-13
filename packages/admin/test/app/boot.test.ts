@@ -132,6 +132,22 @@ describe('configMissingApp', () => {
         await expect(app.loadPage('setup')).resolves.toBeNull();
     });
 
+    it('happyPath_aLanguageBeyondTheBundledTwoIsFetchedThenShown_andOneThatCannotBeKeepsTheLanguage', async () => {
+        const e = environment({ '/i18n/pt.json': jsonResponse({ locale: 'pt', messages: { 'adminShell.notice.close': 'Fechar' } }) });
+        const app = configMissingApp(e.env);
+
+        app.intents.setLocale('pt');
+        await vi.waitFor(() => {
+            expect(app.state.locale).toBe('pt');
+        });
+        expect(e.local.get(LANGUAGE_KEY)).toBe('pt');
+        app.intents.setLocale('bn');
+        await vi.waitFor(() => {
+            expect(app.state.notice?.key).toBe('adminShell.language.unavailable');
+        });
+        expect(app.state.locale).toBe('pt');
+    });
+
     it('badPath_everyOtherIntentDoesNothingAndTheServerCallsRefuse', async () => {
         const app = configMissingApp(environment({}).env);
 

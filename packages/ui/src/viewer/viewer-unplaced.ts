@@ -1,5 +1,5 @@
 /** The sheet of the "Where was this taken?" gallery (M13, V40), modal or docked as the viewer's other sheets. */
-import { translate, type Manifest } from '@hcm/shared';
+import { translate, type Manifest, type ViewerLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { Placement } from './layout.js';
@@ -7,7 +7,7 @@ import { renderSheetFrame } from './sheet-frame.js';
 
 /** What the sheet needs of the viewer's view. */
 interface UnplacedView {
-    readonly locale: 'ro' | 'en';
+    readonly locale: ViewerLocale;
     readonly manifestUrl: string;
 }
 

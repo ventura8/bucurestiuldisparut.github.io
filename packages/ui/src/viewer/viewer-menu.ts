@@ -1,5 +1,5 @@
 /** The FAB menu's items: which actions a viewer offers, and each one's icon and name. */
-import { translate, type Locale, type Manifest, type MessageKey } from '@hcm/shared';
+import { translate, type ViewerLocale, type Manifest, type MessageKey } from '@hcm/shared';
 
 import type { FabMenuItem } from '../components/fab-menu.js';
 import type { MenuAction } from './viewer-actions.js';
@@ -40,7 +40,7 @@ const MENU_ENTRIES: Readonly<Record<MenuAction, { readonly icon: string; readonl
 };
 
 /** One FAB menu item; Show my location is a switch, checked while `locating` (V10). */
-export function menuItem(action: MenuAction, locale: Locale, locating = false): FabMenuItem {
+export function menuItem(action: MenuAction, locale: ViewerLocale, locating = false): FabMenuItem {
     const entry = MENU_ENTRIES[action];
     const item = { value: action, icon: entry.icon, label: translate(locale, entry.label) };
     return action === 'locate' ? { ...item, checked: locating } : item;

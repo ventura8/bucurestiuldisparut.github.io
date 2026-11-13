@@ -104,6 +104,17 @@ const type = (element: HTMLInputElement | HTMLSelectElement, value: string, name
     element.dispatchEvent(new Event(name, { bubbles: true }));
 };
 
+/** The start page's language list (a native select in `<hcm-start-language>`). */
+async function languageList(root: ParentNode): Promise<HTMLSelectElement> {
+    const language = root.querySelector<LitElement>('hcm-start-language');
+    await language?.updateComplete;
+    const select = language?.shadowRoot?.querySelector('select');
+    if (select === null || select === undefined) {
+        throw new Error('no language list');
+    }
+    return select;
+}
+
 describe('hcm-start-page', () => {
     it('happyPath_theIntroExplainsThenAsksGoogle', async () => {
         const { root, calls } = await rendered({});
@@ -114,15 +125,34 @@ describe('hcm-start-page', () => {
         expect(calls).toEqual([['signIn']]);
     });
 
-    it('happyPath_theLanguageButtonsSayWhichIsOn', async () => {
+    it('happyPath_theLanguageListSaysWhichIsOnAndOffersEveryLanguage', async () => {
         const { root, calls } = await rendered({});
-        const language = root.querySelector<LitElement>('hcm-start-language');
-        await language?.updateComplete;
-        const [ro, en] = language?.shadowRoot?.querySelectorAll('nav button') ?? [];
-        expect(en?.getAttribute('aria-pressed')).toBe('true');
-        (ro as HTMLButtonElement).click();
-        expect(calls).toEqual([['setLocale', 'ro']]);
+        const select = await languageList(root);
+        expect(select.value).toBe('en');
+        expect(select.options).toHaveLength(25);
+        expect(select.querySelector('option[value="fa"]')?.getAttribute('lang')).toBe('fa');
+        select.value = 'fr';
+        select.dispatchEvent(new Event('change'));
+        // The list keeps the page's language until the page has switched.
+        expect(select.value).toBe('en');
+        expect(calls).toEqual([['setLocale', 'fr']]);
         expect(document.documentElement.lang).toBe('en');
+        expect(document.documentElement.dir).toBe('ltr');
+    });
+
+    it('badPath_anUnknownLanguageIsNotChosen_andARightToLeftPageTurns', async () => {
+        const { root, calls } = await rendered({ locale: 'ur' });
+        const select = await languageList(root);
+        const unknown = document.createElement('option');
+        unknown.value = 'sv';
+        select.append(unknown);
+        select.value = 'sv';
+        select.dispatchEvent(new Event('change'));
+        expect(calls).toEqual([]);
+        expect(document.documentElement.dir).toBe('rtl');
+        // No Urdu file holds the start page's texts: they show in English and say so.
+        expect(root.querySelector('main')?.getAttribute('lang')).toBe('en');
+        expect(document.documentElement.lang).toBe('ur');
     });
 
     it('happyPath_theNoticeOfARefusedConsent', async () => {

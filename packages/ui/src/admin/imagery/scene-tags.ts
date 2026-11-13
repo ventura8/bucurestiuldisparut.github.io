@@ -3,7 +3,7 @@
  * **Probably cloudy over the city: N %** when its browse image shows `CLOUDY_CITY_PERCENT` or more of the city clouded. In the
  * Imagery area's chunk; the scene page's section is `scene-unusable.ts`, a chunk of its own.
  */
-import { CLOUDY_CITY_PERCENT, type Locale } from '@hcm/shared';
+import { CLOUDY_CITY_PERCENT, type UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -16,12 +16,12 @@ function cloudyShare(scene: SceneItemPort): number | null {
     return scene.cloudCity !== null && scene.cloudCity >= CLOUDY_CITY_PERCENT ? scene.cloudCity : null;
 }
 
-function percentText(locale: Locale, percent: number): string {
+function percentText(locale: UiLocale, percent: number): string {
     return numberText(locale, percent, 0);
 }
 
 /** The card's chips: Not useful, or Probably cloudy over the city: N %. */
-export function usefulnessTags(locale: Locale, scene: SceneItemPort): TemplateResult {
+export function usefulnessTags(locale: UiLocale, scene: SceneItemPort): TemplateResult {
     if (scene.unusable !== null) {
         return html`<span class="tag" data-tone="error" data-state="unusable"
             >${contentText(locale, 'adminContent.imagery.unusable.tag')}</span

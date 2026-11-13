@@ -12,7 +12,7 @@
  * the landscape rail) hides while it shows, for that page only. A notice with an action (an editor's Undo) shows it in
  * the snackbar.
  */
-import { DEFAULT_LOCALE, translate, type AdminShellKey, type Locale, type ThemeTokens } from '@hcm/shared';
+import { DEFAULT_LOCALE, directionOf, translate, type AdminShellKey, type UiLocale, type ThemeTokens } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
 
 import type { ConsentDecision } from '../../components/consent-banner.js';
@@ -27,7 +27,7 @@ import type { PageChrome } from '../editing/hcm-list-detail.js';
 import { EMPTY } from './empty.js';
 import type { HcmAccountMenu } from './hcm-account-menu.js';
 import { cityTitle } from './hcm-city-menu.js';
-import { contentText, noticeOf, noticeText, shellText } from './text.js';
+import { contentText, noticeOf, noticeText, pageLanguage, shellLanguage, shellText } from './text.js';
 import type { AdminNavVariant } from './hcm-admin-nav.js';
 import { paintRoot, unpaintRoot } from './root-surface.js';
 import { releaseBanner, revokedBanner } from './shell-banners.js';
@@ -105,9 +105,9 @@ export function shownTokens(state: AdminStatePort, doc: Document): ThemeTokens {
 }
 
 /** The open page's name: its navigation label (the top bar's title, or the hidden heading without a top bar). */
-function pageName(state: AdminStatePort): string {
+function pageName(state: AdminStatePort): TemplateResult {
     const key: AdminShellKey = `adminShell.nav.${state.route.id}`;
-    return shellText(state.locale, key);
+    return html`<span lang=${shellLanguage(state.locale, key)}>${shellText(state.locale, key)}</span>`;
 }
 
 export class HcmAdminShell extends LitElement {
@@ -166,8 +166,10 @@ export class HcmAdminShell extends LitElement {
         const state = this.state;
         if (state !== null) {
             this.#applyTheme(state);
-            // The page's language and its tab's title follow the admin's (the static page is Romanian).
+            // The page's language, its direction (Arabic, Persian, Urdu: right to left) and its tab's title follow the
+            // admin's (the static page is Romanian).
             this.ownerDocument.documentElement.lang = state.locale;
+            this.ownerDocument.documentElement.dir = directionOf(state.locale);
             const welcome = welcomeName(state, SCREENS[state.auth] === 'shell');
             this.ownerDocument.title =
                 welcome === null ? `${shellText(state.locale, 'adminShell.appName')}${cityTitle(state)}` : `${welcome.app}${welcome.city}`;
@@ -277,7 +279,9 @@ export class HcmAdminShell extends LitElement {
                     <hcm-account-menu .app=${this.app} .state=${state}></hcm-account-menu>
                 </header>
                 <main class="content">
-                    <div class="scroller"><hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet></div>
+                    <div class="scroller" lang=${pageLanguage(state.locale, state.route.id)}>
+                        <hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet>
+                    </div>
                     ${this.#snackbar(state)}
                 </main>
             </div>
@@ -322,7 +326,7 @@ export class HcmAdminShell extends LitElement {
                     ${layout.topBar ? this.#topBar(state, layout) : EMPTY}
                     <main class="content">
                         ${this.#pageTitle(state, layout)}
-                        <div class="scroller">
+                        <div class="scroller" lang=${pageLanguage(state.locale, state.route.id)}>
                             ${this.#banners(state)}<hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet>
                         </div>
                         ${this.#snackbar(state)}
@@ -398,7 +402,7 @@ export class HcmAdminShell extends LitElement {
         if (!state.analytics || state.consent !== 'unknown') {
             return EMPTY;
         }
-        const locale: Locale = state.locale;
+        const locale: UiLocale = state.locale;
         const decide = (event: CustomEvent<{ readonly decision: ConsentDecision }>): void => {
             this.app?.intents.setConsent(event.detail.decision);
         };

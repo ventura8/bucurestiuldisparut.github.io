@@ -164,6 +164,8 @@ describe('<hcm-segmented-button> too wide for its container', () => {
         // Rows that touch are 48 px targets each (the tour's hit test found 40 px rows cut to 44 by the next one).
         expect(stacked.map((rect) => Math.round(rect.height))).toEqual([48, 48, 48]);
         expect(stacked[1]?.top).toBeGreaterThan(stacked[0]?.top ?? 0);
+        // The rows touch without overlapping: none covers the edge of the one above it.
+        expect(stacked.slice(1).map((rect, index) => Math.round(rect.top - (stacked[index]?.bottom ?? 0)))).toEqual([0, 0]);
 
         box.style.inlineSize = '600px';
         await vi.waitFor(() => {

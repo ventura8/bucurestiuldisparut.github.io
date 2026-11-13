@@ -14,7 +14,7 @@ import {
     type LayerAdjustmentName,
     type LayerAdjustments,
     type LayerDoc,
-    type Locale,
+    type UiLocale,
 } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
@@ -37,7 +37,7 @@ import {
 } from './layers-port.js';
 
 export interface EditorContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly intents: LayersIntentsPort | null;
     /** Says a settled change in the page's polite region. */
     readonly announce: (text: string) => void;
@@ -272,7 +272,7 @@ function lastingKey(
     return layer.source.type === 'pmtiles' ? 'adminContent.layers.deleteOwnTiles' : 'adminContent.layers.deleteTiles';
 }
 
-function deleteBody(locale: Locale, layer: LayerDoc): string {
+function deleteBody(locale: UiLocale, layer: LayerDoc): string {
     const lasting = contentText(locale, lastingKey(layer), { days: String(LAYER_DELETE_GRACE_DAYS) });
     return `${contentText(locale, 'adminContent.layers.deleteBody')} ${lasting}`;
 }

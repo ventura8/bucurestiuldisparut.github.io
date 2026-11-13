@@ -3,14 +3,14 @@
  * scenes it stored, or that it stopped early (USGS too slow, out of time, or not answering), what it kept, and that the rest is searched
  * again by itself, so a slow day never reads as "nothing found".
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { contentText } from '../shell/text.js';
 import type { SearchPartPort } from './imagery-port.js';
 import { datasetText } from './imagery-text.js';
 
-function partText(locale: Locale, part: SearchPartPort): string {
+function partText(locale: UiLocale, part: SearchPartPort): string {
     const dataset = datasetText(locale, part.dataset);
     if (part.state === 'searching') {
         return `${dataset}: ${contentText(locale, 'adminContent.imagery.searchingButton')}`;
@@ -24,7 +24,7 @@ function partText(locale: Locale, part: SearchPartPort): string {
 }
 
 /** One line per searched dataset, or nothing before a search. */
-export function searchParts(locale: Locale, parts: readonly SearchPartPort[] | undefined): TemplateResult {
+export function searchParts(locale: UiLocale, parts: readonly SearchPartPort[] | undefined): TemplateResult {
     if (parts === undefined || parts.length === 0) {
         return html``;
     }

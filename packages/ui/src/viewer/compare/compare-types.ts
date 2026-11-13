@@ -3,7 +3,7 @@
  * (`CompareUiProps`, every text already in the visitor's language but the element's own labels), what it hears back
  * (`CompareUiEvents`) and the surface itself (`CompareUi`, made by a `CompareUiFactory`). Types only.
  */
-import type { Locale } from '@hcm/shared';
+import type { ViewerLocale } from '@hcm/shared';
 
 export type CompareUiMode = 'swipe' | 'toggle';
 
@@ -14,7 +14,7 @@ export interface CompareChoice {
 }
 
 export interface CompareUiProps {
-    readonly locale: Locale;
+    readonly locale: ViewerLocale;
     /** `swipe`: the second map behind a divider; `toggle`: a two-way switch on the one map (a compact window). */
     readonly mode: CompareUiMode;
     /** The divider's settled place, 0 (the compared side fills the map) to 1 (the main side does). */

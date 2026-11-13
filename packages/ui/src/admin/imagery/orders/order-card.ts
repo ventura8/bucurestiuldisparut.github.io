@@ -7,7 +7,7 @@
  * the mark back**. Before USGS approves the account's downloads, both cards say the daily check waits for it and link to
  * Setup's USGS step. A scene USGS offers has no card (Import is free).
  */
-import { orderEstimateUsd, type Locale, type SceneAcquisitionState } from '@hcm/shared';
+import { orderEstimateUsd, type UiLocale, type SceneAcquisitionState } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { formatDay, formatWhen } from '../../editing/states.js';
@@ -50,7 +50,7 @@ const TONES: Readonly<Record<SceneAcquisitionState, 'good' | 'wait' | 'error'>> 
 };
 
 /** The scene's state in words, as a chip. */
-function stateChip(locale: Locale, state: SceneAcquisitionState): TemplateResult {
+function stateChip(locale: UiLocale, state: SceneAcquisitionState): TemplateResult {
     return html`<p class="chips">
         <span class="tag" data-tone=${TONES[state]}>${contentText(locale, `adminContent.orders.state.${state}`)}</span>
     </p>`;
@@ -183,7 +183,7 @@ function orderFacts(context: ImageryContext, order: SceneOrderPort): TemplateRes
 }
 
 /** The last check that failed, in words (USGS in maintenance, a refused token). */
-function lastError(locale: Locale, order: SceneOrderPort): TemplateResult {
+function lastError(locale: UiLocale, order: SceneOrderPort): TemplateResult {
     return withValue(
         order.lastError,
         (code) =>

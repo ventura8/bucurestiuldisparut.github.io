@@ -6,7 +6,7 @@
  * that is assignable to `ViewerStorePort`, which `packages/engine/src/mount.ts` checks at compile time. The viewer
  * renders `getState()` and calls the actions; it never touches the map or the URL hash itself.
  */
-import type { LngLat, Locale, Manifest, MapView, MessageKey, Overlay, PhotoView } from '@hcm/shared';
+import type { LngLat, ViewerLocale, Manifest, MapView, MessageKey, Overlay, PhotoView } from '@hcm/shared';
 import type { MapLabelKind, MapLabels } from '@hcm/shared/map-labels';
 
 import type { CameraOffset } from '../map/mapbox-types.js';
@@ -61,7 +61,7 @@ export type MyLocationState = MyLocationFix | 'waiting' | null;
 export interface ViewerState {
     readonly status: ViewerStatus;
     readonly error: ViewerError | null;
-    readonly locale: Locale;
+    readonly locale: ViewerLocale;
     readonly manifest: Manifest | null;
     readonly webgl: boolean;
     readonly view: MapView;
@@ -114,7 +114,7 @@ export interface ViewerStorePort {
     getState(): ViewerState;
     subscribe(listener: (state: ViewerState, previous: ViewerState) => void): Unsubscribe;
     retry(): Promise<void>;
-    setLocale(locale: Locale): void;
+    setLocale(locale: ViewerLocale): void;
     setYear(year: number | null): void;
     /** V13: a date of a timeline year picked: that layer's year, the layer on top. */
     pickLayer(layerId: string): void;
@@ -177,7 +177,7 @@ export interface ViewerController {
     setOverlayOpacity(overlayId: string, opacity: number): void;
     openPhoto(photoId: string | null): void;
     openPoi(poiId: string | null): void;
-    setLang(lang: Locale): void;
+    setLang(lang: ViewerLocale): void;
     /** M4: compares the map with `layerId` (null: today, no historical layer); an unknown id is ignored. */
     openCompare(layerId: string | null, options?: { readonly position?: number }): void;
     /** M4: moves compare's divider (0: the compared side fills the map, 1: the main side does; clamped). */
