@@ -4,7 +4,7 @@
  * preview (`imagery.saveLayout` with `preview`) and the quality meter: one `role="meter"` line per figure the verdict reads
  * (`placing/quality.py`), each saying in words whether it holds.
  */
-import { STITCH_GOOD_PLACED_PCT, STITCH_GOOD_RMS_PX, STITCH_GOOD_SEAM_NCC, type Locale } from '@hcm/shared';
+import { STITCH_GOOD_PLACED_PCT, STITCH_GOOD_RMS_PX, STITCH_GOOD_SEAM_NCC, type UiLocale } from '@hcm/shared';
 import type { AdminTilesKey } from '@hcm/shared/admin-tiles';
 import { css, html, LitElement, type TemplateResult } from 'lit';
 
@@ -120,7 +120,7 @@ class HcmTilePreview extends LitElement {
 
     declare view: TilesViewState | null;
     declare intents: TilesIntentsPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
 
     constructor() {
         super();

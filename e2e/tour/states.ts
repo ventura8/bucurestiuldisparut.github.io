@@ -17,6 +17,7 @@ import { MAP_MENU_JOURNEY, MAP_MENU_STATES } from './map-menu-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
 import { SETTINGS_STATES, SHORT_LANDSCAPE_JOURNEY, THEME_MENU_JOURNEY } from './settings-states.js';
 import { hasBottomSheets, scrollToEnd, toDetent } from './sheets.js';
+import { notFound, withoutWebGl } from './faults.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
 import { SITE_ORIGIN } from '../fixtures/world.js';
@@ -389,24 +390,6 @@ async function openWithManifestHeld({ page, lang }: TourContext): Promise<void> 
     });
     await page.goto(sitePath('bucharest', { lang }));
     await expect.poll(() => held.length).toBe(1);
-}
-
-/** The 404 answer of a missing manifest. */
-function notFound(route: Route): Promise<void> {
-    return route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not found' });
-}
-
-/** WebGL refused, as a browser without it does (`getContext` answers null), before the engine probes it. */
-function withoutWebGl(): void {
-    const original = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'getContext')?.value as (
-        this: HTMLCanvasElement,
-        ...args: unknown[]
-    ) => unknown;
-    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
-        value: function getContext(this: HTMLCanvasElement, kind: string, ...rest: unknown[]): unknown {
-            return ['webgl', 'webgl2', 'experimental-webgl'].includes(kind) ? null : original.call(this, kind, ...rest);
-        },
-    });
 }
 
 /** The viewer's journeys: together they visit every state of `VIEWER_STATES`. */
