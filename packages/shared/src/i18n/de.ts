@@ -76,9 +76,9 @@ export const de: Messages = {
     'layers.opacityValue': '{percent} %',
     'layers.photos': 'Fotos',
     'layers.attribution': 'Quelle: {attribution}',
-    'layers.attribution.usgs': 'USGS EROS, freigegebene Aufnahmen (gemeinfrei)',
+    'layers.attribution.usgs': 'USGS EROS, freigegebenes Bildmaterial (gemeinfrei)',
     'layers.attribution.landsat':
-        'Landsat-Aufnahmen mit freundlicher Genehmigung des NASA Goddard Space Flight Center und des U.S. Geological Survey',
+        'Landsat-Bildmaterial mit freundlicher Genehmigung des NASA Goddard Space Flight Center und des U.S. Geological Survey',
     'layers.empty': 'Diese Karte hat keine historischen Ebenen.',
     'layers.group.historical': 'Historische Ebenen',
     'layers.group.places': 'Orte',
