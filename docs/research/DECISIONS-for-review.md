@@ -6325,7 +6325,7 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **Why**: the owner, 2026-11-11 in chat: "u have my persimission to always deplay and update the map yourself".
 - **Still ask first**: pushes to `master` or a tag, merges, payments, credentials, relaxing a gate, and cloud changes outside that Update-the-map path.
 - **Layers row height (same day)**: overlay swatches back to 32 px (`--hcm-icon-size: 20px`); Compare / Street names / POIs and overlay rows `min-block-size` 40 px (switch keeps its own 48 px target).
-  Amended 2026-11-13 (the phone tour's findings, `docs/LESSONS.md` 618): the Street names / POIs rows are 48 px again, since two switches 40 px apart overlapped their 48 px targets; the pinned strip stays pinned only at 600 px wide and 700 px high or more, and scrolls with the list on a phone's bottom sheet or a short side sheet, where at half height it took 170 of 310 px and covered the switches the focus reached. The overlay rows stay at 40 px.
+  Amended 2026-11-13 (the phone tour's findings, `docs/LESSONS.md` 618): the Street names / POIs rows are 48 px again, since two switches 40 px apart overlapped their 48 px targets; the pinned strip stays pinned only on a large window (1200 px wide and 700 px high or more), and scrolls with the list on a phone's bottom sheet or a tablet's side sheet, where at half height it took 170 of 310 px and covered the switches the focus reached. The overlay rows stay at 40 px.
 
 ## 143. Georeferencer: map markers identical to the scan (2026-11-11) — APPLIED, the owner's explicit yes
 

@@ -3444,7 +3444,7 @@
             "behaviour": "V03",
             "area": "viewer",
             "path": "bad",
-            "title": "On a phone or a short window the pinned strip scrolls with the list",
+            "title": "On a phone, a tablet or a short window the pinned strip scrolls with the list",
             "asserts": "Layers at 360 x 800 (half-height bottom sheet) -> scrolling the list to its end moves Compare up with it; the last focused switch is the element under its own centre (no strip over it)",
             "tier": "e2e-viewer",
             "status": "exists",
