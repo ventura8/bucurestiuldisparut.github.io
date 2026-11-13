@@ -3841,3 +3841,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the badge was made a target of its own (a click handler on a 16 px span, lifted above the thumb's touch ring) instead of a hint; the menu followed a separate gesture rather than the selection itself. The pill kept the lying thumb's 40 px.
     - Fix and pin: the badge takes no pointer; the timeline asks for the menu when a press the visitor lifted ends on a year of several dates (`settle(released)` in `timeline-pointer.ts` and `timeline-scrub.ts`; a cancelled or swiped-away press says `false`), on Enter and on the gamepad's A (a click with `detail` 0), never while a drag passes it; B closes it through the input `close`. The pill is 56 px in a 64 px card, the year in title large. Pinned by `hcm-timeline-dates.test.ts`, `timeline-dock.test.ts`, `S-V68-BAD-SCRUB-PASSES` and the tour's `timeline-dates`.
     - **A choice that follows a selection opens on the selection's end (the release, Enter), never on a decoration beside it, and never on each step of a live drag.**
+
+654. **A test of a module's "not loaded yet" state failed only beside other test files.**
+    - Seen: 2026-11-13, `ship.sh`'s targeted run (`vitest related`, 571 files): `packages/admin/test/app/color.test.ts` expected `themeFromSeed` to throw before a theme loads; alone it passed.
+    - Cause: another file in the same worker had loaded the colour library, and the module's state is shared by every test of that worker.
+    - Fix and pin: the test takes a fresh copy (`vi.resetModules()` and a dynamic `import`) before asserting the unloaded state.
+    - **A test of a module's initial state imports a fresh copy; never trust module state left by whoever ran before.**
