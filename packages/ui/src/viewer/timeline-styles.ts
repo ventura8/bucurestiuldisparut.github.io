@@ -339,20 +339,22 @@ export const timelineStyles = [
         }
 
         /*
-         * The year chip: an M3 plain tooltip (inverse surface, body small, 24 px tall at least, the extra-small corner), placed
-         * by placeTip over the card lying and beside it standing; it never takes the pointer.
+         * The year chip: an M3 plain tooltip (inverse surface, the small corner), placed by placeTip over the card lying and
+         * beside it standing; it never takes the pointer. The owner (2026-11-13) asked for it bigger everywhere, to read
+         * easily above a finger: the year in M3 title medium, 40 px tall, 16 px either side.
          */
         .tip {
             position: absolute;
             z-index: 1;
             box-sizing: border-box;
-            min-block-size: 24px;
-            padding: 4px 8px;
-            border-radius: var(--md-sys-shape-corner-extra-small, 4px);
+            min-block-size: 40px;
+            padding: 8px 16px;
+            border-radius: var(--md-sys-shape-corner-small, 8px);
             background: var(--md-sys-color-inverse-surface, CanvasText);
             color: var(--md-sys-color-inverse-on-surface, Canvas);
-            font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
-            line-height: 16px;
+            font-size: var(--md-sys-typescale-title-medium-size, 1rem);
+            font-weight: 600;
+            line-height: 24px;
             white-space: nowrap;
             pointer-events: none;
         }

@@ -1,40 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { tick } from '../../src/viewer/timeline-scrub.js';
-import { datesOfYear, placeTip, tipText, tipWanted } from '../../src/viewer/timeline-tip.js';
+import { placeTip, tipText, tipWanted } from '../../src/viewer/timeline-tip.js';
 
 /** The timeline's year chip (the owner, 2026-11-13): its text, when a mouse or a key needs it, and its place. */
 describe('the timeline year chip', () => {
-    const layers = [
-        { year: 1966, date: '1966-09-03' },
-        { year: 1966, date: '1966-08-12' },
-        { year: 1966, date: '1966-08-12' },
-        { year: 1980 },
-        { year: 1984, date: '1984-01-02' },
-        { year: 1984, date: '1984-02-03' },
-        { year: 1984, date: '1984-03-04' },
-        { year: 1984, date: '1984-04-05' },
-    ];
-
-    it('happyPath_aYearOfSeveralDatesNamesThemOldestFirst', () => {
-        expect(datesOfYear(layers, 1966)).toEqual(['1966-08-12', '1966-09-03']);
-        expect(tipText(1966, datesOfYear(layers, 1966), 'en')).toBe('1966 · Aug 12, Sep 3');
-        expect(tipText(1984, datesOfYear(layers, 1984), 'ro')).toMatch(/^1984 · 2 ian\.?, 3 feb\.?, 4 mar\.?, …$/u);
+    it('happyPath_theChipIsTheYearOrToday', () => {
+        expect(tipText(1980, 'en')).toBe('1980');
+        expect(tipText(null, 'en')).toBe('Today');
     });
 
-    it('badPath_aYearOfOneDateTodayOrAnOddDateIsTheYearAlone', () => {
-        expect(tipText(1980, datesOfYear(layers, 1980), 'en')).toBe('1980');
-        expect(tipText(null, datesOfYear(layers, null), 'en')).toBe('Today');
-        expect(tipText(1970, ['1970-05', '1970-06-01'], 'en')).toBe('1970 · 1970-05, Jun 1');
+    it('happyPath_aStopWithoutItsLabelWantsTheChip', () => {
+        expect(tipWanted(false, false)).toBe(true);
     });
 
-    it('happyPath_aStopWithoutItsLabelOrWithSeveralDatesWantsTheChip', () => {
-        expect(tipWanted(false, [])).toBe(true);
-        expect(tipWanted(true, ['1966-08-12', '1966-09-03'])).toBe(true);
-    });
-
-    it('badPath_aLabelledStopOfOneDateWantsNone', () => {
-        expect(tipWanted(true, ['1966-08-12'])).toBe(false);
+    it('badPath_aLabelledStopOrAYearOfSeveralDatesWantsNone', () => {
+        expect(tipWanted(true, false)).toBe(false);
+        expect(tipWanted(false, true), 'its date menu names the dates').toBe(false);
+        expect(tipWanted(true, true)).toBe(false);
     });
 
     const card = { left: 100, top: 500, width: 400, height: 84 };
