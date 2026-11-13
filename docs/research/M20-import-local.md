@@ -827,3 +827,33 @@ An adversarial review of both tracks found the field names agreeing and the beha
 Left to the pipeline track: a test that serialises `layout_record()` of a synthetic proposal into `pipeline/tests/contracts/` for
 `layoutFileSchema` to parse (the sample is hand-written), and a sheet cap that waits with `no-path` above `LAYOUT_SHEETS_MAX`; the
 golden sample now has a missing seam with a strip and no guess, the shape the wizard asks.
+
+## 20. Any computer runs an archive series: copies through the bucket (live report of 2026-11-13; DECISIONS §204)
+
+**What happened.** The owner connected two more workers for Bucharest (the NUC and the PC's WSL) beside the laptop that imported
+`harti.zip`. Both took archive series, found no record of the archive (it is on the laptop only), and failed them at `gather` with
+`apiError.imagery.archiveMissing`; one atlas spent all its attempts that way (`attemptsExhausted`). The owner's rule: every
+computer works on every job, so the archive is copied, not pinned to one computer.
+
+**Step 1 (this change): the hand-back and the copy through the bucket.**
+
+| Part | What it does |
+| --- | --- |
+| Pre-flight (`archive/copy.py` `ensure_series`, run by `runner.py` before the first step on a worker) | The series' sheets are here (the scan's own record, or an earlier copy names the series): go on. Otherwise read the job's copy from `tmp/archive-copies/{city}/{job}/` (`manifest.json` and each sheet by its SHA-256, through `worker.urls`), check every SHA-256, keep the sheets in this computer's store (`ArchiveStore.merge_copy`, a record marked `partial`), log the bytes. No copy, or one that is not the scan's bytes: `ArchiveElsewhereError`, the run ends `RETURNED` without a write. |
+| Hand-back (`worker.end` `outcome: 'returned'`, `functions/src/worker/end.ts`) | The job, still held by that worker, goes back to `queued` with the attempt its claim counted given back, `archiveReturns` + 1, no lease or worker, and `waitReason: 'archive-copy'` (any earlier `archiveCopy` cleared: a new copy is wanted). The worker's last job stays as it was. The computer the archive's report came from never hands back (its files are gone), and the fifth return fails the job (`ARCHIVE_RETURNS_MAX`): both with `archiveMissing`, so nothing loops. |
+| The holder's duty (`worker.claim`) | A claim names the archives the computer holds whole (`archives`: `ArchiveStore.held`, never a partial copy). A job waiting `archive-copy` is claimable by nobody; a claim of a worker naming its archive is answered `copy: {jobId, archiveId, seriesId}` before any job. |
+| The copy (`worker.archiveCopy`, new callable, `functions/src/worker/archive-copy.ts`) | `objects`: signed PUT/GET of the job's copy files only (`ARCHIVE_COPY_FILE`: 64 hex or `manifest.json`), only while the job waits `archive-copy`, never while the budget guard is red. `done` with `bytes` (at most `ARCHIVE_COPY_MAX_BYTES`, 8 GiB): the job goes back to `waitReason: 'worker'`, `archiveCopy: {by, at, bytes}`, and the bytes are logged. |
+| Cost | `tmp/` is deleted by the bucket's lifecycle after one day (`PRIVATE_BUCKET_LIFECYCLE`); a copy is only one series' sheets, sent once per job that needs it; downloads to the owner's home network are the only traffic billed. |
+| What the owner reads | `adminContent.imagery.wait.archiveCopy`: "Waiting for the computer that has these scanned maps: turn it on, it sends a copy." (Jobs → Your computer shows whether it is connected) |
+
+A worker older than this change still claims a series and fails it at `gather`: the workers update themselves to the installed
+release. A failed series is retried from Jobs; a local job's retry starts its attempts again (`retryPastCap`) and its hand-backs
+too (`imagery.retry` drops `archiveReturns` and `archiveCopy`).
+
+Tests: `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/{test_archive_copy,test_worker_copying,test_worker_loop}.py`;
+scenarios `S-A120-HAPPY-ARCHIVE-COPY`, `S-A120-BAD-ARCHIVE-COPY`, `S-P20-HAPPY-ARCHIVE-COPY`, `S-P20-BAD-ARCHIVE-COPY`.
+
+**Step 2 (next): the copy over the home network and pre-seeding.** The holding worker serves its archive's files on a separate LAN
+endpoint (off unless the city has more than one paired worker; a short-lived read-only token minted by a callable for the city's
+paired workers; archive files only, no path outside the archive), advertised in the worker's document; the bucket stays the fallback.
+While idle, the holder pre-seeds the other computers under the governor's limits.

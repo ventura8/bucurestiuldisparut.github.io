@@ -53,6 +53,7 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.wait.mapbox': 'Mapbox is preparing the tiles',
     'adminContent.imagery.wait.parts': 'Waiting for its frames',
     'adminContent.imagery.wait.daily': 'Waiting for a later day: today’s share of new layers is used',
+    'adminContent.imagery.wait.archiveCopy': 'Waiting for the computer that has these scanned maps: turn it on, it sends a copy.',
     'adminContent.imagery.version.processing': 'Processing',
     'adminContent.imagery.version.needsGcps': 'Needs points',
     'adminContent.imagery.version.awaitingApproval': 'Awaiting approval',

@@ -3889,7 +3889,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
     - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**
 
-662. **`imagery-onJobWrite` ran out of its 256 MiB four times in a day: three frames ending together each read the whole city.**
+662. **A second worker failed every archive series it took: the scanned maps were on another computer.**
+    - Seen: live, 2026-11-13: after the NUC and the PC joined the laptop, five archive series failed at `gather` with "no record of
+      ar-971b77774eee2871 on this computer", and an atlas used up its attempts on the same cause.
+    - Found by: the owner's Jobs page; every test ran one worker, which always held the archive it imported.
+    - Fix and pin: a worker without the sheets hands the job back unspent and the computer with the archive sends a copy through the
+      bucket (M20 §20; `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/test_archive_copy.py`).
+    - **Data that lives on one machine needs a test with two workers: one that has it and one that does not.**
+
+663. **`imagery-onJobWrite` ran out of its 256 MiB four times in a day: three frames ending together each read the whole city.**
     - Seen: 2026-11-13, the admin's Statistics page, Cloud Error Reporting: "Memory limit of 256 MiB exceeded" (4 times, revision `imagery-onjobwrite-00043`); the function's log showed three events in one instance within a second, each ending in "date plan rewritten" over about 480 frames.
     - Cause: `rewriteDatePlan` reads every scene and every layer version of the city, and the trigger takes 80 events at once (`GLOBAL_OPTIONS.concurrency`), so frames ending together held several copies of the city in memory.
     - Fix and pin: one rewrite per city at a time in an instance; calls that come meanwhile share one more rewrite that starts after them, so the plan still shows their write (`functions/src/imagery/join-plan.ts`; `functions/test/imagery/join-plan-flight.test.ts` reads the city three times without it).
