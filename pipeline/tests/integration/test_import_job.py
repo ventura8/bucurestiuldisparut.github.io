@@ -32,6 +32,7 @@ from tests.synthetic.scenes import Scene
 STEPS = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "pyramid", "register")
 RAW = f"usgs-raw/corona2/{ENTITY_ID}/{ENTITY_ID}.tgz"
 WORK = f"work/{CITY}/{JOB_ID}/"
+ARCHIVE_ONLY = frozenset({"stitched.jpg", "layout.json", "thumbs.jpg", "seams.jpg"})
 
 
 def step_statuses(world: PipelineWorld) -> dict[str, str]:
@@ -90,10 +91,11 @@ def test_happy_path_a_queued_import_becomes_a_version_awaiting_approval(
     # One clear date is all the catalogue holds: taken, and recorded as unchecked.
     assert dig(reference, "s2Check", "status") == "unchecked"
     assert alignment_shift_m(world, world.scene, tmp_path) < 10
+    # A frame has no stitched picture and no tile layout: those are an archive series' files (M22 §4.1, M20 §19.7).
     # The sharper scan exists only for a crop longer than its preview (`publish_scan`); the version says which.
     scan = version["scan"]
     assert isinstance(scan, dict)
-    absent = {"stitched.jpg"} | (set() if scan.get("detailPath") else {"scan-tiles.bin"})
+    absent = ARCHIVE_ONLY | (set() if scan.get("detailPath") else {"scan-tiles.bin"})
     assert world.gcs.names(f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/") == [
         f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/{name}" for name in sorted(set(VERSION_FILES) - absent)
     ]

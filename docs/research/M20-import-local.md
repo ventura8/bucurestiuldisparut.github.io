@@ -658,12 +658,119 @@ Tests: `pipeline/tests/unit/{test_placing_grid,test_worker_imports,test_worker_a
 `e2e/admin/specs/imagery/archive.spec.ts`; scenarios `S-A120-HAPPY-GRID-NAMES`, `S-A120-BAD-GRID-NAMES-EDITOR`, `S-P20-HAPPY-GRID-BY-NAMES`,
 `S-A121-HAPPY-LOCAL-TAB`, `S-A121-BAD-LOCAL-TAB`, `S-P20-HAPPY-ADMIN-IMPORT`, `S-P20-BAD-ADMIN-IMPORT`, `S-P20-BAD-ADMIN-IMPORT-CANCELLED`.
 
-## 19. Tile stitching and the tile-import wizard (track/tilewizard, 2026-11-12)
+## 19. Tile stitching and the tile-import wizard (track/autostitch and track/tilewizard, 2026-11-12)
 
-The owner's worker log said "9 parts, 85 left out" for the 94-page atlas: 1 px edge profiles, SIFT on line art and a whole canvas in
-memory leave most pages out. The design (names grid, seams by phase correlation, a bundle adjustment, a quality verdict, windowed
-canvas) is the pipeline track's (§19.1 to §19.9 on track/autostitch); §19.10 to §19.12 are the contract both tracks build on and the
-admin's half. DECISIONS-for-review.md §169.
+Why parts were left out before (the worker's "9 parts, 85 left out", "2 parts, 98 left out", "57/3", "135/9"): the atlas edges compared
+1 px ink profiles and needed a mutual best match, which pages with margins and frames almost never give; the SIFT joins found few unique
+matches on repeated hatching and tried no turn or flip; the whole canvas was kept in memory (about 1.2 GB at 20,000 px); names were read
+only beside an overview. The pipeline side of the design (part A and the contract's twins) is in `pipeline/src/hcm_pipeline/placing/`;
+the tile-import wizard (part B) and the callables are track/tilewizard's.
+
+§19.1 to §19.9 are the pipeline's side (DECISIONS-for-review.md §181); §19.10 to §19.12 are the contract both sides build on and the
+admin's half (DECISIONS-for-review.md §182).
+
+### 19.1 The grid from the names (`sheetnames.py`)
+
+`r1c2`, `3_7` / `03-07`, a letter row and a number column (`C12`), a sheet number with an `A`-`D` quadrant (each base sheet's quarters on a
+grid twice as fine), folders as rows, else the natural order (`img003`, a PDF's pages). A scheme must read 80 % of the names, no two on one
+cell; the names it does not read are foreign (`no-join`). For names in order alone the likeliest column counts (the whole map nearest a
+square for the median sheet's shape, exact factorisations first) are each tried and the one whose seams join best is kept. The overview's
+name hint (`overview.grid_hint`) reads names through the same parser (`cell_of`).
+
+### 19.2 The working copies (`sheetwork.py`, `frame.py`)
+
+Each sheet is read reduced (at most 1024 px, smaller for a long series so all copies stay within 160 MB), in grey, cropped to its content:
+inside its frame when the frame has a paper margin around it (an outline inside the drawing, a ring of streets, is no frame), with the
+frame's line trimmed off; else with paper margins of at least 2 % trimmed (a street along the edge is content). The paper level is the
+98th percentile (a map of dark blocks has little paper). A page under 0.3 % ink is `blank`. Every copy is stretched to the series' cell
+(the median shape), which takes out scale differences; its turn and flip are one of eight variants, those its shape allows.
+
+### 19.3 The seams (`seams.py`)
+
+Only edge strips (25 % of the side) are compared. Line art (under 30 % ink) goes through a distance transform clipped at 12 px; filled
+maps are compared on their lightly smoothed grey. Overlap: the first sheet's outermost 2 %, 5 % and 10 % are each searched in the second's
+strip by normalised cross-correlation at a sub-pixel peak, and the reading whose overlap correlates best after alignment wins; its
+residual is the phase correlation (`cv2.phaseCorrelate`, Hanning window) of the aligned overlaps. Abutting pages: the edges' ink profiles,
+shifted, correlated. `strong` from 0.6, `weak` from 0.3, else `missing`. A seam below is a right seam of the sheets transposed.
+Each sheet's variant is chosen surest first: a sheet not strong as it is turns to a variant that fits strongly and gains 0.2, each checked
+again just before it turns, in two passes.
+
+### 19.4 The bundle (`bundle.py`)
+
+Least squares over every sheet's top left: each strong or weak seam weighted by its score squared, a weak grid prior (0.02) holding each
+sheet to its cell at the strong seams' median pitch, IRLS with Huber's loss (2 px). A seam still off by more than 8 px is dropped (marked
+weak); a sheet whose cell came from the order alone with no kept seam is left out (`no-seam`): a foreign sheet numbered with the pages never
+joins.
+
+### 19.5 The verdict (`quality.py`)
+
+`good` when at least 90 % of the sheets that count are placed (blank pages and `not-part` do not count), the seams' median NCC is at least
+0.5, the residuals' 95th percentile at most 3 px and no sheet moved more than a quarter cell from its prior (the thresholds are the shared
+`STITCH_GOOD_*` twins); `poor` under 50 % placed or a median under 0.25; else `check`. A sheet is placed for the verdict only when a kept
+seam touches it (one its cell's prior alone holds proves nothing), and every seam the bundle did not keep (missing, or dropped) scores 0 in
+the median: names read right over pictures whose seams say nothing (the 1895 quadrants read in the wrong order, or noise) are never `good`
+(review of 2026-11-13; `test_placing_stitch_guards.py`, S-P20-BAD-STITCH-NAMES-NO-SEAMS).
+
+### 19.6 The fallback order and the windowed mosaic (`maps.py`, `autoplace.py`, `canvas_window.py`)
+
+Atlas and pieces alike: (1) the owner's layout (`help.layoutAnswer`), (2) the overview, (3) names, seams and bundle, mosaicked when `good`,
+(4) the older edges or SIFT joins when they place at least 90 % of the parts and something vouches for them: their matches' residual
+within `STITCH_GOOD_RMS_PX` with at least 24 agreeing matches a join on average, or, for pages joined by their edges alone (nothing
+measured), a proposal that was only `check`, never `poor` (S-P20-BAD-STITCH-LEGACY-LOOSE), (5) else no mosaic: a preview of the proposal
+and the version waits with `layout-check`. A series of more than `LAYOUT_SHEETS_MAX` (2000) files waits with `no-path` before any layout
+("import it as smaller series"): the wizard could not open its `layout.json` (S-P20-BAD-STITCH-TOO-MANY). The mosaic is a tiled GTiff
+written in 2048 px windows, one sheet at a time: only its content box is read, by GDAL straight at its size on the canvas, one band at a
+time into one array, then turned; each pixel is owned by the covering sheet whose centre is nearest (a hard seam: blending line art doubles
+its lines); GDAL's cache is held to 128 MB. Peak memory is one sheet at the canvas's scale, one band and two windows, never a whole scan
+(two 12000 x 9000 colour scans: about 690 MB with the layout, under the test's 800 MB; the first paste read the scan whole at 1.05 x and
+copied it three times, over 1.1 GB).
+
+### 19.7 The files for the owner (`layout_files.py`)
+
+`help.stitched.layout` (the grid, the revision, the quality, at most 200 weakest seams) and three version files: `layout.json`
+(`layoutFileSchema`: every sheet's cell, turn, flip, why it is out, the grid's source (the same for every sheet, also for one left out),
+its matrix from its oriented pixels to the canvas, an axis-wise stretch and a shift (`sx ≠ sy` when a sheet's shape differs from its
+cell's), every seam's offset and overlap in the first sheet's oriented pixels, and for a weak **or missing** seam one suggested matching
+point and its two strips), `thumbs.jpg` (128 px cells, 32 a row, not turned) and `seams.jpg` (one row per weak or missing seam, weakest
+first, two 256 px squares: the wizard must show both states, and size the sprite from every seam with a `strip`). Residuals (`rmsPx`,
+`quality.seamRmsPx`) are in cell pixels. The revision is one more than the version's current layout's. What the pipeline really writes is
+held in `pipeline/tests/contracts/layout.json` (`test_placing_layout_contract.py`: a series with a foreign sheet, strong and missing seams;
+its shape must match, `HCM_WRITE_CONTRACTS=1` writes it again), which the shared schemas' test parses.
+
+### 19.8 The owner's layout (`owner_layout.py`)
+
+The answer names sheets by index with their cell, turn and flip, or `not-part`. A sheet it does not name keeps its automatic reason
+(`blank`, `no-join` for a name the grid did not read, else `no-seam`): only the owner's X makes a sheet `not-part`, which no longer counts
+(the wizard should still send every sheet with a cell). A turn the cell's shape refuses (a quarter turn of an oblong sheet on an oblong
+cell) goes back a quarter, the flip kept. A seam the owner answered (one point on each side) becomes a fixed seam of full weight only when
+its two sheets are still neighbours on that side of the new grid and both points are two finite numbers: a seam answered before a sheet
+moved or turned, or a malformed point, is ignored (S-P20-BAD-STITCH-OWNER-MALFORMED). The rest are measured and bundled. A `preview` answer
+renders the layout and waits again (revision + 1); an accepted or final one is mosaicked and placed whatever its verdict
+(S-P20-HAPPY-STITCH-OWNER). The answer stays in `help` through every later wait: `output.wait_for_help` carries `help.layoutAnswer` into
+the new `help` in the same write, so a retry of `place` or Locate again lays the series out the owner's way again, and no crash between
+two writes drops it.
+
+### 19.9 Targets and measurements
+
+Synthetic series (`pipeline/tests/synthetic/sheets.py` on the synthetic town): N x M grids, overlap 0-15 %, frames and margins, turns and
+flips, scale ±5 %, grey, colour and line art, every name scheme, shuffled, missing and foreign sheets, noise. Targets, all met in the tests
+(`test_placing_autostitch.py`, `test_placing_canvas_window.py`): every sheet placed at 3 % overlap or more and for named abutting atlases;
+seam error median ≤ 1.5 px and p95 ≤ 3 px; a foreign sheet never placed; noise judged `poor` (it waits, never a mosaic); peak RSS ≤ 1.5 GB
+for 100 sheets of 6000 px and ≤ 800 MB for two colour sheets of 12000 px (the child's own `VmHWM`, GDAL's cache at a 4 GB worker's 256 MB).
+The older edges and SIFT joins place fewer than all 12 sheets of the 6 % overlap series that the layout places whole (pinned in
+`test_placing_autostitch.py`).
+
+Real series (dry run on the NUC, 2026-11-13, `autostitch.propose` alone, no overview; before: the older edges and SIFT joins, §15.1 and the
+worker's log):
+
+| Series | Before | After (placed / verdict) | Peak RSS | Time |
+| --- | --- | --- | --- | --- |
+| Borroczyn 1844-1846 atlas, 99 files in page order | 2 of 94 joined | 38 placed, 1 blank, 60 no seam: `poor`, waits with its proposal | 285 MB | 124 s |
+| 1895-1899 pieces, 60 scans in 4 quadrant folders | 1 of 60 joined (57 of 60 on the overview, unchanged: the overview comes first) | 60 placed on a misread 4 x 15 grid (each folder is a quadrant, not a row): `check`, waits | 369 MB | 124 s |
+| 1969 atlas, 144 pages in order | 2 parts, 98 left out | 102 placed, 42 no seam: `check`, waits | 369 MB | 165 s |
+
+No series was mosaicked wrongly: each waits for the tile-import wizard with its proposal. Next steps: folders that are quadrants (each
+its own grid, nested 2 x 2), and the atlas's index page (OCR) for page numbers that are not row-major.
 
 ### 19.10 The contract
 
