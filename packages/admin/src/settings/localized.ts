@@ -4,7 +4,7 @@
  * English is optional and an empty English text removes it (the viewer falls back to Romanian). An optional text whose
  * both languages are empty is removed whole.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 
 export interface LocalizedText {
     readonly ro: string;
@@ -12,7 +12,7 @@ export interface LocalizedText {
 }
 
 /** `current` with `locale`'s text set to `text`. */
-export function withText(current: LocalizedText | undefined, locale: Locale, text: string): LocalizedText {
+export function withText(current: LocalizedText | undefined, locale: UiLocale, text: string): LocalizedText {
     const base = current ?? { ro: '' };
     if (locale === 'ro') {
         return base.en === undefined ? { ro: text } : { ro: text, en: base.en };
@@ -21,12 +21,12 @@ export function withText(current: LocalizedText | undefined, locale: Locale, tex
 }
 
 /** The same for an optional text: removed (undefined) once both languages are empty. */
-export function withOptionalText(current: LocalizedText | undefined, locale: Locale, text: string): LocalizedText | undefined {
+export function withOptionalText(current: LocalizedText | undefined, locale: UiLocale, text: string): LocalizedText | undefined {
     const next = withText(current, locale, text);
     return next.ro.trim() === '' && next.en === undefined ? undefined : next;
 }
 
 /** The text a field shows for `locale` ('' when absent). */
-export function textOf(current: LocalizedText | undefined, locale: Locale): string {
+export function textOf(current: LocalizedText | undefined, locale: UiLocale): string {
     return (locale === 'ro' ? current?.ro : current?.en) ?? '';
 }

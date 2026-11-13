@@ -8,7 +8,7 @@
  * first) and the role (Editor unless changed). Only the city's owners invite, change roles and remove; an editor sees the
  * list and why. Oneself is never removable: the page says why (the server refuses it anyway).
  */
-import { cityInviteRequestSchema, type CityAdminsListResponse, type CityRole, type InviteResponse, type Locale } from '@hcm/shared';
+import { cityInviteRequestSchema, type CityAdminsListResponse, type CityRole, type InviteResponse, type UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { AdminNoticeInputPort, AdminRouteIdPort } from '../admin-port.js';
@@ -29,7 +29,7 @@ type Admin = CityAdminsListResponse['admins'][number];
 type Invite = CityAdminsListResponse['invites'][number];
 
 /** How an admin is named: the Google display name, else the address. */
-function nameOf(locale: Locale, admin: Admin): string {
+function nameOf(locale: UiLocale, admin: Admin): string {
     return admin.displayName ?? admin.email ?? shellText(locale, 'adminShell.admins.unnamed');
 }
 
@@ -131,7 +131,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
             ${inviteDialog(dialog)} ${this.#confirm(locale)}`;
     }
 
-    #list(locale: Locale, view: AdminsViewState): TemplateResult {
+    #list(locale: UiLocale, view: AdminsViewState): TemplateResult {
         const invite = (): void => {
             this.inviteIssue = null;
             this.inviting = true;
@@ -149,7 +149,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         return html`${head}${this.#listBody(locale, view)}`;
     }
 
-    #listBody(locale: Locale, view: AdminsViewState): TemplateResult {
+    #listBody(locale: UiLocale, view: AdminsViewState): TemplateResult {
         if (view.list === null) {
             return view.status === 'error' ? this.#loadFailed(locale, view) : loadingTemplate(locale);
         }
@@ -170,7 +170,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         </div>`;
     }
 
-    #loadFailed(locale: Locale, view: AdminsViewState): TemplateResult {
+    #loadFailed(locale: UiLocale, view: AdminsViewState): TemplateResult {
         const retry = (): void => {
             void this.intents?.refresh();
         };
@@ -182,7 +182,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         </div>`;
     }
 
-    #adminRow(locale: Locale, admin: Admin, selected: boolean): TemplateResult {
+    #adminRow(locale: UiLocale, admin: Admin, selected: boolean): TemplateResult {
         const detail = rowDetail(locale, admin);
         return html`<li>
             <a class="row" href=${this.href([admin.uid])} aria-current=${current(selected)}>
@@ -192,7 +192,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         </li>`;
     }
 
-    #inviteRow(locale: Locale, invite: Invite, selected: boolean): TemplateResult {
+    #inviteRow(locale: UiLocale, invite: Invite, selected: boolean): TemplateResult {
         return html`<li>
             <a class="row" href=${this.href(['invite', invite.inviteId])} aria-current=${current(selected)}>
                 <span class="row-title"
@@ -205,7 +205,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         </li>`;
     }
 
-    #detail(locale: Locale, view: AdminsViewState): TemplateResult {
+    #detail(locale: UiLocale, view: AdminsViewState): TemplateResult {
         const selected = view.selected;
         if (selected === null) {
             return html`<hcm-empty-state icon="group" .text=${contentText(locale, 'adminContent.admins.choose')}></hcm-empty-state>`;
@@ -216,14 +216,14 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         return this.#item(locale, view, selectedItem(view.list, selected));
     }
 
-    #item(locale: Locale, view: AdminsViewState, item: Admin | Invite | undefined): TemplateResult {
+    #item(locale: UiLocale, view: AdminsViewState, item: Admin | Invite | undefined): TemplateResult {
         if (item === undefined) {
             return this.#notFound(locale);
         }
         return isAdmin(item) ? this.#admin(locale, view, item) : this.#inviteDetail(locale, view, item);
     }
 
-    #notFound(locale: Locale): TemplateResult {
+    #notFound(locale: UiLocale): TemplateResult {
         return html`<div class="pane">
             <h2 tabindex="-1" data-detail-heading>${contentText(locale, 'adminContent.admins.notFound')}</h2>
             <p><a href=${this.href([])}>${contentText(locale, 'adminContent.admins.backToList')}</a></p>
@@ -234,7 +234,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         return this.state?.user?.uid ?? null;
     }
 
-    #admin(locale: Locale, view: AdminsViewState, admin: Admin): TemplateResult {
+    #admin(locale: UiLocale, view: AdminsViewState, admin: Admin): TemplateResult {
         const name = nameOf(locale, admin);
         return html`<div class="pane">
             <h2 tabindex="-1" data-detail-heading>${name}</h2>
@@ -252,7 +252,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
     }
 
     /** M5: the city's owners change an admin's role (asked first); editors see it only (S-A51-HAPPY-ROLE). */
-    #roleChange(locale: Locale, view: AdminsViewState, admin: Admin, name: string): TemplateResult {
+    #roleChange(locale: UiLocale, view: AdminsViewState, admin: Admin, name: string): TemplateResult {
         if (!ownsCurrentCity(this.state)) {
             return EMPTY;
         }
@@ -272,7 +272,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
      * Remove access, for the city's owners; oneself and the project's owner never, and the page says why (the project's
      * owner: the map always has an owner, `apiError.city.projectOwnerStays`; anyone else: not one's own access).
      */
-    #removeAccess(locale: Locale, view: AdminsViewState, admin: Admin, name: string): TemplateResult {
+    #removeAccess(locale: UiLocale, view: AdminsViewState, admin: Admin, name: string): TemplateResult {
         const note = removalNote(admin);
         if (note !== null) {
             return html`<p class="note">${contentText(locale, note)}</p>`;
@@ -291,7 +291,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         </div>`;
     }
 
-    #inviteDetail(locale: Locale, view: AdminsViewState, invite: Invite): TemplateResult {
+    #inviteDetail(locale: UiLocale, view: AdminsViewState, invite: Invite): TemplateResult {
         const created = formatDay(locale, invite.createdAt);
         const ask = (): void => {
             this.issue = null;
@@ -313,7 +313,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
     }
 
     /** Cancel the invitation, for the city's owners. */
-    #cancelInvite(locale: Locale, view: AdminsViewState, ask: () => void): TemplateResult {
+    #cancelInvite(locale: UiLocale, view: AdminsViewState, ask: () => void): TemplateResult {
         if (!ownsCurrentCity(this.state)) {
             return EMPTY;
         }
@@ -325,7 +325,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
     }
 
     /** The sign-in link of the invitation made in this visit, with Copy; for an older one, how to send it. */
-    #link(locale: Locale, invited: InviteResponse | null, invite: Invite): TemplateResult {
+    #link(locale: UiLocale, invited: InviteResponse | null, invite: Invite): TemplateResult {
         if (invited?.inviteId !== invite.inviteId) {
             return html`<p class="note">${contentText(locale, 'adminContent.admins.linkLater')}</p>`;
         }
@@ -343,7 +343,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
             <p class="note status" role="status">${this.copied ? shellText(locale, 'adminShell.admins.copied') : ''}</p>`;
     }
 
-    #issue(locale: Locale): TemplateResult {
+    #issue(locale: UiLocale): TemplateResult {
         return this.issue === null
             ? EMPTY
             : html`<p class="alert" role="alert"><hcm-icon name="error"></hcm-icon><span>${noticeOf(locale, this.issue)}</span></p>`;
@@ -403,7 +403,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         this.inviteIssue = null;
     }
 
-    #confirm(locale: Locale): TemplateResult {
+    #confirm(locale: UiLocale): TemplateResult {
         const pending = this.pending;
         const question = questionOf(locale, pending, currentCityName(this.state, locale));
         const confirm = (): void => {

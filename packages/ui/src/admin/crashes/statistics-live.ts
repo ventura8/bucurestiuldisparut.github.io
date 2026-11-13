@@ -3,7 +3,7 @@
  * groups (`statistics-crashes.ts`), a chunk of its own that `statistics-view.ts` loads the first time the view shows, so
  * the crashes page stays within its budget.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { CrashesViewState } from './crashes-port.js';
@@ -17,7 +17,7 @@ export type LiveContext = Omit<NumbersContext, 'locale' | 'state'> & { readonly 
 /** The live sections' styles, which the crashes page adopts once this chunk is there. */
 export const liveStyles = statisticsLiveStyles;
 
-export function liveSections(locale: Locale, view: CrashesViewState, context: LiveContext): TemplateResult {
+export function liveSections(locale: UiLocale, view: CrashesViewState, context: LiveContext): TemplateResult {
     const numbers = numbersSection({ ...context, locale, state: view.statistics });
     return html`${numbers} ${crashesSection(locale, view, context.intents, context.groupUrl)}`;
 }

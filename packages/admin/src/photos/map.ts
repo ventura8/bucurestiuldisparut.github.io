@@ -14,7 +14,7 @@ import {
     roundTo,
     type BBox,
     type LngLat,
-    type Locale,
+    type UiLocale,
     type MapView,
 } from '@hcm/shared';
 
@@ -109,7 +109,7 @@ export class PhotoMapSession {
     /** Creates the page's map in `container` (once per page visit). */
     async attach(
         container: HTMLElement,
-        options: { readonly bounds: BBox; readonly view: MapView; readonly locale: Locale },
+        options: { readonly bounds: BBox; readonly view: MapView; readonly locale: UiLocale },
     ): Promise<void> {
         if (this.#factory === null) {
             this.#events.status('unavailable');

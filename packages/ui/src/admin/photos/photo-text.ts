@@ -3,7 +3,7 @@
  * (`adminContent.photos.*`), the API's error codes (`apiError.*`) or the viewer's validation messages (`validation.*`);
  * the page receives no free text from the app. Titles, names and EXIF values are data, shown as text only.
  */
-import type { AdminContentKey, FirestoreLicense, Locale, ValidationIssue } from '@hcm/shared';
+import type { AdminContentKey, FirestoreLicense, UiLocale, ValidationIssue } from '@hcm/shared';
 
 import { issueText } from '../editing/issue-text.js';
 import { contentText, noticeText } from '../shell/text.js';
@@ -36,17 +36,17 @@ export function partId(id: string, part: string): string {
 }
 
 /** An `adminContent.photos.*` text. */
-export function photoText(locale: Locale, key: AdminContentKey, params?: Params): string {
+export function photoText(locale: UiLocale, key: AdminContentKey, params?: Params): string {
     return contentText(locale, key, params);
 }
 
 /** A message of the area: an editor text or an API error code. */
-export function messageText(locale: Locale, key: PhotoMessageKey, params?: Params | null): string {
+export function messageText(locale: UiLocale, key: PhotoMessageKey, params?: Params | null): string {
     return noticeText(locale, key, params ?? undefined);
 }
 
 /** A localized text in the admin's language, Romanian when English is missing (as the viewer does). */
-export function localized(locale: Locale, text: LocalizedPort): string {
+export function localized(locale: UiLocale, text: LocalizedPort): string {
     return locale === 'en' ? (text.en ?? text.ro) : text.ro;
 }
 
@@ -61,7 +61,7 @@ const FILTER_KEYS: Readonly<Record<PhotoFilterPort, AdminContentKey>> = {
     rightsReview: 'adminContent.photos.filter.rightsReview',
 };
 
-export function filterText(locale: Locale, filter: PhotoFilterPort): string {
+export function filterText(locale: UiLocale, filter: PhotoFilterPort): string {
     return contentText(locale, FILTER_KEYS[filter]);
 }
 
@@ -75,7 +75,7 @@ export const LICENSE_ORDER: readonly FirestoreLicense[] = [
     'unknown',
 ];
 
-export function licenseText(locale: Locale, license: FirestoreLicense): string {
+export function licenseText(locale: UiLocale, license: FirestoreLicense): string {
     return contentText(locale, `adminContent.photos.license.${license}`);
 }
 
@@ -87,7 +87,7 @@ const BLOCK_KEYS: Readonly<Record<PublishBlockPort, AdminContentKey>> = {
 };
 
 /** Why Published cannot be switched on. */
-export function blockText(locale: Locale, block: PublishBlockPort): string {
+export function blockText(locale: UiLocale, block: PublishBlockPort): string {
     return contentText(locale, BLOCK_KEYS[block]);
 }
 
@@ -105,7 +105,7 @@ const REASON_KEYS: Readonly<Record<string, AdminContentKey>> = {
 };
 
 /** One skipped photo of a bulk action: its title and why it was left alone. */
-export function skipText(locale: Locale, skip: { readonly title: string; readonly reason: string }): string {
+export function skipText(locale: UiLocale, skip: { readonly title: string; readonly reason: string }): string {
     const reason = contentText(locale, REASON_KEYS[skip.reason] ?? 'adminContent.photos.reason.invalid');
     return contentText(locale, 'adminContent.photos.reason.line', { title: skip.title, reason });
 }
@@ -117,7 +117,7 @@ const BULK_KEYS: Readonly<Record<Exclude<BulkKindPort, 'delete'>, AdminContentKe
     setFields: 'adminContent.photos.bulk.setFieldsAction',
 };
 
-export function bulkActionText(locale: Locale, kind: Exclude<BulkKindPort, 'delete'>): string {
+export function bulkActionText(locale: UiLocale, kind: Exclude<BulkKindPort, 'delete'>): string {
     return contentText(locale, BULK_KEYS[kind]);
 }
 
@@ -132,14 +132,14 @@ const PHASE_KEYS: Readonly<Record<Exclude<UploadPhasePort, 'uploading'>, AdminCo
 };
 
 /** Where an upload stands, as text. */
-export function phaseText(locale: Locale, item: UploadItemPort): string {
+export function phaseText(locale: UiLocale, item: UploadItemPort): string {
     return item.phase === 'uploading'
         ? contentText(locale, 'adminContent.photos.upload.uploading', { percent: String(item.percent) })
         : contentText(locale, PHASE_KEYS[item.phase]);
 }
 
 /** The sticky fields a new photo gets, as one line (none chosen yet: the hint to set them on the first photo). */
-export function stickyText(locale: Locale, sticky: StickyPort): string {
+export function stickyText(locale: UiLocale, sticky: StickyPort): string {
     const values = [
         sticky.author,
         sticky.sourceLabel,
@@ -153,7 +153,7 @@ export function stickyText(locale: Locale, sticky: StickyPort): string {
 }
 
 /** The years of a photo (`1936`, `1936–1940`, or "No year"). */
-export function yearsText(locale: Locale, year: number | null, yearEnd: number | null): string {
+export function yearsText(locale: UiLocale, year: number | null, yearEnd: number | null): string {
     if (year === null) {
         return contentText(locale, 'adminContent.photos.undated');
     }
@@ -163,7 +163,7 @@ export function yearsText(locale: Locale, year: number | null, yearEnd: number |
 }
 
 /** The first validation message of a field (its issue path starts with the field's name), or null. */
-export function fieldIssue(locale: Locale, issues: readonly ValidationIssue[], field: string): string | null {
+export function fieldIssue(locale: UiLocale, issues: readonly ValidationIssue[], field: string): string | null {
     const issue = issues.find(
         (candidate) => candidate.path === field || candidate.path.startsWith(`${field}.`) || candidate.path.startsWith(`${field}[`),
     );

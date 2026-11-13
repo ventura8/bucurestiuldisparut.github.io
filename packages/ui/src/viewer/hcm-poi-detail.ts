@@ -5,7 +5,18 @@
  * (`docs/research/M27-lost-streets.md`): its sources, as text: the historical layer it was traced on (`sourceLayer`, looked
  * up in `layers`; an unknown id says nothing) and the credit of its category's data (`attribution`).
  */
-import { DEFAULT_LOCALE, poiIcon, translate, type Layer, type Locale, type Photo, type Poi, type PoiCategory } from '@hcm/shared';
+import {
+    DEFAULT_LOCALE,
+    localized,
+    poiIcon,
+    shownLanguage,
+    translate,
+    type Layer,
+    type ViewerLocale,
+    type Photo,
+    type Poi,
+    type PoiCategory,
+} from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../components/css-properties.js';
@@ -13,6 +24,7 @@ import { EMPTY } from './empty.js';
 import { externalLink, renderMarkdown } from './markdown.js';
 import { creditLine } from './photo-rights.js';
 import { resolveAssetUrl } from './services.js';
+import { fallbackNote } from './fallback-note.js';
 import { baseStyles, detailStyles } from './shared-styles.js';
 import { localizedText, poiYearsText } from './text.js';
 
@@ -98,7 +110,7 @@ export class HcmPoiDetail extends LitElement {
     declare layers: readonly Layer[];
     /** The manifest's photos; the POI's `photoIds` are looked up here (unknown ids are skipped). */
     declare photos: readonly Photo[];
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare manifestUrl: string;
 
     constructor() {
@@ -122,9 +134,12 @@ export class HcmPoiDetail extends LitElement {
             ${
                 poi.description === undefined
                     ? nothing
-                    : html`<div class="description">${renderMarkdown(localizedText(poi.description, this.locale))}</div>`
+                    : html`<div class="description" lang=${shownLanguage(poi.description, this.locale)}>
+                          ${renderMarkdown(localizedText(poi.description, this.locale))}
+                      </div>`
             }
-            ${creditLine(poi.credit, this.locale)} ${this.#sources(poi)} ${this.#links(poi)} ${this.#photos(poi)}
+            ${fallbackNote(poi.title, this.locale)} ${creditLine(poi.credit, this.locale)} ${this.#sources(poi)} ${this.#links(poi)}
+            ${this.#photos(poi)}
         </div>`;
     }
 
@@ -136,7 +151,7 @@ export class HcmPoiDetail extends LitElement {
         const color = HEX_COLOR.test(category.color) ? { '--hcm-poi-color': category.color } : {};
         return html`<p class="category">
             <span class="swatch" ${cssProperties(color)}><hcm-icon .name=${poiIcon(category.icon)}></hcm-icon></span>
-            <span>${translate(this.locale, 'poi.category', { category: category.label[this.locale] })}</span>
+            <span>${translate(this.locale, 'poi.category', { category: localized(category.label, this.locale) })}</span>
         </p>`;
     }
 
@@ -145,7 +160,7 @@ export class HcmPoiDetail extends LitElement {
         const layer = this.layers.find((candidate) => candidate.id === poi.sourceLayer);
         const attribution = this.category?.attribution;
         const lines = [
-            ...(layer === undefined ? [] : [translate(this.locale, 'poi.sourceLayer', { layer: layer.label[this.locale] })]),
+            ...(layer === undefined ? [] : [translate(this.locale, 'poi.sourceLayer', { layer: localized(layer.label, this.locale) })]),
             ...(attribution === undefined ? [] : [translate(this.locale, 'layers.attribution', { attribution })]),
         ];
         if (lines.length === 0) {

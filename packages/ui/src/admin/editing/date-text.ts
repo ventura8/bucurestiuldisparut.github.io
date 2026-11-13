@@ -5,9 +5,10 @@
  * hint): Romanian `zz.ll.aaaa`, English `dd/mm/yyyy` (the admin's English dates are British, `setup-text.ts`). The value
  * stays an ISO date (`YYYY-MM-DD`) everywhere else.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 
-const SEPARATORS: Readonly<Record<Locale, string>> = { ro: '.', en: '/' };
+/** Romanian's dot; English's slash, which every other language's date field takes too. */
+const SEPARATORS: Partial<Readonly<Record<UiLocale, string>>> = { ro: '.', en: '/' };
 
 /** Day, month and year (day first, as both languages write it; `.`, `/`, `-` or a space between). */
 const DAY_FIRST = /^\s*(\d{1,2})[./\-\s](\d{1,2})[./\-\s](\d{4})\s*$/;
@@ -27,9 +28,9 @@ function isoOf(year: number, month: number, day: number): string | null {
 }
 
 /** `2026-10-18` as the admin writes it: `18.10.2026` in Romanian, `18/10/2026` in English; any other text as it is. */
-export function formatDateInput(locale: Locale, value: string): string {
+export function formatDateInput(locale: UiLocale, value: string): string {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-    return match === null ? value : [match[3], match[2], match[1]].join(SEPARATORS[locale]);
+    return match === null ? value : [match[3], match[2], match[1]].join(SEPARATORS[locale] ?? '/');
 }
 
 /** The ISO date a typed text names (`18.10.2026`, `18/10/2026`, `2026-10-18`); '' for an empty field; null for anything else. */

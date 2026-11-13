@@ -4,7 +4,7 @@
  * History), the skipped photos of the last bulk action ("See why"), and Author, source and licence for the selection
  * (an empty field stays as it is).
  */
-import type { FirestoreLicense, Locale } from '@hcm/shared';
+import type { FirestoreLicense, UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { textOf } from './editor-fields.js';
@@ -12,7 +12,7 @@ import { LICENSE_ORDER, licenseText, partId, photoHref, photoText, skipText } fr
 import type { BulkReportPort, PhotosViewState, StickyPort } from './photos-port.js';
 
 export function deleteDialog(
-    locale: Locale,
+    locale: UiLocale,
     confirm: PhotosViewState['confirm'],
     handlers: { readonly confirm: () => void; readonly cancel: () => void },
 ): TemplateResult {
@@ -33,7 +33,7 @@ export function deleteDialog(
     ></hcm-confirm-dialog>`;
 }
 
-export function reportDialog(locale: Locale, report: BulkReportPort | null, close: () => void): TemplateResult {
+export function reportDialog(locale: UiLocale, report: BulkReportPort | null, close: () => void): TemplateResult {
     return html`<hcm-dialog
         class="report"
         .open=${report !== null}
@@ -67,7 +67,7 @@ export function stickyFrom(form: HTMLFormElement): StickyPort {
 }
 
 export function setFieldsDialog(
-    locale: Locale,
+    locale: UiLocale,
     open: { readonly count: number } | null,
     handlers: { readonly apply: (fields: StickyPort) => void; readonly close: () => void },
 ): TemplateResult {

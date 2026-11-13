@@ -4,7 +4,7 @@
  * count missing), the tools (Add pairs, Add at the centres, Save, Discard) with the half pair's hint, and the warped
  * preview's switch and opacity.
  */
-import { GEOREF_TRANSFORMS, type GeorefTransform, type Locale } from '@hcm/shared';
+import { GEOREF_TRANSFORMS, type GeorefTransform, type UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { numberText, pluralOf } from '../imagery/imagery-text.js';
@@ -14,7 +14,7 @@ import type { GeorefIntentsPort, GeorefViewState } from './georef-port.js';
 import type { ResidualSort } from './residual-table.js';
 
 export interface GeorefContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly view: GeorefViewState;
     readonly intents: GeorefIntentsPort | null;
     /** Nothing writes: the version takes no points, or the admin's access was removed. */
@@ -40,7 +40,7 @@ function refusal(context: GeorefContext, reason: 'too-few' | 'degenerate'): Temp
     </p>`;
 }
 
-function checks(locale: Locale, fit: GeorefViewState['fit']): string {
+function checks(locale: UiLocale, fit: GeorefViewState['fit']): string {
     const rmse = fit.checkpointRmseM;
     return rmse === null
         ? contentText(locale, 'adminContent.georef.noChecks')
@@ -63,7 +63,7 @@ function rmseWarning(context: GeorefContext): TemplateResult {
 }
 
 /** M15: the pairs were edited, so every figure and the preview are a refit that Save makes the version's map. */
-function refitNote(locale: Locale, fit: GeorefViewState['fit']): TemplateResult {
+function refitNote(locale: UiLocale, fit: GeorefViewState['fit']): TemplateResult {
     return when(
         fit.refitted,
         () =>
@@ -140,7 +140,7 @@ export function guide(context: GeorefContext): TemplateResult {
 }
 
 /** The hint under the tools: the half pair's next click (and the ghost's dashed ring, when there is one), or how to add a pair. */
-function halfText(locale: Locale, view: GeorefViewState): string {
+function halfText(locale: UiLocale, view: GeorefViewState): string {
     if (view.half !== null) {
         const end = 'pixel' in view.half ? 'halfOnScan' : 'halfOnMap';
         return contentText(locale, `adminContent.georef.${end}${view.ghost === null ? '' : 'Ghost'}`);

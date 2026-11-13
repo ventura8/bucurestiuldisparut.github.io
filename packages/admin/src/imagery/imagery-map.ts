@@ -9,7 +9,7 @@
  * viewer uses, or its small preview until they exist, with the opacity slider's value, the city's outline, and what the image misses
  * of the city shaded. The pictures are canvas sources (`./overlay.ts`).
  */
-import type { BBox, LngLat, Locale, Theme } from '@hcm/shared';
+import type { BBox, LngLat, UiLocale, Theme } from '@hcm/shared';
 import type { PoiFeature, RasterLayerSpec, VectorOverlaySpec } from '@hcm/ui/map';
 
 import { AreaMap, type CityFrame, type MapStatus } from '../layers/map-session.js';
@@ -58,7 +58,7 @@ export function footprintColorsOf(theme: Theme | undefined): FootprintColors {
 
 export interface ImageryMapDeps {
     readonly maps: AdminMapFactory | null;
-    readonly locale: () => Locale;
+    readonly locale: () => UiLocale;
     readonly files: FilePort;
     readonly pictures: PicturePort | null;
     readonly status: (status: MapStatus) => void;

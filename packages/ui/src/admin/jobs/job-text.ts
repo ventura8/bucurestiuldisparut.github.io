@@ -3,7 +3,7 @@
  * level. A type the admin does not know yet (the raster pipeline's next ones, M3) reads as "Job"; an unknown step keeps
  * its stored name.
  */
-import type { AdminContentKey, Locale } from '@hcm/shared';
+import type { AdminContentKey, UiLocale } from '@hcm/shared';
 
 import { contentText } from '../shell/text.js';
 import type { JobFilterPort, JobItemPort, JobLogLinePort, JobStatusPort } from './jobs-port.js';
@@ -83,25 +83,25 @@ export const FILTERS: Readonly<Record<JobFilterPort, AdminContentKey>> = {
     done: 'adminContent.jobs.filter.done',
 };
 
-export function jobTypeText(locale: Locale, type: string): string {
+export function jobTypeText(locale: UiLocale, type: string): string {
     return contentText(locale, TYPES[type] ?? 'adminContent.jobs.type.other');
 }
 
-export function jobStatusText(locale: Locale, status: JobStatusPort): string {
+export function jobStatusText(locale: UiLocale, status: JobStatusPort): string {
     return contentText(locale, STATUSES[status]);
 }
 
-export function stepStateText(locale: Locale, state: string): string {
+export function stepStateText(locale: UiLocale, state: string): string {
     return contentText(locale, STEP_STATES[state] ?? 'adminContent.jobs.step.pending');
 }
 
 /** A step by its name in the admin's language ("Downloading the scene" for `fetch`); a step the admin does not know as stored. */
-export function stepNameText(locale: Locale, name: string): string {
+export function stepNameText(locale: UiLocale, name: string): string {
     const key = STEP_NAMES[name];
     return key === undefined ? name : contentText(locale, key);
 }
 
-export function levelText(locale: Locale, level: JobLogLinePort['level']): string {
+export function levelText(locale: UiLocale, level: JobLogLinePort['level']): string {
     return contentText(locale, LEVELS[level]);
 }
 

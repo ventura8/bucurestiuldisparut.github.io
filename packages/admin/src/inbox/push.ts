@@ -13,7 +13,7 @@
  * registration this browser handed out (`apiError.notify.deviceInvalid`, whatever the server's release), the registrar
  * forgets the SDK's record of it and the browser registers once more, with a new registration, before the page says so.
  */
-import { pluralOf, type Locale, type Logger, type PushTargetKind } from '@hcm/shared';
+import { contentLocale, pluralOf, type UiLocale, type Logger, type PushTargetKind } from '@hcm/shared';
 
 import { outcomeOf } from '../app/services.js';
 import type { KeyValueStore } from '../app/ports.js';
@@ -55,7 +55,7 @@ export interface PushDeps {
     readonly local: KeyValueStore;
     /** The signed-in admin: the browser's registration is theirs or not. */
     readonly uid: () => string;
-    readonly locale: () => Locale;
+    readonly locale: () => UiLocale;
     readonly notify: (notice: NoticeInput) => void;
     readonly changed: (state: PushState) => void;
     readonly log: Logger;
@@ -87,7 +87,7 @@ function registeredHere(permission: PushPermission, local: KeyValueStore, uid: s
 const NO_REGISTRAR = 'apiError.unavailable';
 
 /** "The test notification went to 1 device" in the plural form `count` takes in the admin's language. */
-function testSent(locale: Locale, count: number): NoticeInput {
+function testSent(locale: UiLocale, count: number): NoticeInput {
     return { key: `adminContent.notify.push.testSent.${pluralOf(locale, count)}`, params: { count: String(count) } };
 }
 
@@ -167,7 +167,7 @@ export class PushSession {
             return this.#registrarFailed(error);
         }
         const outcome = await outcomeOf(() =>
-            this.#deps.callables.call('notify.registerDevice', { token, kind: registrar.kind, lang: this.#deps.locale() }),
+            this.#deps.callables.call('notify.registerDevice', { token, kind: registrar.kind, lang: contentLocale(this.#deps.locale()) }),
         );
         if (outcome.ok) {
             return { ok: true, deviceId: outcome.value.deviceId };

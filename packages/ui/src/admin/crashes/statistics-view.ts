@@ -6,7 +6,7 @@
  * here** asks Google for the owner's read-only Analytics permission and reads the GA4 Data API (`statistics-numbers.ts`),
  * and Error Reporting's groups follow the same period (`statistics-crashes.ts`).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { WIZARD_IDS, type WizardId } from '@hcm/shared/funnels';
 import { html, type TemplateResult } from 'lit';
 
@@ -74,17 +74,17 @@ function codesOf(numbers: StatisticsNumbersPort): CodesState {
     return numbers.pending?.reason ?? 'ready';
 }
 
-function stepItem(locale: Locale, step: StepId): TemplateResult {
+function stepItem(locale: UiLocale, step: StepId): TemplateResult {
     const name = contentText(locale, `adminContent.statistics.step.${step}`);
     return html`<li>${name} <code>${step}</code></li>`;
 }
 
-function howItem(locale: Locale, key: (typeof HOW)[number]): TemplateResult {
+function howItem(locale: UiLocale, key: (typeof HOW)[number]): TemplateResult {
     const text = contentText(locale, `adminContent.statistics.${key}`);
     return html`<li>${text}</li>`;
 }
 
-function stepsOf(locale: Locale, wizard: WizardId): TemplateResult {
+function stepsOf(locale: UiLocale, wizard: WizardId): TemplateResult {
     const steps: readonly StepId[] = WIZARD_STEPS[wizard];
     if (steps.length === 0) {
         return html`<p>${contentText(locale, 'adminContent.statistics.setupSteps')}</p>`;
@@ -94,11 +94,11 @@ function stepsOf(locale: Locale, wizard: WizardId): TemplateResult {
     </ol>`;
 }
 
-function wizardName(locale: Locale, wizard: WizardId): string {
+function wizardName(locale: UiLocale, wizard: WizardId): string {
     return contentText(locale, `adminContent.statistics.wizard.${wizard}`);
 }
 
-function wizardItem(locale: Locale, wizard: WizardId): TemplateResult {
+function wizardItem(locale: UiLocale, wizard: WizardId): TemplateResult {
     return html`<li class="card" data-wizard=${wizard}>
         <h4>${wizardName(locale, wizard)} <code>${wizard}</code></h4>
         ${stepsOf(locale, wizard)}
@@ -106,7 +106,7 @@ function wizardItem(locale: Locale, wizard: WizardId): TemplateResult {
 }
 
 /** The note and link when GA4 is not configured: nothing is measured until Setup's step g. */
-function offNote(locale: Locale, analytics: boolean): TemplateResult {
+function offNote(locale: UiLocale, analytics: boolean): TemplateResult {
     return analytics
         ? EMPTY
         : html`<p class="note" data-statistics-off>${contentText(locale, 'adminContent.statistics.off')}</p>
@@ -126,7 +126,7 @@ export interface StatisticsContext {
 }
 
 /** §203: the numbers and the errors, once the page's store and the sections' chunk are there. */
-function liveSections(locale: Locale, context: StatisticsContext): TemplateResult {
+function liveSections(locale: UiLocale, context: StatisticsContext): TemplateResult {
     const view = context.view;
     if (view === null) {
         return EMPTY;
@@ -143,7 +143,7 @@ function liveSections(locale: Locale, context: StatisticsContext): TemplateResul
 }
 
 /** How to explore more in Google Analytics: the funnel exploration's steps and every wizard's step codes, folded away. */
-function helpSection(locale: Locale, view: CrashesViewState | null): TemplateResult {
+function helpSection(locale: UiLocale, view: CrashesViewState | null): TemplateResult {
     return html`<div class="card">
         <details class="help" data-statistics-help>
             <summary>${contentText(locale, 'adminContent.statistics.helpTitle')}</summary>
@@ -165,7 +165,7 @@ function helpSection(locale: Locale, view: CrashesViewState | null): TemplateRes
 }
 
 /** The whole view: the title, the numbers and the errors, then the help, folded. */
-export function statisticsView(locale: Locale, context: StatisticsContext): TemplateResult {
+export function statisticsView(locale: UiLocale, context: StatisticsContext): TemplateResult {
     return html`<div class="pane statistics">
         <p><a href="#/crashes">${contentText(locale, 'adminContent.statistics.back')}</a></p>
         <div class="page-head">

@@ -7,10 +7,23 @@
  * the viewer's.
  */
 export { LitElement, css, html, nothing } from 'lit';
-export { DEFAULT_LOCALE, LOCALES, resolveLocale, streetViewUrl, translate } from '@hcm/shared';
+export { live } from 'lit/directives/live.js';
+export {
+    DEFAULT_LOCALE,
+    LANGUAGE_NAMES,
+    LOCALES,
+    localized,
+    resolveLocale,
+    resolveViewerLocale,
+    shownLanguage,
+    streetViewUrl,
+    translate,
+} from '@hcm/shared';
 export { cssProperties } from '../components/css-properties.js';
 export { tabbableElements, trapTab } from '../components/focus.js';
+export { logicalKey } from '../components/internal.js';
 export { EMPTY } from './empty.js';
+export { fallbackNote } from './fallback-note.js';
 export { photoSelectEvent } from './hcm-poi-detail.js';
 export { hasVersions, shownView, versionSwitch, viewCredit, viewImage } from './photo-version.js';
 export { resolveAssetUrl } from './services.js';

@@ -13,7 +13,7 @@ import {
     type DecodedHash,
     type HashLimits,
     type HashState,
-    type Locale,
+    type ViewerLocale,
     type Manifest,
 } from '@hcm/shared';
 
@@ -130,7 +130,7 @@ function hashLayers(state: ViewerState): Pick<HashState, 'layers'> {
 }
 
 /** What the hash carries for `state`; `defaultLocale` (the page's language) is left out. */
-export function hashStateOf(state: ViewerState, defaultLocale: Locale): HashState {
+export function hashStateOf(state: ViewerState, defaultLocale: ViewerLocale): HashState {
     const overlayOpacity = hashOverlayOpacity(state.overlays);
     return {
         view: hashViewOf(state),
@@ -220,6 +220,6 @@ export class HashWriter {
 }
 
 /** The encoded hash of `state` (`''` before the manifest loads: nothing to share yet). */
-export function encodeViewerHash(state: ViewerState, defaultLocale: Locale): string {
+export function encodeViewerHash(state: ViewerState, defaultLocale: ViewerLocale): string {
     return state.manifest === null ? '' : encodeHash(hashStateOf(state, defaultLocale));
 }

@@ -1,15 +1,26 @@
 /**
- * The store's boot sequence and its links to the outside (docs/ENGINE_API.md → Errors and validation, URL hash):
- * the first language (URL, stored choice, `config.lang`, Romanian), the manifest (`config/load.ts`), the URL hash and
+ * The store's boot sequence and its links to the outside (docs/ENGINE_API.md → Errors and validation, URL hash, Language):
+ * the first language (URL, stored choice, `config.lang`, Romanian) and its texts, fetched beside the manifest (Romanian
+ * when they cannot be, `catalogues.ts`), the manifest (`config/load.ts`), the URL hash and
  * the stored preferences of the city, telemetry's context, then the map (unless WebGL is missing: the photo list
  * still works, scenario V02) and its events. A newer `load` (Retry) supersedes an older one still in flight. Each
  * step is a field measurement for telemetry (`telemetry.measure`, docs/ARCHITECTURE.md → *Field measurements*).
  */
-import { decodeHash, resolveLocale, type DecodedHash, type Locale, type Manifest, type MapView, type MessageKey } from '@hcm/shared';
+import {
+    decodeHash,
+    resolveViewerLocale,
+    VIEWER_LOCALES,
+    type DecodedHash,
+    type Manifest,
+    type MapView,
+    type MessageKey,
+    type ViewerLocale,
+} from '@hcm/shared';
 import type { FlyOptions, MapEventMap, Unsubscribe } from '@hcm/ui/map';
 
-import { loadManifest } from '../config/load.js';
+import { loadManifest, type Result } from '../config/load.js';
 import type { Measurement, TelemetryContext } from '../telemetry/telemetry-port.js';
+import { firstCatalogue, presentCatalogue } from './catalogues.js';
 import type { MountedMap } from './compare-port.js';
 import { readMapLabels, withMapAnswer } from './map-labels.js';
 import { mapLight } from './map-light.js';
@@ -29,17 +40,18 @@ export interface BootHost {
     getState(): ViewerState;
     set(next: ViewerState): void;
     showToast(key: MessageKey, params?: Readonly<Record<string, string>>): void;
+    setLocale(locale: ViewerLocale): void;
     openPhoto(photoId: string | null): void;
     openPoi(poiId: string | null): void;
     setView(view: MapView): void;
 }
 
-function exactLocale(value: string | null | undefined): Locale | null {
-    return value === 'ro' || value === 'en' ? value : null;
+function exactLocale(value: string | null | undefined): ViewerLocale | null {
+    return VIEWER_LOCALES.find((locale) => locale === value) ?? null;
 }
 
 /** The language the page address asks for (`#…&lang=`, else `?lang=`), or null: it wins over every other choice. */
-export function urlLocaleOf(location: { readonly hash: string; readonly search?: string | undefined }): Locale | null {
+export function urlLocaleOf(location: { readonly hash: string; readonly search?: string | undefined }): ViewerLocale | null {
     return decodeHash(location.hash).lang ?? exactLocale(new URLSearchParams(location.search ?? '').get('lang'));
 }
 
@@ -68,9 +80,9 @@ function analyticsIds(analytics: Manifest['city']['analytics']): Pick<TelemetryC
 export class Boot {
     readonly #host: BootHost;
     /** The page's language (`config.lang`): the hash names the language only when it differs. */
-    readonly defaultLocale: Locale;
+    readonly defaultLocale: ViewerLocale;
     /** The language the URL asked for, which wins over the stored choice. */
-    readonly #urlLocale: Locale | null;
+    readonly #urlLocale: ViewerLocale | null;
     #loadId = 0;
     #sync: MapSync | null = null;
     /** The mounted map's container and asset base (swipe compare's anchor), null without a mounted map. */
@@ -80,7 +92,7 @@ export class Boot {
     constructor(host: BootHost) {
         this.#host = host;
         const { config, location } = host.deps;
-        this.defaultLocale = resolveLocale(config.lang);
+        this.defaultLocale = resolveViewerLocale(config.lang);
         this.#urlLocale = urlLocaleOf(location);
     }
 
@@ -101,8 +113,24 @@ export class Boot {
         const id = this.#loadId;
         this.#closeMap();
         host.set({ ...host.getState(), status: 'loading', error: null });
-        const result = await loadManifest(host.deps.config, { fetch: host.deps.fetch, engineVersion: host.deps.engineVersion });
-        if (!this.#current(id)) {
+        // The language's texts come beside the manifest; once here, the skeleton says what it waits for.
+        const [result] = await Promise.all([
+            loadManifest(host.deps.config, { fetch: host.deps.fetch, engineVersion: host.deps.engineVersion }),
+            this.catalogue(host.getState().locale).then((ok) => {
+                this.#textsArrived(id, ok);
+            }),
+        ]);
+        if (this.#current(id)) {
+            await this.#loaded(id, result);
+        }
+    }
+
+    /** The manifest in the state (or its error), the language's texts, then the map. */
+    async #loaded(id: number, result: Result<Manifest>): Promise<void> {
+        if (result.ok) {
+            this.#enter(result.value);
+        }
+        if (!(await this.#language(id, result.ok ? null : result.error))) {
             return;
         }
         if (!result.ok) {
@@ -110,9 +138,43 @@ export class Boot {
             this.#fail(result.error);
             return;
         }
-        this.#enter(result.value);
         this.#measure({ kind: 'phase', phase: 'manifest' });
         await this.#mount(id, result.value);
+    }
+
+    /** A render with the texts that just arrived, while the boot `id` still waits for its manifest. */
+    #textsArrived(id: number, ok: boolean): void {
+        if (ok && this.#current(id)) {
+            this.#host.set({ ...this.#host.getState() });
+        }
+    }
+
+    /** Fetches a language's texts (once; at once when the page has them). */
+    catalogue(locale: ViewerLocale): Promise<boolean> {
+        return (this.#host.deps.catalogues ?? presentCatalogue)(locale);
+    }
+
+    /**
+     * The boot's language: the one asked for, else Romanian, saying so; false when not even Romanian's texts load, which
+     * leaves the only words the engine carries, its bilingual card (`viewer-render.ts`), and Retry. The boot's error is
+     * still the one reported (`hcm-error`): the manifest's, if it failed too (a page opened from the disk).
+     */
+    async #language(id: number, error: ViewerError | null): Promise<boolean> {
+        const host = this.#host;
+        const wanted = host.getState().locale;
+        const locale = await firstCatalogue((each) => this.catalogue(each), wanted);
+        if (!this.#current(id)) {
+            return false;
+        }
+        if (locale === null) {
+            this.#fail(error ?? { code: 'error.generic', retryable: true });
+            return false;
+        }
+        host.set({ ...host.getState(), locale });
+        if (locale !== wanted) {
+            host.showToast('language.unavailable');
+        }
+        return true;
     }
 
     #measure(measurement: Measurement): void {
@@ -309,8 +371,13 @@ export class Boot {
     /** `ViewerActions.applyHash`: the state, then the map's view, then the toast of an unknown photo or story. */
     applyHash(hash: DecodedHash): void {
         const host = this.#host;
-        const applied = applyDecodedHash(host.getState(), hash);
+        // A language in the hash goes through `setLocale`: its texts may have to be fetched first.
+        const { lang, ...rest } = hash;
+        const applied = applyDecodedHash(host.getState(), rest);
         host.set(applied.state);
+        if (lang !== undefined) {
+            host.setLocale(lang);
+        }
         this.moveMap(hash.view);
         this.#toastUnknown(applied);
     }

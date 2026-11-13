@@ -8,7 +8,7 @@
  * what Setup left open (`./reminders.ts`): USGS later or waiting for its approval, a likely free trial ending soon. M18
  * item 7: then What needs you (`NEEDS`).
  */
-import { translate, type Locale } from '@hcm/shared';
+import { translate, type UiLocale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
 import { visuallyHidden } from '../../components/styles.js';
@@ -185,7 +185,7 @@ export class HcmHomePage extends AreaPage<HomeViewState, HomeIntentsPort> {
     }
 
     #tiles(
-        locale: Locale,
+        locale: UiLocale,
         view: HomeViewState,
         heading: 'adminShell.home.holdings' | 'adminShell.home.waiting' | 'adminShell.home.needsYou',
         tiles: readonly Tile[],
@@ -202,7 +202,7 @@ export class HcmHomePage extends AreaPage<HomeViewState, HomeIntentsPort> {
         </section>`;
     }
 
-    #tile(locale: Locale, view: HomeViewState, tile: Tile, attention: boolean): TemplateResult {
+    #tile(locale: UiLocale, view: HomeViewState, tile: Tile, attention: boolean): TemplateResult {
         const value = view.counts?.[tile.count] ?? null;
         return html`<li>
             <a class="tile" href=${tile.href} ?data-attention=${attention && (value ?? 0) > 0}>
@@ -212,7 +212,7 @@ export class HcmHomePage extends AreaPage<HomeViewState, HomeIntentsPort> {
         </li>`;
     }
 
-    #health(locale: Locale, view: HomeViewState): TemplateResult {
+    #health(locale: UiLocale, view: HomeViewState): TemplateResult {
         const retry = (): void => {
             this.intents?.retry();
         };
@@ -230,7 +230,7 @@ export class HcmHomePage extends AreaPage<HomeViewState, HomeIntentsPort> {
         </section>`;
     }
 
-    #chip(locale: Locale, chip: HealthChipPort): TemplateResult {
+    #chip(locale: UiLocale, chip: HealthChipPort): TemplateResult {
         const area = shellText(locale, `adminShell.home.area.${chip.area}`);
         const state = shellText(locale, `adminShell.home.state.${chip.state}`);
         const detail = chip.detail === null ? '' : ` (${noticeOf(locale, chip.detail)})`;
@@ -239,7 +239,7 @@ export class HcmHomePage extends AreaPage<HomeViewState, HomeIntentsPort> {
         </li>`;
     }
 
-    #publicMap(locale: Locale, view: HomeViewState): TemplateResult {
+    #publicMap(locale: UiLocale, view: HomeViewState): TemplateResult {
         const map = publicMapOf(view.publicMap);
         return html`<section aria-labelledby="public-map">
             <h2 id="public-map">${shellText(locale, 'adminShell.home.publicMap')}</h2>
@@ -279,7 +279,7 @@ function publicMapOf(state: HomeViewState['publicMap']): PublicMapPort | null | 
 }
 
 /** A count as text: the number, a dash when it failed, an ellipsis while counting. */
-function countText(locale: Locale, value: number | null, counting: boolean): string {
+function countText(locale: UiLocale, value: number | null, counting: boolean): string {
     if (value !== null) {
         return new Intl.NumberFormat(locale).format(value);
     }
@@ -300,7 +300,7 @@ function fieldOf(path: string): string {
     return path.split(/[.[]/)[0] ?? path;
 }
 
-function skippedItem(locale: Locale, item: SkippedDocumentPort): TemplateResult {
+function skippedItem(locale: UiLocale, item: SkippedDocumentPort): TemplateResult {
     const kind = contentText(locale, `adminContent.history.one.${item.entity}`);
     const issue = translate(locale, item.code);
     const problem = item.path === '' ? issue : `${fieldName(locale, fieldOf(item.path))}: ${issue}`;
@@ -310,7 +310,7 @@ function skippedItem(locale: Locale, item: SkippedDocumentPort): TemplateResult 
 }
 
 /** The documents the last build left out of the public map, each with its first issue and its editor (nothing when none). */
-function skippedList(locale: Locale, skipped: readonly SkippedDocumentPort[]): TemplateResult {
+function skippedList(locale: UiLocale, skipped: readonly SkippedDocumentPort[]): TemplateResult {
     if (skipped.length === 0) {
         return EMPTY;
     }
@@ -322,7 +322,7 @@ function skippedList(locale: Locale, skipped: readonly SkippedDocumentPort[]): T
 }
 
 /** The public map's state in one sentence (undefined: still reading; null: never built). */
-export function publicMapText(locale: Locale, map: PublicMapPort | null | undefined): string {
+export function publicMapText(locale: UiLocale, map: PublicMapPort | null | undefined): string {
     if (map === undefined) {
         return contentText(locale, 'adminContent.common.loading');
     }

@@ -1,7 +1,7 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
 import { cssProperties } from './css-properties.js';
-import { clamp, defineOnce, emit, snapToStep } from './internal.js';
+import { clamp, defineOnce, emit, logicalKey, snapToStep } from './internal.js';
 import { baseStyles, focusRing, touchTarget } from './styles.js';
 
 export const HCM_SLIDER_TAG = 'hcm-slider';
@@ -223,7 +223,7 @@ export class HcmSlider extends LitElement {
             Home: this.min - this.value,
             End: this.max - this.value,
         };
-        const delta = deltas[key];
+        const delta = deltas[logicalKey(key, this)];
         return delta === undefined ? null : snapToStep(this.value + delta, this.min, this.max, this.step);
     }
 
@@ -323,7 +323,10 @@ export class HcmSlider extends LitElement {
 
     private moveTo(clientX: number): void {
         const rect = this.renderRoot.querySelector('.track')?.getBoundingClientRect() ?? new DOMRect();
-        const next = snapToStep(this.min + fractionAt(clientX, rect) * (this.max - this.min), this.min, this.max, this.step);
+        // Right to left the track fills from the right: the handle's place mirrors.
+        const along = fractionAt(clientX, rect);
+        const fraction = this.matches(':dir(rtl)') ? 1 - along : along;
+        const next = snapToStep(this.min + fraction * (this.max - this.min), this.min, this.max, this.step);
         if (next !== this.value) {
             this.value = next;
             this.scheduleInput();

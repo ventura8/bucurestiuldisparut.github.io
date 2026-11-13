@@ -171,8 +171,9 @@ drawer) from large; never a drawer.
   typed against it, the `i18n` gate checks both folders; a step title is `adminSetup.step.<SETUP_STEPS id>`, a doctor
   item `adminSetup.provision.item.<PROVISION_ITEMS id>` (both pinned by `packages/shared/test/i18n-admin.test.ts`).
   A workstream adds keys only to its own catalogue; a message used by both is a change request to the owner.
-- Language: `?lang=en`, then the stored choice (`localStorage` `hcm:admin:lang`), then the browser's language, then
-  Romanian; switching keeps form state (A21); `<html lang>` follows it.
+- Language: `?lang=en` (any of the interface's 25 languages since 2026-11-12, `docs/I18N.md`), then the stored choice
+  (`localStorage` `hcm:admin:lang`), then the browser's language, then Romanian; switching keeps form state (A21);
+  `<html lang>` and `dir` follow it; a language beyond Romanian and English is fetched first (`/admin/i18n/<locale>.json`).
 - Icons: the navigation and setup icons (`checklist`, `pending_actions`, `group`, `history`, `bug_report`,
   `check_circle`, `schedule`, `credit_card`, `cloud`, `key`, `content_copy`, `content_paste`, `timer`, `upload`,
   `account_circle`, `logout`, `info`) are not in `UI_ICONS` yet. admin-shell owns `packages/ui/src/icons.ts` and the

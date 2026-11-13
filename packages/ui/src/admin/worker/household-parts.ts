@@ -3,7 +3,7 @@
  * line (its state, share, versions and removal), the "Add another computer" panel, and the manual cleanup after Disconnect now
  * anyway. Each takes the element's translator and returns a template.
  */
-import { WORKER_STARTER_FILE_NAMES, type Locale } from '@hcm/shared';
+import { WORKER_STARTER_FILE_NAMES, type UiLocale } from '@hcm/shared';
 import type { AdminWorkerHouseholdKey } from '@hcm/shared/admin-worker-household';
 import { html, type TemplateResult } from 'lit';
 
@@ -15,7 +15,7 @@ export type Translate = (key: AdminWorkerHouseholdKey, params?: Readonly<Record<
 /** What a part needs of the element: the words, the locale, the copy action and which copy was asked. */
 export interface PartContext {
     readonly t: Translate;
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly household: HouseholdPort;
     readonly city: string;
     copy(what: string, text: string): void;

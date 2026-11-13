@@ -7,7 +7,7 @@
  * before (S-A49-HAPPY-ONE-CITY). Opening it asks the server for the admin's cities again (at most once a minute, the
  * app's `refreshCities`), so a city the admin was just added to appears without a reload.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
 import type { AdminAppPort, AdminCityPort, AdminStatePort } from '../admin-port.js';
@@ -22,7 +22,7 @@ export function showsCityMenu(state: AdminStatePort): boolean {
     return (state.cities?.length ?? 0) >= 2 || state.projectOwner === true;
 }
 
-function nameOf(city: AdminCityPort, locale: Locale): string {
+function nameOf(city: AdminCityPort, locale: UiLocale): string {
     return locale === 'en' ? (city.name.en ?? city.name.ro) : city.name.ro;
 }
 
@@ -181,7 +181,7 @@ export class HcmCityMenu extends LitElement {
         </li>`;
     }
 
-    #newCity(state: AdminStatePort, locale: Locale): TemplateResult {
+    #newCity(state: AdminStatePort, locale: UiLocale): TemplateResult {
         if (state.projectOwner !== true) {
             return EMPTY;
         }

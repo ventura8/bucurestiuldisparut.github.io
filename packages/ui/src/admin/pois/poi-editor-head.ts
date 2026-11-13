@@ -5,7 +5,7 @@
  * conflict banner, which names who saved the other version and when and the fields both changed by their names; the gone
  * banner. A revoked admin's editor is read-only: every action that writes is off, History still opens.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { emit } from '../../components/internal.js';
@@ -19,7 +19,7 @@ import type { PoiDraftPort, PoiShapePort, PoisIntentsPort } from './pois-port.js
 /** What the top of the editor shows and where its events go. */
 export interface HeadInput {
     readonly host: HTMLElement;
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly draft: PoiDraftPort;
     readonly shape: PoiShapePort;
     readonly intents: PoisIntentsPort | null;
@@ -56,7 +56,7 @@ function saveBlocked(draft: PoiDraftPort, readOnly: boolean): boolean {
     return cannotWrite(draft, readOnly) || draft.issues.length > 0 || nothingToSave;
 }
 
-function titleOf(locale: Locale, draft: PoiDraftPort): string {
+function titleOf(locale: UiLocale, draft: PoiDraftPort): string {
     const title = localized(locale, draft.value.title).trim();
     if (title !== '') {
         return title;
@@ -65,7 +65,7 @@ function titleOf(locale: Locale, draft: PoiDraftPort): string {
 }
 
 /** Save's note: every field it waits for, by what to do ("Cannot save: add a title in Romanian; choose a category."). */
-function issueLine(locale: Locale, issues: PoiDraftPort['issues']): TemplateResult {
+function issueLine(locale: UiLocale, issues: PoiDraftPort['issues']): TemplateResult {
     return issues.length === 0 ? EMPTY : html`<p class="note" id="save-issue">${cannotSaveText(locale, issues)}</p>`;
 }
 

@@ -3,7 +3,7 @@
  * Imagery area's store through the app: `ArchiveHostPort`), their texts (`translateAdminArchive`, a catalogue of the `archive`
  * chunk only), sizes and numbers in the page's language, and their styles.
  */
-import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, type UiLocale } from '@hcm/shared';
 import { translateAdminArchive, type AdminArchiveKey } from '@hcm/shared/admin-archive';
 import { css, LitElement, type PropertyValues } from 'lit';
 
@@ -12,12 +12,12 @@ import type { ArchiveFeedPort, ArchiveHostPort, ArchiveViewPort } from './archiv
 
 type Params = Readonly<Record<string, string>>;
 
-export function archiveText(locale: Locale, key: AdminArchiveKey, params?: Params): string {
+export function archiveText(locale: UiLocale, key: AdminArchiveKey, params?: Params): string {
     return translateAdminArchive(locale, key, params);
 }
 
 /** A whole number in the page's language (`12,345`, `12.345`). */
-export function count(locale: Locale, value: number): string {
+export function count(locale: UiLocale, value: number): string {
     return new Intl.NumberFormat(locale).format(Math.round(value));
 }
 
@@ -28,7 +28,7 @@ const UNITS = [
 ] as const;
 
 /** Bytes as the page writes them: `1.2 GB`, `340 MB`, `12 kB`, `512 byte`. */
-export function sizeText(locale: Locale, bytes: number): string {
+export function sizeText(locale: UiLocale, bytes: number): string {
     const [scale, unit] = UNITS.find(([each]) => bytes >= each) ?? [1, 'byte'];
     return new Intl.NumberFormat(locale, { style: 'unit', unit, unitDisplay: 'short', maximumFractionDigits: 1 }).format(bytes / scale);
 }
@@ -119,7 +119,7 @@ export abstract class ArchiveElement extends LitElement {
     static override readonly styles = archiveStyles;
 
     declare app: ArchiveHostPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** The feed's state, or null before it answers. */
     declare view: ArchiveViewPort | null;
     protected feed: ArchiveFeedPort | null = null;

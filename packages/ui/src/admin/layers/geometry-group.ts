@@ -6,7 +6,7 @@
  * layer has neither: it has no scan of its own, so it says to delete it and join again. Batch 4 (§5.1): a frame's layer a published join
  * of its date replaced says so, with the way to that join.
  */
-import type { LayerDoc, Locale } from '@hcm/shared';
+import type { LayerDoc, UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { when, withValue } from '../imagery/when.js';
@@ -15,14 +15,14 @@ import type { CropStatePort } from './geometry/crop-port.js';
 import type { LayersIntentsPort } from './layers-port.js';
 
 export interface GeometryContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly intents: LayersIntentsPort | null;
     readonly readOnly: boolean;
     /** The open Crop, or null. */
     readonly crop: CropStatePort | null;
 }
 
-function pendingChip(locale: Locale, layer: LayerDoc): TemplateResult {
+function pendingChip(locale: UiLocale, layer: LayerDoc): TemplateResult {
     return withValue(
         layer.pendingVersion,
         (version) =>
@@ -35,7 +35,7 @@ function pendingChip(locale: Locale, layer: LayerDoc): TemplateResult {
 }
 
 /** A layer the join of its date replaced: off the public map, kept; the link opens that join. */
-function retiredChip(locale: Locale, layer: LayerDoc): TemplateResult {
+function retiredChip(locale: UiLocale, layer: LayerDoc): TemplateResult {
     return withValue(
         layer.retired,
         ({ by }) =>
@@ -52,7 +52,7 @@ function isJoined(layer: LayerDoc): boolean {
     return layer.provenance?.usgsParts !== undefined;
 }
 
-function georefItem(locale: Locale, layer: LayerDoc): TemplateResult {
+function georefItem(locale: UiLocale, layer: LayerDoc): TemplateResult {
     if (isJoined(layer)) {
         return html`<li class="note" data-state="joined-layer">${contentText(locale, 'adminContent.imagery.layer.joined')}</li>`;
     }

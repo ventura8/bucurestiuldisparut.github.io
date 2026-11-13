@@ -7,7 +7,7 @@
  * reason, rights to check, check the place) and its one-click actions (Confirm place, Confirm rights, the photo a
  * duplicate repeats). Rows far from the visible part of the pane are not rendered (`content-visibility`).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
 
 import { emit } from '../../components/internal.js';
@@ -42,13 +42,13 @@ function tag(tone: string, text: string): TemplateResult {
 }
 
 /** M13 §2: where a photo stands in the queue, with what the reviewer said. */
-function reviewChip(locale: Locale, row: PhotoRowPort, status: 'pending' | 'refused'): TemplateResult {
+function reviewChip(locale: UiLocale, row: PhotoRowPort, status: 'pending' | 'refused'): TemplateResult {
     const text = contentText(locale, `adminContent.review.status.${status}`);
     return tag(status === 'refused' ? 'error' : 'wait', row.reviewNote === null ? text : `${text}: ${row.reviewNote}`);
 }
 
 /** M13 §1: the selection's actions of a role: an uploader publishes nothing and a moderator deletes nothing. */
-function bulkActions(locale: Locale, role: PhotosViewState['role']) {
+function bulkActions(locale: UiLocale, role: PhotosViewState['role']) {
     const publishing = [
         { id: 'publish', label: bulkActionText(locale, 'publish'), icon: 'publish' },
         { id: 'unpublish', label: bulkActionText(locale, 'unpublish'), icon: 'unpublished' },
@@ -79,7 +79,7 @@ export class HcmAdminPhotoList extends LitElement {
 
     declare view: PhotosViewState | null;
     declare intents: PhotosIntentsPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** The photo open in the editor (`aria-current`), or ''. */
     declare selected: string;
     /** A revoked admin's page (`DECISIONS-for-review.md` §42d): uploads and the selection's actions are off. */
@@ -127,13 +127,13 @@ export class HcmAdminPhotoList extends LitElement {
         </div>`;
     }
 
-    #filters(locale: Locale, view: PhotosViewState): TemplateResult {
+    #filters(locale: UiLocale, view: PhotosViewState): TemplateResult {
         return html`<div class="chips filters" role="group" aria-label=${photoText(locale, 'adminContent.photos.filters')}>
             ${FILTER_ORDER.map((filter) => this.#chip(locale, view.list.filter, filter))}
         </div>`;
     }
 
-    #chip(locale: Locale, selected: PhotoFilterPort, filter: PhotoFilterPort): TemplateResult {
+    #chip(locale: UiLocale, selected: PhotoFilterPort, filter: PhotoFilterPort): TemplateResult {
         const choose = (event: Event): void => {
             // One filter at a time: pressing the pressed chip keeps it pressed.
             (event.currentTarget as HTMLElement & { selected: boolean }).selected = true;
@@ -142,7 +142,7 @@ export class HcmAdminPhotoList extends LitElement {
         return html`<hcm-chip .label=${filterText(locale, filter)} .selected=${filter === selected} @hcm-change=${choose}></hcm-chip>`;
     }
 
-    #search(locale: Locale, view: PhotosViewState): TemplateResult {
+    #search(locale: UiLocale, view: PhotosViewState): TemplateResult {
         const search = view.list.search;
         const changed = (): void => {
             const value = (name: string): string => this.renderRoot.querySelector<HTMLInputElement>(`[name="${name}"]`)?.value ?? '';
@@ -176,7 +176,7 @@ export class HcmAdminPhotoList extends LitElement {
         </div>`;
     }
 
-    #bulk(locale: Locale, view: PhotosViewState): TemplateResult {
+    #bulk(locale: UiLocale, view: PhotosViewState): TemplateResult {
         const selection = view.list.selection;
         if (selection.length === 0) {
             return this.#selectAll(locale, view);
@@ -209,7 +209,7 @@ export class HcmAdminPhotoList extends LitElement {
      * Select all before anything is selected: a batch just added is published in three inputs (the files, Select all,
      * Publish: `CONTENT_INPUT_BUDGETS.photoBatch`, `S-A30-HAPPY-CONTENT`), never one row's check box first.
      */
-    #selectAll(locale: Locale, view: PhotosViewState): TemplateResult {
+    #selectAll(locale: UiLocale, view: PhotosViewState): TemplateResult {
         if (view.list.rows.length === 0) {
             return EMPTY;
         }
@@ -220,7 +220,7 @@ export class HcmAdminPhotoList extends LitElement {
         </div>`;
     }
 
-    #body(locale: Locale, view: PhotosViewState): TemplateResult {
+    #body(locale: UiLocale, view: PhotosViewState): TemplateResult {
         const list = view.list;
         if (list.status === 'error') {
             return errorTemplate(locale, list.failure, () => this.intents?.retry());
@@ -245,7 +245,7 @@ export class HcmAdminPhotoList extends LitElement {
     }
 
     /** Loading, no photo at all (the drop zone is the action), or no loaded photo matching the search. */
-    #none(locale: Locale, view: PhotosViewState): TemplateResult {
+    #none(locale: UiLocale, view: PhotosViewState): TemplateResult {
         if (view.list.status === 'loading') {
             return loadingTemplate(locale);
         }
@@ -253,7 +253,7 @@ export class HcmAdminPhotoList extends LitElement {
         return html`<hcm-empty-state icon="photo_library" .text=${photoText(locale, key)}></hcm-empty-state>`;
     }
 
-    #row(locale: Locale, row: PhotoRowPort, selected: boolean): TemplateResult {
+    #row(locale: UiLocale, row: PhotoRowPort, selected: boolean): TemplateResult {
         const title = localized(locale, row.title);
         const detail = [yearsText(locale, row.year, row.yearEnd), row.author].filter((part): part is string => part !== null).join(' · ');
         return html`<li class="photo-row">
@@ -274,13 +274,13 @@ export class HcmAdminPhotoList extends LitElement {
         </li>`;
     }
 
-    #chips(locale: Locale, row: PhotoRowPort): TemplateResult {
+    #chips(locale: UiLocale, row: PhotoRowPort): TemplateResult {
         const tags = [...this.#stateChips(locale, row), ...this.#reviewChips(locale, row)];
         return tags.length === 0 ? EMPTY : html`<div class="row-chips">${tags}</div>`;
     }
 
     /** Unpublished or, M13, where it stands in the queue. */
-    #publicChips(locale: Locale, row: PhotoRowPort): TemplateResult[] {
+    #publicChips(locale: UiLocale, row: PhotoRowPort): TemplateResult[] {
         if (row.reviewStatus === 'pending' || row.reviewStatus === 'refused') {
             return [reviewChip(locale, row, row.reviewStatus)];
         }
@@ -290,7 +290,7 @@ export class HcmAdminPhotoList extends LitElement {
     }
 
     /** Processing, refused (with the reason), unpublished. */
-    #stateChips(locale: Locale, row: PhotoRowPort): TemplateResult[] {
+    #stateChips(locale: UiLocale, row: PhotoRowPort): TemplateResult[] {
         const tags: TemplateResult[] = [];
         if (row.processing === 'pending') {
             tags.push(tag('wait', photoText(locale, 'adminContent.photos.chip.processing')));
@@ -303,7 +303,7 @@ export class HcmAdminPhotoList extends LitElement {
     }
 
     /** Rights to check, the place to check. */
-    #reviewChips(locale: Locale, row: PhotoRowPort): TemplateResult[] {
+    #reviewChips(locale: UiLocale, row: PhotoRowPort): TemplateResult[] {
         const tags: TemplateResult[] = [];
         if (row.rightsReview) {
             tags.push(tag('wait', photoText(locale, 'adminContent.photos.chip.rightsReview')));
@@ -314,13 +314,13 @@ export class HcmAdminPhotoList extends LitElement {
         return tags;
     }
 
-    #actions(locale: Locale, row: PhotoRowPort): TemplateResult {
+    #actions(locale: UiLocale, row: PhotoRowPort): TemplateResult {
         const actions = [...this.#reviewActions(locale, row), ...this.#refusalActions(locale, row)];
         return actions.length === 0 ? EMPTY : html`<div class="row-actions">${actions}</div>`;
     }
 
     /** One click: the fallback pin is right; the rights are confirmed. */
-    #reviewActions(locale: Locale, row: PhotoRowPort): TemplateResult[] {
+    #reviewActions(locale: UiLocale, row: PhotoRowPort): TemplateResult[] {
         const intents = this.intents;
         const actions: TemplateResult[] = [];
         if (row.checkPlace) {
@@ -341,7 +341,7 @@ export class HcmAdminPhotoList extends LitElement {
     }
 
     /** A refused file: the photo it repeats, and Delete. */
-    #refusalActions(locale: Locale, row: PhotoRowPort): TemplateResult[] {
+    #refusalActions(locale: UiLocale, row: PhotoRowPort): TemplateResult[] {
         const actions: TemplateResult[] = [];
         if (row.duplicateOf !== null) {
             actions.push(

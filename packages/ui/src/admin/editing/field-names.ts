@@ -4,7 +4,7 @@
  * never as it is stored (`title`, `defaultVisible`). A field the catalogue does not know (a server field added later)
  * keeps its stored name, so nothing is ever hidden.
  */
-import type { AdminContentKey, Locale } from '@hcm/shared';
+import type { AdminContentKey, UiLocale } from '@hcm/shared';
 
 import { contentText } from '../shell/text.js';
 
@@ -76,7 +76,7 @@ function isNamed(field: string): field is NamedField {
 }
 
 /** The field's name in `locale` ("Title" for `title`), or the stored name for a field the catalogue does not know. */
-export function fieldName(locale: Locale, field: string): string {
+export function fieldName(locale: UiLocale, field: string): string {
     if (!isNamed(field)) {
         return field;
     }
@@ -85,6 +85,6 @@ export function fieldName(locale: Locale, field: string): string {
 }
 
 /** Several fields' names, in the given order, joined as a list ("Title, Year"). */
-export function fieldNames(locale: Locale, fields: readonly string[]): string {
+export function fieldNames(locale: UiLocale, fields: readonly string[]): string {
     return fields.map((field) => fieldName(locale, field)).join(', ');
 }

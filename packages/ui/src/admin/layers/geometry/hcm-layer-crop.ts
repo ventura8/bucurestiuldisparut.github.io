@@ -4,7 +4,7 @@
  * the keyboard's way (pan the map with the arrow keys, then add a corner at its centre), Draw again, Save the crop
  * (`imagery.crop`) once the polygon has three corners, and Cancel; a refusal says why. Text only.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { css, html, LitElement, type TemplateResult } from 'lit';
 
 import { editingStyles } from '../../editing/editing-styles.js';
@@ -66,7 +66,7 @@ class HcmLayerCrop extends LitElement {
         `,
     ];
 
-    declare locale: Locale;
+    declare locale: UiLocale;
     declare view: CropStatePort | null;
     declare actions: CropActionsPort;
     declare readOnly: boolean;

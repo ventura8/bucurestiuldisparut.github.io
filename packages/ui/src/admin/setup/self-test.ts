@@ -6,7 +6,7 @@
  * and 24 of 2026-10-25): an optional feature's check (the translation drafts' Vertex AI) is listed apart, under Optional
  * features: off, with its reason and a neutral icon, never the alarm of a required check, and it never holds Setup back.
  */
-import type { AdminSetupKey, Locale, SelfTestCheck, ServiceState } from '@hcm/shared';
+import type { AdminSetupKey, UiLocale, SelfTestCheck, ServiceState } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -48,7 +48,7 @@ const OPTIONAL_CHECKS: Partial<Readonly<Record<SelfTestCheck, AdminSetupKey>>> =
 
 const isOptional = (check: CheckView): boolean => OPTIONAL_CHECKS[check.id] !== undefined;
 
-function fix(locale: Locale, check: CheckView): TemplateResult {
+function fix(locale: UiLocale, check: CheckView): TemplateResult {
     if (check.state === 'ok') {
         return EMPTY;
     }
@@ -57,7 +57,7 @@ function fix(locale: Locale, check: CheckView): TemplateResult {
     return html`<a class="fix" href=${['#', 'setup', step].join('/')}>${setupLabel(locale, 'adminSetup.selfTest.fix', { step: name })}</a>`;
 }
 
-function checkRow(locale: Locale, check: CheckView): TemplateResult {
+function checkRow(locale: UiLocale, check: CheckView): TemplateResult {
     return html`<li class="check" data-check=${check.id} data-state=${check.state}>
         <hcm-icon name=${ICONS[check.state]}></hcm-icon>
         <span>${setupLabel(locale, `adminSetup.selfTest.check.${check.id}`)}</span>
@@ -67,14 +67,14 @@ function checkRow(locale: Locale, check: CheckView): TemplateResult {
 }
 
 /** §67g: the model a passing AI check found offered, on a line of its own. */
-function modelLine(locale: Locale, check: CheckView): TemplateResult | typeof nothing {
+function modelLine(locale: UiLocale, check: CheckView): TemplateResult | typeof nothing {
     return check.model === undefined
         ? nothing
         : html`<span class="reason" data-model>${setupLabel(locale, 'adminSetup.selfTest.model', { model: check.model })}</span>`;
 }
 
 /** An optional feature's check: off (a neutral icon) with its reason while not ok, never an alarm; on, the model in use. */
-function optionalRow(locale: Locale, check: CheckView): TemplateResult {
+function optionalRow(locale: UiLocale, check: CheckView): TemplateResult {
     const off = check.state === 'ok' ? undefined : OPTIONAL_CHECKS[check.id];
     return html`<li class="check" data-check=${check.id} data-state=${check.state} data-optional>
         <hcm-icon name=${off === undefined ? ICONS.ok : 'info'}></hcm-icon>
@@ -84,7 +84,7 @@ function optionalRow(locale: Locale, check: CheckView): TemplateResult {
     </li>`;
 }
 
-function optionalList(locale: Locale, checks: readonly CheckView[]): TemplateResult {
+function optionalList(locale: UiLocale, checks: readonly CheckView[]): TemplateResult {
     if (checks.length === 0) {
         return EMPTY;
     }
@@ -96,7 +96,7 @@ function optionalList(locale: Locale, checks: readonly CheckView[]): TemplateRes
 }
 
 /** The checks of the last self-test, the optional features' apart; nothing before Check again ran one. */
-export function selfTestList(locale: Locale, view: SetupViewState): TemplateResult {
+export function selfTestList(locale: UiLocale, view: SetupViewState): TemplateResult {
     const { checks } = view.selfTest;
     if (checks.length === 0) {
         return EMPTY;

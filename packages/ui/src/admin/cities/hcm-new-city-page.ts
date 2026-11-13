@@ -9,7 +9,7 @@
  * happened. While the page draws, the gesture on the map makes the rectangle and the map stays still
  * (`area-gesture.ts`); **Move the map** hands the pointer back to the map, **Draw the area** takes it again.
  */
-import { CITY_SPAN_LIMITS, isUsableCityId, type CityBounds, type Locale } from '@hcm/shared';
+import { CITY_SPAN_LIMITS, isUsableCityId, type CityBounds, type UiLocale } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { visuallyHidden } from '../../components/styles.js';
@@ -137,7 +137,7 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
     }
 
     /** What the page's one live region says: the city made, or the place found (both also shown in the page). */
-    #news(locale: Locale, view: NewCityViewState): string {
+    #news(locale: UiLocale, view: NewCityViewState): string {
         if (view.created !== null) {
             return contentText(locale, 'adminContent.cities.created.title', { city: view.created.name });
         }
@@ -166,7 +166,7 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
         }
     }
 
-    #form(locale: Locale, view: NewCityViewState): TemplateResult {
+    #form(locale: UiLocale, view: NewCityViewState): TemplateResult {
         const submit = (event: SubmitEvent): void => {
             event.preventDefault();
             void this.#create();
@@ -191,7 +191,7 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
         return filled(view) && !view.busy && !this.readOnly;
     }
 
-    #names(locale: Locale, view: NewCityViewState): TemplateResult {
+    #names(locale: UiLocale, view: NewCityViewState): TemplateResult {
         const intents = this.intents;
         const value = (event: Event): string => (event.currentTarget as HTMLInputElement).value;
         return html`<div class="field">
@@ -233,7 +233,7 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
             </div>`;
     }
 
-    #area(locale: Locale, view: NewCityViewState): TemplateResult {
+    #area(locale: UiLocale, view: NewCityViewState): TemplateResult {
         const problem = view.problem === null ? null : PROBLEMS[view.problem];
         return html`<fieldset class="field">
             <legend>${contentText(locale, 'adminContent.cities.new.area')}</legend>
@@ -267,7 +267,7 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
         this.intents?.attachMap(container);
     };
 
-    #mapTools(locale: Locale): TemplateResult {
+    #mapTools(locale: UiLocale): TemplateResult {
         const toggle = (): void => {
             this.#gesture.setDrawing(!this.#gesture.drawing);
             this.drawing = this.#gesture.drawing;
@@ -296,7 +296,7 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
     }
 
     /** The rectangle's four edges (degrees), the keyboard's way to the same area. */
-    #edges(locale: Locale, view: NewCityViewState): TemplateResult {
+    #edges(locale: UiLocale, view: NewCityViewState): TemplateResult {
         const values = this.#edgeValues(view);
         const change =
             (edge: Edge) =>
@@ -326,12 +326,12 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
             </p>`;
     }
 
-    #error(locale: Locale, view: NewCityViewState): TemplateResult {
+    #error(locale: UiLocale, view: NewCityViewState): TemplateResult {
         return view.error === null ? EMPTY : html`<p class="alert" role="alert">${noticeOf(locale, view.error)}</p>`;
     }
 
     /** The city exists: what comes next, each a page of the new city (a page load into it). */
-    #done(locale: Locale, created: { readonly cityId: string; readonly name: string }): TemplateResult {
+    #done(locale: UiLocale, created: { readonly cityId: string; readonly name: string }): TemplateResult {
         const open = (id: AdminRouteIdPort) => (): void => {
             this.app?.intents.switchCity?.(created.cityId, { id, params: [] });
         };

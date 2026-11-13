@@ -4,7 +4,7 @@
  * into its message (§2.5). The controller shows that message on its panel; the Setup Assistant's steps get it through
  * the shell's services, which show it in the snackbar.
  */
-import { translateAdminShell, type Locale } from '@hcm/shared';
+import { translateAdminShell, type UiLocale } from '@hcm/shared';
 
 import type { AuthUser } from '../firebase/ports.js';
 import type { GoogleScope } from '../google/scopes.js';
@@ -26,7 +26,7 @@ export interface GoogleServiceDeps {
     readonly port: GoogleAuthPort;
     readonly store: GoogleAccessStore;
     readonly currentUser: () => AuthUser | null;
-    readonly locale: () => Locale;
+    readonly locale: () => UiLocale;
 }
 
 const FAILURE_KEYS: Readonly<Record<Exclude<GoogleAuthFailure, 'scopeDenied'>, NoticeKey>> = {
@@ -38,7 +38,7 @@ const FAILURE_KEYS: Readonly<Record<Exclude<GoogleAuthFailure, 'scopeDenied'>, N
 };
 
 /** The message of a failure; a refused scope names the scope as Google's consent page shows it. */
-export function failureNotice(failure: GoogleAuthFailure, scope: GoogleScope | null, locale: Locale): NoticeInput {
+export function failureNotice(failure: GoogleAuthFailure, scope: GoogleScope | null, locale: UiLocale): NoticeInput {
     if (failure !== 'scopeDenied') {
         return { key: FAILURE_KEYS[failure] };
     }

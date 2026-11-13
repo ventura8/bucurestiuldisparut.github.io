@@ -79,7 +79,7 @@ function hex(colour: Rgba): string {
 }
 
 /** One control's violation, or none: a label needs 4.5:1 between its painted ink and fill, an icon alone 3:1. */
-async function controlViolation(page: Page, control: Locator, scheme: string): Promise<Violation[]> {
+async function controlViolation(page: Page, control: Locator, scheme: string, selector: string): Promise<Violation[]> {
     if (!(await control.isVisible()) || !(await control.evaluate(onTop))) {
         return [];
     }
@@ -96,15 +96,18 @@ async function controlViolation(page: Page, control: Locator, scheme: string): P
     }
     const box = await control.boundingBox();
     const message = `${name} is painted ${hex(painted.ink)} on ${hex(painted.fill)}, ${ratio.toFixed(2)}:1 in ${scheme} (${String(needed)}:1 needed)`;
-    return [{ check: 'rendered-contrast', message, elements: [{ name, selector: 'hcm-fab-menu', box }] }];
+    return [{ check: 'rendered-contrast', message, elements: [{ name, selector, box }] }];
 }
 
-/** The rendered contrast of every filled control of the FAB menu on top in the page (`scheme`: for the message). */
-export async function renderedContrastViolations(page: Page, scheme: string): Promise<Violation[]> {
-    const controls = await page.locator(FILLED).all();
+/**
+ * The rendered contrast of every filled control on top in the page (`scheme`: for the message): the FAB menu's, or those of
+ * `selector` (the timeline's chips: the pill, the year chip, the badge).
+ */
+export async function renderedContrastViolations(page: Page, scheme: string, selector = FILLED): Promise<Violation[]> {
+    const controls = await page.locator(selector).all();
     const found: Violation[] = [];
     for (const control of controls) {
-        found.push(...(await controlViolation(page, control, scheme)));
+        found.push(...(await controlViolation(page, control, scheme, selector)));
     }
     return found;
 }

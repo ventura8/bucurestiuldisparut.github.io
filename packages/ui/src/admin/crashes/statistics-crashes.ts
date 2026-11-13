@@ -5,7 +5,7 @@
  * (redacted, stackless) text under **Show the full text** when the title is cut, and its page in the Google Cloud
  * console. A disabled API, a refusal or an empty period says so, with the way on.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { formatWhen, loadingTemplate } from '../editing/states.js';
@@ -26,7 +26,7 @@ export function causeTitle(message: string): string {
 }
 
 /** The whole cause under **Show the full text**, when the title does not say all of it. */
-function fullText(locale: Locale, group: CrashGroupPort, title: string): TemplateResult {
+function fullText(locale: UiLocale, group: CrashGroupPort, title: string): TemplateResult {
     if (title === group.message.trim()) {
         return EMPTY;
     }
@@ -36,7 +36,7 @@ function fullText(locale: Locale, group: CrashGroupPort, title: string): Templat
     </details>`;
 }
 
-function groupItem(locale: Locale, group: CrashGroupPort, url: (groupId: string) => string): TemplateResult {
+function groupItem(locale: UiLocale, group: CrashGroupPort, url: (groupId: string) => string): TemplateResult {
     const title = causeTitle(group.message);
     const count = formatCount(locale, group.count);
     const release = group.version ?? '—';
@@ -59,14 +59,14 @@ function groupItem(locale: Locale, group: CrashGroupPort, url: (groupId: string)
     </li>`;
 }
 
-function groupsList(locale: Locale, groups: readonly CrashGroupPort[], url: (groupId: string) => string): TemplateResult {
+function groupsList(locale: UiLocale, groups: readonly CrashGroupPort[], url: (groupId: string) => string): TemplateResult {
     const label = contentText(locale, 'adminContent.statistics.crashes.tableLabel');
     return html`<ul class="errors" aria-label=${label}>
         ${groups.slice(0, SHOWN).map((group) => groupItem(locale, group, url))}
     </ul>`;
 }
 
-function failure(locale: Locale, view: CrashesViewState, intents: CrashesIntentsPort | null): TemplateResult {
+function failure(locale: UiLocale, view: CrashesViewState, intents: CrashesIntentsPort | null): TemplateResult {
     const retry = (): void => {
         intents?.retry();
     };
@@ -82,7 +82,7 @@ function failure(locale: Locale, view: CrashesViewState, intents: CrashesIntents
 }
 
 function body(
-    locale: Locale,
+    locale: UiLocale,
     view: CrashesViewState,
     intents: CrashesIntentsPort | null,
     url: (groupId: string) => string,
@@ -100,7 +100,7 @@ function body(
 
 /** The errors' section; `url` is a group's page in the console (`errorGroupUrl`). */
 export function crashesSection(
-    locale: Locale,
+    locale: UiLocale,
     view: CrashesViewState,
     intents: CrashesIntentsPort | null,
     url: (groupId: string) => string,

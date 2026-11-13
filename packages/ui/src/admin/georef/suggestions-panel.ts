@@ -6,7 +6,7 @@
  * rejects it. A version the matching left waiting says how many reliable pairs it found. Accepting only edits the
  * page's pairs: Save writes them. Text only: labels and numbers are never markup.
  */
-import { clamp, type Locale } from '@hcm/shared';
+import { clamp, type UiLocale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
@@ -19,7 +19,7 @@ import type { SuggestionRowPort, SuggestionsViewPort } from './suggestions-port.
 export type SuggestionDecision = 'accept' | 'reject';
 
 export interface SuggestionsPanel {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly view: SuggestionsViewPort;
     /** Nothing may change: the version takes no points, or the admin's access was removed. */
     readonly locked: boolean;
@@ -36,13 +36,13 @@ const KEYS_ID = 'suggestion-keys';
 /** What a key does on a suggestion's name. */
 const KEYS: Readonly<Record<string, SuggestionDecision | undefined>> = { Enter: 'accept', Delete: 'reject', Backspace: 'reject' };
 
-function confidence(locale: Locale, row: SuggestionRowPort): string {
+function confidence(locale: UiLocale, row: SuggestionRowPort): string {
     const level = contentText(locale, `adminContent.georef.suggestions.level.${row.level}`);
     const percent = String(Math.round((row.pair.score ?? 0) * 100));
     return contentText(locale, 'adminContent.georef.suggestions.confidence', { level, percent });
 }
 
-function offset(locale: Locale, row: SuggestionRowPort): string {
+function offset(locale: UiLocale, row: SuggestionRowPort): string {
     const metres = row.offsetM;
     return metres === null
         ? contentText(locale, 'adminContent.georef.suggestions.noResidual')

@@ -9,7 +9,7 @@
  * the way back to the map. The tab's title says Contribute too (`<hcm-admin-shell>`). Whether the server answers or not:
  * a visitor never sees the start-up mode's setup intro or its Cloud consent note.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
 import type { AdminStatePort, AdminWelcomePort } from '../admin-port.js';
@@ -35,7 +35,7 @@ export function welcomeOf(state: AdminStatePort): AdminWelcomePort | null {
 }
 
 /** The Contribute page's heading: the map of the city the link named, or of no city. */
-export function welcomeTitle(locale: Locale, welcome: AdminWelcomePort): string {
+export function welcomeTitle(locale: UiLocale, welcome: AdminWelcomePort): string {
     return welcome.cityName === null
         ? shellText(locale, 'adminShell.welcome.titleNoCity')
         : shellText(locale, 'adminShell.welcome.title', { city: welcome.cityName });

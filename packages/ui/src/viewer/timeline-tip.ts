@@ -5,7 +5,7 @@
  * A year of several dates shows no chip at all: its date menu names them. Pure: the text and the place; `<hcm-timeline>`
  * draws it.
  */
-import { translate, type Locale } from '@hcm/shared';
+import { translate, type ViewerLocale } from '@hcm/shared';
 
 import type { TimelineStop } from './timeline-model.js';
 
@@ -19,7 +19,7 @@ export interface TimelineTip {
 }
 
 /** The chip's text: the year, or "Today". */
-export function tipText(stop: TimelineStop, locale: Locale): string {
+export function tipText(stop: TimelineStop, locale: ViewerLocale): string {
     return stop === null ? translate(locale, 'timeline.present') : String(stop);
 }
 
