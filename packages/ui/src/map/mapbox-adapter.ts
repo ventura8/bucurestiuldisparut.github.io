@@ -309,6 +309,17 @@ class MapboxPort implements MapPort {
         }
     }
 
+    setLayerOrder(layerId: string, order: number): void {
+        const session = this.#ready();
+        const current = session?.orders.get(layerId);
+        if (session === null || current === undefined || current === order) {
+            return;
+        }
+        session.orders.delete(layerId);
+        session.map.moveLayer(rasterLayerId(layerId), rasterBeforeId(session.orders, order));
+        session.orders.set(layerId, order);
+    }
+
     removeLayer(layerId: string): void {
         const session = this.#ready();
         if (session === null || layerId === PHOTOS_OVERLAY_ID) {

@@ -4,9 +4,7 @@ import { expect, type Page } from '@playwright/test';
 import { E2E_XYZ_LAYER } from '../fixtures/world.js';
 import { connectPad, installFakePads } from '../support/gamepad.js';
 import { dismissToast, holdToast, openViewer, t } from '../support/viewer.js';
-import { TV_STATES } from './tv-states.js';
-
-export { TV_JOURNEY } from './tv-states.js';
+import { TV_JOURNEY, TV_STATES } from './tv-states.js';
 
 /**
  * The shortcuts' and the gamepad's states in the tour's inventory (behaviours V36, V37; docs/research/viewer-input.md),
@@ -61,3 +59,6 @@ export const INPUT_JOURNEY = {
     boot: bootInputJourney,
     states: ['keyboard-help', 'input-toast', 'gamepad-refused'],
 } as const;
+
+/** The input's journeys in e2e/tour/states.ts: the shortcuts' and the TV's. */
+export const INPUT_JOURNEYS = [INPUT_JOURNEY, TV_JOURNEY] as const;

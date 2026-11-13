@@ -10,19 +10,26 @@
  * pill); below 14 px the track keeps 16 px per gap and scrolls, a finger can scroll it, the edge with more years beyond
  * fades, and the selected stop is centred whenever it changes, except while a drag is on (`timeline-model.ts`,
  * `timeline-styles.ts`). There a finger drags the thumb and taps a year; elsewhere it drags anywhere on the track.
- * A new stop fires `hcm-year-change` (`{year}`, null for today).
+ * A new stop fires `hcm-year-change` (`{year}`, null for today). The year chip (`timeline-tip.ts`) names a stop without
+ * its own label under the mouse, a year of several dates under the keyboard, and the stop under a finger, which scrubs
+ * along the track and selects on lift (`timeline-scrub.ts`).
  */
-import { DEFAULT_LOCALE, translate, type Locale } from '@hcm/shared';
-import { LitElement, html, type PropertyValues, type TemplateResult } from 'lit';
+import { DEFAULT_LOCALE, translate, type Layer, type Locale } from '@hcm/shared';
+import { LitElement, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 
 import { cssProperties } from '../components/css-properties.js';
 import { labelShown, SCROLL_GAP_PX, stopIndex, timelineDensity, type TimelineDensity, type TimelineStop } from './timeline-model.js';
+import { TimelinePointer } from './timeline-pointer.js';
+import { YearSends } from './timeline-sends.js';
 import { timelineStyles } from './timeline-styles.js';
+import { datesOfYear, placeTip, tipText, tipWanted, type TimelineTip } from './timeline-tip.js';
 
 export const HCM_TIMELINE_TAG = 'hcm-timeline';
 
 export type TimelineOrientation = 'horizontal' | 'vertical';
+
+export { trackRatio } from './timeline-pointer.js';
 
 /**
  * How many stops each key moves the thumb towards "today" (up, and right, or left right to left: Left and Right turn
@@ -44,8 +51,6 @@ const LYING_PADDING_PX = 88;
 const STANDING_PADDING_PX = 48;
 /** Standing, a label in the pill's lane needs this far from the selected stop: half the 40 px pill and half a label. */
 const PILL_REACH_PX = 28;
-/** Px a finger may move on a scrolling track and still tap a year (beyond it the browser scrolls). */
-const TAP_SLOP_PX = 8;
 /** How wide the fade of an edge with more years beyond is. */
 const FADE_PX = '24px';
 
@@ -56,24 +61,8 @@ function edgesBeyond(scroller: HTMLElement, vertical: boolean): { readonly start
     return { start: along > 1, end: along < extent - 1 };
 }
 
-function onThumb(event: Event): boolean {
-    return event.target instanceof Element && event.target.closest('.thumb') !== null;
-}
-
 function percentText(percent: number): string {
     return `${String(percent)}%`;
-}
-
-/** The share of the track (0..1) under a pointer; vertical tracks grow upwards, horizontal ones leftwards right to left. */
-export function trackRatio(
-    rect: DOMRect,
-    point: { readonly clientX: number; readonly clientY: number },
-    vertical: boolean,
-    rtl = false,
-): number {
-    const across = rtl ? rect.right - point.clientX : point.clientX - rect.left;
-    const ratio = vertical ? (rect.bottom - point.clientY) / rect.height : across / rect.width;
-    return Number.isFinite(ratio) ? Math.min(1, Math.max(0, ratio)) : 0;
 }
 
 export class HcmTimeline extends LitElement {
@@ -84,8 +73,11 @@ export class HcmTimeline extends LitElement {
         orientation: { type: String, reflect: true },
         dragging: { type: Boolean, reflect: true },
         density: { type: String, reflect: true },
+        layers: { attribute: false },
         gapPx: { state: true },
         fade: { state: true },
+        tip: { state: true },
+        said: { state: true },
     };
 
     static override readonly styles = timelineStyles;
@@ -101,9 +93,46 @@ export class HcmTimeline extends LitElement {
     declare gapPx: number;
     /** The edges with more years beyond them: the scroll's start (left, right right to left, top standing) and end. */
     declare fade: { readonly start: boolean; readonly end: boolean };
+    /** The manifest's layers: the dates the chip names for a year of several. */
+    declare layers: readonly Pick<Layer, 'year' | 'date'>[];
+    /** The year chip, or null. */
+    declare tip: TimelineTip | null;
+    /** What the polite live region says: the year a drag or a scrub ended on (the slider's own value text while it moves). */
+    declare said: string;
 
-    /** Removes the window listeners of the current drag (none between drags). */
-    #stopDrag: () => void = () => undefined;
+    /** Sends `hcm-year-change`: at once for a key, at most once per frame during a press (`timeline-sends.ts`). */
+    readonly #sends = new YearSends((year) => {
+        this.dispatchEvent(new CustomEvent('hcm-year-change', { bubbles: true, detail: { year } }));
+    });
+
+    /** The track's pointers: a mouse's drag and hover, a finger's scrub and tap (`timeline-pointer.ts`). */
+    readonly #pointer = new TimelinePointer({
+        vertical: () => this.orientation === 'vertical',
+        rtl: () => this.#rtl(),
+        scrolls: () => this.density === 'scroll',
+        count: () => this.stops.length,
+        select: (index) => {
+            this.#select(index, true);
+        },
+        settle: () => {
+            this.#settle();
+        },
+        focus: () => {
+            this.focus();
+        },
+        dragging: (dragging) => {
+            this.dragging = dragging;
+        },
+        touchTip: (index) => {
+            this.tip = index === null ? null : { index, touch: true };
+        },
+        hint: (index) => {
+            this.#hintAt(index);
+        },
+        hideHint: () => {
+            this.#hideHint();
+        },
+    });
     readonly #resize = new ResizeObserver(() => {
         this.#measure();
     });
@@ -118,6 +147,9 @@ export class HcmTimeline extends LitElement {
         this.density = 'roomy';
         this.gapPx = Number.POSITIVE_INFINITY;
         this.fade = { start: false, end: false };
+        this.layers = [];
+        this.tip = null;
+        this.said = '';
     }
 
     override connectedCallback(): void {
@@ -127,7 +159,8 @@ export class HcmTimeline extends LitElement {
 
     override disconnectedCallback(): void {
         this.#resize.disconnect();
-        this.#endDrag();
+        this.#sends.drop();
+        this.#pointer.end();
         super.disconnectedCallback();
     }
 
@@ -143,6 +176,24 @@ export class HcmTimeline extends LitElement {
             this.#reveal();
         }
         this.#fadeEdges();
+        this.#placeTip();
+        this.toggleAttribute('tipping', this.tip !== null);
+    }
+
+    /** Puts the chip by its stop, clear of the card's ends and the viewport's edges (`placeTip`). */
+    #placeTip(): void {
+        const tip = this.renderRoot.querySelector<HTMLElement>('.tip');
+        const stop = this.renderRoot.querySelectorAll('.stop')[this.tip?.index ?? -1];
+        if (tip === null || stop === undefined) {
+            return;
+        }
+        const card = this.getBoundingClientRect();
+        const mark = stop.getBoundingClientRect();
+        const anchor = { x: mark.left + mark.width / 2 - card.left, y: mark.top + mark.height / 2 - card.top };
+        const viewport = { width: innerWidth, height: innerHeight, rtl: this.#rtl(), vertical: this.orientation === 'vertical' };
+        const place = placeTip(anchor, { width: tip.offsetWidth, height: tip.offsetHeight }, card, viewport);
+        tip.style.left = `${String(place.left)}px`;
+        tip.style.top = `${String(place.top)}px`;
     }
 
     /** The density for the card's size now: what the track would leave between two stops if it fitted the card. */
@@ -199,14 +250,54 @@ export class HcmTimeline extends LitElement {
         const index = stopIndex(this.stops, this.value);
         const position = { '--hcm-position': percentText(this.#percent(index)) };
         const fade = { '--hcm-fade-start': this.fade.start ? FADE_PX : '0px', '--hcm-fade-end': this.fade.end ? FADE_PX : '0px' };
-        return html`<div class="scroller" ${cssProperties(fade)} @scroll=${this.#onScroll}>${this.#track(index, position)}</div>`;
+        return html`<div class="scroller" ${cssProperties(fade)} @scroll=${this.#onScroll}>${this.#track(index, position)}</div>
+            ${this.tip === null ? nothing : this.#tipChip(this.tip)}<span class="visually-hidden" aria-live="polite">${this.said}</span>`;
     }
+
+    /** The chip: decorative, the slider's `aria-valuetext` already names the year. */
+    #tipChip(tip: TimelineTip): TemplateResult {
+        const stop = this.stops[tip.index] ?? null;
+        return html`<div class="tip" aria-hidden="true">${tipText(stop, datesOfYear(this.layers, stop), this.locale)}</div>`;
+    }
+
+    /** A mouse or a key on stop `index`: the chip when it has no label of its own or several dates; never over a finger's. */
+    #hintAt(index: number): void {
+        if (this.tip?.touch === true) {
+            return;
+        }
+        const wanted = tipWanted(this.#named(index), datesOfYear(this.layers, this.stops[index] ?? null));
+        this.tip = wanted ? { index, touch: false } : null;
+    }
+
+    /** Whether a stop's year is on the track: its label, or the pill for the selected one whatever the density. */
+    #named(index: number): boolean {
+        const selected = stopIndex(this.stops, this.value);
+        return index === selected || this.#labelled(index, selected);
+    }
+
+    #hideHint(): void {
+        if (this.tip?.touch !== true) {
+            this.tip = null;
+        }
+    }
+
+    readonly #onFocus = (): void => {
+        if (this.renderRoot.querySelector('.thumb:focus-visible') !== null) {
+            this.#hintAt(stopIndex(this.stops, this.value));
+        }
+    };
+
+    readonly #onBlur = (): void => {
+        this.#hideHint();
+    };
 
     #track(index: number, position: Readonly<Record<string, string>>): TemplateResult {
         return html`<div
             class="track"
             ${cssProperties({ '--hcm-gaps': String(this.stops.length - 1) })}
-            @pointerdown=${this.#onPointerDown}
+            @pointerdown=${this.#pointer.onDown}
+            @pointermove=${this.#pointer.onHover}
+            @pointerleave=${this.#pointer.onLeave}
         >
             <div class="rail"></div>
             <div class="active" ${cssProperties(position)}></div>
@@ -225,6 +316,8 @@ export class HcmTimeline extends LitElement {
                 aria-valuetext=${this.#valueText(this.stops[index] ?? null)}
                 ${cssProperties(position)}
                 @keydown=${this.#onKeyDown}
+                @focus=${this.#onFocus}
+                @blur=${this.#onBlur}
             >
                 <span class="thumb-label" aria-hidden="true">${this.#shortLabel(this.stops[index] ?? null)}</span>
             </div>
@@ -268,94 +361,28 @@ export class HcmTimeline extends LitElement {
         event.preventDefault();
         const turned = /^Arrow[LR]/.test(event.key) && this.#rtl();
         this.#select(stopIndex(this.stops, this.value) + (turned ? -step : step));
+        this.#hintAt(stopIndex(this.stops, this.value));
     };
-
-    /**
-     * A press on the track selects the stop under it; the drag continues on the window until release. On a scrolling
-     * track a finger elsewhere than on the thumb may scroll it: it selects only as a tap (`#tapLater`).
-     */
-    readonly #onPointerDown = (event: PointerEvent): void => {
-        if (event.button !== 0) {
-            return;
-        }
-        this.#endDrag();
-        const track = event.currentTarget as HTMLElement;
-        if (this.#mayScroll(event)) {
-            this.#tapLater(track, event);
-            return;
-        }
-        event.preventDefault();
-        this.#startDrag(track, event);
-    };
-
-    /** A finger on a scrolling track, elsewhere than on the thumb: the browser may scroll the card with it. */
-    #mayScroll(event: PointerEvent): boolean {
-        return this.density === 'scroll' && event.pointerType === 'touch' && !onThumb(event);
-    }
-
-    /** A finger lifted within `TAP_SLOP_PX` of where it went down selects there; a scroll (the browser's cancel) does not. */
-    #tapLater(track: HTMLElement, down: PointerEvent): void {
-        const up = (event: PointerEvent): void => {
-            this.#endDrag();
-            if (Math.hypot(event.clientX - down.clientX, event.clientY - down.clientY) <= TAP_SLOP_PX) {
-                this.#selectAt(track, event);
-                this.focus();
-            }
-        };
-        const cancel = (): void => {
-            this.#endDrag();
-        };
-        window.addEventListener('pointerup', up);
-        window.addEventListener('pointercancel', cancel);
-        this.#stopDrag = () => {
-            window.removeEventListener('pointerup', up);
-            window.removeEventListener('pointercancel', cancel);
-        };
-    }
-
-    #startDrag(track: HTMLElement, event: PointerEvent): void {
-        const move = (moveEvent: PointerEvent): void => {
-            this.#selectAt(track, moveEvent);
-        };
-        const end = (): void => {
-            this.#endDrag();
-        };
-        window.addEventListener('pointermove', move);
-        window.addEventListener('pointerup', end);
-        window.addEventListener('pointercancel', end);
-        this.#stopDrag = () => {
-            window.removeEventListener('pointermove', move);
-            window.removeEventListener('pointerup', end);
-            window.removeEventListener('pointercancel', end);
-        };
-        this.dragging = true;
-        this.#selectAt(track, event);
-        this.focus();
-    }
-
-    #endDrag(): void {
-        this.dragging = false;
-        this.#stopDrag();
-        this.#stopDrag = () => undefined;
-    }
-
-    #selectAt(track: HTMLElement, event: PointerEvent): void {
-        const ratio = trackRatio(track.getBoundingClientRect(), event, this.orientation === 'vertical', this.#rtl());
-        this.#select(Math.round(ratio * (this.stops.length - 1)));
-    }
 
     #rtl(): boolean {
         return this.matches(':dir(rtl)');
     }
 
-    #select(index: number): void {
+    /** Selects a stop; a press's (`live`) years are sent at most once per frame (the owner, 2026-11-13). */
+    #select(index: number, live = false): void {
         const clamped = Math.min(this.stops.length - 1, Math.max(0, index));
         const stop = this.stops[clamped] ?? null;
-        if (stop === this.value) {
-            return;
+        if (stop !== this.value) {
+            this.value = stop;
+            this.#sends.changed(stop, live);
         }
-        this.value = stop;
-        this.dispatchEvent(new CustomEvent('hcm-year-change', { bubbles: true, detail: { year: stop } }));
+    }
+
+    /** A press ended: its last year is sent now and, if it changed the year, said politely. */
+    #settle(): void {
+        if (this.#sends.settle()) {
+            this.said = this.#valueText(this.value);
+        }
     }
 }
 
