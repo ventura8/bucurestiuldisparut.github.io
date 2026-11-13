@@ -2254,6 +2254,28 @@
             "notes": "The Pixel 9 Pro review, 2026-11-12 (P2). Tests: e2e/specs/viewer/dark-theme-for-sites.spec.ts (its own Chromium with --blink-settings=forceDarkModeEnabled=true); the tour's rendered contrast (e2e/support/rendered-contrast.ts) at the dark tours, state other-theme-menu; packages/ui/test/theme/apply.test.ts."
         },
         {
+            "id": "S-V12-HAPPY-CHIPS-FOLLOW-THEME",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The timeline's chips follow the theme: light in the light theme and dark in the dark one, painted with its roles",
+            "asserts": "at the project's window (a phone's pill or a desktop's card), light then dark: the year's pill takes primary-container and on-primary-container, its dates' badge error-container and on-error-container, the date menu surface-container and on-surface, the year chip over an unlabelled year surface-container-highest and on-surface; each fill dark only in the dark theme, its text at 4.5:1 or more",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's Android in dark, 2026-11-13: the year chips were light (M3's inverse surface, primary and error are light tones in the dark theme). Tests: e2e/specs/viewer/timeline-chip-theme.spec.ts (fn-c360-ro, fn-c360-dark, fn-l1440-ro and the other functional projects); packages/ui/test/viewer/hcm-timeline-theme.test.ts."
+        },
+        {
+            "id": "S-V12-BAD-DARK-CHIPS-NOT-LIGHT",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Under Chrome's dark theme for sites the timeline's chips stay the viewer's own dark, never light",
+            "asserts": "a 360 x 800 phone, a dark system with Chrome's dark theme for sites: the collapsed pill and its badge have dark fills and the pill is painted with its contrast; the year chip over an unlabelled year has a dark fill and is painted with its contrast",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's Android in dark, 2026-11-13. Tests: e2e/specs/viewer/dark-theme-for-sites.spec.ts (its own Chromium with --blink-settings=forceDarkModeEnabled=true); packages/ui/test/viewer/hcm-timeline-theme.test.ts."
+        },
+        {
             "id": "S-V12-BAD-ABOUT-NO-PREFERENCES",
             "behaviour": "V12",
             "area": "viewer",

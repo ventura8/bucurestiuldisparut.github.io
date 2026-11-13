@@ -162,6 +162,13 @@ export class HcmDateMenu extends LitElement {
                 font-size: var(--md-sys-typescale-body-small-size);
                 color: var(--md-sys-color-on-surface-variant);
             }
+
+            /* Forced colours drop the menu's fill and shadow: an edge keeps it apart from the map. */
+            @media (forced-colors: active) {
+                .menu {
+                    border: 1px solid CanvasText;
+                }
+            }
         `,
     ];
 
