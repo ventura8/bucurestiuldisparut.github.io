@@ -1527,8 +1527,8 @@
             "behaviour": "V04",
             "area": "viewer",
             "path": "happy",
-            "title": "A mouse over a year without its label shows the year in a chip above the timeline; a year of several dates names them",
-            "asserts": "at 768x1024 with 21 years: hovering 1965 (unlabelled) shows '1965' above the card, inside the viewport, over no control (compass, zoom group, menu button, photos chip); hovering 1964 (two dated layers, the first stop) shows '1964 · …' and stays over the card's start; unit: packages/ui/test/viewer/hcm-timeline-tip.test.ts, timeline-tip.test.ts",
+            "title": "A mouse over a year without its label shows the year in a large chip above the timeline",
+            "asserts": "at 768x1024 with 21 years: hovering 1965 (unlabelled) shows '1965' above the card in M3 title medium (16 px, 40 px tall at least; the owner 2026-11-13: bigger on every platform), inside the viewport, over no control (compass, zoom group, menu button, photos chip); unit: packages/ui/test/viewer/hcm-timeline-tip.test.ts, timeline-tip.test.ts",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §192). packages/ui/src/viewer/timeline-tip.ts, timeline-scrub.ts, timeline-pointer.ts, timeline-sends.ts, hcm-timeline.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
@@ -1543,6 +1543,17 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §192). packages/ui/src/viewer/timeline-tip.ts, timeline-scrub.ts, timeline-pointer.ts, timeline-sends.ts, hcm-timeline.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
+        },
+        {
+            "id": "S-V04-BAD-MULTI-DATE-NO-CHIP",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A multi-date year shows no chip",
+            "asserts": "at 768x1024 with 21 years, 1964 with two dated layers: a mouse over its stop shows no chip, nor the keyboard's Home onto it; unit: a mouse, the keyboard and a finger scrubbing over a year of two layers show none, the years either side still do",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: a year of several images or dates shows no year chip on any platform, its date menu (V68) names them (DECISIONS-for-review.md §192, §195h). packages/ui/src/viewer/timeline-tip.ts (tipWanted), hcm-timeline.ts (#severalDates); unit tests in packages/ui/test/viewer/hcm-timeline-tip.test.ts and timeline-tip.test.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
         },
         {
             "id": "S-V04-HAPPY-TOUCH-SCRUB",
@@ -19297,6 +19308,17 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195). packages/ui/src/viewer/timeline-dates.ts, hcm-date-menu.ts, timeline-dock.ts; the store's pickLayer (packages/engine/src/core/state.ts withFrontLayer, V15's front); unit tests in packages/ui/test/viewer/timeline-dates.test.ts, hcm-date-menu.test.ts, hcm-timeline-dates.test.ts, timeline-dock.test.ts and packages/engine/test/core/store-pick-layer.test.ts. Test: e2e/specs/viewer/timeline-dates.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-MULTI-DATE-NO-CHIP",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A multi-date year shows no year chip: the date menu names its dates",
+            "asserts": "at 768x1024 with 21 years, 1964 with two dated layers: a mouse over its stop shows no chip, nor the keyboard's Home onto it; unit: a mouse, the keyboard and a finger scrubbing over a year of two layers show none, the years either side still do",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: a year of several images or dates shows no year chip on any platform, its date menu (V68) names them (DECISIONS-for-review.md §192, §195h). packages/ui/src/viewer/timeline-tip.ts (tipWanted), hcm-timeline.ts (#severalDates); unit tests in packages/ui/test/viewer/hcm-timeline-tip.test.ts and timeline-tip.test.ts. Test: e2e/specs/viewer/timeline-chip.spec.ts."
         },
         {
             "id": "S-V68-BAD-SCRUB-PASSES",
