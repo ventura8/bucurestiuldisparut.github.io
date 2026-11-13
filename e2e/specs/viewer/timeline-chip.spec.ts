@@ -60,7 +60,7 @@ async function openYears(page: Page, lang: Locale, size: { readonly width: numbe
 }
 
 test(
-    'A mouse over a year without its label shows it above the timeline, and a year of several dates names them',
+    'A mouse over a year without its label shows it above the timeline, in large type',
     { tag: '@S-V04-HAPPY-YEAR-CHIP' },
     async ({ page, lang }) => {
         await openYears(page, lang, { width: 768, height: 1024 });
@@ -69,14 +69,26 @@ test(
         await expect.poll(async () => (await yearChip(page))?.text).toBe('1965');
         const chip = (await yearChip(page))?.box ?? { x: 0, y: 0, width: 0, height: 0 };
         expect(chip.y + chip.height, 'above the card').toBeLessThanOrEqual((await timelineCard(page)).y);
+        expect(chip.height, 'the owner: bigger, 40 px at least').toBeGreaterThanOrEqual(40);
+        await expect(page.locator('hcm-timeline .tip')).toHaveCSS('font-size', '16px');
         await expectChipClear(page, chip);
+    },
+);
 
+test(
+    'A multi-date year shows no chip, under a mouse, the keyboard or a finger',
+    { tag: ['@S-V04-BAD-MULTI-DATE-NO-CHIP', '@S-V68-BAD-MULTI-DATE-NO-CHIP'] },
+    async ({ page, lang }) => {
+        await openYears(page, lang, { width: 768, height: 1024 });
         const first = await stopCentre(page, 0);
+
         await page.mouse.move(first.x, first.y);
-        await expect.poll(async () => (await yearChip(page))?.text).toMatch(/^1964 · /u);
-        const edge = (await yearChip(page))?.box ?? { x: -1, y: 0, width: 0, height: 0 };
-        expect(edge.x, 'the chip at the first year stays over the card').toBeGreaterThanOrEqual((await timelineCard(page)).x);
-        await expectChipClear(page, edge);
+        await page.mouse.move(first.x + 1, first.y);
+        expect(await yearChip(page), 'its badge says it has dates; the date menu names them').toBeNull();
+        await slider(page, lang).focus();
+        await page.keyboard.press('Home');
+        await expect(slider(page, lang)).toHaveAttribute('aria-valuenow', '0');
+        expect(await yearChip(page), 'the keyboard on 1964').toBeNull();
     },
 );
 
