@@ -19909,6 +19909,39 @@
             "tier": "functions",
             "status": "exists",
             "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A143-HAPPY-WINDOWS-WSL",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "Windows without Docker Desktop: WSL turned on, the helper's own Linux and Docker Engine installed by the starter",
+            "asserts": "Docker Desktop is used when it runs; else WSL is turned on with one Windows permission prompt (wsl --install --no-distribution) and the setup resumes by itself after the restart (RunOnce of the user); the helper's own Ubuntu 24.04 (wsl --install --name hcm-worker --no-launch, systemd on); Docker Engine from Docker's apt repository, its key checked by fingerprint, the version pinned and held; nothing else elevates; no script from the internet is run",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers (Windows). Tests: functions/test/worker/starter-windows.test.ts (structure: the quality image has no PowerShell)."
+        },
+        {
+            "id": "S-A143-BAD-WINDOWS-WSL",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "Windows: virtualization off, too little disk, a refused prompt or an old WSL are said with the fix",
+            "asserts": "virtualization off in the firmware: how to turn it on and Microsoft's page; under 20 GB free on the system drive: how much and what to free; a refused permission or a blocked work computer: who to ask and the WSL install page; a Linux that will not install: wsl --update; Docker Engine that will not install: check the internet, re-running goes on where it stopped",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers (Windows). Tests: functions/test/worker/starter-windows.test.ts (structure: the quality image has no PowerShell)."
+        },
+        {
+            "id": "S-A143-HAPPY-WINDOWS-KEEPALIVE",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "Windows: the helper keeps its Linux awake, is listed in Settings > Apps, and takes a headless code",
+            "asserts": "the supervisor starts one hidden wsl -d hcm-worker -e sleep infinity (WSL stops when no Windows program uses it); Settings > Apps lists Historic City Map Maker helper with Uninstall (the current user's list, no administrator); HCM_PAIR_CODE is read, cleared at once and posted to the worker's own /pair with the project's origin",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M7-local-worker.md, Household computers (Windows). Tests: functions/test/worker/starter-windows.test.ts (structure: the quality image has no PowerShell)."
         }
     ]
 }

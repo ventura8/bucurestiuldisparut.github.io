@@ -917,9 +917,28 @@ another computer of the city is on, idle, not paused or removed and at `full` (`
 computer it takes the job at its quiet pace: nothing waits for a computer that is not there. The owner's own Quiet (`why: owner`) is
 no pressure.
 
-**Increments**: this one (the list, headless pairing, Docker on Linux, the remote removal by the POSIX starter, the governor). Next,
-the Windows starter (WSL2 and Docker Engine inside it with one elevation and a resume after the reboot, the keep-alive, the removal);
-then macOS (Colima through Homebrew, launchd). Until then a Windows or Mac computer joins through Add another computer with a screen.
+**Increments**: one (the list, headless pairing, Docker on Linux, the remote removal by the POSIX starter, the governor); two, Windows
+(below); three, macOS (Colima through Homebrew, launchd), not built yet: a Mac joins with Docker Desktop or Colima set up by its owner.
+
+**Windows without Docker Desktop (increment 2).** `hcm-worker.bat` uses Docker Desktop when it runs. Otherwise, each step said with its
+time and size: 20 GB free on the system drive (else how much and what to free); virtualization on in the firmware (`Win32_Processor.
+VirtualizationFirmwareEnabled`, or a hypervisor already present; else how to turn it on, `https://aka.ms/enablevirtualization`);
+**WSL** turned on with one Windows permission prompt (`wsl --install --no-distribution`, `-Verb RunAs`, the only elevation of the
+file besides turning WSL off again), a RunOnce entry of the user that resumes the setup after the restart, and the note
+`installed-wsl`; then **the helper's own Linux**, `wsl --install Ubuntu-24.04 --name hcm-worker --no-launch` (after `wsl --update`
+when that fails), systemd on, the note `installed-distro`; then **Docker Engine** in it from Docker's apt repository, its key checked
+against Docker's fingerprint `9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88`, `docker-ce`/`docker-ce-cli` pinned
+(`$DockerVersion`) and held. Every `docker` of the file then runs there (`wsl -d hcm-worker -u root -- docker`), the worker's port
+reaches Windows' `127.0.0.1:8765` through WSL's localhost forwarding, so the admin's auto-pair works unchanged. **The keep-alive**:
+WSL stops when no Windows program uses it (the owner's PC, 2026-11-13, even with `vmIdleTimeout=-1`), so the supervisor (the task at
+logon, no administrator) starts one hidden `wsl -d hcm-worker -e sleep infinity`. Settings > Apps lists **Historic City Map Maker
+helper** (`HKCU\...\Uninstall\hcm-worker`), whose Uninstall runs the removal; the removal asks before unregistering the helper's
+Linux (and with it its Docker) and before turning WSL off, each only by its note. A headless Windows computer takes
+`HCM_PAIR_CODE` from the environment, clears it and posts it to its worker as the POSIX file does. The remote removal is the POSIX
+file's: `HCM_REMOVABLE=1`, exit 76-79, `Remove-ByOrder` (the helper's own Linux unregistered when Docker is to go: it held only
+the helper's Docker). Tests: the file's structure (`functions/test/worker/starter-windows.test.ts`; the quality image has no
+PowerShell). **UNVERIFIED** until a real Windows computer runs it: `wsl --install --name` (WSL 2.4.4 or later), the RunOnce resume,
+the localhost forwarding of a port Docker publishes on WSL's loopback, the keep-alive under the task at logon.
 
 ### §10, the security review of household computers (added)
 

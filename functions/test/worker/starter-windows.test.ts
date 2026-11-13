@@ -167,3 +167,86 @@ describe('the Windows starter under Windows PowerShell 5.1', () => {
         expect(text).toContain('Set-Content -LiteralPath $AiImageNote -Value ($kept + $Wanted) -Encoding Ascii');
     });
 });
+
+/** The text of the Windows file's function `name`, to its closing brace at the start of a line. */
+function functionBody(text: string, name: string): string {
+    const start = text.indexOf(`function ${name}`);
+    return start === -1 ? '' : text.slice(start, text.indexOf('\r\n}\r\n', start) + 3);
+}
+
+describe('W5, household computers, on Windows (docs/research/M7-local-worker.md, Household computers)', () => {
+    it('happyPath_withoutDockerDesktopItTurnsWslOnInstallsItsOwnLinuxAndDockerEngine @S-A143-HAPPY-WINDOWS-WSL', async () => {
+        const text = await powerShell();
+        const initialize = functionBody(text, 'Initialize-Docker');
+
+        // Docker Desktop when it runs; else WSL (one permission prompt, a restart and a resume), the helper's own Ubuntu, Docker Engine.
+        expect(initialize.indexOf('Test-Docker')).toBeLessThan(initialize.indexOf('Install-Wsl'));
+        expect(initialize).toContain('Install-Distro');
+        expect(initialize).toContain('Install-Engine');
+        expect(functionBody(text, 'Install-Wsl')).toContain(
+            "Start-Process -FilePath 'wsl.exe' -ArgumentList '--install', '--no-distribution' -Verb RunAs -Wait",
+        );
+        expect(functionBody(text, 'Install-Wsl')).toContain(
+            'Set-ItemProperty -Path $ResumeKey -Name $Name -Value "powershell.exe $Run install"',
+        );
+        expect(text).toContain("$ResumeKey = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce'");
+        expect(functionBody(text, 'Install-Distro')).toContain('& wsl.exe --install $DistroImage --name $Distro --no-launch');
+        // Docker's own key checked by its fingerprint, the version pinned and held: never a script piped from the internet.
+        const engine = functionBody(text, 'Install-Engine');
+        expect(text).toContain("$DockerKey = '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'");
+        expect(text).toMatch(/\$DockerVersion = '\d+\.\d+\.\d+'/);
+        expect(engine).toContain("grep -q '^fpr:*$($DockerKey):'");
+        expect(engine).toContain('apt-get install -y -q "docker-ce=$v" "docker-ce-cli=$v" containerd.io');
+        expect(engine).toContain('apt-mark hold docker-ce docker-ce-cli');
+        expect(text).not.toMatch(/get\.docker\.com|Invoke-Expression|\biex\b/);
+        // Only WSL's own switch asks for the administrator: nothing else elevates.
+        expect(text.match(/-Verb RunAs/g)).toHaveLength(2);
+    });
+
+    it('badPath_noVirtualizationTooLittleDiskOrABlockedComputerIsSaidWithTheFix @S-A143-BAD-WINDOWS-WSL', async () => {
+        const text = await powerShell();
+
+        expect(functionBody(text, 'Install-Wsl')).toContain('Virtualization is off on this computer');
+        expect(text).toContain("$VirtualizationHelp = 'https://aka.ms/enablevirtualization'");
+        expect(functionBody(text, 'Test-Room')).toContain("Docker and the map's pipeline need $MinFreeGb GB free");
+        expect(functionBody(text, 'Write-Blocked')).toContain("a work computer's administrator may block it");
+        expect(functionBody(text, 'Install-Distro')).toContain('wsl --update');
+        expect(functionBody(text, 'Install-Engine')).toContain('it goes on from where it stopped');
+    });
+
+    it('happyPath_theKeepAliveTheUninstallEntryAndTheHeadlessCode @S-A143-HAPPY-WINDOWS-KEEPALIVE', async () => {
+        const text = await powerShell();
+
+        expect(functionBody(text, 'Start-KeepAlive')).toContain(
+            "-ArgumentList '-d', $Distro, '-e', 'sleep', 'infinity' -WindowStyle Hidden",
+        );
+        expect(functionBody(text, 'Start-Supervisor')).toContain('Start-KeepAlive');
+        expect(text).toContain('$UninstallKey = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\$Name"');
+        expect(functionBody(text, 'Register-UninstallEntry')).toContain('uninstall"; NoModify = 1; NoRepair = 1');
+        // The code comes from the environment, is cleared at once, and goes to the worker's own page with the project's origin.
+        expect(functionBody(text, 'Read-PairCode')).toContain('Remove-Item Env:HCM_PAIR_CODE');
+        expect(functionBody(text, 'Connect-WithCode')).toContain('-Uri "http://127.0.0.1:$Port/pair" -Headers $headers');
+        expect(text).toContain('$Origin = "https://$Project.web.app"');
+    });
+
+    it('happyPath_removeThisComputerCleansUpThenTheWorkerSaysDone @S-A143-HAPPY-REMOVE', async () => {
+        const text = await powerShell();
+        const remove = functionBody(text, 'Remove-ByOrder');
+
+        expect(text).toContain("$arguments += @('-e', 'HCM_REMOVABLE=1')");
+        expect(text).toContain('if ($code -ge $RemoveExit -and $code -le $RemoveExit + 3) { Remove-ByOrder $code $image $digest }');
+        expect(remove.indexOf('Remove-Ai')).toBeLessThan(remove.indexOf('HCM_REMOVAL=done'));
+        expect(remove.indexOf('HCM_REMOVAL=done')).toBeLessThan(remove.indexOf('Remove-WorkerFiles'));
+        expect(remove).toContain('if (($flags % 2) -eq 1 -and $ownLinux) { & wsl.exe --unregister $Distro *> $null }');
+    });
+
+    it('badPath_wslOrDockerTheOwnerHadIsNeverRemovedAndTheRemovalAsks @S-A143-BAD-REMOVE-DOCKER', async () => {
+        const text = await powerShell('uninstall');
+        const uninstall = functionBody(text, 'Uninstall-Worker');
+
+        expect(uninstall).toContain('$ownLinux = Test-Path -LiteralPath $DistroNote');
+        expect(uninstall).toContain('if ($ownLinux -and (Read-Host');
+        expect(uninstall).toContain("if ($ownWsl -and (Read-Host 'This helper turned WSL on. Turn it off too");
+        expect(functionBody(text, 'Remove-Service')).toContain('Remove-Item -Path $UninstallKey -Recurse -Force');
+    });
+});

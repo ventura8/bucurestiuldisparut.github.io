@@ -252,7 +252,8 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
         expect(text).toContain('docker volume rm "$NAME"');
         expect(text).toContain('done <"$(home_dir)/ai-image"');
         const windows = (await file('windows', 'uninstall')).body;
-        expect(windows).toContain('docker volume rm $Name $AiFiles $AiBox');
+        expect(windows).toContain('& docker volume rm $AiFiles $AiBox *> $null');
+        expect(windows).toContain('& docker volume rm $Name *> $null');
         expect(windows).toContain('foreach ($each in Get-Content -LiteralPath $AiImageNote)');
     });
 });
