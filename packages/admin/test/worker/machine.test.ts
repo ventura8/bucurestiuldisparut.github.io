@@ -1,10 +1,10 @@
 // M26 "This computer" (`packages/admin/src/worker/machine.ts`): the worker's `machine` read from its `/state`, an older
 // worker that says none, and the owner's profile posted to `POST /profile`.
-import type { WorkerMachine } from '@hcm/shared';
+import { WORKER_STARTER_VERSION, type WorkerMachine } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { LOCAL_WORKER, LocalComputer } from '../../src/worker/local.js';
-import { machineOf, postProfile } from '../../src/worker/machine.js';
+import { machineOf, postProfile, versionsOf } from '../../src/worker/machine.js';
 import { CITY, contentWorld } from '../content/world.js';
 
 const PROJECT = 'demo-hcm';
@@ -87,5 +87,52 @@ describe("this computer's machine (M26)", () => {
         expect(machineOf({ machine: null })).toEqual({ kind: 'unknown' });
         expect(machineOf({ machine: { cpu: { cores: 0 } } })).toEqual({ kind: 'old' });
         expect(await postProfile(() => Promise.reject(new TypeError('Failed to fetch')), LOCAL_WORKER, 'auto')).toBeNull();
+    });
+});
+
+describe("this computer's versions", () => {
+    const DIGEST = `sha256:${'cd'.repeat(32)}`;
+
+    it('happyPath_theStateSaysTheImageAndTheStartersVersionOfThisRelease @S-A142-HAPPY-VERSIONS', async () => {
+        const world = contentWorld();
+        const answer = {
+            ...state(MACHINE),
+            image: DIGEST,
+            outdated: false,
+            starter: { version: WORKER_STARTER_VERSION, update: 'current' },
+        };
+        const local = new LocalComputer(world.services, {
+            project: PROJECT,
+            functionsBase: 'https://x.invalid',
+            fetch: () => Promise.resolve(Response.json(answer)),
+            userAgent: 'Linux',
+        });
+        expect(local.state.versions).toBeNull();
+        local.intents.find();
+        await settle();
+        expect(local.state.versions).toEqual({
+            said: true,
+            image: DIGEST,
+            imageCurrent: true,
+            starter: WORKER_STARTER_VERSION,
+            starterCurrent: true,
+            update: 'current',
+        });
+        local.stop();
+    });
+
+    it('badPath_anOldStarterAnOutdatedImageAndWordsNobodyKnows @S-A142-BAD-OLD-STARTER', () => {
+        expect(versionsOf({ image: 'latest', outdated: true, starter: { version: '2', update: 'whatever' } })).toEqual({
+            said: true,
+            image: null,
+            imageCurrent: false,
+            starter: '2',
+            starterCurrent: false,
+            update: null,
+        });
+        expect(versionsOf({ starter: { version: 'Bad Word!', update: 'bad-sum' } })).toMatchObject({ starter: null, update: 'bad-sum' });
+        expect(versionsOf({ starter: null })).toMatchObject({ said: true, starter: null });
+        expect(versionsOf(null)).toMatchObject({ said: false, image: null, imageCurrent: true, starter: null });
+        expect(versionsOf({ outdated: false })).toMatchObject({ said: false });
     });
 });

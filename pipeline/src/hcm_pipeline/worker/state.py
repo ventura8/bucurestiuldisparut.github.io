@@ -3,7 +3,8 @@ e-mail only, never a token), the city, idle or the job and its step, and the las
 answered (how often to claim, how often the heartbeat writes). Thread-safe: the page's server reads it while the loop
 writes it. Finding 72 of 2026-11-02 (auto-pair, M7 §2.7): the admin reads it too, from the project's Hosting origin: the
 worker's id and whether it takes a pairing code now (`pairable`: no session, and not disconnected in the admin). M26: `machine`, the
-governor's word on this computer (its cores, memory, power, cards, the profile in force and the budget), for the admin's card.
+governor's word on this computer (its cores, memory, power, cards, the profile in force and the budget), for the admin's card;
+`image` and `starter`, the versions the card compares with the installed release's.
 """
 
 import threading
@@ -48,6 +49,10 @@ class WorkerState:
         self.timing = Timing()
         # The governor's word on this computer (docs/research/M26-governor.md §6); None before its first tick.
         self.machine: Callable[[], Mapping[str, object] | None] = lambda: None
+        # The image this worker runs (`--image`) and its starter's word (docs/research/M7-local-worker.md, *The starter updates
+        # itself*), for the admin's "This computer"; the build sets them.
+        self.image: str | None = None
+        self.starter: Mapping[str, object] | None = None
         self.pace = Pace()
 
     def busy(self, job_id: str) -> None:
@@ -118,4 +123,6 @@ class WorkerState:
                 "outdated": self._outdated,
                 "ai": self._ai.on_state(),
                 "machine": self.machine(),
+                "image": self.image,
+                "starter": self.starter,
             }

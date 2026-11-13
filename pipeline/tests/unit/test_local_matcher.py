@@ -12,7 +12,7 @@ from hcm_pipeline.calibrate.ports import ProposalRequest
 from hcm_pipeline.geo import Grid
 from hcm_pipeline.matcher.box import Answer, Found, SidecarStatus, read_request, request_id_of, write_answer, write_status
 from hcm_pipeline.worker.ai_files import AiFilesError
-from hcm_pipeline.worker.ai_state import AiState, initial_state
+from hcm_pipeline.worker.ai_state import STARTER_VERSION, AiState, initial_state
 from hcm_pipeline.worker.local_matcher import (
     CPU_ORIENTATIONS,
     FIRST_USE_WAIT_S,
@@ -22,7 +22,7 @@ from hcm_pipeline.worker.local_matcher import (
 
 from tests.unit.calibrate_scene import ArrayReader
 
-STARTER: Final = {"HCM_STARTER": "2"}
+STARTER: Final = {"HCM_STARTER": STARTER_VERSION}
 GRID: Final = Grid(1000.0, 90000.0, 10.0, 1200, 900)
 MOVE: Final = numpy.array([[1.0, 0.0, 300.0], [0.0, 1.0, -150.0], [0.0, 0.0, 1.0]])
 
@@ -202,7 +202,7 @@ def test_happy_path_on_the_processor_two_orientations_keep_each_of_their_scales(
 
 @pytest.mark.parametrize(
     ("environment", "machine", "why"),
-    [({}, "x86_64", "old-starter"), ({"HCM_STARTER": "1"}, "x86_64", "old-starter"), (STARTER, "aarch64", "arm64")],
+    [({}, "x86_64", "old-starter"), ({"HCM_STARTER": "2"}, "x86_64", "old-starter"), (STARTER, "aarch64", "arm64")],
 )
 def test_bad_path_an_old_starter_or_an_arm_computer_never_waits(
     tmp_path: Path, environment: dict[str, str], machine: str, why: str

@@ -301,6 +301,9 @@ export {
     WORKER_OUTDATED_EXIT,
     WORKER_STARTER_PLACEHOLDERS,
     WORKER_STARTER_TEMPLATES,
+    WORKER_STARTER_VERSION,
+    WORKER_STARTER_LIST_FILE,
+    WORKER_STARTER_UPDATES,
     WORKER_OSES,
     WORKER_STARTER_ACTIONS,
     WORKER_STARTER_FILE_NAMES,
@@ -312,7 +315,7 @@ export {
     workerRevokeRequestSchema,
     workerRevokeResponseSchema,
 } from './worker.js';
-export type { WorkerOs, WorkerStarterAction } from './worker.js';
+export type { WorkerOs, WorkerStarterAction, WorkerStarterUpdate } from './worker.js';
 // M26: what the worker says of its computer (`machine` on its `/state`), and the owner's profile.
 export {
     WORKER_ACCELERATOR_VIAS,

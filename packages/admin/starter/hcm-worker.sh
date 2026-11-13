@@ -12,6 +12,8 @@
 #                               beside it, while a frame needs the local AI, the sidecar on this computer's graphics card
 #   sh hcm-worker.sh matcher    that sidecar's loop alone
 #   sh hcm-worker.sh governor   the governor's loop alone: host hints and the worker's CPU quota (docs/research/M26-governor.md)
+#   sh hcm-worker.sh update     one look for a newer starter of the installed release (the service looks when it starts, whenever
+#                               the worker ends, and once a day): checked against the release's list, it replaces this file
 #   sh hcm-worker.sh uninstall  removes the service, the worker, the sidecar, their Docker volumes and the sidecar's image
 #                               (the admin's "Stop using this computer" gives this file with uninstall already chosen)
 #
@@ -20,6 +22,10 @@
 # in the service's environment: HCM_WORKER_MEMORY (a Docker size as 8g, or none for no limit) and HCM_WORKER_THREADS
 # (how many threads GDAL uses; the worker's own choice is the cores but one).
 set -u
+
+# This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
+# (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
+STARTER_VERSION=cfa9f3965aa2
 
 HCM_PROJECT='__HCM_PROJECT__'
 HCM_CITY='__HCM_CITY__'
@@ -35,6 +41,13 @@ LABEL=org.historiccitymap.worker
 GET_DOCKER=https://docs.docker.com/get-started/get-docker/
 IMAGE_API="https://us-central1-${HCM_PROJECT}.cloudfunctions.net/worker-image"
 IMAGE_PREFIX="us-central1-docker.pkg.dev/${HCM_PROJECT}/hcm/pipeline@sha256:"
+# The starter the installed release publishes (docs/research/M7-local-worker.md, *The starter updates itself*): the list on the map's
+# Hosting (the admin's build writes it: the version and each template's SHA-256) and the file from the server's worker.starter.
+STARTER_LIST="https://${HCM_PROJECT}.web.app/admin/starter.json"
+STARTER_API="https://us-central1-${HCM_PROJECT}.cloudfunctions.net/worker-starter"
+UPDATE_SECONDS=86400
+# What the last look said, for the admin (the worker passes it on as HCM_STARTER_UPDATE).
+update_said=unchecked
 # The local AI (docs/research/M10-local-ai.md): a sidecar with no network, started here because the worker has no Docker socket.
 MATCHER=hcm-matcher
 AI_FILES=hcm-ai-files
@@ -459,17 +472,116 @@ start_worker() {
 		set -- "$@" -e "GDAL_NUM_THREADS=$HCM_WORKER_THREADS"
 	fi
 	docker run --rm --name "$NAME" "$@" -p "127.0.0.1:$PORT:$PORT" -v "$NAME:/work" \
-		-v "$AI_FILES:/ai/files" -v "$AI_BOX:/ai/box" -e HCM_STARTER=2 -e HCM_DOCKER_ARCH="$(docker_arch)" -e HCM_AI_VARIANT="$(ai_variant)" "$image" \
+		-v "$AI_FILES:/ai/files" -v "$AI_BOX:/ai/box" -e HCM_STARTER="$STARTER_VERSION" -e HCM_STARTER_UPDATE="$update_said" \
+		-e HCM_DOCKER_ARCH="$(docker_arch)" -e HCM_AI_VARIANT="$(ai_variant)" "$image" \
 		worker --city "$HCM_CITY" --project "$HCM_PROJECT" --supervised --image "sha256:${image##*@sha256:}"
 }
 
-# The supervisor: the worker in the foreground, started again whenever it ends: at once after an outdated image (75),
+# The copy the installer made, which the service runs: the only file that updates itself.
+installed_copy() {
+	printf '%s' "$(home_dir)/$NAME.sh"
+}
+
+sha256_of_input() {
+	if command -v sha256sum >/dev/null 2>&1; then
+		sha256sum
+	else
+		shasum -a 256
+	fi | sed -n '1s/^\([0-9a-f]\{64\}\).*/\1/p'
+}
+
+# The template a served file was filled from: its three values put back as the marks (written here in pieces: the server fills
+# every whole mark of this file).
+as_template() {
+	u=_
+	sed -e "s/^HCM_PROJECT=.*/HCM_PROJECT='$u${u}HCM_PROJECT$u$u'/" -e "s/^HCM_CITY=.*/HCM_CITY='$u${u}HCM_CITY$u$u'/" \
+		-e "s/^HCM_ACTION=.*/HCM_ACTION='$u${u}HCM_ACTION$u$u'/" "$1"
+}
+
+# The version written in a file (the installed copy, once the look beside the worker replaced it).
+version_in() {
+	sed -n 's/^STARTER_VERSION=\([0-9a-f]*\)$/\1/p' "$1" 2>/dev/null
+}
+
+# One look at the starter the installed release publishes: 0 when a newer one, whose SHA-256 is the release's list's, replaced
+# this file (update_said=updated); else 1, and update_said says why not: current, not-installed, no-list, no-file, bad-sum, read-only.
+starter_update() {
+	self=$(installed_copy)
+	if [ "$0" != "$self" ]; then
+		update_said=not-installed
+		return 1
+	fi
+	listed=$(curl -fsS -m 30 "$STARTER_LIST" 2>/dev/null | tr -d ' \r\n')
+	version=$(printf '%s' "$listed" | sed -n 's/.*"version":"\([0-9a-f]\{12\}\)".*/\1/p')
+	sum=$(printf '%s' "$listed" | sed -n 's/.*"posix":"\([0-9a-f]\{64\}\)".*/\1/p')
+	if [ -z "$version" ] || [ -z "$sum" ]; then
+		update_said=no-list
+		return 1
+	fi
+	if [ "$version" = "$STARTER_VERSION" ]; then
+		update_said=current
+		return 1
+	fi
+	starter_replace "$self" "$version" "$sum"
+}
+
+# The newer file fetched, checked against the list (its SHA-256 as a template, its version line), and put in place by a rename.
+starter_replace() {
+	os=linux
+	if is_mac; then
+		os=mac
+	fi
+	rm -f "$1.part" "$1.new"
+	if ! curl -fsS -m 60 -o "$1.part" "$STARTER_API?city=$HCM_CITY&os=$os&action=install" 2>/dev/null; then
+		update_said=no-file
+	elif [ "$(as_template "$1.part" | sha256_of_input)" != "$3" ] || [ "$(version_in "$1.part")" != "$2" ]; then
+		update_said=bad-sum
+	elif sed "s/^HCM_ACTION=.*/HCM_ACTION='run'/" "$1.part" >"$1.new" 2>/dev/null && chmod 700 "$1.new" && mv -f "$1.new" "$1"; then
+		update_said=updated
+	else
+		update_said=read-only
+	fi
+	rm -f "$1.part" "$1.new"
+	say "starter: the look for a newer starter said $update_said"
+	[ "$update_said" = updated ]
+}
+
+# Once a day beside the worker: a newer file waits for the worker to be idle, then the worker stops and the supervisor starts the file.
+run_updater() {
+	supervisor=$$
+	while sleep "$UPDATE_SECONDS" && kill -0 "$supervisor" 2>/dev/null; do
+		if starter_update; then
+			while curl -fsS -m 5 "http://127.0.0.1:$PORT/state" 2>/dev/null | grep -q '"state": *"busy"'; do
+				sleep 60
+			done
+			docker stop "$NAME" >/dev/null 2>&1 || true
+		fi
+	done
+}
+
+# This process becomes the newer file: the loops beside the worker go first (the file starts its own).
+starter_restart() {
+	kill "$matcher_pid" "$governor_pid" "$updater_pid" 2>/dev/null || true
+	say 'starter: starting the updated file'
+	exec /bin/sh "$0" run
+}
+
+# The supervisor: a newer starter of the installed release first (this process then runs it), then the worker in the
+# foreground, started again whenever it ends (a newer starter, the daily look's too, first): at once after an outdated image (75),
 # else after a wait that grows to five minutes while it keeps failing (and starts small again after a long run). A worker
 # that refuses the supervisor's arguments (usage error 2) three times in a row runs an image older than this starter:
 # that is said once in the log, and the supervisor asks again every five minutes until the map is updated.
 run_worker() {
+	if starter_update; then
+		exec /bin/sh "$0" run
+	fi
+	say "starter $STARTER_VERSION: the look for a newer starter said $update_said"
 	run_matcher &
+	matcher_pid=$!
 	run_governor &
+	governor_pid=$!
+	run_updater &
+	updater_pid=$!
 	wait_seconds=10
 	refused=0
 	while :; do
@@ -491,6 +603,9 @@ run_worker() {
 			wait_seconds=300
 		fi
 		sleep "$wait_seconds"
+		if [ "$(version_in "$0")" != "$STARTER_VERSION" ] || starter_update; then
+			starter_restart
+		fi
 		wait_seconds=$((wait_seconds < 145 ? wait_seconds * 2 + 10 : 300))
 	done
 }
@@ -599,6 +714,10 @@ case "${1:-$HCM_ACTION}" in
 run) run_worker ;;
 matcher) run_matcher ;;
 governor) run_governor ;;
+update)
+	starter_update
+	say "$update_said"
+	;;
 uninstall)
 	uninstall_worker
 	pause

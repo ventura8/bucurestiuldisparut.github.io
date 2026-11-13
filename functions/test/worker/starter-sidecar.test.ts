@@ -223,7 +223,7 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
     it('happyPath_theWorkerGetsBothVolumesAndTheStartersVersionAndNoDockerSocket @S-P07-HAPPY-GPU', async () => {
         for (const os of WORKER_OSES) {
             const text = (await file(os, 'install')).body;
-            expect(text).toContain('HCM_STARTER=2');
+            expect(text).toContain('HCM_STARTER=');
             expect(text).toContain('hcm-ai-files');
             expect(text).toContain('hcm-ai-box');
             expect(text).toContain('--network');

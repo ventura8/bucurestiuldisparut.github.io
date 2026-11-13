@@ -135,7 +135,7 @@ async function advancedCodeWorksOnce(
 
 test(
     "The real worker on the owner's computer claims a local import, runs it and keeps the raw scan local",
-    { tag: ['@S-A62-HAPPY-WORKER-RUN', '@S-A62-HAPPY-PAIR', '@S-A62-BAD-PAIR-REUSED', '@S-A62-HAPPY-AUTO-PAIR'] },
+    { tag: ['@S-A62-HAPPY-WORKER-RUN', '@S-A62-HAPPY-PAIR', '@S-A62-BAD-PAIR-REUSED', '@S-A62-HAPPY-AUTO-PAIR', '@S-A142-HAPPY-VERSIONS'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream, request, consoleErrors }, testInfo) => {
         test.setTimeout(600_000);
         const owner = adminWorld.accounts.owner;
@@ -203,6 +203,10 @@ test(
                 .poll(async () => chosenOf(await stateOnce(request, origin, 'signedIn', true)), { timeout: FUNCTIONS_TIMEOUT_MS })
                 .toBe('quiet');
             await expect(card.locator('[data-machine]')).toContainText(local(lang, 'adminWorkerLocal.machine.why.owner'));
+            // S-A142-HAPPY-VERSIONS: the worker's /state says its versions; this worker, started with no starter file, has no helper to
+            // update and runs the installed image.
+            await expect(card.locator('[data-versions-worker]')).toHaveAttribute('data-versions-worker', 'current');
+            await expect(card.locator('[data-versions-starter]')).toHaveText(local(lang, 'adminWorkerLocal.versions.byCommand'));
             await expectStateSound(page, adminVisit('worker.local-machine', lang));
             // The session is kept in the work folder (the named volume), readable by the worker's user only.
             expect(filesUnder(work).filter((name) => name.startsWith('.hcm-session-'))).toEqual([`.hcm-session-${imagery.city}.json`]);

@@ -22,6 +22,7 @@ from hcm_pipeline.m2m import M2MClient, http_client
 from hcm_pipeline.secrets import EmulatorSecrets, usgs_credentials
 from hcm_pipeline.store import DELETE
 from hcm_pipeline.worker.ai_files import AiFiles
+from hcm_pipeline.worker.ai_state import STARTER_VERSION
 from hcm_pipeline.worker.args import Endpoints, WorkerArgs
 from hcm_pipeline.worker.local_store import DAY_SECONDS
 from hcm_pipeline.worker.loop import Pass
@@ -258,7 +259,7 @@ def test_happy_path_the_real_worker_asks_a_sidecar_through_the_box(
     world: PipelineWorld, api: FakeWorkerApi, tmp_path: Path, built: list[Worker], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Scenarios: S-P04-HAPPY-WORKER-RUN, S-P07-HAPPY-GPU"""
-    monkeypatch.setenv("HCM_STARTER", "2")
+    monkeypatch.setenv("HCM_STARTER", STARTER_VERSION)
     monkeypatch.setattr(chain, "MATCHER_PROOF_SIDE_GROUND_M", 20_000.0)
     local_import(world)
     small_city(world)

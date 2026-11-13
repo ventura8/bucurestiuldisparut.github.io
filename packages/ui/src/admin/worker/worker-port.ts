@@ -4,7 +4,16 @@
  * time). The elements get their feed from the Jobs area's store (`JobsIntentsPort.worker`), which the page they sit on
  * loads through the app (`WorkerHostPort`: the Jobs page, the pipeline card, a version's page).
  */
-import type { JobStatus, JobWaitReason, RunChoice, RunPlace, WorkerAi, WorkerMachine, WorkerProfileChoice } from '@hcm/shared';
+import type {
+    JobStatus,
+    JobWaitReason,
+    RunChoice,
+    RunPlace,
+    WorkerAi,
+    WorkerMachine,
+    WorkerProfileChoice,
+    WorkerStarterUpdate,
+} from '@hcm/shared';
 
 import type { LoadStatusPort, StoreFailurePort } from '../area-port.js';
 import type { AdminNoticeInputPort } from '../notice-port.js';
@@ -69,6 +78,16 @@ export type MachineViewPort =
     | { readonly kind: 'old' }
     | { readonly kind: 'known'; readonly machine: WorkerMachine; readonly failed: boolean };
 
+/** The worker's and its starter file's versions beside the installed release's (`packages/admin/src/worker/machine.ts`). */
+export interface VersionsViewPort {
+    readonly said: boolean;
+    readonly image: string | null;
+    readonly imageCurrent: boolean;
+    readonly starter: string | null;
+    readonly starterCurrent: boolean;
+    readonly update: WorkerStarterUpdate | null;
+}
+
 /** "Use this computer" as `packages/admin/src/worker/local.ts` keeps it (finding 72 of 2026-11-02). */
 export interface LocalViewPort {
     readonly os: WorkerOsPort;
@@ -81,6 +100,8 @@ export interface LocalViewPort {
     readonly files: { readonly install: StarterLinkPort; readonly uninstall: StarterLinkPort };
     /** M26: what the worker says of this computer. */
     readonly machine: MachineViewPort;
+    /** The worker's and its starter's versions; null until it answered. */
+    readonly versions: VersionsViewPort | null;
 }
 
 /** This computer's part of the panel: the starter file, the auto-pair, Stop using this computer, the Advanced command. */

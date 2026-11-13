@@ -3604,18 +3604,24 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: the processor searches at half resolution with the budget's 2,048 keypoints (64 s, F006 found), and the governor's quiet profile keeps 2,048 too (slower, never blinder).
     - **A speed-up of a search is measured on its hardest fixture (the fewest inliers the reference finds), not only on the ones it finds easily.**
 
-614. **A test held a layout at a minimum gap that a real card could not hold: the timeline overflowed and clipped its first year.**
+614. **Every installed starter stayed old for days and nothing said so.**
+    - Seen: 2026-11-13, the owner's laptop: `hcm-worker.service` ran the starter of 2026-11-08 after the hardware governor changed the file; the worker had no memory cap and "This computer" said no graphics card could be reached on a laptop with an RTX 3080.
+    - Cause: both starter files passed `HCM_STARTER=2` and the pipeline's `STARTER_VERSION` was `"2"`: a version written by hand, never bumped as the files changed, so the worker never reported `old-starter`; and an installed starter had no way to update itself.
+    - Fix and pin: the version is the content's SHA-256 (`scripts/site/src/admin/starter.ts`), held equal in the two files, `@hcm/shared` and the pipeline by `scripts/site/test/starter-version.test.ts` and the admin's build; the release lists each file's SHA-256 in `/admin/starter.json` and the installed starter replaces itself with the checked file at start, at each worker end and daily; the card shows both versions and, for an out-of-date helper, why and the one command (S-A142-HAPPY-VERSIONS, S-A142-BAD-OLD-STARTER, S-A142-HAPPY-SELF-UPDATE, S-A142-BAD-SELF-UPDATE).
+    - **A version of something installed on users' machines is derived from its content and checked by a test, never typed by hand; and what is installed there updates itself from the release it belongs to.**
+
+615. **A test held a layout at a minimum gap that a real card could not hold: the timeline overflowed and clipped its first year.**
     - Seen: 2026-11-12, the Pixel Tablet: twenty-two stops at 30 px each were wider than the card; 1847 showed as "7".
     - Cause: the scroll test only asked that the selected stop was in view and the labels did not meet; nothing asked that the labels stayed inside the card.
     - Fix and pin: the track fits the card with a density (`timeline-model.ts`); `S-V04-BAD-MANY-YEARS-FIT` checks no label sticks out at five window sizes.
     - **A layout check asks what is cut off as well as what overlaps.**
 
-615. **`touch-action: none` on a control inside a scrolling panel turned every swipe across it into input.**
+616. **`touch-action: none` on a control inside a scrolling panel turned every swipe across it into input.**
     - Seen: 2026-11-12, the Pixel Tablet: a swipe meant to scroll the Layers panel set a layer's opacity to 4 %.
     - Fix and pin: the slider is `pan-y` and waits 8 px for the finger's direction (`slider.ts`); `S-V22-BAD-TOUCH-VERTICAL-SWIPE` swipes with Chromium's own touch events.
     - **A control that moves along one axis leaves the other axis to the browser; test it with real touch events, not mouse ones.**
 
-616. **A module script waits for every deferred script before it: the engine painted nothing until 526 KB of Mapbox GL had arrived.**
+617. **A module script waits for every deferred script before it: the engine painted nothing until 526 KB of Mapbox GL had arrived.**
     - Seen: 2026-11-12, the Pixel Tablet: cold first paint 5,376 ms against 764 ms warm.
     - Found by: a throttled cold load (CDP Fast 4G, 4x CPU) with Mapbox's files given their CDN time: the first paint came after `mapbox-gl.js`'s end every time.
     - Fix and pin: Mapbox GL loads `async` and the map adapter takes a promise of it (§178f); `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT`.
