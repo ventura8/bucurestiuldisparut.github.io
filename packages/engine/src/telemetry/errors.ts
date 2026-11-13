@@ -5,9 +5,11 @@
  * throws, sends at most `MAX_REPORTS_PER_PAGE` reports per page and one per message per `DEDUPE_WINDOW_MS`, and
  * redacts what it sends with `redactText` of `@hcm/shared`, the rules the `telemetry.reportError` endpoint applies again
  * (docs/research/M2-interfaces.md CR-M2-4): no URL query or fragment (the hash holds the visitor's view, a tile URL the
- * access token), no token-looking strings (Mapbox, Google API keys and access tokens), no e-mail addresses.
+ * access token), no token-looking strings (Mapbox, Google API keys and access tokens), no e-mail addresses. Errors the
+ * page did not cause (`crashNoiseOf`: browser-injected scripts, extensions, aborted fetches) are logged with their reason
+ * and never sent.
  */
-import { redactText, type Logger } from '@hcm/shared';
+import { crashNoiseOf, redactText, type Logger } from '@hcm/shared';
 
 import type { ErrorReportPayload, ErrorSource } from './telemetry-port.js';
 
@@ -66,6 +68,11 @@ export class ErrorReporter {
     /** Never throws; see the module comment for the limits. */
     report(error: unknown, context: { readonly fatal: boolean; readonly source: ErrorSource }): void {
         try {
+            const noise = crashNoiseOf(error);
+            if (noise !== null) {
+                this.#deps.log.info('error not reported: the page did not cause it', { reason: noise });
+                return;
+            }
             const message = redactText(messageOf(error)).slice(0, MAX_MESSAGE_LENGTH);
             if (!this.#admit(message)) {
                 return;

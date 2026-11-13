@@ -27,7 +27,7 @@ describe('createMeasurementReports', () => {
     it('happyPath_everyFieldParameterIsRegisteredOnTheStreamsPropertyOnce', async () => {
         const { fakes, run } = world();
 
-        await expect(run()).resolves.toEqual({ created: 14, skipped: 0 });
+        await expect(run()).resolves.toEqual({ created: 22, skipped: 0 });
 
         const created = fakes.callsTo('analytics-admin.customDimensions.create').map((call) => JSON.parse(call.body) as unknown);
         expect(created).toContainEqual({ parameterName: 'metric_name', displayName: 'metric_name', scope: 'EVENT' });
@@ -35,6 +35,7 @@ describe('createMeasurementReports', () => {
             { parameterName: 'metric_value', displayName: 'metric_value', scope: 'EVENT', measurementUnit: 'MILLISECONDS' },
             { parameterName: 'duration_ms', displayName: 'duration_ms', scope: 'EVENT', measurementUnit: 'MILLISECONDS' },
             { parameterName: 'error_count', displayName: 'error_count', scope: 'EVENT', measurementUnit: 'STANDARD' },
+            { parameterName: 'attempt', displayName: 'attempt', scope: 'EVENT', measurementUnit: 'STANDARD' },
         ]);
         expect(new URL(fakes.callsTo('analytics-admin.customMetrics.create')[0]?.url ?? '').pathname).toBe(
             '/v1beta/properties/400000001/customMetrics',
@@ -45,7 +46,7 @@ describe('createMeasurementReports', () => {
         const { fakes, run } = world();
         await run();
 
-        await expect(run()).resolves.toEqual({ created: 0, skipped: 14 });
+        await expect(run()).resolves.toEqual({ created: 0, skipped: 22 });
         expect(fakes.callsTo('analytics-admin.customDimensions.create')).toHaveLength(FIELD_DIMENSIONS.length);
     });
 

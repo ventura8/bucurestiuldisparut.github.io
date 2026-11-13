@@ -245,7 +245,7 @@ describe('the gamepad watcher', () => {
 
         const controller = mount(new FakeContainer().element, config(), { ...world.env, watchGamepads });
 
-        expect(watchGamepads).toHaveBeenCalledWith(world.viewer, world.map);
+        expect(watchGamepads).toHaveBeenCalledWith(world.viewer, world.map, expect.any(Function));
         controller.destroy();
         expect(stop).toHaveBeenCalledOnce();
     });

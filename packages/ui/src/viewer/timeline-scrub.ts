@@ -20,8 +20,8 @@ export interface ScrubHooks {
     readonly onIndex: (index: number) => void;
     /** The year under a finger moving along the track, or under one lifted where it went down (a tap). */
     readonly onSelect: (index: number) => void;
-    /** The finger is up, or the press ended across the track or cancelled. */
-    readonly onEnd: () => void;
+    /** The finger is up (`released`), or the press was cancelled (the browser took it). */
+    readonly onEnd: (released: boolean) => void;
 }
 
 /** A light tick where the device vibrates and motion is welcome. */
@@ -49,7 +49,7 @@ export function startScrub(down: PointerEvent, hooks: ScrubHooks, win: Window = 
         const along = axes(event);
         intent = intent === 'wait' ? touchIntent(start, along.x, along.y) : intent;
         if (intent === 'scroll') {
-            finish();
+            finish(false);
             return;
         }
         const next = hooks.indexAt(event);
@@ -70,12 +70,12 @@ export function startScrub(down: PointerEvent, hooks: ScrubHooks, win: Window = 
     const up = (event: PointerEvent): void => {
         if (event.pointerId === down.pointerId) {
             hooks.onSelect(index);
-            finish();
+            finish(true);
         }
     };
     const cancel = (event: PointerEvent): void => {
         if (event.pointerId === down.pointerId) {
-            finish();
+            finish(false);
         }
     };
     const stop = (): void => {
@@ -83,9 +83,9 @@ export function startScrub(down: PointerEvent, hooks: ScrubHooks, win: Window = 
         win.removeEventListener('pointerup', up);
         win.removeEventListener('pointercancel', cancel);
     };
-    function finish(): void {
+    function finish(released: boolean): void {
         stop();
-        hooks.onEnd();
+        hooks.onEnd(released);
     }
     win.addEventListener('pointermove', move);
     win.addEventListener('pointerup', up);

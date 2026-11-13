@@ -17,6 +17,7 @@ import { AreaPage } from '../editing/area-page.js';
 import { cityRoleOfState } from '../shell/city-role.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
+import { trackAreaFunnels } from '../editing/area-funnel.js';
 import type { ImageryContext, ImageryQuestion } from './context.js';
 import { guardBanner } from './guard-banner.js';
 import type { ImageryIntentsPort, ImageryTabPort, ImageryViewState } from './imagery-port.js';
@@ -29,6 +30,7 @@ import { findView } from './scene-list.js';
 import { chunkLoader, chunkTemplate } from './orders/lazy-card.js';
 import { APPROVAL_MAP_CHUNK } from './lazy-version.js';
 import { workView } from './work-list.js';
+import { imageryFunnels } from './imagery-funnels.js';
 
 export const HCM_IMAGERY_PAGE_TAG = 'hcm-imagery-page';
 
@@ -110,6 +112,8 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     }
 
     protected override updated(changed: PropertyValues<this>): void {
+        // The wizard's funnel (§200): what changed since the last render, as codes.
+        trackAreaFunnels(this, this.view, imageryFunnels);
         super.updated(changed);
         this.#follow();
     }

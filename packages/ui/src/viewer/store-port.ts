@@ -135,6 +135,8 @@ export interface ViewerStorePort {
     watchCamera(listener: (camera: MapCamera) => void): Unsubscribe;
     /** Logs the `share` analytics event after the page was shared or its link copied. */
     logShare(): void;
+    /** A pad or a games console's browser is in use (the `input_device` analytics event, once a page each; V65). */
+    logInput?(device: 'gamepad' | 'console'): void;
     setWindowSize(width: number, height: number): void;
     setTheme(theme: ThemeMode): void;
     setConsent(consent: 'granted' | 'denied'): void;

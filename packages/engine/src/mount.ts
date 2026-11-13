@@ -237,7 +237,7 @@ export interface MountEnvironment {
     /** `prefers-color-scheme` of the page (the basemap's light under the `system` theme). */
     readonly colorScheme?: ColorSchemeSource;
     /** Listens for a gamepad, whose lazy chunk comes only once one connects; returns the function that stops it. */
-    readonly watchGamepads?: (surface: GamepadSurface, map: ViewerMapPort) => () => void;
+    readonly watchGamepads?: (surface: GamepadSurface, map: ViewerMapPort, used: () => void) => () => void;
     /** Side-loads the full-size view from `<engineBase>engine.extras.js` (`config.engineBase`, else next to the engine). */
     readonly loadExtras?: (engineBase: string | undefined) => Promise<void>;
 }
@@ -317,7 +317,9 @@ function start(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment
         compare: { load: env.loadCompare, createMap: env.createMap, mapboxCssUrl: env.mapboxCssUrl },
         ...(env.colorScheme === undefined ? {} : { colorScheme: env.colorScheme }),
     });
-    const stopGamepads = env.watchGamepads?.(viewer, map);
+    const stopGamepads = env.watchGamepads?.(viewer, map, () => {
+        store.logInput('gamepad');
+    });
     const controller = new Controller(store, () => {
         stopGamepads?.();
         viewer.detach();
@@ -488,7 +490,17 @@ export function browserEnvironment(
         },
         loadCompare: () => extraImports.compare().then((chunk) => chunk.compareModule),
         colorScheme: colorSchemeOf(win),
-        watchGamepads: (surface, map) => watchGamepads(win, extraImports.gamepad, { surface, map, log: log.child('gamepad') }),
+        // The pad's chunk arrives once a pad connects: the `input_device` event says one was used (§200).
+        watchGamepads: (surface, map, used) =>
+            watchGamepads(
+                win,
+                async () => {
+                    const chunk = await extraImports.gamepad();
+                    used();
+                    return chunk;
+                },
+                { surface, map, log: log.child('gamepad') },
+            ),
         loadExtras: (engineBase) =>
             sideLoadExtras(
                 win.document,

@@ -21,6 +21,7 @@ import { labelText } from '../imagery/imagery-text.js';
 import { when, withValue } from '../imagery/when.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
+import { trackAreaFunnels } from '../editing/area-funnel.js';
 import { FullScreenInert } from './full-screen.js';
 import type { GeorefMenuOpen } from './georef-menu-host.js';
 import type * as GeorefMenuChunk from './georef-menu.js';
@@ -31,6 +32,7 @@ import { georefStyles } from './georef-styles.js';
 import type { HcmScanViewer } from './hcm-scan-viewer.js';
 import { residualTable, type ResidualSort } from './residual-table.js';
 import { SUGGESTIONS_HEADING_ID, suggestionsPanel, suggestionsStyles, type SuggestionDecision } from './suggestions-panel.js';
+import { georefFunnel } from './georef-funnel.js';
 
 export const HCM_GEOREF_PAGE_TAG = 'hcm-georef-page';
 
@@ -110,6 +112,8 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
     }
 
     protected override updated(changed: PropertyValues<this>): void {
+        // The wizard's funnel (§200): what changed since the last render, as codes.
+        trackAreaFunnels(this, this.view, (view) => [georefFunnel(view)]);
         super.updated(changed);
         if (changed.has('full')) {
             this.#inert.cover(this, this.full);

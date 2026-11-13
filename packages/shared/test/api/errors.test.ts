@@ -41,9 +41,15 @@ describe('API error codes', () => {
     });
 
     it('badPath_anAsideWithoutItsValueIsDropped_withItsValueItIsFilled', () => {
-        expect(translateApiError('en', 'apiError.invalidRequest')).toBe('The request is invalid.');
-        expect(translateApiError('ro', 'apiError.invalidRequest')).toBe('Cererea nu este validă.');
-        expect(translateApiError('en', 'apiError.invalidRequest', { count: '2' })).toBe('The request is invalid (problems found: 2).');
+        expect(translateApiError('en', 'apiError.history.invalidSnapshot')).toBe(
+            'The earlier version is no longer valid and cannot be restored.',
+        );
+        expect(translateApiError('en', 'apiError.history.invalidSnapshot', { count: '2' })).toBe(
+            'The earlier version is no longer valid and cannot be restored (problems: 2).',
+        );
+        expect(translateApiError('en', 'apiError.invalidRequest', { count: '2' })).toBe(
+            'The server refused a value of this form (the log names the field). Correct it and try again.',
+        );
     });
 
     it.each([

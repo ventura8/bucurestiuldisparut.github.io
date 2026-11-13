@@ -1,4 +1,5 @@
 import { axeViolations } from '@hcm/test-support/axe';
+import { FUNNEL_EVENT, type FunnelSignal } from '@hcm/shared/funnels';
 import { html } from 'lit';
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
@@ -275,5 +276,32 @@ describe('<hcm-setup-page> the consent note on an install card (finding 40 of 20
         expect(
             await deployNote({ server: { state: 'installed', checkedAt: '2026-11-01T09:00:00Z' } }, { needsContinue: true }),
         ).not.toBeNull();
+    });
+});
+
+describe('<hcm-setup-page> funnel', () => {
+    afterEach(cleanup);
+
+    it('happyPath_theOpenCardAMoveBackAndAGuideLinkAreSignalled', async () => {
+        // @S-A150-HAPPY-FUNNEL-ORDER: the Setup Assistant's cards as funnel steps.
+        const seen: FunnelSignal[] = [];
+        const listen = (event: Event): void => {
+            seen.push((event as CustomEvent<FunnelSignal>).detail);
+        };
+        document.addEventListener(FUNNEL_EVENT, listen);
+        const port = new FakeSetupPort(setupView({ openStep: 'mapbox' }));
+        const element = await render(port);
+        port.set({ openStep: 'billing' });
+        await element.updateComplete;
+        const link = document.createElement('a');
+        link.target = '_blank';
+        element.renderRoot.querySelector('section')?.append(link);
+        link.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, cancelable: true }));
+        document.removeEventListener(FUNNEL_EVENT, listen);
+        expect(seen).toEqual([
+            { kind: 'view', wizard: 'setup', step: 'mapbox', back: false },
+            { kind: 'view', wizard: 'setup', step: 'billing', back: true },
+            { kind: 'help', wizard: 'setup', step: 'billing' },
+        ]);
     });
 });

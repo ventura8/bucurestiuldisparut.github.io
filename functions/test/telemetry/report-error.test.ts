@@ -34,17 +34,61 @@ const REPORT: ErrorReport = {
     source: 'window',
 };
 
-function world(): { readonly deps: ReportErrorDeps; readonly errors: FakeErrors; readonly logged: () => number } {
+function world(): {
+    readonly deps: ReportErrorDeps;
+    readonly errors: FakeErrors;
+    readonly logged: () => number;
+    readonly reasons: () => unknown[];
+} {
     const recording = createRecordingSink();
     const errors = fakeErrors();
     const deps = { errors, config: CONFIG, clock: fixedClock(), log: createLogger('functions', { sink: recording.sink }) };
-    return { deps, errors, logged: () => recording.records.length };
+    return {
+        deps,
+        errors,
+        logged: () => recording.records.length,
+        reasons: () => recording.records.map((record) => record.data?.['reason']),
+    };
 }
 
 function post(body: unknown, origin: string | undefined = VIEWER): ReportRequest {
     const text = typeof body === 'string' ? body : JSON.stringify(body);
     return { method: 'POST', origin, client: '203.0.113.7', body: new TextEncoder().encode(text) };
 }
+
+describe('telemetry.reportError: noise, browser and route', () => {
+    it('badPath_aScriptTheBrowserInjectedIsDroppedWithItsReason @S-A24-BAD-NOISE-DROPPED', () => {
+        // The Crashes groups of 2026-11-11, sent by a page older than the client-side filter.
+        const { deps, errors, reasons } = world();
+        const injected = {
+            ...REPORT,
+            message: "ReferenceError: Can't find variable: __firefox__",
+            stack: 'global code@https://viewer.e2e.test/:1:12',
+        };
+        const aborted = { ...REPORT, message: 'AbortError: The operation was aborted.', stack: undefined };
+
+        expect(handleErrorReport(deps, createRateLimiter('e2e-salt'), post(injected)).status).toBe(204);
+        expect(handleErrorReport(deps, createRateLimiter('e2e-salt'), post(aborted)).status).toBe(204);
+
+        expect(errors.reports).toEqual([]);
+        expect(reasons()).toEqual(['injected', 'aborted']);
+    });
+
+    it('happyPath_theBrowserIsLoggedAsItsLabelAndTheRouteKept @S-A24-HAPPY-CLIENT-LABEL', () => {
+        const { deps, errors } = world();
+        const userAgent =
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/145.0 Mobile/15E148 Safari/605.1.15';
+
+        handleErrorReport(deps, createRateLimiter('e2e-salt'), { ...post({ ...REPORT, route: 'photo' }), userAgent });
+
+        expect(errors.reports[0]?.context.httpRequest).toEqual({
+            url: 'https://viewer.e2e.test/bucharest/',
+            userAgent: 'Firefox 145 mobile',
+        });
+        expect(errors.reports[0]?.hcm.route).toBe('photo');
+        expect(JSON.stringify(errors.reports)).not.toContain('iPhone OS');
+    });
+});
 
 describe('telemetry.reportError', () => {
     it('happyPath_aReportFromTheSiteReachesErrorReportingRedacted @S-A24-HAPPY', () => {
@@ -146,7 +190,7 @@ describe('telemetry.reportError', () => {
         expect(answer.status).toBe(400);
         expect(apiErrorDetailsSchema.safeParse(answer.body).success).toBe(true);
         expect(answer.body).toMatchObject({ code: 'apiError.invalidRequest', issues: [{ path, code }] });
-        expect([errors.reports.length, logged()]).toEqual([0, 0]);
+        expect([errors.reports.length, logged()]).toEqual([0, 1]);
     });
 });
 

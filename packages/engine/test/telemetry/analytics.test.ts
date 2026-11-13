@@ -13,6 +13,9 @@ describe('analytics', () => {
         expect(gaParams({ name: 'year_change', year: null })).toEqual({ year: 'today' });
         expect(gaParams({ name: 'photo_open', photoId: 'p' })).toEqual({ photo_id: 'p' });
         expect(gaParams({ name: 'poi_open', poiId: 'x' })).toEqual({ poi_id: 'x' });
+        expect(gaParams({ name: 'story_open', storyId: 's' })).toEqual({ story_id: 's' });
+        expect(gaParams({ name: 'locale_change', locale: 'en' })).toEqual({ locale: 'en' });
+        expect(gaParams({ name: 'theme_change', theme: 'dark' })).toEqual({ theme: 'dark' });
         expect(gaParams({ name: 'exception', description: 'TypeError: x', fatal: false })).toEqual({
             description: 'TypeError: x',
             fatal: false,
@@ -231,6 +234,21 @@ describe('ConsentStore', () => {
 
         expect(consent.state).toBe('granted');
         expect(storage.get('hcm:bucuresti:consent')).toBe('granted');
+    });
+
+    it('badPath_aPrivacySignalDeclinesUntilAStoredOrGivenAnswer', () => {
+        const storage = memoryStorage({ 'hcm:cluj:consent': 'granted' });
+        const consent = new ConsentStore(storage, recordingLog().log, undefined, true);
+        const heard: string[] = [];
+        consent.onChange((state) => heard.push(state));
+
+        expect(consent.state).toBe('denied');
+        consent.setCity('bucuresti');
+        expect(consent.state).toBe('denied');
+        expect(storage.has('hcm:bucuresti:consent')).toBe(false);
+        consent.setCity('cluj');
+
+        expect(heard).toEqual(['granted']);
     });
 
     it('badPath_aBrokenStorageMeansNoAnswerYet', () => {

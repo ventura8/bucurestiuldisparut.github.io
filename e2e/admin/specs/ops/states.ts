@@ -48,4 +48,8 @@ export const OPS_STATES = {
         title: 'Crash reports: Error Reporting disabled, with the way to Setup',
         visit: 'specs/ops/ops.spec.ts, crash reports',
     },
+    'crashes.statistics': {
+        title: "Statistics: each wizard's steps and the way to its funnel in Google Analytics (statistics off: the way to Setup)",
+        visit: 'specs/ops/ops.spec.ts, statistics',
+    },
 } as const;

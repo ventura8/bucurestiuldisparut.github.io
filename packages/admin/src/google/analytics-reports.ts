@@ -26,6 +26,14 @@ export const FIELD_DIMENSIONS: readonly string[] = [
     'area',
     'target',
     'error_kind',
+    // The wizard funnels and the errors shown (§200): which wizard, which step, which code, which action.
+    'wizard_id',
+    'step_id',
+    'error_code',
+    'action',
+    'code',
+    'route',
+    'device',
 ];
 
 /** The event-scoped custom metrics and their units: the numbers reports add up or average. */
@@ -33,6 +41,7 @@ export const FIELD_METRICS: Readonly<Record<string, 'MILLISECONDS' | 'STANDARD'>
     metric_value: 'MILLISECONDS',
     duration_ms: 'MILLISECONDS',
     error_count: 'STANDARD',
+    attempt: 'STANDARD',
 };
 
 export interface MeasurementReports {

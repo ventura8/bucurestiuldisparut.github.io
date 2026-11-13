@@ -391,20 +391,11 @@ export {
     eventProblem,
     eventSchemas,
 } from './telemetry/field-events.js';
-export type {
-    DropReason,
-    EventShapes,
-    FieldEventName,
-    FieldGuard,
-    GaParamValue,
-    GaParams,
-    GuardResult,
-    ViewerPhase,
-    WebVitalName,
-} from './telemetry/field-events.js';
-export { VIEWER_EVENT_PARAMS, createViewerGuard, type ViewerEventName } from './telemetry/viewer-events.js';
-export { ADMIN_EVENT_PARAMS, createAdminGuard, type AdminEventName } from './telemetry/admin-events.js';
+export type * from './telemetry/field-events.js';
+export { INPUT_DEVICES, VIEWER_EVENT_PARAMS, createViewerGuard, type ViewerEventName } from './telemetry/viewer-events.js';
+export { ADMIN_EVENT_PARAMS, FUNNEL_EVENT_PARAMS, createAdminGuard, type AdminEventName } from './telemetry/admin-events.js';
 export { observeWebVitals, sanitizeTarget, shortTarget, vitalParams } from './telemetry/web-vitals.js';
+export { privacySignal, type PrivacyNavigator } from './telemetry/privacy.js';
 export type { FieldChunk, VitalAttribution, VitalMetric, VitalObserver, VitalOptions } from './telemetry/web-vitals.js';
 export * from './migration/index.js';
 export * from './api/index.js';

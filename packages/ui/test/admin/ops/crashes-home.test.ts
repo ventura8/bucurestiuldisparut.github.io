@@ -2,7 +2,7 @@ import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CrashesIntentsPort, CrashesViewState } from '../../../src/admin/crashes/crashes-port.js';
-import { errorGroupUrl } from '../../../src/admin/crashes/hcm-crashes-list-page.js';
+import { errorGroupUrl, releaseUrl } from '../../../src/admin/crashes/hcm-crashes-list-page.js';
 import { publicMapText } from '../../../src/admin/home/hcm-home-page.js';
 import type { HomeIntentsPort, HomeViewState } from '../../../src/admin/home/home-port.js';
 import { FakeArea } from '../editing/fake-area.js';
@@ -24,7 +24,14 @@ describe('<hcm-crashes-list-page>', () => {
         expect(deep(element, 'h2[data-detail-heading]').textContent).toBe('TypeError: <b>x</b> is undefined');
         expect(deepText(deep(element, '.facts'))).toContain('1,234');
         expect(deepText(deep(element, '.facts'))).toContain('admin 1.2.3');
-        const link = deep(element, 'a.external');
+        expect(deepText(deep(element, '.facts'))).toContain('Firefox 145 mobile');
+        expect(deepText(deep(element, '.facts'))).toContain('https://demo-hcm.web.app/admin/');
+        expect(deepAll(element, 'ol.frames li').map((item) => item.textContent)).toEqual([
+            'at draw (https://demo-hcm.web.app/admin/assets/index.js:10:5)',
+            'at <b>run</b> (index.js:2:1)',
+        ]);
+        expect(deep(element, 'a[href*="github.com"]').textContent).toContain('Release notes of 1.2.3');
+        const link = deep(element, 'a[href*="console.cloud.google.com"]');
         expect([link.getAttribute('href'), link.getAttribute('target'), link.getAttribute('rel')]).toEqual([
             'https://console.cloud.google.com/errors/detail/g1?project=demo-hcm',
             '_blank',
@@ -41,6 +48,8 @@ describe('<hcm-crashes-list-page>', () => {
         const { element } = await page('crashes', crashes, { width: 360 });
 
         expect(deepText(deep(element, '.facts'))).toContain('viewer');
+        expect(deepText(element)).toContain('The browser sent no stack for this error');
+        expect(deepAll(element, 'a[href*="github.com"]')).toHaveLength(0);
         deep(deep(element, 'hcm-list-detail'), '.back hcm-button').click();
         deep(element, 'hcm-segmented-button').dispatchEvent(new CustomEvent('hcm-change', { detail: { value: '24' } }));
 
@@ -72,6 +81,8 @@ describe('<hcm-crashes-list-page>', () => {
 
         expect(deepText(element)).toContain('No errors reported in this period.');
         expect(crashes.named('retry')).toEqual(['retry']);
+        expect(releaseUrl('1.0.0-beta.1')).toBe('https://github.com/ventura8/historic-city-map-maker/releases/tag/v1.0.0-beta.1');
+        expect([releaseUrl('abc123'), releaseUrl(undefined)]).toEqual([null, null]);
         expect(errorGroupUrl('a b', 'C/1')).toBe('https://console.cloud.google.com/errors/detail/C%2F1?project=a%20b');
     });
 });

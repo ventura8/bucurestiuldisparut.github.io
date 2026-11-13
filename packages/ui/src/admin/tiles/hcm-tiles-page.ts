@@ -12,8 +12,10 @@ import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
 import { editingStyles } from '../editing/editing-styles.js';
+import { trackAreaFunnels } from '../editing/area-funnel.js';
 import { tilesText as t } from './tiles-text.js';
 import { TILE_STEPS, type TilesIntentsPort, type TileStepPort, type TilesViewState } from './tiles-port.js';
+import { tilesFunnel } from './tiles-funnel.js';
 
 export const HCM_TILES_PAGE_TAG = 'hcm-tiles-page';
 
@@ -93,6 +95,8 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
     #shown: TileStepPort | null = null;
 
     protected override updated(changed: PropertyValues): void {
+        // The wizard's funnel (§200): what changed since the last render, as codes.
+        trackAreaFunnels(this, this.view, (view) => [tilesFunnel(view)]);
         super.updated(changed);
         const step = shownStep(this.view);
         if (step !== null && this.#shown !== null && step !== this.#shown) {

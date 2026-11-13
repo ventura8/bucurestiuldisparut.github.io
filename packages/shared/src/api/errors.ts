@@ -151,6 +151,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.cropOutsideLayer': spec('invalid-argument'),
     'apiError.imagery.noScan': spec('failed-precondition'),
     'apiError.imagery.versionState': spec('failed-precondition'),
+    'apiError.imagery.versionRejected': spec('failed-precondition'),
+    'apiError.imagery.importedAgain': spec('failed-precondition'),
     'apiError.imagery.overBudget': spec('failed-precondition'),
     'apiError.imagery.tilesetLimit': spec('failed-precondition'),
     'apiError.imagery.studioNotFound': spec('not-found'),

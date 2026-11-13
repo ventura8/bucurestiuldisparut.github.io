@@ -42,7 +42,19 @@ export type FieldEventName =
     | 'install_build'
     | 'provision_item'
     | 'editor_save'
-    | 'job_done';
+    | 'job_done'
+    | 'admin_action'
+    // The wizard funnels' events (`FUNNEL_EVENT_NAMES` of `funnel-hub.ts`, which imports this module: named here, no cycle).
+    | 'wizard_start'
+    | 'step_view'
+    | 'step_complete'
+    | 'step_back'
+    | 'step_error'
+    | 'step_help_opened'
+    | 'step_action'
+    | 'wizard_abandon'
+    | 'wizard_complete'
+    | 'ui_error';
 
 /** A duration or time in whole milliseconds: at most a day (a page left open overnight). */
 export const msSchema = z.number().int().min(0).max(86_400_000);
@@ -100,6 +112,11 @@ export const COMMON_EVENT_PARAMS = {
         ...Object.fromEntries(VITAL_DEBUG_NUMBERS.map(([name]) => [name, debugMs])),
         ...CONTEXT_PARAMS,
     },
+    /**
+     * An error the user was shown (the viewer's toast, the admin's notice or refusal): its catalogue key or code, and in
+     * the admin the page's route; never its words (docs/ARCHITECTURE.md → *Wizard funnels*).
+     */
+    ui_error: { code: tokenSchema, route: tokenSchema.optional(), ...CONTEXT_PARAMS },
 };
 
 /** Each event's parameters besides `page_location` (an app's table: `viewer-events.ts`, `admin-events.ts`). */
@@ -120,6 +137,8 @@ export const FIELD_EVENT_BUDGET = {
         install_build: 20,
         provision_item: 60,
         exception: 10,
+        step_action: 60,
+        ui_error: 30,
     } as Readonly<Partial<Record<string, number>>>,
 } as const;
 

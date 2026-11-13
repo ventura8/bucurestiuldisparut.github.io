@@ -4,7 +4,7 @@ import { AdminTelemetry, CONSENT_KEY, MAX_PENDING, eventParams, expireAnalyticsC
 import type { AnalyticsPort } from '../../src/firebase/analytics.js';
 import { MemoryStore, testLog } from './fakes.js';
 
-function telemetry(stored: string | null, configured = true) {
+function telemetry(stored: string | null, configured = true, privacySignal = false) {
     const local = new MemoryStore();
     if (stored !== null) {
         local.set(CONSENT_KEY, stored);
@@ -21,11 +21,24 @@ function telemetry(stored: string | null, configured = true) {
         errors: { report },
         clearCookies,
         log: testLog().log,
+        privacySignal,
     });
     return { local, setConsent, logEvent, field, report, clearCookies, subject };
 }
 
 describe('AdminTelemetry', () => {
+    it('badPath_doNotTrackDeclinesUntilTheAdminAcceptsAndHoldsNothing', () => {
+        // @S-A150-BAD-NO-EVENTS-BEFORE-CONSENT: a browser asking not to be tracked: no banner, no event, nothing held.
+        const t = telemetry(null, true, true);
+        t.subject.measure({ name: 'wizard_start', params: { wizard_id: 'setup' } });
+        expect(t.subject.consent).toBe('denied');
+        expect(t.field).not.toHaveBeenCalled();
+        expect(t.local.get(CONSENT_KEY)).toBeNull();
+        t.subject.setConsent('granted');
+        expect(t.field).not.toHaveBeenCalled();
+        expect(telemetry('granted', true, true).subject.consent).toBe('granted');
+    });
+
     it('happyPath_aStoredGrantTurnsCollectionOnAndEventsFlow', () => {
         const t = telemetry('granted');
 

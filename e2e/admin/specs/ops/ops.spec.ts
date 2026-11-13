@@ -190,6 +190,11 @@ test(
             ),
         );
         await expect(page.getByRole('definition').first()).toHaveText('12');
+        // The top of the stack, as text, and the release's notes beside the console link.
+        await expect(page.getByRole('listitem').filter({ hasText: 'at applyManifest (engine.mjs:1:2345)' })).toBeVisible();
+        await expect(
+            page.getByRole('link', { name: contentText(lang, 'adminContent.crashes.release', { version: '1.0.0' }) }),
+        ).toHaveAttribute('href', 'https://github.com/ventura8/historic-city-map-maker/releases/tag/v1.0.0');
         await expect(page.getByRole('link', { name: contentText(lang, 'adminContent.crashes.openConsole') })).toHaveAttribute(
             'href',
             /^https:\/\/console\.cloud\.google\.com\/errors\/detail\/[^/?]+\?project=/,
@@ -208,6 +213,28 @@ test(
         // The callable's refusal (failed-precondition) is an HTTP 400, which Chromium logs.
         await expect.poll(() => consoleErrors.takeMatching(/status of 400/).length).toBe(1);
         await expectStateSound(page, adminVisit('crashes.error', lang));
+    },
+);
+
+test(
+    'Statistics lists every wizard with its steps, says when analytics is off, and links Google Analytics',
+    { tag: ['@S-A151-HAPPY-STATISTICS', '@S-A151-BAD-NO-ANALYTICS'] },
+    async ({ page, lang }) => {
+        await page.goto(adminPath(lang, 'crashes'));
+        await page.getByRole('link', { name: contentText(lang, 'adminContent.statistics.link') }).click();
+        await expect(page.getByRole('heading', { name: contentText(lang, 'adminContent.statistics.title'), exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: contentText(lang, 'adminContent.statistics.wizard.new_city') })).toBeVisible();
+        // The e2e admin has no measurement id: the view says statistics are off and leads to Setup's step g.
+        await expect(page.getByText(contentText(lang, 'adminContent.statistics.off'))).toBeVisible();
+        await expect(page.getByRole('link', { name: contentText(lang, 'adminContent.statistics.openSetup') })).toHaveAttribute(
+            'href',
+            '#/setup/analytics',
+        );
+        await expect(page.getByRole('link', { name: contentText(lang, 'adminContent.statistics.open') })).toHaveAttribute(
+            'href',
+            'https://analytics.google.com/analytics/web/',
+        );
+        await expectStateSound(page, adminVisit('crashes.statistics', lang));
     },
 );
 

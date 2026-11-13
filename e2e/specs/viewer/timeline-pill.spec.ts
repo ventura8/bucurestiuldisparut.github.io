@@ -46,7 +46,8 @@ test('On a phone the timeline rests as its year pill and opens on a tap', { tag:
 
     await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('collapsed');
     const pill = await timelineBox(page);
-    expect([Math.round(pill.width), Math.round(pill.height)]).toEqual([68, 48]);
+    expect(Math.round(pill.height)).toBe(64);
+    expect(pill.width).toBeGreaterThanOrEqual(96);
     expect(Math.round(pill.x)).toBe(16);
     await expect(slider(page, lang)).toHaveAttribute('aria-valuetext', year);
     await expectClear(page);
@@ -75,7 +76,7 @@ test(
             await openViewer(page, { lang, hash: VIEW_1966 });
             await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('collapsed');
             const pill = await timelineBox(page);
-            expect(pill.height).toBe(48);
+            expect(pill.height).toBe(64);
             expect(pill.x + pill.width, 'on the trailing side').toBeGreaterThan(size.width / 2);
             await expectClear(page);
         }

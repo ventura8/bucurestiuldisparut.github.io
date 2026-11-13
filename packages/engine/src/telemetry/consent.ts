@@ -30,15 +30,26 @@ export class ConsentStore {
     readonly #preferences: Preferences;
     readonly #listeners: Listeners<[ConsentState]>;
     #cityId: string | undefined;
+    /** The state while the visitor has not answered: `unknown`, or `denied` under a privacy signal. */
+    readonly #unanswered: ConsentState;
+    /** The visitor's own answer (stored, or given on this page), or null. */
+    #answer: ConsentValue | null;
     #state: ConsentState;
 
-    constructor(storage: PreferenceStorage, log: Logger, cityId: string | undefined) {
+    /**
+     * `declined`: the browser asks not to be tracked (Do Not Track, Global Privacy Control; `privacySignal` of
+     * `@hcm/shared`): without a stored answer the visitor counts as having declined, never stored, so no banner asks;
+     * an "Accept" in About still applies.
+     */
+    constructor(storage: PreferenceStorage, log: Logger, cityId: string | undefined, declined = false) {
         this.#preferences = new Preferences(storage, log);
         this.#listeners = new Listeners((error) => {
             log.error('consent listener failed', { error: String(error) });
         });
         this.#cityId = cityId;
-        this.#state = parseConsent(this.#preferences.get(cityId, 'consent'));
+        this.#unanswered = declined ? 'denied' : 'unknown';
+        this.#answer = this.#stored(cityId);
+        this.#state = this.#answer ?? this.#unanswered;
     }
 
     get state(): ConsentState {
@@ -51,17 +62,25 @@ export class ConsentStore {
             return;
         }
         this.#cityId = cityId;
-        const stored = parseConsent(this.#preferences.get(cityId, 'consent'));
-        if (stored === 'unknown' && this.#state !== 'unknown') {
-            this.#preferences.set(cityId, 'consent', this.#state);
+        const stored = this.#stored(cityId);
+        if (stored === null && this.#answer !== null) {
+            this.#preferences.set(cityId, 'consent', this.#answer);
             return;
         }
-        this.#change(stored);
+        this.#answer = stored;
+        this.#change(stored ?? this.#unanswered);
+    }
+
+    /** The answer stored for `cityId` (or the page before a city), or null. */
+    #stored(cityId: string | undefined): ConsentValue | null {
+        const stored = parseConsent(this.#preferences.get(cityId, 'consent'));
+        return stored === 'unknown' ? null : stored;
     }
 
     /** The visitor's answer, stored and announced (stored only once the city is known). */
     set(consent: ConsentValue): void {
         this.#preferences.set(this.#cityId, 'consent', consent);
+        this.#answer = consent;
         this.#change(consent);
     }
 
