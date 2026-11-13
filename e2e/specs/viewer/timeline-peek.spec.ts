@@ -221,11 +221,11 @@ for (const { name, use } of FINGER_WINDOWS) {
             const of1980 = await stopPoint(page, 1980);
             const today = await stopPoint(page, null);
 
-            await touch(cdp, today, [of1980, today], false);
+            await touch(cdp, today, [of1980, today], true);
             await page.clock.runFor(1000);
             await expect(datesMenu(page, lang), 'a quick sweep opens nothing').toHaveCount(0);
 
-            await slide(cdp, [of1980]);
+            await touch(cdp, today, [of1980], false);
             await page.clock.runFor(400);
             await expect(datesMenu(page, lang)).toBeVisible();
             await slide(cdp, [today]);

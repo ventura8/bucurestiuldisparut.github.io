@@ -166,10 +166,10 @@ describe('<hcm-date-menu> as a peek (a pointer resting on the year)', () => {
 
     it('happyPath_itKeepsClearOfTheControlsItIsGiven', async () => {
         const control = { x: 180, y: 380, width: 140, height: 120 };
-        const element = await menu({ peek: true, avoid: [control] });
+        const element = await menu({ peek: true, avoid: () => [control] });
         const box = shadowQuery(element, '.menu').getBoundingClientRect();
         const host = element.getBoundingClientRect();
-        const at = { x: control.x + host.x, y: control.y + host.y };
+        const at = control;
 
         const meets = box.left < at.x + control.width && at.x < box.right && box.top < at.y + control.height && at.y < box.bottom;
         expect(meets).toBe(false);

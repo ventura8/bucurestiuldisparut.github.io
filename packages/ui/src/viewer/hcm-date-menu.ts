@@ -159,8 +159,8 @@ export class HcmDateMenu extends LitElement {
     declare label: string;
     /** The box (client px) the menu opens beside; null: closed. */
     declare anchor: Box | null;
-    /** The floating controls (client px) the menu keeps clear of: the compass, the zoom, the menu button, the photos chip. */
-    declare avoid: readonly Box[];
+    /** The floating controls (client px) the menu keeps clear of, measured each time it is placed (`timeline-dock.ts`). */
+    declare avoid: () => readonly Box[];
     /** The timeline stands (a phone held upright): the menu opens on its trailing side, else above it. */
     declare vertical: boolean;
     /** Shown by a resting pointer, not by selecting the year: not modal. */
@@ -172,7 +172,7 @@ export class HcmDateMenu extends LitElement {
         this.selected = null;
         this.label = '';
         this.anchor = null;
-        this.avoid = [];
+        this.avoid = () => [];
         this.vertical = false;
         this.peek = false;
     }
@@ -200,27 +200,53 @@ export class HcmDateMenu extends LitElement {
         return this.peek ? EMPTY : html`<div class="scrim" @pointerdown=${this.#close}></div>`;
     }
 
+    /** Places the menu again when it or the viewer changes size (a window resized, larger text spacing). */
+    readonly #resize = new ResizeObserver(() => {
+        const menu = this.renderRoot.querySelector<HTMLElement>('.menu');
+        if (menu !== null && this.anchor !== null) {
+            this.#place(menu, this.anchor);
+        }
+    });
+
+    override connectedCallback(): void {
+        super.connectedCallback();
+        this.#resize.observe(this);
+    }
+
+    override disconnectedCallback(): void {
+        this.#resize.disconnect();
+        super.disconnectedCallback();
+    }
+
     protected override updated(changed: PropertyValues<this>): void {
         const menu = this.renderRoot.querySelector<HTMLElement>('.menu');
-        if (menu !== null && this.anchor !== null && changed.has('anchor')) {
+        if (menu === null || this.anchor === null) {
+            return;
+        }
+        this.#resize.observe(menu);
+        if (changed.has('anchor')) {
             this.#place(menu, this.anchor);
+            this.#focusChecked();
         }
     }
 
-    /** Beside `at` (client px), inside the viewer; the checked date, else the first, takes the focus. */
+    /** A modal menu takes the focus to the checked date, else the first; a peek leaves it where it is. */
+    #focusChecked(): void {
+        if (!this.peek) {
+            (this.#items().find((item) => item.getAttribute('aria-checked') === 'true') ?? this.#items()[0])?.focus();
+        }
+    }
+
+    /** Beside `at` (client px), inside the viewer, clear of the controls to avoid. */
     #place(menu: HTMLElement, at: Box): void {
         const host = this.getBoundingClientRect();
         const local = (box: Box): Box => ({ x: box.x - host.x, y: box.y - host.y, width: box.width, height: box.height });
         const anchor = local(at);
         const size = { width: menu.offsetWidth, height: menu.offsetHeight };
         const wanted = { ...dateMenuOrigin(anchor, size, host, this.#side()), ...size };
-        const origin = clearOf(wanted, [anchor, ...this.avoid.map(local)], host, LEGAL_STRIP);
+        const origin = clearOf(wanted, [anchor, ...this.avoid().map(local)], host, LEGAL_STRIP);
         menu.style.setProperty('left', `${String(origin.x)}px`);
         menu.style.setProperty('top', `${String(origin.y)}px`);
-        if (this.peek) {
-            return;
-        }
-        (this.#items().find((item) => item.getAttribute('aria-checked') === 'true') ?? this.#items()[0])?.focus();
     }
 
     #side(): 'above' | 'end' | 'start' {

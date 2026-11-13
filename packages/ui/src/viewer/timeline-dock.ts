@@ -25,7 +25,7 @@ import type { TimelineStop } from './timeline-model.js';
 import { PEEK_LEAVE_MS, type DatesPeekDetail } from './timeline-peek.js';
 
 /** The floating controls the date menu keeps clear of (`date-menu-clear.ts`). */
-const AVOIDED = 'hcm-compass, [data-layout-check="zoom"], hcm-fab-menu, [data-layout-check="near-year"]';
+const AVOIDED = '#timeline, hcm-compass, [data-layout-check="zoom"], hcm-fab-menu, [data-layout-check="near-year"]';
 
 /** What the dock needs from the viewer element. */
 export type DockHost = ReactiveControllerHost & HTMLElement & { readonly renderRoot: HTMLElement | DocumentFragment };
@@ -38,8 +38,6 @@ export class TimelineDock implements ReactiveController {
     dates: DatesOpenDetail | null = null;
     /** The menu open is a peek (a pointer resting on its year), not modal. */
     peek = false;
-    /** The floating controls the open menu keeps clear of (client px), measured as it opens. */
-    avoid: readonly DOMRect[] = [];
 
     readonly #host: DockHost;
     /** The gentle close of a mouse's peek, waiting. */
@@ -77,7 +75,6 @@ export class TimelineDock implements ReactiveController {
         if (dates !== null) {
             this.dates = dates;
             this.peek = true;
-            this.avoid = this.#controls();
             this.#host.requestUpdate();
         } else if (gently) {
             this.#closeLater();
@@ -167,7 +164,6 @@ export class TimelineDock implements ReactiveController {
         clearTimeout(this.#closing);
         this.peek = false;
         this.dates = detail;
-        this.avoid = this.#controls();
         this.#host.requestUpdate();
     }
 
@@ -205,11 +201,11 @@ export class TimelineDock implements ReactiveController {
         }
     };
 
-    /** The boxes of the floating controls shown now: the compass, the zoom, the menu button and the photos chip. */
-    #controls(): DOMRect[] {
+    /** The boxes of what the date menu keeps clear of now: the card, the compass, the zoom, the menu button, the photos chip. */
+    readonly controls = (): DOMRect[] => {
         const shown = [...this.#host.renderRoot.querySelectorAll(AVOIDED)].map((element) => element.getBoundingClientRect());
         return shown.filter((box) => box.width > 0 && box.height > 0);
-    }
+    };
 
     #timeline(): HcmTimeline | null {
         return this.#host.renderRoot.querySelector<HcmTimeline>('#timeline');
@@ -267,7 +263,7 @@ export function dateMenu(
         .selected=${frontOfYear(view.layers, dates.year, view.front)}
         .label=${translate(view.locale, 'timeline.dates', { year: String(dates.year) })}
         .anchor=${dates.anchor}
-        .avoid=${dock.avoid}
+        .avoid=${dock.controls}
         .vertical=${view.orientation === 'vertical'}
         .peek=${dock.peek}
         @hcm-date-pick=${onPick}
