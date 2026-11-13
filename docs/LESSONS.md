@@ -3775,97 +3775,97 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: `.scroller` and `.track` inherit the card's touch-action (`timeline-styles.ts`); `hcm-timeline-tip.test.ts` reads it on the track, roomy and scrolling.
     - **Set touch-action inside the nearest scroll container of the element a finger lands on, and test a gesture with the browser's own touch events, never only with synthetic pointer events.**
 
-643. **The engine's build emptied the Romanian catalogue, and one module that read it as it loaded broke every page.**
+645. **The engine's build emptied the Romanian catalogue, and one module that read it as it loaded broke every page.**
     - Seen: 2026-11-09 (track/langs), the first e2e run after the catalogues left the bundle: every viewer test failed on "uncaught TypeError: Cannot convert undefined or null to object" before `hcm-ready`.
     - Cause: `schemas/validation.ts` built its set of `validation.*` codes from `Object.keys(ro)` at load; the engine's build resolves `ro.ts` to `export const ro = undefined`.
     - Found by: the e2e suite only: Vitest imports the real catalogues, so every unit test passed.
     - Fix and pin: the codes are listed by name (`validation.test.ts` checks every catalogue key is one, and a near miss is not); every page boots in the e2e runs.
     - **Code the engine bundles never reads a catalogue object as it loads: a catalogue is data the engine fetches, read only through `translate` once registered.**
-644. **A language's texts arrived after the skeleton had rendered, and nothing rendered again.**
+646. **A language's texts arrived after the skeleton had rendered, and nothing rendered again.**
     - Seen: 2026-11-09 (track/langs), while wiring the boot: the loading view rendered before its catalogue, with an empty "Loading the map…" and a progress indicator without a name, until the manifest changed the state.
     - Cause: the catalogue lives in a registry outside the store's state, so its arrival changed nothing a Lit element observes.
     - Found by: reading the boot path against the tour's `loading` state (manifest held, catalogue free).
     - Fix and pin: the boot sets the state again once the texts arrive (`#textsArrived`); the tour's `loading` state checks the named indicator.
     - **State kept outside the store (a registry, a cache) must announce its change through the store, or the view never learns of it.**
-645. **The leak check called a city's English text, rightly shown in an Arabic page, a leak.**
+647. **The leak check called a city's English text, rightly shown in an Arabic page, a leak.**
     - Seen: 2026-11-09 (track/langs), the tour's `rtl-languages`: "Anonymous statistics", the fixture's English privacy heading, matched the English catalogue.
     - Cause: the check, generalised from Romanian pages to sixteen languages, compared every visible text, including data shown in its fallback language.
     - Found by: the tour's i18n check in the new Arabic journey.
     - Fix and pin: a city's text names its language (`lang`, WCAG 3.1.2), and the check skips what is marked as another language (`e2e/support/i18n.ts`).
     - **Mark text by its language where it is shown; a check of "the page's language" then reads the marks instead of guessing.**
-646. **Right to left, the mirrored Mapbox attribution put its two links side by side and failed the target size.**
+648. **Right to left, the mirrored Mapbox attribution put its two links side by side and failed the target size.**
     - Seen: 2026-11-09 (track/langs), the tour's `rtl-photo` at 360 px: axe target-size (serious) on the legal bar's two links.
     - Cause: the bidi algorithm reordered the attribution's Latin runs and its separators inside an Arabic paragraph.
     - Found by: the tour's accessibility checker in the new Arabic journey.
     - Fix and pin: the attribution is `dir="ltr"`, as the map's own control is (`hcm-map-attribution.ts`); the tour's Arabic journey passes at every per-push viewport.
     - **Legal and third-party text in a right-to-left page keeps its own direction: mark it `dir="ltr"`, as the map's container is.**
-647. **A language that could not be fetched stayed checked in the list.**
+649. **A language that could not be fetched stayed checked in the list.**
     - Seen: 2026-11-09 (track/langs), S-V11-BAD-CATALOGUE-404: the page stayed Romanian, the snackbar said so, the list showed Korean checked.
     - Cause: the kit's segmented button checks a choice at once; the dialog's value had not changed, so Lit never set it back (`live` only acts on a render).
     - Found by: the e2e row.
     - Fix and pin: the list is controlled: it shows the page's language until the store has switched (`hcm-about-dialog.ts`; `languages.test.ts`, S-V11-BAD-CATALOGUE-404).
     - **A choice whose effect can fail is controlled by its outcome, never by the click.**
-648. **One translator removed a folder it had made and took another's catalogue with it.**
+650. **One translator removed a folder it had made and took another's catalogue with it.**
     - Seen: 2026-11-09 (track/langs): the Simplified Chinese catalogue, written to `i18n/viewer/zh.ts`, was gone; the Korean translator had created and then removed `i18n/viewer/`.
     - Cause: parallel agents in one worktree, two layouts in the brief and the design, and a clean-up of a folder that was no longer only its own.
     - Found by: the integration's key check (fifteen catalogues where sixteen were expected).
     - Fix and pin: re-translated in the agreed layout; the gate requires all sixteen files.
     - **Parallel writers agree on the paths first and never delete what they did not create alone.**
-649. **The merge of the viewer's languages left two of its tests looking for the language list where it no longer was.**
+651. **The merge of the viewer's languages left two of its tests looking for the language list where it no longer was.**
     - Seen: 2026-11-12 (track/langs25), the first `ui` run after merging track/langs into the branch: `languages.test.ts` failed "no hcm-segmented-button in <hcm-about-dialog>".
     - Cause: track/settings had moved the language list into the dialog's `settings` mode while track/langs was apart; its tests mounted the dialog in its default `about` mode. The merge had only Markdown conflicts, so nothing flagged the TypeScript.
     - Found by: the `ui` project's run of the merged branch.
     - Fix and pin: the tests open the dialog in `mode: 'settings'` (`packages/ui/test/viewer/languages.test.ts`).
     - **A merge with no conflict in code still changes code: run the tests of both branches' areas before building on it.**
-650. **The same merge took `packages/shared/test/index.test.ts` past ESLint's 600 lines.**
+652. **The same merge took `packages/shared/test/index.test.ts` past ESLint's 600 lines.**
     - Seen: 2026-11-12 (track/langs25), ESLint on the changed files: 612 counted lines before any new export was listed.
     - Cause: each branch stayed under the limit; together they did not.
     - Found by: ESLint on the merged file.
     - Fix and pin: the i18n exports' lists moved to `packages/shared/test/fixtures/exports-ui-i18n.ts`, as the milestones' lists are.
     - **After a merge, lint the files both sides grew, not only the ones you touch.**
-651. **A shared fallback put the viewer's catalogue into the start page's bundle.**
+653. **A shared fallback put the viewer's catalogue into the start page's bundle.**
     - Seen: 2026-11-12 (track/langs25), the bundle budget: `start.mjs` 75.9 KB of its 72 after the per-key fallback.
     - Cause: the fallback lived in `i18n/index.ts` beside the viewer's bundled `{ro, en}`; the start page's translator imported it and the bundler kept the module's catalogue object the fallback read.
     - Found by: `check_bundle_budget.py` after `npm run build`.
     - Fix and pin: the registry of fetched files and the fallback are a module with no catalogue (`packages/shared/src/i18n/registry.ts`); the start page measures 70.4 KB.
     - **A helper every family uses lives in a module that imports no family: what it reads, every page that uses it bundles.**
-652. **French translations run past 140 columns, and Prettier's wrap made the gate reject them.**
+654. **French translations run past 140 columns, and Prettier's wrap made the gate reject them.**
     - Seen: 2026-11-12 (track/langs25), the first import of the model's French: Prettier wrapped 40 entries after their key, which `check_i18n.py` read as "not a one-line entry".
     - Cause: Romanian and English are written to fit the line; a translation is longer and nobody shortens a model's text.
     - Found by: `prettier --check` on the imported files, then the gate.
     - Fix and pin: the gate and the build read a translation's wrapped entry as one (`unwrapped`, `catalogueEntries`); `ro` and `en` stay one line per entry (`test_bad_path_romanian_and_english_never_wrap`).
     - **A format rule written for hand-made files must say what it does with generated ones before the first import.**
-653. **The start page's footer links were 44 px tall, under M3's 48 on a phone, and no tour state had scrolled a phone to them.**
+655. **The start page's footer links were 44 px tall, under M3's 48 on a phone, and no tour state had scrolled a phone to them.**
     - Seen: 2026-11-12 (track/langs25), the new `admin.start.language-rtl` state at `admin-c360-ro`: four target-size findings on `a.start-site-link` once the sweep scrolled to the footer.
     - Cause: `.start-site-link` had `min-block-size: 2.75rem` (WCAG's 44 px), and the start page's states were visited only where the footer fit or was never scrolled to.
     - Found by: the tour's checkers in the new right-to-left state, on a compact window.
     - Fix and pin: `min-block-size: 3rem` with `padding-block: 0.75rem` (`scripts/site/src/start/legal.ts`); the state stays in the inventory at every admin project.
     - **A new state on a page re-checks the whole page: let it, and fix what it finds rather than narrowing the state.**
-654. **The i18n gate's strict mode checked less than its default mode.**
+656. **The i18n gate's strict mode checked less than its default mode.**
     - Seen: 2026-11-12 (track/langs25), review: a leading space in a copy of `de.ts` failed the default run and passed `--strict`.
     - Cause: strict replaced the folder's languages with all 25, which switched off the viewer's checks (`viewer=locales == VIEWER_LOCALES`) and the shape checks that ran only on optional languages.
     - Found by: the review of the branch, reproduced on a copy of the catalogues.
     - Fix and pin: strict keeps every check and adds completeness (`check_folder`, `translations_problems`); `test_bad_path_strict_rejects_everything_the_default_mode_rejects`.
     - **A stricter mode is the default mode plus rules: build it by adding, and test that it rejects everything the default rejects.**
-655. **A slow language file undid a later choice.**
+657. **A slow language file undid a later choice.**
     - Seen: 2026-11-12 (track/langs25), review: in the admin and on the start page, French chosen on a slow network then English: the French file's arrival switched the page to French and stored it.
-    - Cause: `switchLanguage` applied whatever resolved, with no notion of the latest request; the viewer's store had one (§193b), the admin's copy did not.
+    - Cause: `switchLanguage` applied whatever resolved, with no notion of the latest request; the viewer's store had one (§195b), the admin's copy did not.
     - Found by: the review of the branch.
     - Fix and pin: `latestLanguage` (one switch per page; a superseded switch shows, stores and reports nothing); `happyPath_aSlowLanguageThenEnglishEndsInEnglishAndStoresEnglish`, `badPath_theBootsFetchResolvingAfterAMenuChoiceNeverUndoesIt` and the start controller's equivalents.
     - **Every asynchronous switch driven by a person's choices needs "the latest wins" before it ships, wherever it is copied.**
-656. **The tour's i18n leak check stopped at shadow roots, so a `lang` on a shadow host did not count.**
+658. **The tour's i18n leak check stopped at shadow roots, so a `lang` on a shadow host did not count.**
     - Seen: 2026-11-12 (track/langs25), the admin's Arabic state read as Arabic: the photos page's English texts, inside the shell's `lang="en"` area, were reported as leaks.
     - Cause: `textsInPage` asked `element.closest('[lang]')`, which ends at the shadow root; the browser and a screen reader inherit `lang` through the composed tree.
     - Found by: `admin.shell.language-rtl` once its leak check used the page's real language.
     - Fix and pin: the check walks up through shadow hosts (`markedOf` in `e2e/support/i18n.ts`); the same state and `admin.start.language-rtl` pass read as Arabic and Urdu. The start page's footer marks its Romanian link texts `lang="ro"` too.
     - **A checker that reads the DOM must read it as assistive technology does: across shadow boundaries.**
-657. **After the languages left the engine's bundle, the Romanian map credited USGS in English again.**
+659. **After the languages left the engine's bundle, the Romanian map credited USGS in English again.**
     - Seen: 2026-11-13, the merge queue's languages after origin's merge: `layers.spec`'s S-V03-BAD-ATTRIBUTION-REPEATED failed on the Romanian page, the map's line and the Layers panel keeping "USGS EROS, declassified imagery (public domain)".
-    - Cause: `localizedCredit` (`packages/shared/src/overlays/credits.ts`, origin's Pixel Tablet fix) found the stored English credit through the English catalogue, which the tests bundle but the engine fetches only for an English page or a language that falls back to it (`docs/research/DECISIONS-for-review.md` §194). Each branch passed alone; only the merged engine lacked English.
+    - Cause: `localizedCredit` (`packages/shared/src/overlays/credits.ts`, origin's Pixel Tablet fix) found the stored English credit through the English catalogue, which the tests bundle but the engine fetches only for an English page or a language that falls back to it (`docs/research/DECISIONS-for-review.md` §195). Each branch passed alone; only the merged engine lacked English.
     - Found by: the e2e only: Vitest's `@hcm/shared` always bundles Romanian and English.
     - Fix and pin: the stored English is spelt beside the keys (`STORED_CREDITS`, held equal to `USGS_ATTRIBUTION`, `LANDSAT_ATTRIBUTION` and the English catalogue by `credits.test.ts`) and matched first; the fetched languages after it.
     - **Code that runs in the engine never needs a catalogue other than the page's own: English is not there unless the page is English or falls back to it.**
-658. **The viewer's Settings stacked 25 languages whose rows overlapped by a pixel, and the tour's scroll sweep found one row covered.**
+660. **The viewer's Settings stacked 25 languages whose rows overlapped by a pixel, and the tour's scroll sweep found one row covered.**
     - Seen: 2026-11-13, the merge queue's viewer tour at c360 (`viewer.settings` scrolled through): "Română", scrolled to a 7 px strip under the dialog's header, had its last pixel under "Tiếng Việt"; the Arabic state still expected sixteen languages.
     - Cause: a stacked segmented button pulled every row after the first up by 1 px (`margin-block-start: -1px`) to share its border; with nine more rows the sweep stopped where a strip just over the 5 px sliver allowance ended on that shared pixel.
     - Fix and pin: a row after the first draws no top border instead of overlapping (`segmented-button.ts`; `segmented-button.test.ts` holds the rows edge to edge); the tour state counts `VIEWER_LOCALES`.

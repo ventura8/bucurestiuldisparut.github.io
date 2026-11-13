@@ -33,7 +33,7 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  *   messages, which the engine never shows (an issue reaches the visitor as its `validation.*` code), resolve to the admin's
  *   empty stand-in (§120a): about 1 KB gzip of both builds.
  * - The viewer's message catalogues are not in the bundle (`i18nCataloguesPlugin`, scripts/site/src/i18n-catalogues.ts,
- *   DECISIONS-for-review.md §194, which replaced §127a's packing): each of the sixteen languages is
+ *   DECISIONS-for-review.md §195, which replaced §127a's packing): each of the sixteen languages is
  *   dist/i18n/<locale>.json, fetched when the viewer first shows it (`ENGINE_VERSION` is the package's version, which the
  *   release keeps equal: a file of another version is refused).
  * - dist/engine.extras.js is the side-loaded full-size view (docs/ENGINE_API.md → *Side-loaded parts*), built first by

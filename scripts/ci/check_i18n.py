@@ -14,7 +14,7 @@ the public viewer never ships them):
 * every message is non-empty and uses the same `{placeholder}` names as the source (a translated
   placeholder name would stay visible on screen).
 
-The viewer's catalogues, which Claude translates (DECISIONS-for-review.md §194), are also checked for
+The viewer's catalogues, which Claude translates (DECISIONS-for-review.md §195), are also checked for
 what a translation gets wrong (`viewer_problems`; a viewer language still being translated, every check but the
 plural forms):
 

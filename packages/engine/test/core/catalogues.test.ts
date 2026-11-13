@@ -1,4 +1,4 @@
-/** The languages' texts, fetched when first shown (`core/catalogues.ts`, DECISIONS-for-review.md §194). */
+/** The languages' texts, fetched when first shown (`core/catalogues.ts`, DECISIONS-for-review.md §195). */
 import { hasCatalogue, translate } from '@hcm/shared';
 import { VIEWER_CATALOGUES } from '@hcm/shared/viewer-catalogues';
 import { describe, expect, it, vi } from 'vitest';
