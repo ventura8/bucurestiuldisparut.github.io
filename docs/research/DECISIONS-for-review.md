@@ -7187,6 +7187,7 @@ The owner wanted "Follow my device"'s accent to actually work. Chrome and Edge (
 - **226d Not covered:** the generic `/city/` page and the starter kit (no manifest, no worker); iOS gets the `apple-touch-icon` only (Safari's Add to Home Screen, which gives no accent either).
 - **226e Strings:** `app.title`, `app.install`, `app.installHint`, `accent.installFix` in the sixteen viewer languages (the fourteen beyond ro and en written by Claude, not yet back-translated by the local QA); `adminShell.account.installHint`, `adminShell.account.installFix` in ro and en.
 - **Verify:** S-V72-HAPPY-INSTALLABLE, S-V72-BAD-NO-PROMPT, S-V72-BAD-NEVER-STALE, S-A185-HAPPY-INSTALLABLE, S-A185-BAD-NOTHING-KEPT; `packages/shared/test/kit/app-worker.test.ts`, `scripts/site/test/app.test.ts`.
+
 ## 229. Scanned maps shared while their computer works: a sharing thread, pre-seeding, a 20 GB daily cap (M20 §22, the owner 2026-11-14) — APPLIED
 
 `docs/research/M20-import-local.md` §22. Eight series waited for the busy laptop that holds `harti.zip` while the PC and the NUC idled: §20 asked for a copy only with the holder's claim.

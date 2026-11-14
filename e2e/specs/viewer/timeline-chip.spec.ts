@@ -6,9 +6,9 @@ import { fingers, lift, manyYearsManifest, meet, stopCentre, timelineCard, touch
 import { currentHash, hashParam, openTimelineCard, openViewer, serveManifest, t } from '../../support/viewer.js';
 
 /**
- * The timeline's year chip and its finger (behaviour V04; the owner, 2026-11-13): a mouse over a year without its own
- * label shows that year in an M3 plain tooltip above the card, a year of several dates names them too, and a labelled year
- * shows none; a finger dragged along the track selects each year it enters at once (its layer to the front, V15), the
+ * The timeline's year chip and its finger (behaviour V04; the owner, 2026-11-13, 2026-11-14): every year has its label
+ * (56 px apart, the card scrolling), so a mouse shows no chip and a finger scrubbing from the year pill shows the year in
+ * an M3 plain tooltip above the card; a finger dragged along the track selects each year it enters at once (its layer to the front, V15), the
  * chip naming it clear of the finger, and lifting ends the drag; a fast scrub ends on its last year with no other layer
  * left in front; a swipe that starts on the map pans the map and leaves the timeline alone.
  */
@@ -51,6 +51,21 @@ async function expectChipClear(page: Page, chip: Rect): Promise<void> {
     ).toEqual([]);
 }
 
+/**
+ * Puts the year pill on stop `index` with the keyboard and gives its centre: on a scrolling card a finger scrubs only
+ * from the pill (elsewhere it scrolls the card or taps a year).
+ */
+async function pillOn(page: Page, lang: Locale, index: number): Promise<{ readonly x: number; readonly y: number }> {
+    await slider(page, lang).focus();
+    await page.keyboard.press('Home');
+    for (let step = 0; step < index; step += 1) {
+        await page.keyboard.press('ArrowRight');
+    }
+    await expect(slider(page, lang)).toHaveAttribute('aria-valuenow', String(index));
+    const box = await page.locator('hcm-timeline .thumb').boundingBox();
+    return { x: (box?.x ?? 0) + (box?.width ?? 0) / 2, y: (box?.y ?? 0) + (box?.height ?? 0) / 2 };
+}
+
 async function openYears(page: Page, lang: Locale, size: { readonly width: number; readonly height: number }): Promise<void> {
     await page.setViewportSize(size);
     await serveManifest(page, manyYearsManifest(YEARS.slice(1), [1964]));
@@ -60,18 +75,21 @@ async function openYears(page: Page, lang: Locale, size: { readonly width: numbe
 }
 
 test(
-    'A mouse over a year without its label shows it above the timeline, in large type',
+    'A finger scrubbing from the year pill shows the year above the timeline, in large type',
     { tag: '@S-V04-HAPPY-YEAR-CHIP' },
     async ({ page, lang }) => {
         await openYears(page, lang, { width: 768, height: 1024 });
+        const cdp = await fingers(page);
 
-        await page.mouse.move((await stopCentre(page, 1)).x, (await stopCentre(page, 1)).y);
+        await touch(cdp, await pillOn(page, lang, 0), [await stopCentre(page, 1)], false);
+
         await expect.poll(async () => (await yearChip(page))?.text).toBe('1965');
         const chip = (await yearChip(page))?.box ?? { x: 0, y: 0, width: 0, height: 0 };
         expect(chip.y + chip.height, 'above the card').toBeLessThanOrEqual((await timelineCard(page)).y);
         expect(chip.height, 'the owner: bigger, 40 px at least').toBeGreaterThanOrEqual(40);
         await expect(page.locator('hcm-timeline .tip')).toHaveCSS('font-size', '16px');
         await expectChipClear(page, chip);
+        await lift(cdp);
     },
 );
 
@@ -120,7 +138,7 @@ for (const { clear, ...size } of [
             const cdp = await fingers(page);
             const card = await timelineCard(page);
 
-            await touch(cdp, await stopCentre(page, 4), [await stopCentre(page, 5), await stopCentre(page, 6)], false);
+            await touch(cdp, await pillOn(page, lang, 4), [await stopCentre(page, 5), await stopCentre(page, 6)], false);
 
             await expect(slider(page, lang)).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1970' }));
             await expect.poll(async () => (await yearChip(page))?.text).toBe('1970');
@@ -138,15 +156,19 @@ for (const { clear, ...size } of [
         async ({ page, lang }) => {
             await openYears(page, lang, size);
             const cdp = await fingers(page);
+            const from = await pillOn(page, lang, 4);
             const path = [];
             for (const index of [5, 6, 7, 8, 9, 10, 11, 12]) {
                 path.push(await stopCentre(page, index));
             }
 
-            await touch(cdp, await stopCentre(page, 4), path, true);
+            await touch(cdp, from, path, true);
 
-            await expect(slider(page, lang)).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1976' }));
-            await expect.poll(() => hashParam(page, 'layers')).toBe('e2e-1976');
+            // Held at the card's edge the years scroll on under the finger (EdgeScroll), so the last year is read, not fixed.
+            await expect.poll(async () => Number(await slider(page, lang).getAttribute('aria-valuenow'))).toBeGreaterThanOrEqual(12);
+            const last = String(1964 + Number(await slider(page, lang).getAttribute('aria-valuenow')));
+            await expect(slider(page, lang)).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: last }));
+            await expect.poll(() => hashParam(page, 'layers')).toBe(`e2e-${last}`);
             expect(await yearChip(page)).toBeNull();
 
             const before = await currentHash(page);
@@ -158,7 +180,7 @@ for (const { clear, ...size } of [
                 true,
             );
             await expect.poll(async () => (await currentHash(page)).split('&')[0]).not.toBe(before.split('&')[0]);
-            await expect(slider(page, lang)).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1976' }));
+            await expect(slider(page, lang)).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: last }));
         },
     );
 }
