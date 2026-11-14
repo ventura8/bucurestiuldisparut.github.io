@@ -190,9 +190,69 @@ function iconLink(href: string, media: string): IconLink {
     };
 }
 
-describe('the generic city page', () => {
-    const before = 'https://storage.googleapis.com/demo-hcm-public/cities/';
+const before = 'https://storage.googleapis.com/demo-hcm-public/cities/';
 
+/** Lets the icon script's manifest read settle (a few promise turns, no timer). */
+async function settle(): Promise<void> {
+    for (let turn = 0; turn < 6; turn += 1) {
+        await Promise.resolve();
+    }
+}
+
+/**
+ * A page whose icon probes load (the names in `loads`: the city has those files) or never do (a 404); its manifest
+ * says `ownIcon` when `icon-own-32.png` is among them, and answers `manifest` (`ok`, a 404 or a network failure).
+ */
+function iconPage(
+    loads: readonly string[],
+    manifest: 'ok' | '404' | 'offline' = 'ok',
+): CityIconScope & {
+    readonly icons: IconLink[];
+    readonly appended: { rel: string; href: string }[];
+    readonly probed: string[];
+    readonly fetched: string[];
+} {
+    const icons = [iconLink('data:image/png;base64,light', 'light'), iconLink('data:image/png;base64,dark', 'dark')];
+    const appended: { rel: string; href: string }[] = [];
+    const probed: string[] = [];
+    const fetched: string[] = [];
+    const ownIcon = loads.includes('icon-own-32.png') ? true : undefined;
+    class Probe {
+        onload: (() => void) | null = null;
+        set src(value: string) {
+            probed.push(value);
+            if (loads.some((name) => value.endsWith(name))) {
+                this.onload?.();
+            }
+        }
+    }
+    return {
+        icons,
+        appended,
+        probed,
+        fetched,
+        fetch: (address: string) => {
+            fetched.push(address);
+            if (manifest === 'offline') {
+                return Promise.reject(new TypeError('Failed to fetch'));
+            }
+            return Promise.resolve({ ok: manifest === 'ok', json: () => Promise.resolve({ city: { id: 'bacau', ownIcon } }) });
+        },
+        HistoricCityMapConfig: { cityId: 'bacau', manifestUrl: `${before}bacau/manifest.json` },
+        Image: Probe,
+        document: {
+            querySelectorAll: (selector) => (selector === 'link[rel="icon"]' ? icons : []),
+            createElement: () => ({ rel: '', href: '' }),
+            head: {
+                append: (node) => {
+                    appended.push(node);
+                },
+            },
+        },
+    };
+}
+
+describe('the generic city page', () => {
     it.each([
         ['/bacau/', 'bacau'],
         ['/cluj-napoca', 'cluj-napoca'],
@@ -208,41 +268,11 @@ describe('the generic city page', () => {
         expect(scope.HistoricCityMapConfig).toEqual({ cityId, manifestUrl: `${before}${cityId}/manifest.json` });
     });
 
-    /** A page whose icon probes load (the names in `loads`: the city has those files) or never do (a 404). */
-    function iconPage(
-        loads: readonly string[],
-    ): CityIconScope & { readonly icons: IconLink[]; readonly appended: { rel: string; href: string }[] } {
-        const icons = [iconLink('data:image/png;base64,light', 'light'), iconLink('data:image/png;base64,dark', 'dark')];
-        const appended: { rel: string; href: string }[] = [];
-        class Probe {
-            onload: (() => void) | null = null;
-            set src(value: string) {
-                if (loads.some((name) => value.endsWith(name))) {
-                    this.onload?.();
-                }
-            }
-        }
-        return {
-            icons,
-            appended,
-            HistoricCityMapConfig: { cityId: 'bacau', manifestUrl: `${before}bacau/manifest.json` },
-            Image: Probe,
-            document: {
-                querySelectorAll: (selector) => (selector === 'link[rel="icon"]' ? icons : []),
-                createElement: () => ({ rel: '', href: '' }),
-                head: {
-                    append: (node) => {
-                        appended.push(node);
-                    },
-                },
-            },
-        };
-    }
-
-    it('happyPath_theCitysOwnIconReplacesTheDefaultOnceItLoads @S-V54-HAPPY', () => {
+    it('happyPath_theCitysOwnIconReplacesTheDefaultWhenItsManifestSaysSo @S-V54-HAPPY', async () => {
         const page = iconPage(['icon-own-32.png', 'icon-180.png']);
 
         showCityIcon(page, before);
+        await settle();
 
         // The city's own icon in every theme: one link, without a scheme.
         expect(page.icons.map((icon) => [icon.href, icon.media, icon.removed])).toEqual([
@@ -252,10 +282,11 @@ describe('the generic city page', () => {
         expect(page.appended).toEqual([{ rel: 'apple-touch-icon', href: `${before}bacau/icon-180.png` }]);
     });
 
-    it('badPath_aCityWithoutAnIconKeepsTheDefault @S-V54-BAD-MISSING', () => {
+    it('badPath_aCityWithoutAnIconKeepsTheDefault @S-V54-BAD-MISSING', async () => {
         const page = iconPage([]);
 
         showCityIcon(page, before);
+        await settle();
 
         expect(page.icons.map((icon) => [icon.href, icon.media, icon.removed])).toEqual([
             ['data:image/png;base64,light', 'light', false],
@@ -264,10 +295,29 @@ describe('the generic city page', () => {
         expect(page.appended).toEqual([]);
     });
 
-    it('happyPath_aCityOnTheDefaultKeepsTheThemedTabIconAndGivesThePhoneItsOwnColour @S-V55-HAPPY', () => {
+    it.each(['ok', '404', 'offline'] as const)(
+        'badPath_aCityOnTheDefaultNeverAsksForTheMissingOwnIcon_manifest_%s @S-V54-BAD-NOREQUEST',
+        async (manifest) => {
+            const page = iconPage(['icon-180.png'], manifest);
+
+            showCityIcon(page, before);
+            await settle();
+
+            // A request for a file the bucket lacks is blocked by the browser (ORB) and logged as an error.
+            expect(page.fetched).toEqual([`${before}bacau/manifest.json`]);
+            expect(page.probed).toEqual([`${before}bacau/icon-180.png`]);
+            expect(page.icons.map((icon) => [icon.href, icon.removed])).toEqual([
+                ['data:image/png;base64,light', false],
+                ['data:image/png;base64,dark', false],
+            ]);
+        },
+    );
+
+    it('happyPath_aCityOnTheDefaultKeepsTheThemedTabIconAndGivesThePhoneItsOwnColour @S-V55-HAPPY', async () => {
         const page = iconPage(['icon-180.png']);
 
         showCityIcon(page, before);
+        await settle();
 
         expect(page.icons.map((icon) => [icon.href, icon.removed])).toEqual([
             ['data:image/png;base64,light', false],
@@ -283,6 +333,7 @@ describe('the generic city page', () => {
         showCityIcon(bare, before);
 
         expect(page.appended).toEqual([{ rel: 'apple-touch-icon', href: `${before}/icon-180.png` }]);
+        expect(page.fetched).toEqual([]);
     });
 
     it('happyPath_itChecksTheSharedCityIdPatternAndHostingRewritesExactlyThoseIds', () => {

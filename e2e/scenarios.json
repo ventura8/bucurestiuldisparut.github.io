@@ -20118,6 +20118,17 @@
             "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/specs/viewer/hosting.spec.ts, scripts/site/test/hosting-pages.test.ts."
         },
         {
+            "id": "S-V54-BAD-NOREQUEST",
+            "behaviour": "V54",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A city on the default icon never asks for an own icon it does not have",
+            "asserts": "the page reads the city's manifest and asks for icon-own-32.png only when city.ownIcon is true (an editor's upload); a city on the default, a manifest 404 or no network asks for nothing more, so no request is blocked by the browser (ORB) and the default stays",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Live bug of 2026-11-14 (Bucharest: icon-own-32.png 404, ERR_BLOCKED_BY_ORB; docs/LESSONS.md). Test: e2e/specs/viewer/hosting.spec.ts, scripts/site/test/hosting-pages.test.ts, functions/test/publish/assemble.test.ts."
+        },
+        {
             "id": "S-A101-HAPPY-DEFAULT",
             "behaviour": "A101",
             "area": "admin",

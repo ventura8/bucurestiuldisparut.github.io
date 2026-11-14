@@ -106,6 +106,12 @@ function sameValue(a: unknown, b: unknown): boolean {
     return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 }
 
+/** The tab icon's source (an upload or the default) decides the manifest's `city.ownIcon`; its stamps do not. */
+function iconSourceChanged(before: RawDocument, after: RawDocument): boolean {
+    const source = (document: RawDocument): unknown => (document?.['icon'] as { readonly source?: unknown } | undefined)?.source;
+    return source(before) !== source(after);
+}
+
 /**
  * True when the write can change the manifest: the document enters or leaves it (published, created or deleted), or
  * it is listed and one of its `MANIFEST_FIELDS` changed.
@@ -115,5 +121,7 @@ export function needsManifestBuild(entity: HistoryEntity, before: RawDocument, a
     if (isListed(entity, before) !== listed) {
         return true;
     }
-    return listed && MANIFEST_FIELDS[entity].some((field) => !sameValue(before?.[field], after?.[field]));
+    return (
+        listed && (MANIFEST_FIELDS[entity].some((field) => !sameValue(before?.[field], after?.[field])) || iconSourceChanged(before, after))
+    );
 }

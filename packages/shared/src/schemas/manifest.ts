@@ -113,6 +113,8 @@ export const citySchema = z
         mapbox: z.strictObject({ publicToken: mapboxPublicTokenSchema }),
         analytics: analyticsSchema,
         engine: z.strictObject({ minVersion: versionSchema.optional() }).optional(),
+        /** True when an editor uploaded the city's tab icon, so `icon-own-32.png` exists (`docs/ENGINE_API.md` → *The page's tab icon*). */
+        ownIcon: z.literal(true).optional(),
     })
     .refine((city) => city.minZoom <= city.zoom && city.zoom <= city.maxZoom, coded('validation.zoomRange', ['zoom']))
     .refine((city) => bboxContains(city.bounds, city.center), coded('validation.centerOutside', ['center']));

@@ -72,7 +72,8 @@ test(
 async function iconLinks(page: Page): Promise<{ readonly icon: string | null; readonly touch: string | null }> {
     return page.evaluate(() => ({
         icon: document.querySelector('link[rel="icon"]')?.getAttribute('href') ?? null,
-        touch: document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href') ?? null,
+        // The last home-screen link wins: the page's own app icon comes first, the city's is appended after it.
+        touch: [...document.querySelectorAll('link[rel="apple-touch-icon"]')].at(-1)?.getAttribute('href') ?? null,
     }));
 }
 
@@ -168,7 +169,7 @@ test('Before Publish the map the root says the map is being set up', { tag: '@S-
 
 test(
     'A city that is not published, or a path that is no city, is said plainly',
-    { tag: ['@S-V30-BAD-UNKNOWN-CITY', '@S-V54-BAD-MISSING'] },
+    { tag: ['@S-V30-BAD-UNKNOWN-CITY', '@S-V54-BAD-MISSING', '@S-V54-BAD-NOREQUEST'] },
     async ({ page, lang, consoleErrors, instrumentation }) => {
         const asked = await bucketWithout(page, UNPUBLISHED_CITY);
 
@@ -176,21 +177,23 @@ test(
 
         await expect(page.getByRole('alert')).toContainText(t(lang, 'error.manifest.notFound'));
         expect((await instrumentation.read(page)).mapsCreated).toBe(0);
-        // The page also looks for the city's own tab icon and its home-screen icon (V54; images, which the browser may ask
-        // after the manifest): none, so the default stays, and each 404 is one console line.
+        // The page also looks for the city's home-screen icon (V54; an image, which the browser may ask after the
+        // manifest), but never for its own tab icon: only a manifest saying `ownIcon` has one, and a missing image is
+        // blocked by the browser as an opaque error. Each 404 is one console line.
         await expect
-            .poll(() => [...asked].sort((a, b) => a.localeCompare(b)))
-            .toEqual(['icon-180.png', 'icon-own-32.png', 'manifest.json'].map((name) => `${bucketFolder(UNPUBLISHED_CITY)}${name}`));
+            .poll(() => [...new Set(asked)].sort((a, b) => a.localeCompare(b)))
+            .toEqual(['icon-180.png', 'manifest.json'].map((name) => `${bucketFolder(UNPUBLISHED_CITY)}${name}`));
         const errors: string[] = [];
         await expect
             .poll(() => {
                 errors.push(...consoleErrors.take());
                 return errors.length;
             })
-            .toBe(3);
-        expect(errors).toEqual([expect.stringContaining('404'), expect.stringContaining('404'), expect.stringContaining('404')]);
-        // The default, inlined (and drawn in the page's theme): nothing of the bucket's.
-        expect(await iconLinks(page)).toEqual({ icon: expect.stringMatching(/^data:image\/png;base64,/), touch: null });
+            .toBe(asked.length);
+        expect(errors.every((line) => line.includes('404'))).toBe(true);
+        expect(asked.some((url) => url.endsWith('icon-own-32.png'))).toBe(false);
+        // The default, inlined (and drawn in the page's theme), and the page's own app icon: nothing of the bucket's.
+        expect(await iconLinks(page)).toEqual({ icon: expect.stringMatching(/^data:image\/png;base64,/), touch: 'app-icon-192.png' });
 
         const answer = await page.goto(hostingUrl('/Not_A_City/'));
 

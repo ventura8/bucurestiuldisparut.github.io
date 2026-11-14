@@ -120,6 +120,11 @@ function cityView(city: CityDoc) {
     return { center, zoom, minZoom, maxZoom, bounds };
 }
 
+/** The manifest's `city.ownIcon`: set only while the tab icon is an editor's upload (`icon-own-32.png` exists). */
+function ownIconFlag(city: CityContent['city']): true | undefined {
+    return city.icon?.source === 'custom' ? true : undefined;
+}
+
 /**
  * The manifest's `city`: the public token, theme tokens and analytics ids from the city document, the crash endpoint
  * from the runtime configuration (crash reports work before analytics is set up). A city without About, privacy
@@ -139,6 +144,7 @@ function cityEntry(content: CityContent, errorEndpoint: string): unknown {
         mapbox: { publicToken: city.mapbox?.publicToken },
         analytics: { ...city.analytics, errorEndpoint },
         engine: city.engine,
+        ownIcon: ownIconFlag(city),
     };
 }
 

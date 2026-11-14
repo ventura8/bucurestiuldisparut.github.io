@@ -431,3 +431,16 @@ describe('assembleManifest: M27 disappeared streets (docs/research/M27-lost-stre
         expect(manifest.poiCategories?.[0]).not.toHaveProperty('pinned', true);
     });
 });
+
+describe('assembleManifest: the tab icon flag', () => {
+    it.each([
+        ['an uploaded icon says so @S-V54-HAPPY', 'custom', true],
+        ['a default icon says nothing @S-V54-BAD-NOREQUEST', 'default', undefined],
+    ] as const)('happyPath_ownIcon_%s', (_name, source, ownIcon) => {
+        const icon = { source, url: 'https://example.test/icon-180.png', sha256: 'a'.repeat(64), updatedBy: 'u-1' };
+        const manifest = manifestOf(assembleManifest(content({ city: { icon } as Partial<CityDoc> }), TEST_CONFIG.errorEndpoint));
+
+        expect(validateManifest(manifest).ok).toBe(true);
+        expect(manifest.city.ownIcon).toBe(ownIcon);
+    });
+});

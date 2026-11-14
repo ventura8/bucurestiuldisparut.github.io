@@ -43,7 +43,7 @@ async function publishedManifest(route: Route, source: BucketCity): Promise<void
     const manifest = (await response.json()) as { city: Record<string, unknown> };
     await route.fulfill({
         response,
-        json: { ...manifest, city: { ...manifest.city, id: source.city } },
+        json: { ...manifest, city: { ...manifest.city, id: source.city, ownIcon: true } },
         headers: { 'access-control-allow-origin': '*' },
     });
 }
@@ -61,7 +61,8 @@ export async function serveCityIcons(page: Page, folder: string): Promise<void> 
 }
 
 /**
- * Answers the public bucket's folder of `source.city` as the admin's publish leaves it: the manifest and, relative to it,
+ * Answers the public bucket's folder of `source.city` as the admin's publish leaves it, for a city whose editor uploaded
+ * its tab icon (the manifest's `city.ownIcon`): the manifest and, relative to it,
  * the photos, and the city's tab icon (behaviour V54: the generic city page fetches it to show it). Returns the addresses
  * asked, in order, the icon's left out.
  */

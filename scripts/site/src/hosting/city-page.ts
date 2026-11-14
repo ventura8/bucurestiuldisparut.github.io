@@ -52,12 +52,14 @@ export interface CityIconScope {
         readonly head: { append(node: { rel: string; href: string }): void };
     };
     readonly Image: new () => { onload: (() => void) | null; src: string };
+    readonly fetch: (address: string) => Promise<{ readonly ok: boolean; json(): Promise<unknown> }>;
 }
 
 /**
  * The city's own tab icon (`docs/ENGINE_API.md` → *The page's tab icon*), from the public bucket's folder of the city
- * (`before + id + /`, the files `cities.setIcon` and the manifest's build write). Once an editor's uploaded icon has
- * loaded (`icon-own-32.png`, which only an upload has), the tab shows it in every theme: the first icon link takes its
+ * (`before + id + /`, the files `cities.setIcon` and the manifest's build write). When the city's manifest says it has an
+ * editor's uploaded icon (`city.ownIcon`: only then does `icon-own-32.png` exist, so a city on the default never asks
+ * for a missing file, which the browser blocks as an opaque error), the tab shows it in every theme: the first icon link takes its
  * address and loses its `media`, the others go, and `paintTabIcon` leaves a link that is no `data:` address alone. A
  * phone's home screen gets the city's 180 px icon (`icon-180.png`: the upload, or the default in the city's colour) once
  * that has loaded. A city without either keeps the page's default. Self-contained, like `configureCityPage`, after
@@ -71,7 +73,8 @@ export function showCityIcon(scope: CityIconScope, before: string): void {
         probe.onload = show;
         probe.src = address;
     };
-    whenLoaded(`${folder}icon-own-32.png`, () => {
+    const manifestUrl = (config as { readonly manifestUrl?: unknown } | undefined)?.manifestUrl;
+    const showOwn = (): void => {
         Array.from(scope.document.querySelectorAll('link[rel="icon"]')).forEach((link, index) => {
             if (index > 0) {
                 link.remove();
@@ -80,7 +83,18 @@ export function showCityIcon(scope: CityIconScope, before: string): void {
             link.href = `${folder}icon-own-32.png`;
             link.removeAttribute('media');
         });
-    });
+    };
+    if (typeof manifestUrl === 'string') {
+        scope
+            .fetch(manifestUrl)
+            .then(async (response) => (response.ok ? response.json() : undefined))
+            .then((manifest) => {
+                if ((manifest as { readonly city?: { readonly ownIcon?: unknown } } | undefined)?.city?.ownIcon === true) {
+                    showOwn();
+                }
+            })
+            .catch(() => undefined);
+    }
     whenLoaded(`${folder}icon-180.png`, () => {
         const touch = scope.document.createElement('link');
         touch.rel = 'apple-touch-icon';

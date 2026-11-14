@@ -6,6 +6,18 @@ import { MANIFEST_FIELDS, needsManifestBuild } from '../../src/publish/fields.js
 const published = { published: true, title: { ro: 'Titlu', en: 'Title' }, location: { lat: 44.4, lng: 26.1 }, processing: 'done' };
 
 describe('needsManifestBuild', () => {
+    it('happyPath_anUploadedTabIconRebuildsSoTheManifestSaysOwnIcon @S-V54-HAPPY', () => {
+        const city = { published: true, name: { ro: 'B', en: 'B' } };
+        expect(needsManifestBuild('city', { ...city, icon: { source: 'default' } }, { ...city, icon: { source: 'custom' } })).toBe(true);
+        expect(
+            needsManifestBuild(
+                'city',
+                { ...city, icon: { source: 'default', updatedAt: 1 } },
+                { ...city, icon: { source: 'default', updatedAt: 2 } },
+            ),
+        ).toBe(false);
+    });
+
     it.each([
         ['publishing', { ...published, published: false }, published],
         ['unpublishing', published, { ...published, published: false }],
