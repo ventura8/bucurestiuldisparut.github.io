@@ -266,6 +266,6 @@ def test_bad_path_a_crash_mid_checkpoint_write_leaves_the_old_checkpoint_intact(
     with pytest.raises(OSError, match="power cut"):
         Checkpoint(RAW, "session-2", 2).save(ctx)
 
-    assert json.loads(local.read_text(encoding="utf-8")) == {"path": RAW, "session": "session-1", "waits": 1}
+    assert json.loads(local.read_text(encoding="utf-8")) == {"path": RAW, "session": "session-1", "waits": 1, "size": None}
     assert [path.name for path in tmp_path.iterdir()] == ["fetch.checkpoint.json"]
     assert Checkpoint.load(ctx) == Checkpoint(RAW, "session-1", 1)
