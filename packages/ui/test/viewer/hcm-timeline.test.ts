@@ -373,7 +373,7 @@ describe('<hcm-timeline> many years', () => {
         },
     );
 
-    it('happyPath_aDragKeepsTheCardStillAndTheReleaseCentresTheYear', async () => {
+    it('happyPath_aDragKeepsTheCardStillAlsoAfterRelease', async () => {
         // Moving the card while a drag is on would move the track under the finger, and the next move would select a later year.
         const element = await timeline({ stops: VERY_MANY, value: 1924 }, { inline: 320, block: 300 });
         const track = shadowQuery(element, '.track');
@@ -389,7 +389,10 @@ describe('<hcm-timeline> many years', () => {
 
         pointer(window, 'pointerup', view.right - 50, view.top + 30);
         await element.updateComplete;
-        await expect.poll(() => scroller(element).scrollLeft).toBeGreaterThan(0);
+        await frame();
+        // The owner, 2026-11-14: centring the year on release panned the bar under the pill (lesson 716).
+        expect(scroller(element).scrollLeft, 'no scroll after release').toBe(0);
+        expect(element.value).not.toBe(1924);
     });
 });
 

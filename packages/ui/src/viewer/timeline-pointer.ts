@@ -6,8 +6,11 @@
  * track a finger elsewhere than on the thumb may scroll the card, so it selects only as a tap, the chip shown while down.
  * Selections during a press are live (`select`, coalesced by the timeline to one event per frame); its end `settle`s them,
  * and only a press the visitor lifted (not a cancelled one) may open the date menu of a year with several dates (V13).
+ * The thumb (the year pill) is never a pan (the owner, 2026-11-14, lesson in `docs/LESSONS.md`): pressed by any pointer it
+ * moves along the years, the card scrolling on only while it is held at an edge (`EdgeScroll`); a mouse pan flings on after
+ * release (`fling`) until it stops or a new press stops it.
  */
-import { startPan } from './timeline-pan.js';
+import { EdgeScroll, startPan } from './timeline-pan.js';
 import { startScrub, type PeekPlace } from './timeline-scrub.js';
 
 /** Px a finger may move on a scrolling track and still tap a year (beyond it the browser scrolls). */
@@ -25,6 +28,7 @@ export function trackRatio(
     return Number.isFinite(ratio) ? Math.min(1, Math.max(0, ratio)) : 0;
 }
 
+/** The press is on the thumb (the year pill) or a part of it. */
 function onThumb(event: Event): boolean {
     return event.target instanceof Element && event.target.closest('.thumb') !== null;
 }
@@ -61,6 +65,8 @@ export class TimelinePointer {
     readonly #host: TimelinePointerHost;
     /** Removes the window listeners of the current press (none between presses). */
     #stop: () => void = () => undefined;
+    /** Stops the fling of the last pan, if it still moves. */
+    #fling: () => void = () => undefined;
 
     constructor(host: TimelinePointerHost) {
         this.#host = host;
@@ -71,6 +77,7 @@ export class TimelinePointer {
         if (event.button !== 0) {
             return;
         }
+        this.#fling();
         this.end();
         const track = event.currentTarget as HTMLElement;
         if (event.pointerType === 'touch') {
@@ -103,7 +110,20 @@ export class TimelinePointer {
             onEnd: (released) => {
                 this.end(released);
             },
+            onFling: (stop) => {
+                this.#fling = stop;
+            },
         });
+    }
+
+    /** On a scrolling track, a held thumb near an edge scrolls the years on and re-selects under it; none otherwise. */
+    #edges(track: HTMLElement): EdgeScroll | null {
+        const scroller = this.#host.scrolls() ? this.#host.scroller() : null;
+        return scroller === null
+            ? null
+            : new EdgeScroll(scroller, this.#host.vertical(), (event) => {
+                  this.#host.select(this.#indexAt(track, event));
+              });
     }
 
     /** A finger: a tap on a scrolling track elsewhere than on the thumb (the card may scroll), else a scrub. */
@@ -138,9 +158,13 @@ export class TimelinePointer {
 
     /** A finger along the track: the chip names the year under it, lifting selects it. */
     #scrub(track: HTMLElement, down: PointerEvent): void {
-        this.#stop = startScrub(down, {
+        const edges = this.#edges(track);
+        const stop = startScrub(down, {
             vertical: this.#host.vertical(),
-            indexAt: (event) => this.#indexAt(track, event),
+            indexAt: (event) => {
+                edges?.update(event);
+                return this.#indexAt(track, event);
+            },
             onIndex: (index) => {
                 this.#host.touchTip(index);
             },
@@ -149,11 +173,16 @@ export class TimelinePointer {
             },
             peek: (event, lifted) => this.#host.peek(event, lifted),
             onEnd: (released) => {
+                edges?.stop();
                 this.#stop = () => undefined;
                 this.end(released);
                 this.#host.focus();
             },
         });
+        this.#stop = () => {
+            edges?.stop();
+            stop();
+        };
     }
 
     /** A finger lifted within `TAP_SLOP_PX` of where it went down selects there; a scroll (the browser's cancel) does not. */
@@ -182,7 +211,9 @@ export class TimelinePointer {
 
     /** A mouse or a pen: selects under it from the press until release. */
     #drag(track: HTMLElement, event: PointerEvent): void {
+        const edges = this.#edges(track);
         const move = (moveEvent: PointerEvent): void => {
+            edges?.update(moveEvent);
             this.#host.select(this.#indexAt(track, moveEvent));
         };
         const up = (): void => {
@@ -195,6 +226,7 @@ export class TimelinePointer {
         window.addEventListener('pointerup', up);
         window.addEventListener('pointercancel', cancel);
         this.#stop = () => {
+            edges?.stop();
             window.removeEventListener('pointermove', move);
             window.removeEventListener('pointerup', up);
             window.removeEventListener('pointercancel', cancel);

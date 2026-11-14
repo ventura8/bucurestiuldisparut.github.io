@@ -67,6 +67,11 @@ function edgesBeyond(scroller: HTMLElement, vertical: boolean): { readonly start
     return { start: along > 1, end: along < extent - 1 };
 }
 
+/** A change that may move the selected year away from the card's centre. */
+function moves(changed: PropertyValues): boolean {
+    return changed.has('value') || changed.has('density') || changed.has('dragging');
+}
+
 function percentText(percent: number): string {
     return `${String(percent)}%`;
 }
@@ -123,6 +128,7 @@ export class HcmTimeline extends LitElement {
         count: () => this.stops.length,
         select: (index) => {
             this.#select(index, true);
+            this.#pointerStop = this.value;
         },
         settle: (released) => {
             this.#settle(released);
@@ -200,9 +206,11 @@ export class HcmTimeline extends LitElement {
         }
     }
 
+    /** A year a pointer chose stays where it is, never centred (centring it panned the bar under the pill, lesson 716). */
+    #pointerStop: TimelineStop | undefined = undefined;
+
     protected override updated(changed: PropertyValues<this>): void {
-        const moved = changed.has('value') || changed.has('density') || changed.has('dragging');
-        if (moved && !this.dragging) {
+        if (moves(changed) && !this.dragging && this.value !== this.#pointerStop) {
             this.#reveal();
         }
         this.#fadeEdges();
@@ -458,6 +466,7 @@ export class HcmTimeline extends LitElement {
             return;
         }
         event.preventDefault();
+        this.#pointerStop = undefined;
         const turned = /^Arrow[LR]/.test(event.key) && this.#rtl();
         this.#select(stopIndex(this.stops, this.value) + (turned ? -step : step));
         this.#hintAt(stopIndex(this.stops, this.value));

@@ -4200,3 +4200,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the owner, live (Firestore: the eight jobs `waitReason: 'archive-copy'`, the holder `busy` and `quiet`); the unit tests of §20 drove the copy through an idle holder's claim only.
     - Fix and pin: a sharing thread on the holder (`worker/sharing.py`) asks `worker.archiveCopy` `wanted` on its own, also while it runs a job, and pre-seeds queued series before any computer hands one back, under the governor's rate and a 20 GB daily cap, its progress on the Computers card (M20 §22). S-A120-HAPPY-ARCHIVE-SHARE, S-A120-BAD-ARCHIVE-SHARE-DAY, S-P20-HAPPY-ARCHIVE-SHARE, S-A143-HAPPY-SHARING.
     - **A duty only one machine can do must not ride on that machine's request for work: give it its own channel, so being busy or polite never blocks the others.**
+
+716. **Dragging the timeline's year pill also moved the bar.**
+    - Seen: 2026-11-14, the owner with a mouse and a finger on a scrolling timeline: the pill followed the drag, then the years jumped under it on release.
+    - Cause: `hcm-timeline.ts` centred the selected year after every change once a press ended (`#reveal` on `dragging` going false and on a scrub's live values), so a pointer's choice panned the bar; nothing scrolled on while the pill was held at an edge.
+    - Fix and pin: a year a pointer chose is never centred (only the keyboard and a value from outside are); the pill held near an edge scrolls the card on (`EdgeScroll`, faster deeper in) and selects under it. The mouse pan also flings on after release, none under reduced motion. `timeline-fling.test.ts`, S-V04-HAPPY-PILL-DRAG, S-V04-HAPPY-PAN-FLING, S-V04-BAD-PAN-REDUCED.
+    - **A selection made by dragging must never move what is under the pointer; auto-scroll only from an edge.**

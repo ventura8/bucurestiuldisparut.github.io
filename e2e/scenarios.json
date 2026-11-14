@@ -1825,6 +1825,39 @@
             "notes": "The drag threshold keeps a click a click (timeline-pan.ts PAN_SLOP_PX); unit tests in packages/ui/test/viewer/hcm-timeline-pan.test.ts."
         },
         {
+            "id": "S-V04-HAPPY-PILL-DRAG",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A mouse drag of the year pill selects the years under it and never pans the bar",
+            "asserts": "with sixty-two stops at 768x1024 and Home selected, dragging the pill 120 px selects a later year and leaves the card's scroll unchanged; held at the card's right edge the card scrolls on more than 40 px and a later year is selected",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14: dragging the pill also panned the bar (lesson 716). packages/ui/src/viewer/timeline-pan.ts (fling, EdgeScroll), timeline-pointer.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/timeline-fling.test.ts."
+        },
+        {
+            "id": "S-V04-HAPPY-PAN-FLING",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A mouse fling keeps the years moving after release",
+            "asserts": "without reduced motion a quick 200 px mouse pan (ten moves) carries the card on past the 200 px the drag moved it (more than 205 px); no year is selected",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14: the mouse pan has a finger's inertia. packages/ui/src/viewer/timeline-pan.ts (fling, EdgeScroll), timeline-pointer.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/timeline-fling.test.ts."
+        },
+        {
+            "id": "S-V04-BAD-PAN-REDUCED",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "With reduced motion a mouse pan stops at once on release",
+            "asserts": "with prefers-reduced-motion reduce, the card's scroll after twenty frames equals its scroll at release",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "No inertia under reduced motion. packages/ui/src/viewer/timeline-pan.ts (fling, EdgeScroll), timeline-pointer.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/timeline-fling.test.ts."
+        },
+        {
             "id": "S-V04-BAD-MANY-YEARS-FIT",
             "behaviour": "V04",
             "area": "viewer",

@@ -33,7 +33,9 @@ async function scrollingCard(page: Page, lang: 'ro' | 'en') {
     if (box === null) {
         throw new Error('the timeline card has no box');
     }
-    return { thumb, y: box.y + box.height - 16, box };
+    // On the track itself: since the 56 px labels (198edc45) the scroller's bottom 16 px lie below it.
+    const track = await page.locator('hcm-timeline .track').boundingBox();
+    return { thumb, y: track === null ? box.y + box.height / 2 : track.y + track.height / 2, box };
 }
 
 function scrollLeft(page: Page): Promise<number> {
@@ -85,3 +87,89 @@ test(
         await expect(thumb).not.toHaveAttribute('aria-valuenow', '0');
     },
 );
+
+async function thumbCentre(page: Page): Promise<{ readonly x: number; readonly y: number }> {
+    const box = await page.locator('hcm-timeline .thumb').boundingBox();
+    if (box === null) {
+        throw new Error('the thumb has no box');
+    }
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+test(
+    'A mouse drag of the year pill selects the years under it and never pans the bar',
+    { tag: '@S-V04-HAPPY-PILL-DRAG' },
+    async ({ page, lang }) => {
+        const { thumb, box } = await scrollingCard(page, lang);
+        await thumb.focus();
+        await thumb.press('Home');
+        const before = await scrollLeft(page);
+        const pill = await thumbCentre(page);
+
+        await page.mouse.move(pill.x, pill.y);
+        await page.mouse.down();
+        await page.mouse.move(pill.x + 120, pill.y, { steps: 6 });
+        await page.mouse.up();
+
+        await expect(thumb).not.toHaveAttribute('aria-valuenow', '0');
+        expect(Math.abs((await scrollLeft(page)) - before), 'the bar stayed where it was').toBeLessThan(2);
+
+        const held = await thumbCentre(page);
+        const scrolled = await scrollLeft(page);
+        const valueBefore = Number(await thumb.getAttribute('aria-valuenow'));
+        await page.mouse.move(held.x, held.y);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width - 4, held.y, { steps: 6 });
+        await expect.poll(() => scrollLeft(page), 'held at the edge, the bar scrolls on').toBeGreaterThan(scrolled + 40);
+        await page.mouse.up();
+        expect(Number(await thumb.getAttribute('aria-valuenow'))).toBeGreaterThan(valueBefore);
+    },
+);
+
+async function fling(page: Page, y: number, start: number): Promise<number> {
+    await page.mouse.move(start, y);
+    await page.mouse.down();
+    // A quick throw: the moves follow each other as fast as the browser takes them.
+    await page.mouse.move(start - 200, y, { steps: 10 });
+    await page.mouse.up();
+    return scrollLeft(page);
+}
+
+test('A mouse fling keeps the years moving after release', { tag: '@S-V04-HAPPY-PAN-FLING' }, async ({ page, lang }) => {
+    const { thumb, y, box } = await scrollingCard(page, lang);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await thumb.focus();
+    await thumb.press('Home');
+
+    const released = await fling(page, y, box.x + box.width * 0.8);
+
+    // The drag itself moves the years exactly 200 px; the fling carries them on past that (the reduced-motion row stays at 200).
+    expect(released).toBeGreaterThanOrEqual(200);
+    await expect.poll(() => scrollLeft(page), 'the fling carried the years on after release').toBeGreaterThan(205);
+    await expect(thumb).toHaveAttribute('aria-valuenow', '0');
+});
+
+test('With reduced motion a mouse pan stops at once on release', { tag: '@S-V04-BAD-PAN-REDUCED' }, async ({ page, lang }) => {
+    const { thumb, y, box } = await scrollingCard(page, lang);
+    await thumb.focus();
+    await thumb.press('Home');
+
+    const still = await fling(page, y, box.x + box.width * 0.8);
+    await page.evaluate(
+        () =>
+            new Promise((resolve) => {
+                let left = 20;
+                const next = (): void => {
+                    left -= 1;
+                    if (left > 0) {
+                        requestAnimationFrame(next);
+                    } else {
+                        resolve(null);
+                    }
+                };
+                requestAnimationFrame(next);
+            }),
+    );
+
+    expect(await scrollLeft(page)).toBe(still);
+});
