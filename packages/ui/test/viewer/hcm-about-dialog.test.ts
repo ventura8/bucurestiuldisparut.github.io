@@ -246,3 +246,36 @@ describe('<hcm-about-dialog>: the statement and the help panel', () => {
         expect(document.activeElement).toBe(before);
     });
 });
+
+describe('<hcm-about-dialog>: the device accent note', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmAboutDialog();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+        document.documentElement.style.removeProperty('--hcm-device-accent');
+    });
+
+    it('happyPath_aSharedAccentNeedsNoNote', async () => {
+        document.documentElement.style.setProperty('--hcm-device-accent', '#1e8e3e');
+        const element = await about({ mode: 'settings', locale: 'en' });
+
+        expect(shadowQueryAll(element, '.accent-note')).toEqual([]);
+    });
+
+    it('badPath_aBrowserThatHidesTheAccentSaysSoAndWhatShows', async () => {
+        // The test browser is a Chromium tab: Chrome does not give a tab the device's accent.
+        const element = await about({ mode: 'settings', locale: 'en' });
+
+        expect(shadowQuery(element, '.accent-note').textContent).toContain("This browser does not share your device's accent colour");
+        element.accent = 'map';
+        await element.updateComplete;
+        expect(shadowQueryAll(element, '.accent-note')).toEqual([]);
+        document.documentElement.style.setProperty('--hcm-device-accent', '#808080');
+        element.accent = 'device';
+        await element.updateComplete;
+        expect(shadowQuery(element, '.accent-note').textContent).toContain("Your device's accent colour is grey");
+    });
+});

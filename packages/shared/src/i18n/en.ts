@@ -196,6 +196,10 @@ export const en: Messages = {
     'accent.label': 'Colours',
     'accent.device': 'Device accent',
     'accent.map': 'Map colours',
+    'accent.hidden':
+        "This browser does not share your device's accent colour, so the map shows its own colours. Firefox on a computer shares it: open the map there to see your device's colour.",
+    'accent.grey':
+        "Your device's accent colour is grey, which has no colour to give, so the map shows its own colours. Choose a coloured accent in your device's settings to see it here.",
     'settings.title': 'Settings',
     'language.label': 'Language',
     'language.unavailable': 'That language could not be loaded.',

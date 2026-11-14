@@ -31,12 +31,16 @@ async function primary(page: Page): Promise<string> {
         .evaluate((shell, name) => getComputedStyle(shell).getPropertyValue(name).trim().toLowerCase(), PRIMARY);
 }
 
-/** Picks `choice` in the account menu's Colours. */
-async function chooseColours(page: Page, choice: 'accent.device' | 'accent.map'): Promise<void> {
+async function openAccountMenu(page: Page): Promise<void> {
     await page
         .getByRole('button', { name: translateAdminShell('en', 'adminShell.account.label') })
         .filter({ visible: true })
         .click();
+}
+
+/** Picks `choice` in the account menu's Colours. */
+async function chooseColours(page: Page, choice: 'accent.device' | 'accent.map'): Promise<void> {
+    await openAccountMenu(page);
     await page.getByRole('radio', { name: translate('en', choice), exact: true }).click();
     await page.keyboard.press('Escape');
 }
@@ -49,6 +53,10 @@ for (const scheme of ['light', 'dark'] as const) {
             await page.emulateMedia({ colorScheme: scheme });
             await openAdmin(page, content, '#1e8e3e');
             const accented = await primary(page);
+            await openAccountMenu(page);
+            // The device's accent shows: no word on why it cannot.
+            await expect(page.getByText(translate('en', 'accent.hidden'))).toHaveCount(0);
+            await page.keyboard.press('Escape');
 
             await chooseColours(page, 'accent.map');
             await expect.poll(() => primary(page)).not.toBe(accented);
@@ -67,6 +75,10 @@ test(
     async ({ page, content }) => {
         await openAdmin(page, content, null);
         const shownByDefault = await primary(page);
+        // A Chromium tab: Device accent says the browser does not share the device's colour, and what shows instead.
+        await openAccountMenu(page);
+        await expect(page.getByText(translate('en', 'accent.hidden'))).toBeVisible();
+        await page.keyboard.press('Escape');
 
         await chooseColours(page, 'accent.map');
 

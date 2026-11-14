@@ -213,6 +213,21 @@ function namedAccent(win: Window, doc: Document): string {
     return win.getComputedStyle(doc.documentElement).getPropertyValue(ACCENT_PROPERTY).trim();
 }
 
+/**
+ * What Device accent can show here (the owner, 2026-11-14: the option must say when it cannot work): `shared`, the device's
+ * accent; `grey`, an accent with no hue, so the map's colours; `hidden`, a browser that does not give the device's accent
+ * (every Chrome, Edge and Safari tab, Android included) or forced colours, so the map's colours.
+ */
+export type DeviceAccentState = 'shared' | 'grey' | 'hidden';
+
+export function deviceAccentState(doc: Document, css: Pick<typeof CSS, 'supports'> = CSS): DeviceAccentState {
+    const accent = readDeviceAccent(doc, css);
+    if (accent === null) {
+        return 'hidden';
+    }
+    return hueOf(accent) === null ? 'grey' : 'shared';
+}
+
 /** The tokens a theme wears for `choice`: the city's in the device's accent, or the city's own. */
 export function accentTokens(
     tokens: ThemeTokens,

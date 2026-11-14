@@ -30,6 +30,7 @@ import { LitElement, css, html, type PropertyValues, type TemplateResult } from 
 import { live } from 'lit/directives/live.js';
 
 import { tabbableElements } from '../components/focus.js';
+import { deviceAccentState } from '../theme/device-accent.js';
 import { EMPTY } from './empty.js';
 import { fallbackNote } from './fallback-note.js';
 import { externalLink, renderMarkdown } from './markdown.js';
@@ -60,6 +61,9 @@ function creditText(credit: Credit, locale: ViewerLocale): TemplateResult | stri
 const LANGUAGE_OPTIONS = Object.entries(LANGUAGE_NAMES).map(([value, label]) => ({ value, label, lang: value }));
 
 const THEME_ICONS: Readonly<Record<ThemeMode, string>> = { system: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' };
+/** Why Device accent cannot show here (`deviceAccentState`), per state. */
+const ACCENT_NOTES = { hidden: 'accent.hidden', grey: 'accent.grey' } as const;
+
 const ACCENT_ICONS: Readonly<Record<AccentChoice, string>> = { device: 'palette', map: 'map' };
 
 function isThemeMode(value: string): value is ThemeMode {
@@ -287,7 +291,14 @@ export class HcmAboutDialog extends LitElement {
                 .value=${this.accent}
                 .label=${translate(locale, 'accent.label')}
                 @hcm-change=${onAccent}
-            ></hcm-segmented-button>`;
+            ></hcm-segmented-button>
+            ${this.#accentNote()}`;
+    }
+
+    /** Device accent where it cannot show (`deviceAccentState`): why the map's colours show, and what would bring the device's. */
+    #accentNote(): TemplateResult {
+        const state = this.accent === 'device' ? deviceAccentState(this.ownerDocument) : 'shared';
+        return state === 'shared' ? EMPTY : html`<p class="supporting accent-note">${translate(this.locale, ACCENT_NOTES[state])}</p>`;
     }
 
     #emit(type: string, detail: object): void {

@@ -200,6 +200,8 @@ export const zh: Messages = {
     'accent.label': '颜色',
     'accent.device': '设备强调色',
     'accent.map': '地图颜色',
+    'accent.hidden': '此浏览器不共享您设备的强调色，因此地图显示其自身的颜色。电脑上的 Firefox 会共享：在其中打开地图即可看到设备的颜色。',
+    'accent.grey': '您设备的强调色是灰色，没有可用的色调，因此地图显示其自身的颜色。请在设备设置中选择一种彩色强调色，即可在此看到。',
     'settings.title': '设置',
     'language.label': '语言',
     'language.unavailable': '无法加载该语言。',

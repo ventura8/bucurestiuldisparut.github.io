@@ -200,6 +200,10 @@ export const pl: Messages = {
     'accent.label': 'Kolory',
     'accent.device': 'Kolor akcentu urządzenia',
     'accent.map': 'Kolory mapy',
+    'accent.hidden':
+        'Ta przeglądarka nie udostępnia koloru akcentu urządzenia, więc mapa pokazuje własne kolory. Firefox na komputerze go udostępnia: otwórz tam mapę, aby zobaczyć kolor urządzenia.',
+    'accent.grey':
+        'Kolor akcentu urządzenia jest szary i nie ma odcienia, więc mapa pokazuje własne kolory. Wybierz kolorowy akcent w ustawieniach urządzenia, aby zobaczyć go tutaj.',
     'settings.title': 'Ustawienia',
     'language.label': 'Język',
     'language.unavailable': 'Nie udało się wczytać tego języka.',

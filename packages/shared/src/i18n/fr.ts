@@ -207,6 +207,10 @@ export const fr: Messages = {
     'accent.label': 'Couleurs',
     'accent.device': "Accent de l'appareil",
     'accent.map': 'Couleurs de la carte',
+    'accent.hidden':
+        "Ce navigateur ne transmet pas la couleur d'accentuation de votre appareil, la carte affiche donc ses propres couleurs. Firefox sur ordinateur la transmet : ouvrez-y la carte pour voir la couleur de votre appareil.",
+    'accent.grey':
+        "La couleur d'accentuation de votre appareil est grise, sans teinte à donner, la carte affiche donc ses propres couleurs. Choisissez un accent coloré dans les réglages de votre appareil pour le voir ici.",
     'settings.title': 'Paramètres',
     'language.label': 'Langue',
     'language.unavailable': 'Impossible de charger cette langue.',

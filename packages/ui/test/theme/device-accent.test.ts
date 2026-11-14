@@ -5,6 +5,7 @@ import {
     ACCENT_PROPERTY,
     accentOf,
     accentTokens,
+    deviceAccentState,
     exposesAccent,
     hexFromComputed,
     hueOf,
@@ -166,5 +167,18 @@ describe('device accent: what the browser gives', () => {
         };
 
         expect(readDeviceAccent(doc as unknown as Document, fakeCss(ACCENT))).toMatch(/^#[0-9a-f]{6}$/);
+    });
+
+    it('happyPath_aColouredAccentIsShared', () => {
+        document.documentElement.style.setProperty(ACCENT_PROPERTY, GREEN);
+
+        expect(deviceAccentState(document)).toBe('shared');
+    });
+
+    it('badPath_aChromiumTabHidesTheAccentAndAGreyOneHasNoHue', () => {
+        // The test browser is a Chromium tab: Chrome gives it a constant blue, not the device's accent.
+        expect(deviceAccentState(document)).toBe('hidden');
+        document.documentElement.style.setProperty(ACCENT_PROPERTY, '#808080');
+        expect(deviceAccentState(document)).toBe('grey');
     });
 });

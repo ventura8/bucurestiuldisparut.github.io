@@ -201,6 +201,10 @@ export const ro = {
     'accent.label': 'Culori',
     'accent.device': 'Accentul dispozitivului',
     'accent.map': 'Culorile hărții',
+    'accent.hidden':
+        'Acest browser nu transmite culoarea de accent a dispozitivului, așa că harta își arată propriile culori. Firefox pe calculator o transmite: deschideți harta acolo ca să vedeți culoarea dispozitivului.',
+    'accent.grey':
+        'Culoarea de accent a dispozitivului este gri, care nu are o nuanță de dat, așa că harta își arată propriile culori. Alegeți un accent colorat în setările dispozitivului ca să-l vedeți aici.',
     'settings.title': 'Setări',
     'language.label': 'Limbă',
     'language.unavailable': 'Limba aleasă nu s-a putut încărca.',

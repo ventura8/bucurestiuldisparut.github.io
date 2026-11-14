@@ -136,6 +136,8 @@ describe('<hcm-account-menu>', () => {
         const language = deep(menu, 'hcm-language-select') as HcmLanguageSelect;
         const [theme, accent] = deepAll(menu, 'hcm-segmented-button') as HcmSegmentedButton[];
         expect(accent?.value).toBe('device');
+        // The test browser is a Chromium tab: Device accent says it cannot show here and what shows instead.
+        expect(deepText(menu)).toContain("This browser does not share your device's accent colour");
 
         language.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'ro' } }));
         language.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'en' } }));
@@ -180,8 +182,12 @@ describe('<hcm-account-menu>', () => {
     });
 
     it('badPath_withoutAUserOrAnalyticsTheMenuHoldsThePreferencesOnly', async () => {
-        const app = new FakeAdminApp(adminState({ user: null, analytics: false, locale: 'ro' }));
+        const app = new FakeAdminApp(
+            adminState({ user: null, analytics: false, locale: 'ro', theme: { mode: 'light', city: null, preview: null, accent: 'map' } }),
+        );
         const menu = await opened(app);
+        // Map colours chosen: no word on the device's accent.
+        expect(deepText(menu)).not.toContain('Acest browser nu transmite');
 
         expect(deepAll(menu, 'hcm-switch')).toEqual([]);
         expect(deepAll(menu, 'hcm-button')).toEqual([]);

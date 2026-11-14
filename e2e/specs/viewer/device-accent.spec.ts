@@ -100,6 +100,8 @@ for (const scheme of ['light', 'dark'] as const) {
                 'aria-checked',
                 'true',
             );
+            // The device's accent shows: no word on why it cannot.
+            await expect(settings.getByText(t(lang, 'accent.hidden'))).toHaveCount(0);
             const axe = await new AxeBuilder({ page })
                 .withTags(['wcag2aa'])
                 .withRules(['color-contrast'])
@@ -132,11 +134,17 @@ test(
         const own = TOKENS['light']?.[PRIMARY]?.toLowerCase() ?? '';
         // A Chromium tab: Chrome's AccentColor is its constant there, never the device's.
         await expect.poll(async () => (await shown(page, own)).primary).toBe(own);
+        // Device accent says so, and what shows instead (the owner, 2026-11-14: no silent fallback).
+        await chooseMenuItem(page, lang, t(lang, 'settings.title'));
+        const settings = viewer(page).locator('hcm-about-dialog');
+        await expect(settings.getByText(t(lang, 'accent.hidden'))).toBeVisible();
 
         await emulateDeviceAccent(page, '#808080');
         await page.reload();
         await waitForEngineEvent(page, 'hcm-ready');
         await expect.poll(async () => (await shown(page, own)).primary).toBe(own);
         expect((await shown(page, own)).onPrimary).toBe(TOKENS['light']?.[ON_PRIMARY]?.toLowerCase());
+        await chooseMenuItem(page, lang, t(lang, 'settings.title'));
+        await expect(settings.getByText(t(lang, 'accent.grey'))).toBeVisible();
     },
 );

@@ -14,7 +14,7 @@ import { UI_LANGUAGE_OPTIONS } from '../../components/language-options.js';
 
 import type { SegmentOption } from '../../components/segmented-button.js';
 import type { ThemeMode } from '../../theme/apply.js';
-import { ACCENT_CHOICES, accentOf } from '../../theme/device-accent.js';
+import { ACCENT_CHOICES, accentOf, deviceAccentState } from '../../theme/device-accent.js';
 import type { AdminAppPort, AdminStatePort } from '../admin-port.js';
 import { adminBase } from './admin-styles.js';
 import { EMPTY } from './empty.js';
@@ -36,6 +36,9 @@ function isThemeMode(value: string): value is ThemeMode {
 function accentOptions(locale: UiLocale): SegmentOption[] {
     return ACCENT_CHOICES.map((accent) => ({ value: accent, label: translate(locale, `accent.${accent}`) }));
 }
+
+/** Why Device accent cannot show here (`deviceAccentState`), per state. */
+const ACCENT_NOTES = { hidden: 'accent.hidden', grey: 'accent.grey' } as const;
 
 export class HcmAccountMenu extends LitElement {
     static override readonly properties = {
@@ -69,6 +72,11 @@ export class HcmAccountMenu extends LitElement {
             .who {
                 font-size: var(--md-sys-typescale-body-medium-size, 0.875rem);
                 color: var(--md-sys-color-on-surface-variant, CanvasText);
+            }
+
+            .accent-note {
+                margin: 0;
+                max-inline-size: 40ch;
             }
 
             .consent {
@@ -208,7 +216,14 @@ export class HcmAccountMenu extends LitElement {
                 .value=${state.theme.accent ?? 'device'}
                 @hcm-change=${change}
             ></hcm-segmented-button>
+            ${this.#accentNote(state)}
         </div>`;
+    }
+
+    /** Device accent where it cannot show (`deviceAccentState`): why the city's colours show, and what would bring the device's. */
+    #accentNote(state: AdminStatePort): TemplateResult {
+        const shown = (state.theme.accent ?? 'device') === 'device' ? deviceAccentState(this.ownerDocument) : 'shared';
+        return shown === 'shared' ? EMPTY : html`<p class="group-label accent-note">${translate(state.locale, ACCENT_NOTES[shown])}</p>`;
     }
 
     /** The analytics consent, shown only when GA4 is configured. */
