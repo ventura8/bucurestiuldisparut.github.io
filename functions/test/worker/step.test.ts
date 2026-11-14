@@ -385,6 +385,26 @@ describe("worker.step and a recalibration's server part (M16)", () => {
     });
 });
 
+describe("worker.step and a Landsat scene's report (M25)", () => {
+    const report = { checked: true, offsetPx: 0.4, offsetM: 6, cityCloudPct: 2, resolutionM: 30, pansharpened: false };
+
+    it('happyPath_warpOnAComputerWritesTheLandsatReport @S-A62-HAPPY-LANDSAT-REPORT', async () => {
+        // Live 2026-11-14: every Landsat run on a computer failed at warp with apiError.worker.refused (the field was off the list).
+        const world = await held({ params: { entityId: 'LT51820291989190XXX02', dataset: 'landsat_tm_c2_l1', sensor: 'L5-TM' } });
+
+        await expect(update(world, VERSION_PATH, { landsat: report })).resolves.toEqual({ ok: true });
+        await expect(readVersion(world, JOB)).resolves.toMatchObject({ landsat: report });
+    });
+
+    it('badPath_aMalformedReportOrAFieldNoRunWritesIsRefused @S-A62-BAD-LANDSAT-REPORT', async () => {
+        const world = await held();
+
+        expect(await codeOf(update(world, VERSION_PATH, { landsat: { ...report, cityCloudPct: 300 } }))).toBe('apiError.invalidRequest');
+        expect(await codeOf(update(world, VERSION_PATH, { layerId: 'l-forged' }))).toBe('apiError.worker.refused');
+        expect((await readVersion(world, JOB))?.landsat).toBeUndefined();
+    });
+});
+
 describe('worker.step and a pass (M9)', () => {
     const job = { params: { entityId: 'D3C1203-300415F006', dataset: 'declassiii', sensor: 'KH-9-pan' } };
     const path = FIRESTORE_PATHS.imageryPass(CITY, 'D3C1203-300415-F-1975-08-20');

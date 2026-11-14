@@ -57,6 +57,8 @@ A Landsat version has no georeference; the policy reads its `landsat` report ins
 
 Every Landsat import failed at `fetch` with `apiError.imagery.downloadIncomplete` ("the delivery is larger than USGS announced"). Cause: M2M `download-options` returns several products; the Product Bundle's `filesize` is often a band-scale figure, while the signed address sends the full tar. Fix: prefer the Bundle by name (flattening `secondaryDownloads`), and take the transfer size as the larger of that announcement and the response's Content-Length (or a 206's Content-Range total), so a larger full bundle is kept and a truncated body is still refused (`S-P30-HAPPY-BUNDLE-SIZE`, `S-P01-BAD-SIZE-MISMATCH`; lesson 702).
 
+On the owner's computers every Landsat run then failed at `warp` with `apiError.worker.refused`: `worker.step` refuses a version field missing from `WORKER_VERSION_FIELDS`, and `landsat` (the report `warp` writes) was not on it. It is now (`S-A62-HAPPY-LANDSAT-REPORT`, `S-A62-BAD-LANDSAT-REPORT`; lesson 703). A connection dropped mid-download resumes from the bytes held (lesson 705).
+
 ## 8. Tests
 
 - Pipeline (`S-P30-*`): `pipeline/tests/synthetic/landsat.py` builds a Level-1 bundle of the synthetic world in UTM 35N; `tests/integration/test_landsat_job.py` runs the whole import against the loopback fakes (TM within a pixel at z13, ETM+ and OLI pan-sharpened at z14, a missing band (OLI's B4 too), Sentinel-2 moved 90 m with a cloud box over the city); `tests/unit/test_landsat.py` covers the routing, the band names, the masks, the stretch, Brovey and the phase correlation.

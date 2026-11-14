@@ -198,7 +198,8 @@ function pipelineSteps(params: BuildParams): readonly JsonObject[] {
             name: params.images.docker,
             dir: 'pipeline',
             env: ['DOCKER_BUILDKIT=1'],
-            args: ['build', '-f', 'Dockerfile', '--target', 'runtime', '-t', image, '.'],
+            // The release stamps the image (`HCM_RELEASE`): the worker reports it to `worker.hello`, the computer cards show it.
+            args: ['build', '-f', 'Dockerfile', '--target', 'runtime', '--build-arg', 'HCM_RELEASE=${_RELEASE}', '-t', image, '.'],
         },
         {
             id: 'push',

@@ -43,6 +43,8 @@
                 "Dockerfile",
                 "--target",
                 "runtime",
+                "--build-arg",
+                "HCM_RELEASE=${_RELEASE}",
                 "-t",
                 "us-central1-docker.pkg.dev/$PROJECT_ID/hcm/pipeline:${_SLUG}",
                 "."

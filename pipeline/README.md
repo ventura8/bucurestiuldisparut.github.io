@@ -20,7 +20,8 @@ model, §5 the steps, §6 the georeferencing conventions); plan: `docs/research/
   `work/{city}/{job}/fetch.checkpoint.json`); a resume asks the session what it holds and sends `Range`; a 403 or 410
   retrieves a fresh address; a redirect is followed only through the address guard; the transfer size is the larger of
   `download-options` and Content-Length (a Landsat bundle whose announced `filesize` is band-scale is kept; a truncated
-  body is refused); SHA-256 read back in-region. Maintenance waits 30 minutes doubling to 12 hours; a rate limit waits
+  body is refused); a connection dropped mid-body resumes with `Range` from the bytes held (five times per address,
+  then `downloadIncomplete` with the session kept); SHA-256 read back in-region. Maintenance waits 30 minutes doubling to 12 hours; a rate limit waits
   its `Retry-After`; a preparing download waits 10 minutes.
 - `extract` keeps the TIFF segments of the `.tgz` (streamed) or `.zip`; `stitch` places them (template matching, coarse
   to fine, exact within 1 px), cuts the film border and records the exposure's columns when a dark gap parts it from a

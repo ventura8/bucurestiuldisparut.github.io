@@ -89,6 +89,10 @@ ENV PATH=/opt/venv/bin:$PATH \
 # The local matcher's two volumes (M10, `hcm-ai-files` and `hcm-ai-box`) start from these empty folders, owner included, for the same
 # reason. Cloud Run mounts nothing here: its image carries them, and the matcher's few KB of Python, unused.
 RUN mkdir -p /work /ai/files /ai/box && chown 10001:10001 /work /ai/files /ai/box
+# The release this image is built from (the installer's `--build-arg HCM_RELEASE=${_RELEASE}`): `hcm_pipeline.__version__`, which
+# `worker.hello` reports. Last, so a new release reuses every layer above.
+ARG HCM_RELEASE=0.0.0
+ENV HCM_RELEASE=${HCM_RELEASE}
 WORKDIR /tmp
 USER 10001:10001
 ENTRYPOINT ["/opt/venv/bin/python", "-m", "hcm_pipeline"]

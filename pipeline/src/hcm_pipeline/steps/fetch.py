@@ -13,6 +13,10 @@ a truncated body (short of that size) is still discarded. SHA-256 is computed by
 `download-order-remove` cleans up. A delivery another city already fetched (at least the announced size) is reused.
 The signed address never reaches a log or a document.
 
+A connection that drops mid-body (httpx's `TransportError`: `RemoteProtocolError` "peer closed connection", a read
+timeout; live 2026-11-14 at 1.20 of 1.23 GB) resumes from the bytes the session holds, at most `DROP_ATTEMPTS` times
+per address; past that the step fails with the session kept, so a retry still continues from there.
+
 USGS maintenance (an HTML 503) makes the job wait `USGS_BACKOFF_MINUTES` (30 minutes, doubling, at most 12 hours;
 the count lives in the checkpoint); a rate limit waits its `Retry-After`.
 """
@@ -31,6 +35,7 @@ from hcm_pipeline import paths
 from hcm_pipeline.contract import USGS_BACKOFF_MINUTES, USGS_PREPARING_MINUTES, Errors
 from hcm_pipeline.durable import write_json_atomic
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult, Waiting
+from hcm_pipeline.log import get_logger
 from hcm_pipeline.m2m import AuthError, M2MError, MaintenanceError, RateLimitError
 from hcm_pipeline.model import UsgsImportParams
 from hcm_pipeline.objects import CHUNK_BYTES, READ_BYTES, ObjectInfo, SessionExpiredError
@@ -40,6 +45,9 @@ from hcm_pipeline.usgs import DownloadOption, M2MSession, download_option, label
 CHECKPOINT: Final = "fetch.checkpoint.json"
 DELIVERY_TYPE: Final = "application/octet-stream"
 URL_ATTEMPTS: Final = 3
+# Dropped connections resumed per signed address before the step gives up (the session and its bytes are kept).
+DROP_ATTEMPTS: Final = 5
+LOG = get_logger("steps.fetch")
 RATE_LIMIT_SECONDS: Final = 15 * 60
 _EXPIRED: Final = frozenset({HTTPStatus.FORBIDDEN, HTTPStatus.GONE})
 _FILENAME = re.compile(r"""filename\*?=(?:UTF-8'')?["']?([^"';]+)""", re.IGNORECASE)
@@ -257,11 +265,26 @@ class FetchStep:
         for _ in range(URL_ATTEMPTS):
             if url is None:
                 return None
-            finished = download.stream(url, entity)
+            finished = _resuming(download, url, entity)
             if finished is not None:
                 return finished
             url = retrieve_download(m2m, label)
         raise StepFailedError(Errors.DOWNLOAD_INCOMPLETE, "the signed download address kept expiring", {"bytes": option.size})
+
+
+def _resuming(download: _Download, url: str, entity: UsgsImportParams) -> ObjectInfo | None:
+    """`download.stream`, resumed from the bytes its session holds after a dropped connection (`DROP_ATTEMPTS` at most)."""
+    for attempt in range(1, DROP_ATTEMPTS + 1):
+        try:
+            return download.stream(url, entity)
+        except httpx.TransportError as error:
+            # The kind only: the error's text may carry the signed address.
+            LOG.warning("the USGS download dropped (%s, attempt %d of %d); resuming", type(error).__name__, attempt, DROP_ATTEMPTS)
+    raise StepFailedError(
+        Errors.DOWNLOAD_INCOMPLETE,
+        f"the connection to USGS dropped {DROP_ATTEMPTS} times; the bytes received are kept and a retry continues from them",
+        {"bytes": download.size},
+    )
 
 
 def _usgs_problem(ctx: JobContext, checkpoint: Checkpoint, error: M2MError) -> StepResult:

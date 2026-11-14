@@ -11854,6 +11854,28 @@
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Tests: pipeline/tests/integration/test_import_resume.py, pipeline/tests/unit/test_steps_fetch.py against the loopback fakes (pipeline-pytest)."
         },
         {
+            "id": "S-P01-HAPPY-DROP-RESUMED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A dropped download resumes from the bytes already held",
+            "asserts": "the delivery host closes the connection after two chunks with Content-Length announcing the whole file (RemoteProtocolError) -> fetch asks again with Range from the bytes the session holds and the object equals the delivery",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 705 (2026-11-14, live: a Landsat fetch failed at 1.20 of 1.23 GB with RemoteProtocolError). Test: pipeline/tests/unit/test_steps_fetch.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-BAD-DROP-REPEATED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A download that keeps dropping fails and keeps its bytes for a retry",
+            "asserts": "the connection drops DROP_ATTEMPTS times in a row -> apiError.imagery.downloadIncomplete naming the dropped connection; the checkpoint keeps its upload session so a retry continues from the bytes held",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 705 (2026-11-14, live: a Landsat fetch failed at 1.20 of 1.23 GB with RemoteProtocolError). Test: pipeline/tests/unit/test_steps_fetch.py (pipeline-pytest)."
+        },
+        {
             "id": "S-P01-BAD-DUPLICATE-EXECUTION",
             "behaviour": "P01",
             "area": "pipeline",
@@ -12138,6 +12160,50 @@
             "tier": "functions",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/worker/urls.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-LANDSAT-REPORT",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A Landsat scene's warp on a computer writes its report",
+            "asserts": "worker.step update of the version's landsat report (checked, offset, city cloud, resolution) -> ok, stored as written",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 703 (2026-11-14, live: every Landsat run on a computer failed at warp with apiError.worker.refused). Test: functions/test/worker/step.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-LANDSAT-REPORT",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A malformed Landsat report or a field no run writes is refused",
+            "asserts": "a report with cityCloudPct 300 -> apiError.invalidRequest; layerId from a worker -> apiError.worker.refused; nothing stored",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 703 (2026-11-14, live: every Landsat run on a computer failed at warp with apiError.worker.refused). Test: functions/test/worker/step.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-RELEASE-STAMPED",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A computer reports the release its processing image was built from",
+            "asserts": "the installer builds the pipeline image with --build-arg HCM_RELEASE=${_RELEASE} -> hcm_pipeline.__version__ is that release (1.0.0-beta.1+a62d85e), which worker.hello records and the computer card shows",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 704 (2026-11-14, live: every computer card said processing 0.0.0). Tests: pipeline/tests/unit/test_release.py (pipeline-pytest), packages/admin/test/install/build-spec.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-RELEASE-UNSTAMPED",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "An image built without a release or with a malformed one says 0.0.0",
+            "asserts": "HCM_RELEASE missing, empty, over 40 characters or with a character worker.hello refuses -> 0.0.0, never a value hello would refuse",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 704 (2026-11-14, live: every computer card said processing 0.0.0). Test: pipeline/tests/unit/test_release.py (pipeline-pytest)."
         },
         {
             "id": "S-A62-HAPPY-DISPATCH-LOCAL",

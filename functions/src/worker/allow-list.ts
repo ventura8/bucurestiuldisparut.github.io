@@ -41,7 +41,7 @@ export const WORKER_JOB_FIELDS: ReadonlySet<string> = new Set([
 /**
  * The layer version fields a run writes (`pipeline/src/hcm_pipeline/{documents,runner}.py` and `steps/*.py`: the scan,
  * the reference, the georeference, the suggestions, the output, the machines and the state with its error, M8: the join's
- * report, M9: what `locate` measured; `pipeline/tests/contracts/version.*.json`).
+ * report, M9: what `locate` measured, M25: a Landsat scene's report; `pipeline/tests/contracts/version.*.json`).
  */
 export const WORKER_VERSION_FIELDS: ReadonlySet<string> = new Set([
     'state',
@@ -59,6 +59,9 @@ export const WORKER_VERSION_FIELDS: ReadonlySet<string> = new Set([
     'archive',
     'source',
     'help',
+    // M25 (docs/research/M25-landsat.md): what `warp` measured of a Landsat scene (`landsatReportSchema`); live 2026-11-14 every Landsat
+    // run on a computer was refused at `warp` because this field was missing here.
+    'landsat',
     'suggestions',
     'output',
     'machines',

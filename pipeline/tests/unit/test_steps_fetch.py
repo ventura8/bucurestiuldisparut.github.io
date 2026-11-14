@@ -13,7 +13,7 @@ from hcm_pipeline.jobs import JobContext, RunFlags
 from hcm_pipeline.model import Job, Timestamp
 from hcm_pipeline.runner import RunOutcome
 from hcm_pipeline.secrets import SecretUnavailableError
-from hcm_pipeline.steps.fetch import Checkpoint, _skipping, delivery_name, transfer_size
+from hcm_pipeline.steps.fetch import DROP_ATTEMPTS, Checkpoint, _skipping, delivery_name, transfer_size
 
 from tests.fakes.http import Reply
 from tests.fakes.usgs_m2m import FORBIDDEN_PAGE
@@ -145,6 +145,36 @@ def test_bad_path_an_address_that_keeps_expiring_fails_the_download(world: Pipel
 
     assert fetch(world) is RunOutcome.FAILED
     assert dig(world.job(), "error", "code") == Errors.DOWNLOAD_INCOMPLETE
+
+
+def dropped_reply(world: PipelineWorld, sent: int) -> Reply:
+    """A delivery whose connection closes after `sent` bytes while its Content-Length announces the whole file."""
+    return Reply(200, world.delivery[:sent], "application/x-gzip", {"X-Size": str(len(world.delivery))})
+
+
+def test_happy_path_a_dropped_download_resumes_from_the_bytes_held(world: PipelineWorld) -> None:
+    """Scenarios: S-P01-HAPPY-DROP-RESUMED"""
+    # Live 2026-11-14: RemoteProtocolError, peer closed connection at 1.20 of 1.23 GB, failed the job.
+    world.seed_import()
+    world.http.enqueue(f"/download/{ENTITY_ID}.tgz", dropped_reply(world, 2 * TEST_CHUNK_BYTES + 7))
+
+    assert fetch(world) is RunOutcome.DONE
+    assert world.gcs.objects[RAW].data == world.delivery
+    # Asked again from the bytes the session holds (none here: httpx read the short body in one piece before it failed).
+    assert len([request for request in world.http.requests if request.path.endswith(".tgz")]) == 2
+
+
+def test_bad_path_a_download_that_keeps_dropping_fails_and_keeps_its_bytes(world: PipelineWorld) -> None:
+    """Scenarios: S-P01-BAD-DROP-REPEATED"""
+    world.seed_import()
+    for _ in range(DROP_ATTEMPTS):
+        world.http.enqueue(f"/download/{ENTITY_ID}.tgz", dropped_reply(world, TEST_CHUNK_BYTES + 7))
+
+    assert fetch(world) is RunOutcome.FAILED
+    assert error_code(world) == Errors.DOWNLOAD_INCOMPLETE
+    assert "dropped" in str(dig(world.job(), "error", "message"))
+    # The session and its bytes stay for a retry to continue from.
+    assert json.loads(world.gcs.objects[CHECKPOINT].data)["session"] is not None
 
 
 def test_bad_path_a_delivery_host_in_maintenance_waits(world: PipelineWorld) -> None:

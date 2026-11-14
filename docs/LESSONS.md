@@ -4128,3 +4128,18 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: M2M `download-options` returns several products; the Product Bundle's `filesize` is often band-scale (and may sit under `secondaryDownloads`), while the signed address sends the full tar. `fetch` required an exact match to the announcement.
     - Fix and pin: `download_option` prefers a product whose name contains "bundle" (flattening `secondaryDownloads`); `transfer_size` takes the larger of the announcement and Content-Length (or a 206's Content-Range total); truncated bodies are still refused (`S-P30-HAPPY-BUNDLE-SIZE`, `S-P01-BAD-SIZE-MISMATCH`).
     - **When an upstream lists several products, size-check the product actually transferred (Content-Length), not only the catalogue's understated figure.**
+703. **Every Landsat run on a computer failed at warp with `apiError.worker.refused`.**
+    - Seen: 2026-11-14, Landsat imports passed `fetch` on the owner's computers, then failed "Projecting onto the map: apiError.internal: WorkerApiError: apiError.worker.refused".
+    - Cause: M25's `warp` writes the version's `landsat` report (`ctx.update_version({"landsat": …})`), and `worker.step` refuses every field missing from `WORKER_VERSION_FIELDS` (`functions/src/worker/allow-list.ts`); `landsat` was never added. The cloud run writes Firestore directly, so every pipeline test was green.
+    - Fix and pin: `landsat` is on the list (the schema still checks the report). `S-A62-HAPPY-LANDSAT-REPORT`, `S-A62-BAD-LANDSAT-REPORT` in `functions/test/worker/step.test.ts`.
+    - **A new field the pipeline writes joins the worker's allow-list in the same change, with a `worker.step` test: the local path is a second writer.**
+704. **Every computer card said "processing 0.0.0".**
+    - Seen: 2026-11-14, live admin 1.0.0-beta.1: each computer showed "Helper …, processing 0.0.0" and Jobs once said "Your computer runs an old version (0.0.0)".
+    - Cause: `hcm_pipeline.__version__` was the literal `0.0.0` of `pyproject.toml`; the installer's image build never told the image its release, so `worker.hello` always reported 0.0.0 (the up-to-date check compares image digests, so only the label was wrong).
+    - Fix and pin: the installer builds with `--build-arg HCM_RELEASE=${_RELEASE}`, the image keeps it as `HCM_RELEASE` and `__version__` reads it (0.0.0 when missing or malformed). `S-A62-HAPPY-RELEASE-STAMPED`, `S-A62-BAD-RELEASE-UNSTAMPED`.
+    - **A version shown to people comes from the build that made the artefact, never from a placeholder in a manifest.**
+705. **A dropped USGS download failed the job at 1.20 of 1.23 GB.**
+    - Seen: 2026-11-14, `LC81820292013225LGN02` failed `fetch` with "RemoteProtocolError: peer closed connection without sending complete message body".
+    - Cause: `fetch` resumed only across runs (a SIGTERM, a new attempt); a connection closed mid-body escaped as an unexpected error and ended the job, although the upload session held every chunk before it.
+    - Fix and pin: a `TransportError` while streaming asks again with a Range from the bytes the session holds, `DROP_ATTEMPTS` (5) times per address; past that the step fails as `downloadIncomplete` with the session kept. `S-P01-HAPPY-DROP-RESUMED`, `S-P01-BAD-DROP-REPEATED`.
+    - **A long transfer treats a dropped connection as the normal case: resume from what is held before failing.**
