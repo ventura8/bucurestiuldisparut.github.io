@@ -146,9 +146,11 @@ def _centred(each: Assignment, columns: tuple[int, int], height: int, centre: tu
 
 def sliding_windows(firsts: Sequence[Assignment], size: tuple[int, int], window: MercatorBox, ground: float) -> list[StripWindow]:
     """Windows of `SLIDE_GROUND_M` along the whole strip, half overlapping, each orientation's local map moved onto the city."""
+    if not firsts:
+        return []
     width, height = size
     length = float(numpy.hypot(*_axis(firsts[0], width, height)[1]))
-    side = min(width, max(1, round(SLIDE_GROUND_M / ground / length * width)))
+    side = min(width, max(1, round(SLIDE_GROUND_M / ground / max(length, 1e-9) * width)))
     starts = sorted({*range(0, width - side + 1, max(1, side // 2)), width - side})
     centre = ((window.left + window.right) / 2, (window.bottom + window.top) / 2)
     return [_slid(firsts, (start, start + side), size, centre) for start in starts]

@@ -26,6 +26,7 @@ window under any assignment: a panoramic camera's dark gap and the next exposure
 import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
+from itertools import product
 from typing import Final
 
 import cv2
@@ -65,14 +66,26 @@ class CityNotFoundError(ValueError):
         super().__init__("the frame does not reach the city window under any orientation")
 
 
+class DegenerateCornersError(ValueError):
+    """Four corners that are collinear or coincident give no invertible projective transform."""
+
+    def __init__(self) -> None:
+        super().__init__("four corners are collinear or coincident and give no projective transform")
+
+
 def homography(source: FloatArray, target: FloatArray) -> FloatArray:
     """The 3x3 projective map taking the four `source` points onto the four `target` points."""
     rows, values = [], []
     for (x, y), (u, v) in zip(source.tolist(), target.tolist(), strict=True):
         rows += [[x, y, 1.0, 0.0, 0.0, 0.0, -u * x, -u * y], [0.0, 0.0, 0.0, x, y, 1.0, -v * x, -v * y]]
         values += [u, v]
-    solution = numpy.linalg.solve(numpy.array(rows), numpy.array(values))
-    return numpy.append(solution, 1.0).reshape(3, 3)
+    try:
+        solution = numpy.linalg.solve(numpy.array(rows), numpy.array(values))
+        matrix = numpy.append(solution, 1.0).reshape(3, 3)
+        numpy.linalg.inv(matrix)
+    except numpy.linalg.LinAlgError as error:
+        raise DegenerateCornersError from error
+    return matrix
 
 
 def apply(matrix: FloatArray, x: FloatArray, y: FloatArray) -> tuple[FloatArray, FloatArray]:
@@ -106,16 +119,27 @@ def frame_corners(width: int, height: int) -> FloatArray:
     return numpy.array([[0.0, 0.0], [width, 0.0], [width, height], [0.0, height]])
 
 
+def _assignment(rotation: int, mirrored: bool, source: FloatArray, target: FloatArray) -> Assignment | None:
+    try:
+        return Assignment(rotation, mirrored, homography(source, target))
+    except DegenerateCornersError:
+        return None
+
+
 def assignments(width: int, height: int, quad: Sequence[LatLng]) -> list[Assignment]:
-    """The eight assignments of the frame's corners to the geographic corners (north-west first, clockwise)."""
+    """The non-degenerate assignments of the frame's corners to the geographic corners (north-west first, clockwise)."""
     places = [to_mercator(lng, lat) for lat, lng in quad]
     orders = (places, [places[0], places[3], places[2], places[1]])
-    found = []
-    for mirrored, order in enumerate(orders):
-        for rotation in range(4):
-            target = numpy.array(order[rotation:] + order[:rotation])
-            found.append(Assignment(rotation, bool(mirrored), homography(frame_corners(width, height), target)))
-    return found
+    corners = frame_corners(width, height)
+    tried = (
+        _assignment(rotation, bool(mirrored), corners, _turned(order, rotation))
+        for (mirrored, order), rotation in product(enumerate(orders), range(4))
+    )
+    return [each for each in tried if each is not None]
+
+
+def _turned(order: list[tuple[float, float]], rotation: int) -> FloatArray:
+    return numpy.array(order[rotation:] + order[:rotation])
 
 
 def anisotropy(transform: Assignment, width: int, height: int) -> float:
@@ -135,6 +159,8 @@ def around(quad: Sequence[LatLng], middle_lng: float) -> list[LatLng]:
 def plausible(width: int, height: int, quad: Sequence[LatLng]) -> list[Assignment]:
     """The assignments whose ground pixels are about as square as the best-shaped one's (`MAX_ANISOTROPY`)."""
     found = assignments(width, height, quad)
+    if not found:
+        return []
     shapes = [anisotropy(candidate, width, height) for candidate in found]
     least = min(shapes)
     return [candidate for candidate, shape in zip(found, shapes, strict=True) if shape <= least * MAX_ANISOTROPY]
@@ -201,14 +227,24 @@ def reaching(frame: Frame, firsts: Sequence[Assignment], grid: Grid, margin_grou
 def first_guesses(frame: Frame, quad: Sequence[LatLng], window: MercatorBox, camera: PanoramicCamera | None) -> list[Assignment]:
     """The plausible assignments, each as the panoramic model fitted around the window when the camera has one."""
     kept = plausible(frame.width, frame.height, around(quad, window.middle_lng))
-    return kept if camera is None else [_panoramic(candidate, frame, window, camera) for candidate in kept]
+    if camera is None:
+        return kept
+    return [fitted for fitted in (_panoramic(candidate, frame, window, camera) for candidate in kept) if fitted is not None]
 
 
-def _panoramic(candidate: Assignment, frame: Frame, window: MercatorBox, camera: PanoramicCamera) -> Assignment:
+def _panoramic(candidate: Assignment, frame: Frame, window: MercatorBox, camera: PanoramicCamera) -> Assignment | None:
     corners = frame_corners(frame.width, frame.height)
     places = numpy.column_stack(candidate.to_mercator(corners[:, 0], corners[:, 1]))
-    model = PanoramicModel(places, camera, frame.height)
-    return Assignment(candidate.rotation, candidate.mirrored, model.local_matrix(window))
+    matrix = PanoramicModel(places, camera, frame.height).local_matrix(window)
+    return Assignment(candidate.rotation, candidate.mirrored, matrix) if _invertible(matrix) else None
+
+
+def _invertible(matrix: FloatArray) -> bool:
+    try:
+        numpy.linalg.inv(matrix)
+    except numpy.linalg.LinAlgError:
+        return False
+    return bool(numpy.isfinite(matrix).all())
 
 
 def on_exposure(frame: Frame, camera: PanoramicCamera | None) -> Frame:

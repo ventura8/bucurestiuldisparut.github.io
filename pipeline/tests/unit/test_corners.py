@@ -19,6 +19,7 @@ from hcm_pipeline.georef.corners import (
     Assignment,
     CityNotFoundError,
     Crop,
+    DegenerateCornersError,
     Frame,
     anisotropy,
     assignments,
@@ -26,6 +27,8 @@ from hcm_pipeline.georef.corners import (
     crop,
     crop_box,
     first_guesses,
+    frame_corners,
+    homography,
     inside_world,
     plausible,
     reaching,
@@ -368,3 +371,42 @@ def test_happy_path_an_east_west_strip_keeps_the_pixel_it_always_had() -> None:
     scene = Scene("x", "1975-01-01", (), _quad_of(600_000.0, 40_000.0, False))
 
     assert frame_pixel_m(scene, (300_000, 15_000)) == pytest.approx(600_000.0 / ground_scale(44.0) / 300_000, rel=0.02)
+
+
+def test_bad_path_collinear_or_coincident_corners_are_skipped_without_crashing() -> None:
+    """Scenarios: S-P01-BAD-CITY-NOT-FOUND"""
+    collinear: tuple[LatLng, LatLng, LatLng, LatLng] = ((44.40, 26.00), (44.40, 26.01), (44.40, 26.02), (44.40, 26.03))
+    repeated: tuple[LatLng, LatLng, LatLng, LatLng] = ((44.40, 26.00), (44.40, 26.00), (44.42, 26.02), (44.42, 26.00))
+    source = frame_corners(WIDTH, HEIGHT)
+    target = numpy.array([to_mercator(lng, lat) for lat, lng in collinear])
+
+    with pytest.raises(DegenerateCornersError):
+        homography(source, target)
+    assert assignments(WIDTH, HEIGHT, collinear) == []
+    assert assignments(WIDTH, HEIGHT, repeated) == []
+    assert first_guesses(strip(), collinear, window(), None) == []
+    with pytest.raises(CityNotFoundError):
+        reaching(strip(), first_guesses(strip(), collinear, window(), None), Grid.over(window(), 60.0), 0.0)
+
+
+def test_happy_path_first_guesses_skips_a_degenerate_orientation_and_keeps_the_remaining_ones(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Scenarios: S-P01-HAPPY-KH9-STRIP"""
+    real_homography = homography
+    calls = 0
+
+    def first_one_singular(source: numpy.ndarray, target: numpy.ndarray) -> numpy.ndarray:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise DegenerateCornersError
+        return real_homography(source, target)
+
+    monkeypatch.setattr("hcm_pipeline.georef.corners.homography", first_one_singular)
+
+    kept = first_guesses(strip(), strip_quad(), window(), None)
+    found = reaching(strip(), kept, Grid.over(window(), 60.0), 0.0)
+
+    assert {(each.rotation, each.mirrored) for each in kept} == {(2, False), (1, True), (3, True)}
+    assert any((each.rotation, each.mirrored) == (TRUE_ROTATION, TRUE_MIRRORED) for each, _ in found)
