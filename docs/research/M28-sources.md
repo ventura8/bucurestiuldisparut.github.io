@@ -132,4 +132,3 @@ A group of six cards (`packages/shared/src/schemas/translation-sources.ts`, `TRA
 | MyMemory | 5,000 characters a day anonymous, 50,000 with an email | not stated | no | not stated |
 
 **Not built (planned):** the app translating through these services. Today the drafts come from Vertex AI when the cloud AI is on; the local models with their check, the key boxes for DeepL, Azure and MyMemory, and LibreTranslate on the household's computers are follow-ups, and each card says so.
-
