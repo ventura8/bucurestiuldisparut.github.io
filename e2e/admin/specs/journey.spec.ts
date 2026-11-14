@@ -11,7 +11,7 @@ import type { InputFlow } from '../../support/budget.js';
 import type { TestFixtures } from '../../support/test.js';
 import { engineEvents, waitForEngineEvent } from '../../support/viewer.js';
 import type { SetupBudget } from '../support/budget.js';
-import { capture } from '../support/capture.js';
+import { capture, captureElement } from '../support/capture.js';
 import type { GoogleConsent } from '../support/consent.js';
 import type { ServerDeployment } from '../support/deployment.js';
 import type { EmulatorWorld } from '../support/emulators.js';
@@ -318,6 +318,11 @@ async function chooseSources({ page, lang, setup, setupBudget, emulators }: Jour
     await expect(sources.locator('[data-translation]')).toHaveCount(6);
     await expect(sources.locator('[data-finder="ready"] [data-place]')).toHaveCount(COUNTRY_SEEDS['RO']?.places.length ?? 0);
     await checkpoint(page, lang, '06c-sources', 'setup-sources');
+    // Review screenshots only (HCM_SCREENSHOTS): the translation options and the finder, a visit guide open.
+    await sources.locator('[data-translation="deeplFree"] summary').click();
+    await sources.locator('[data-place="anrCentral"] [data-guide="offline"] summary').click();
+    await captureElement(page, sources.locator('section[aria-labelledby="sources-translations"]'), '06d-translations');
+    await captureElement(page, sources.locator('[data-finder]'), '06e-finder');
     await setupBudget.inputs('sources').click(sources.getByRole('button', { name: sourcesText(lang, 'adminSources.save') }));
     await setup.expectState('sources', 'ok');
     await expect
