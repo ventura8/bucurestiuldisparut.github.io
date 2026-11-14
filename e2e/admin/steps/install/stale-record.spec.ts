@@ -24,7 +24,7 @@ const RECORDED = STEPS_AT.toISOString();
 
 test.beforeEach(async ({ page, adminWorld, upstream }) => {
     trackRecords(page);
-    await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
+    await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid, true);
     await upstream.scenario('google.provisioned', 'server');
     await upstream.scenario('google.provisioned', 'browser');
     await upstream.scenario('install.provisioned', 'browser');

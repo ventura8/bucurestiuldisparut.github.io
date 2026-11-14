@@ -1,4 +1,5 @@
 import { PROVISION_ITEMS, PROVISION_SET_VERSION } from '@hcm/shared';
+import { DEFAULT_SOURCES } from '@hcm/shared/sources';
 import type { Locator, Page } from '@playwright/test';
 
 import { projectCity } from './content.js';
@@ -19,9 +20,17 @@ export const STEPS_AT = new Date('2026-10-01T09:00:00.000Z');
 /** The billing account and budget the billing step records (`FIXTURE_VALUES.billingAccountId`). */
 const BUDGET_ID = 'billingAccounts/0E2E00-0E2E00-0E2E01/budgets/0e2e0000-0000-4000-8000-000000000001';
 
-/** The city as the claim created it: its name and bounds, no Mapbox yet. */
-export async function seedClaimedCity(emulators: EmulatorWorld, ownerUid: string): Promise<void> {
-    await seedPhotosCity(projectCity(emulators, ownerUid), STEPS_AT);
+/**
+ * The city as the claim created it: its name and bounds, no Mapbox yet. With `sourcesChosen`, the owner also saved the
+ * suggested sources (M28, step e2: the city's `sources`), so Setup does not resume on the Sources card, the first step
+ * after Mapbox that a spec past it would otherwise find not done.
+ */
+export async function seedClaimedCity(emulators: EmulatorWorld, ownerUid: string, sourcesChosen = false): Promise<void> {
+    const world = projectCity(emulators, ownerUid);
+    await seedPhotosCity(world, STEPS_AT);
+    if (sourcesChosen) {
+        await emulators.updateFields(`cities/${world.city}`, { sources: { ...DEFAULT_SOURCES } }, ['sources']);
+    }
 }
 
 /** `setup/status` with billing and the project's provisioning done, plus `areas` (each written as given). */

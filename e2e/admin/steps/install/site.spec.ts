@@ -48,7 +48,7 @@ function publishButton(card: Locator, lang: 'ro' | 'en'): Locator {
 
 test.beforeEach(async ({ page, adminWorld, upstream }) => {
     trackRecords(page);
-    await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
+    await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid, true);
     await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid, { mapbox: { ...OK, user: 'e2e-mapbox' } });
     await upstream.scenario('google.provisioned', 'server');
     await upstream.scenario('google.provisioned', 'browser');
@@ -132,15 +132,15 @@ test.describe('Publish the map', () => {
             await setupBudget
                 .inputs('site')
                 .click(behind.getByRole('button', { name: setupText(lang, 'adminSetup.install.updateAction') }));
-            // The server predates this admin too (its functions name no release): it goes first, the site once it is in; the
-            // imagery pipeline, not installed with nothing in its way, comes with the server (finding 3 of the M6 review).
-            await expect
-                .poll(async () =>
-                    (await submittedBuilds(upstream)).map((build) => build.target).toSorted((left, right) => left.localeCompare(right)),
-                )
-                .toEqual(['pipeline', 'server']);
+            // The server predates this admin too (its functions name no release): it goes alone first. The imagery pipeline, not
+            // installed with nothing in its way (finding 3 of the M6 review), and the site go once the server is in (2026-11-12:
+            // a pipeline image ahead of its server had the worker's claims refused; `packages/admin/src/setup/install.ts`).
+            const targets = async (): Promise<string[]> =>
+                (await submittedBuilds(upstream)).map((build) => build.target).toSorted((left, right) => left.localeCompare(right));
+            await expect.poll(targets).toEqual(['server']);
             await upstream.scenario('cloud-build.finish', 'browser');
             await page.clock.fastForward(10_000);
+            await expect.poll(targets).toEqual(['pipeline', 'server', 'site']);
             await expect.poll(async () => (await siteBuilds(upstream)).length).toBe(1);
             await upstream.scenario('cloud-build.finish', 'browser');
             await page.clock.fastForward(10_000);

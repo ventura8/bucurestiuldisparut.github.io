@@ -246,7 +246,12 @@ export async function recordsSettled(page: Page): Promise<void> {
  * one made the publish trigger's retries hold `manifests/{city}`; `docs/LESSONS.md` 270).
  */
 export async function seedPublishedMap(emulators: EmulatorWorld, ownerUid: string): Promise<void> {
+    // The public city replaces the city's document: a sources choice seeded before it (`seedClaimedCity`) is kept.
+    const sources = (await emulators.document(`cities/${PROJECT_CITY}`))?.['sources'];
     await seedPublicCity(projectCity(emulators, ownerUid), STEPS_AT);
+    if (sources !== undefined) {
+        await emulators.updateFields(`cities/${PROJECT_CITY}`, { sources }, ['sources']);
+    }
     const built = async (): Promise<unknown> => (await emulators.document(`manifests/${PROJECT_CITY}`))?.['url'];
     await expect.poll(built, { message: 'the first city has a published manifest', timeout: 120_000 }).toEqual(expect.any(String));
 }

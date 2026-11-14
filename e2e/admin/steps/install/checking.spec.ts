@@ -31,7 +31,7 @@ const AT_WORK = { state: 'working', release: OLDER_SERVER_RELEASE, buildId: '0e2
 
 test.beforeEach(async ({ page, adminWorld, upstream }) => {
     trackRecords(page);
-    await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
+    await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid, true);
     await upstream.scenario('google.provisioned', 'server');
     await upstream.scenario('google.provisioned', 'browser');
     await upstream.scenario('install.provisioned', 'browser');

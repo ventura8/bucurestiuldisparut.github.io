@@ -61,7 +61,7 @@ async function buildsOf(upstream: UpstreamControl, target: string) {
 
 test.beforeEach(async ({ page, adminWorld, upstream }) => {
     trackRecords(page);
-    await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
+    await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid, true);
     await upstream.scenario('google.provisioned', 'server');
     await upstream.scenario('google.provisioned', 'browser');
     await page.clock.install();
