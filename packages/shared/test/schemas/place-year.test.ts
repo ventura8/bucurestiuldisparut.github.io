@@ -13,27 +13,30 @@ describe('placeYearIssues', () => {
         ['an open start (built before records began)', { yearEnd: 1977 }],
         ['a span', { yearStart: 1850, yearEnd: 1977 }],
         ['next year (a place being built)', { yearStart: 2027 }],
+        ['only the plan year it was seen on (M27 traced street)', { yearSeen: 1939 }],
     ])('happyPath_aPlaceWith_%s_isDated', (_label, place) => {
         expect(hasPlaceYear(place)).toBe(true);
         expect(placeYearIssues(place, latestPlaceYear(NOW))).toEqual([]);
     });
 
-    it('badPath_aPlaceWithoutAYear_asksForOneAtTheStartYear', () => {
+    it('badPath_aPlaceWithoutAYearAndWithoutYearSeen_asksForOneAtTheStartYear', () => {
         expect(hasPlaceYear({})).toBe(false);
-        expect(placeYearIssues({ yearStart: undefined, yearEnd: undefined }, 2027)).toEqual([
+        expect(placeYearIssues({ yearStart: undefined, yearEnd: undefined, yearSeen: undefined }, 2027)).toEqual([
             { path: 'yearStart', code: 'validation.required' },
         ]);
     });
 
     it('badPath_aYearAfterNextYear_isLate', () => {
-        expect(placeYearIssues({ yearStart: 2028, yearEnd: 2030 }, latestPlaceYear(NOW))).toEqual([
+        expect(placeYearIssues({ yearStart: 2028, yearEnd: 2030, yearSeen: 2029 }, latestPlaceYear(NOW))).toEqual([
             { path: 'yearStart', code: 'validation.tooBig' },
             { path: 'yearEnd', code: 'validation.tooBig' },
+            { path: 'yearSeen', code: 'validation.tooBig' },
         ]);
     });
 
     it('happyPath_withoutToday_onlyTheMissingYearIsChecked', () => {
         expect(placeYearIssues({ yearEnd: 2100 }, null)).toEqual([]);
+        expect(placeYearIssues({ yearSeen: 1914 }, null)).toEqual([]);
         expect(placeYearIssues({}, null)).toEqual([{ path: 'yearStart', code: 'validation.required' }]);
     });
 

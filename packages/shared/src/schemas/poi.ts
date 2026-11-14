@@ -101,6 +101,11 @@ export const poiSchema = z
         description: localizedMarkdownPartial(5000).optional(),
         yearStart: yearSchema.optional(),
         yearEnd: yearSchema.optional(),
+        /**
+         * M27: the year of the plan the place was traced on when its lifespan (`yearStart` / `yearEnd`) is unknown
+         * (a disappeared street proved only on that plan).
+         */
+        yearSeen: yearSchema.optional(),
         links: z.array(linkSchema).max(MAX_LINKS),
         /** Manifest photo ids shown in the POI's detail sheet. */
         photoIds: z.array(idSchema).max(MAX_POI_PHOTOS).optional(),

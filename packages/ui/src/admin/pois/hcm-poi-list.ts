@@ -42,9 +42,9 @@ export function withDraft(items: readonly PoiItemPort[], editor: PlaceEditorPort
 /** A draft's fields as its list row shows them (an unknown year is `null` in a row). */
 function previewOf(
     value: NonNullable<PlaceEditorPort['draft']>['value'],
-): Pick<PoiItemPort, 'title' | 'category' | 'yearStart' | 'yearEnd' | 'published'> {
-    const { title, category, yearStart = null, yearEnd = null, published } = value;
-    return { title, category, yearStart, yearEnd, published };
+): Pick<PoiItemPort, 'title' | 'category' | 'yearStart' | 'yearEnd' | 'yearSeen' | 'published'> {
+    const { title, category, yearStart = null, yearEnd = null, yearSeen = null, published } = value;
+    return { title, category, yearStart, yearEnd, yearSeen, published };
 }
 
 /** The places the filter shows of the loaded page (the store queries one filter; the search and the rest apply here). */
@@ -307,8 +307,8 @@ export class HcmPoiList extends LitElement {
 }
 
 /** A place stored before every place needed a year (owner request of 2026-11-12): its row says so, and Save asks for one. */
-function yearMissing(place: Pick<PoiItemPort, 'yearStart' | 'yearEnd'>): boolean {
-    return place.yearStart === null && place.yearEnd === null;
+function yearMissing(place: Pick<PoiItemPort, 'yearStart' | 'yearEnd' | 'yearSeen'>): boolean {
+    return place.yearStart === null && place.yearEnd === null && (place.yearSeen === null || place.yearSeen === undefined);
 }
 
 /** Registers `<hcm-poi-list>` once. */

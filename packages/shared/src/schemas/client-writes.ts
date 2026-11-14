@@ -80,10 +80,14 @@ const POI_EDITABLE = [
     'description',
     'yearStart',
     'yearEnd',
+    /** M27: plan year when start/end are unknown (traced streets). */
+    'yearSeen',
     'links',
     'photoIds',
     /** M13: the optional credit name. */
     'credit',
+    /** M27: the layer the place was traced on. */
+    'sourceLayer',
     'published',
     ...STAMP,
 ] as const;

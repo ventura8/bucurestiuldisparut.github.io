@@ -173,7 +173,10 @@ function textOf(value: unknown): PoiText | null {
 }
 
 /** `{[field]: year}` when the property is a number, else nothing (the schema checks the range). */
-function yearOf(field: 'yearStart' | 'yearEnd', value: unknown): Readonly<Partial<Record<'yearStart' | 'yearEnd', number>>> {
+function yearOf(
+    field: 'yearStart' | 'yearEnd' | 'yearSeen',
+    value: unknown,
+): Readonly<Partial<Record<'yearStart' | 'yearEnd' | 'yearSeen', number>>> {
     return typeof value === 'number' ? { [field]: value } : {};
 }
 
@@ -202,6 +205,7 @@ function valueOf(properties: Raw, geometry: Geometry, category: string): PoiValu
         ...(description === null ? {} : { description }),
         ...yearOf('yearStart', properties['yearStart']),
         ...yearOf('yearEnd', properties['yearEnd']),
+        ...yearOf('yearSeen', properties['yearSeen']),
         links: linksOf(properties['links']),
         photoIds: idsOf(properties['photoIds']),
         published: properties['published'] !== false,
@@ -320,6 +324,7 @@ function exportFeature(place: ExportedPlace): Raw {
             ...(value.description === undefined ? {} : { description: value.description }),
             ...(value.yearStart === undefined ? {} : { yearStart: value.yearStart }),
             ...(value.yearEnd === undefined ? {} : { yearEnd: value.yearEnd }),
+            ...(value.yearSeen === undefined ? {} : { yearSeen: value.yearSeen }),
             links: value.links,
             ...(value.photoIds.length === 0 ? {} : { photoIds: value.photoIds }),
             published: value.published,

@@ -729,8 +729,9 @@ draws every place in its category's overlay; a click on a shape selects it (`onP
 
 - Category (a select over the city's categories; the last used one for a new place), title and description (RO, EN
   optional; the description in the Markdown subset with the DOM preview of `hcm-markdown-field`), start and end year
-  (at least one: a single year, an open start or end, or a span from and to, the end never before the start, each from
-  1800 to next year; `placeYearIssues` of `@hcm/shared`, the owner's request of 2026-11-12), links (at most 5), photos (`hcm-photo-picker`, a dialog listing the city's photos by title with
+  (at least one: a single year, an open start or end, a span from and to, or only `yearSeen` for a street traced on a
+  plan of that year, the end never before the start, each from 1800 to next year; `placeYearIssues` of `@hcm/shared`, the
+  owner's request of 2026-11-12), links (at most 5), photos (`hcm-photo-picker`, a dialog listing the city's photos by title with
   thumbnails: at most `MAX_POI_PHOTOS`, 20), Published.
 - Geometry: drawn and edited on the map (§4.4) or in the vertex list (§4.6); the type is chosen when the place is added
   (Point, Line, Area) and changes only by redrawing ("Redraw as…" clears the geometry after the unsaved guard's
@@ -756,12 +757,13 @@ Client delete with §9.5; bulk delete of a selection; places come back from Hist
 - **Export** (list's overflow menu: every place, or the selection): a `FeatureCollection` file
   (`<city>-places-<YYYY-MM-DD>.geojson`, `application/geo+json`, made in the browser as a `Blob` and saved through a
   download link), each feature `{type: 'Feature', id, geometry, properties: {category, title: {ro, en?}, description?,
-  yearStart?, yearEnd?, links, photoIds?, published}}` and a foreign member `hcm: {version: 1, city, categories: [...]}`
-  naming the categories it uses.
+  yearStart?, yearEnd?, yearSeen?, links, photoIds?, published, sourceLayer?}}` and a foreign member
+  `hcm: {version: 1, city, categories: [...]}` naming the categories it uses.
 - **Import** (overflow menu, then a file): read as text (at most 5 MB, else refused before parsing: `S-A34-BAD-NOT-GEOJSON`),
   `JSON.parse` in a `try`, a `FeatureCollection` or a single `Feature`; each feature mapped field by field into a new
   object (never spread from the file) and validated with `geometrySchema`, `poiDocSchema` and the manifest's place
-  rules, and `placeYearIssues` without the clock (a feature naming no year is refused as invalid at `yearStart`). The
+  rules, and `placeYearIssues` without the clock (a feature naming no year and no `yearSeen` is refused as invalid at
+  `yearStart`). The
   preview dialog counts **new**, **updated** (an `id` that names an existing place), **unchanged** and
   **refused** (each with its reason: an unsupported type such as `MultiPolygon`, a position with altitude, an open ring,
   a position outside the city, an unknown category, more than 500 positions; `S-A34-BAD-INVALID-FEATURES`), and draws the

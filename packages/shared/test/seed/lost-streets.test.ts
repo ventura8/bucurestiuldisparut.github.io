@@ -12,8 +12,12 @@ import { validateManifest } from '../../src/schemas/validation.js';
 
 const ROOT = resolve(import.meta.dirname, '../../../..');
 const CATEGORY = { id: 'lost-streets', label: { ro: 'Străzi dispărute', en: 'Disappeared streets' }, icon: 'add_road', color: '#B3261E' };
-/** Our georeferenced plans a street may be traced on (the live city's layer ids). */
-const OUR_PLANS = new Set(['harta-bucuresti-1939', 'bucuresti-harta-1914-socec', '1921-mihai-pantea']);
+/** Our georeferenced plans a street may be traced on (the live city's layer ids) and the plan year each names. */
+const OUR_PLANS: Readonly<Record<string, number>> = {
+    'harta-bucuresti-1939': 1939,
+    'bucuresti-harta-1914-socec': 1914,
+    '1921-mihai-pantea': 1921,
+};
 
 interface Feature {
     readonly id: string;
@@ -59,8 +63,14 @@ describe('the disappeared streets of Bucharest', () => {
 
     it('badPath_everyTracedStreetNamesOneOfOurPlansAndNoStreetIsInBothBatches', () => {
         const ohmTitles = new Set(OHM.map((feature) => feature.properties.title.ro));
+        const unknownPlan = TRACED.filter((feature) => !(String(feature.properties['sourceLayer']) in OUR_PLANS));
+        const wrongSeen = TRACED.filter((feature) => {
+            const layer = String(feature.properties['sourceLayer']);
+            return feature.properties['yearSeen'] !== OUR_PLANS[layer];
+        });
 
-        expect(TRACED.filter((feature) => !OUR_PLANS.has(String(feature.properties['sourceLayer'])))).toEqual([]);
+        expect(unknownPlan).toEqual([]);
+        expect(wrongSeen.map((feature) => feature.id)).toEqual([]);
         expect(TRACED.filter((feature) => ohmTitles.has(feature.properties.title.ro)).map((feature) => feature.id)).toEqual([]);
     });
 });
