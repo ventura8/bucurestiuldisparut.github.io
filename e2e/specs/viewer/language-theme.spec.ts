@@ -27,6 +27,14 @@ import {
 
 const TOKENS = (siteManifestData()['city'] as { theme: { tokens: Record<string, Record<string, string>> } }).theme.tokens;
 const PRIMARY = '--md-sys-color-primary';
+const SURFACE = '--md-sys-color-surface';
+
+/** The page's `<meta name="theme-color">` values: an installed app's title bar. */
+async function themeColors(page: Page): Promise<string[]> {
+    return page.evaluate(() =>
+        Array.from(document.querySelectorAll('meta[name="theme-color"]')).map((meta) => (meta.getAttribute('content') ?? '').toLowerCase()),
+    );
+}
 const LONE = 'strandul-opereta-1976';
 const LONE_TITLE_RO = 'Ștrandul Operetă';
 
@@ -127,9 +135,12 @@ test(
         await openViewer(page, { lang });
         // One link without a scheme of its own: the glyph drawn in the city's dark primary.
         await expect.poll(() => tabIcon(page)).toEqual({ links: 1, colour: TOKENS['dark']?.[PRIMARY]?.toLowerCase() });
+        // The installed app's title bar wears the theme's surface too.
+        await expect.poll(() => themeColors(page)).toEqual([TOKENS['dark']?.[SURFACE]?.toLowerCase()]);
 
         await chooseSetting(page, lang, t(lang, 'theme.light'));
         await expect.poll(() => tabIcon(page)).toEqual({ links: 1, colour: TOKENS['light']?.[PRIMARY]?.toLowerCase() });
+        await expect.poll(() => themeColors(page)).toEqual([TOKENS['light']?.[SURFACE]?.toLowerCase()]);
 
         // The stored choice wins over the system at the next load.
         await page.reload();

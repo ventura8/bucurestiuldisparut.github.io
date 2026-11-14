@@ -37,7 +37,8 @@ export interface TabIconLink {
 /** What `paintTabIcon` uses of the page's `window`; `Host` is the themed element's type. */
 export interface TabIconScope<Host> {
     readonly document: {
-        querySelectorAll(selector: string): ArrayLike<TabIconLink>;
+        /** `link[rel="icon"]` gives the icon links, `meta[name="theme-color"]` the browser UI colour's metas. */
+        querySelectorAll(selector: string): ArrayLike<TabIconLink & { setAttribute(name: string, value: string): void }>;
         createElement(tag: 'canvas'): {
             width: number;
             height: number;
@@ -58,12 +59,22 @@ export interface TabIconGlyph {
 }
 
 /**
- * Draws the default icon in the colours of `host`'s theme into the page's icon link, which then no longer follows the
- * system's scheme by itself. Nothing happens, and false is returned, when the page has no icon link, when a link is a
+ * Sets the page's `<meta name="theme-color">` (an installed app's title bar, a mobile browser's toolbar) to the
+ * `--md-sys-color-surface` `host` wears: the chosen mode, the city's colours, the device accent; the meta's `media` goes,
+ * so it no longer follows the system's scheme by itself. Then draws the default icon in the colours of `host`'s theme into
+ * the page's icon link, which then no longer follows the
+ * system's scheme by itself. The title bar is set even for a city's own icon. Nothing happens to the icon, and false is returned, when the page has no icon link, when a link is a
  * city's own icon (no `data:` address), when `host` wears no theme yet or when the browser gives no canvas.
  */
 export function paintTabIcon<Host>(scope: TabIconScope<Host>, host: Host, glyph: TabIconGlyph): boolean {
     const style = scope.getComputedStyle(host);
+    const surface = style.getPropertyValue('--md-sys-color-surface').trim();
+    Array.from(scope.document.querySelectorAll('meta[name="theme-color"]')).forEach((meta) => {
+        if (surface !== '') {
+            meta.removeAttribute('media');
+            meta.setAttribute('content', surface);
+        }
+    });
     const colours = ['primary', 'on-primary'].map((role) => style.getPropertyValue(`--md-sys-color-${role}`).trim());
     const links = Array.from(scope.document.querySelectorAll('link[rel="icon"]'));
     const drawn = (): string | null => {

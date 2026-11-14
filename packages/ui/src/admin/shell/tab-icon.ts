@@ -6,7 +6,7 @@
  * previewed), and again when the system's scheme or contrast changes (the `system` mode). `paintTabIcon` of
  * `@hcm/shared` draws it on a canvas: a `data:` address, no request.
  */
-import { MAP_GLYPH_PATH, MAP_ICON_GEOMETRY, paintTabIcon, type TabIconLink, type TabIconScope } from '@hcm/shared/tab-icon';
+import { MAP_GLYPH_PATH, MAP_ICON_GEOMETRY, paintTabIcon, type TabIconScope } from '@hcm/shared/tab-icon';
 
 const GLYPH = { path: MAP_GLYPH_PATH, ...MAP_ICON_GEOMETRY };
 const QUERIES = ['(prefers-color-scheme: dark)', '(prefers-contrast: more)'];
@@ -15,7 +15,7 @@ const WATCHED = new WeakSet<Document>();
 function scopeOf(document: Document): TabIconScope<Element> {
     return {
         document: {
-            querySelectorAll: (selector): TabIconLink[] => Array.from(document.querySelectorAll<HTMLLinkElement>(selector)),
+            querySelectorAll: (selector) => Array.from(document.querySelectorAll<HTMLLinkElement>(selector)),
             createElement: () => document.createElement('canvas'),
         },
         getComputedStyle: (host) => getComputedStyle(host),

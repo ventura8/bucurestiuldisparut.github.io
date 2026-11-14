@@ -14,7 +14,9 @@ interface Link {
     href: string;
     media: string | null;
     removed: boolean;
+    content?: string | undefined;
     removeAttribute(name: string): void;
+    setAttribute(name: string, value: string): void;
     remove(): void;
 }
 
@@ -26,6 +28,9 @@ function link(href: string, media: string | null = null): Link {
         removeAttribute(name) {
             this.media = name === 'media' ? null : this.media;
         },
+        setAttribute(name, value) {
+            this.content = name === 'content' ? value : this.content;
+        },
         remove() {
             this.removed = true;
         },
@@ -35,9 +40,10 @@ function link(href: string, media: string | null = null): Link {
 interface Host {
     readonly primary: string;
     readonly onPrimary: string;
+    readonly surface?: string;
 }
 
-function page(links: Link[], canvas = true): TabIconScope<Host> & { readonly calls: string[] } {
+function page(links: Link[], canvas = true, metas: Link[] = []): TabIconScope<Host> & { readonly calls: string[] } {
     const calls: string[] = [];
     const context: TabIconContext = {
         fillStyle: '',
@@ -52,7 +58,7 @@ function page(links: Link[], canvas = true): TabIconScope<Host> & { readonly cal
     return {
         calls,
         document: {
-            querySelectorAll: (selector) => (selector === 'link[rel="icon"]' ? links.filter((item) => !item.removed) : []),
+            querySelectorAll: (selector) => (selector === 'link[rel="icon"]' ? links.filter((item) => !item.removed) : metas),
             createElement: () => ({
                 width: 0,
                 height: 0,
@@ -61,7 +67,8 @@ function page(links: Link[], canvas = true): TabIconScope<Host> & { readonly cal
             }),
         },
         getComputedStyle: (host) => ({
-            getPropertyValue: (name) => (name === '--md-sys-color-primary' ? ` ${host.primary}` : host.onPrimary),
+            getPropertyValue: (name) =>
+                ({ '--md-sys-color-primary': ` ${host.primary}`, '--md-sys-color-surface': host.surface ?? '' })[name] ?? host.onPrimary,
         }),
         Path2D: class {
             constructor(readonly path: string) {}
@@ -73,6 +80,24 @@ const DARK: Host = { primary: '#f4bb92', onPrimary: '#5d3719' };
 const LIGHT: Host = { primary: '#875329', onPrimary: '#fff7f4' };
 
 describe('paintTabIcon', () => {
+    it('happyPath_theThemeColorMetaWearsTheHostsSurfaceAndLosesItsMedia', () => {
+        const metas = [link('', '(prefers-color-scheme: dark)')];
+
+        paintTabIcon(page([link('https://city.example/icon.png')], true, metas), { ...DARK, surface: '#1a1110' }, GLYPH);
+
+        expect(metas[0]?.content).toBe('#1a1110');
+        expect(metas[0]?.media).toBeNull();
+    });
+
+    it('badPath_aHostWithNoThemeLeavesTheThemeColorMetaAlone', () => {
+        const metas = [link('', 'dark')];
+
+        paintTabIcon(page([], true, metas), DARK, GLYPH);
+
+        expect(metas[0]?.content).toBeUndefined();
+        expect(metas[0]?.media).toBe('dark');
+    });
+
     it('happyPath_theThemesColoursAreDrawnIntoTheFirstLinkAndTheOtherGoes', () => {
         const links = [link('data:image/png;base64,light', '(prefers-color-scheme: light)'), link('data:image/png;base64,dark', 'dark')];
         const scope = page(links);

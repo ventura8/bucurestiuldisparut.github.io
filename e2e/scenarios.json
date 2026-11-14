@@ -19991,7 +19991,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "The default tab icon wears the visitor's theme",
-            "asserts": "under a dark system the page's one icon link is the glyph on the city's dark primary; Light chosen in Settings -> the link is redrawn on the light primary, and stays so after a reload (the stored choice wins over the system); a city on the default keeps the themed icon and links icon-180.png for the home screen; the admin's tab is drawn in the admin's theme the same way",
+            "asserts": "under a dark system the page's one icon link is the glyph on the city's dark primary; Light chosen in Settings -> the link is redrawn on the light primary and the page's theme-color meta (an installed app's title bar) follows the theme's surface in both, and stays so after a reload (the stored choice wins over the system); a city on the default keeps the themed icon and links icon-180.png for the home screen; the admin's tab is drawn in the admin's theme the same way",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-12 (docs/ENGINE_API.md → The page's tab icon; DECISIONS-for-review.md §166). Test: e2e/specs/viewer/language-theme.spec.ts, scripts/site/test/hosting-pages.test.ts, packages/shared/test/kit/tab-icon.test.ts, packages/ui/test/admin/shell/tab-icon.test.ts."
@@ -20002,7 +20002,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "A stored theme that is no theme leaves the tab icon in the system's scheme",
-            "asserts": "localStorage holds a theme value the engine does not know, the system is dark -> the viewer and the tab icon wear the dark scheme; a city's uploaded icon, a page without an icon link, a host without a theme and a browser without a canvas are left as they are",
+            "asserts": "localStorage holds a theme value the engine does not know, the system is dark -> the viewer and the tab icon wear the dark scheme; a city's uploaded icon (its theme-color still follows), a page without an icon link, a host without a theme (theme-color left alone) and a browser without a canvas are left as they are",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-12 (docs/ENGINE_API.md → The page's tab icon). Test: e2e/specs/viewer/language-theme.spec.ts, packages/shared/test/kit/tab-icon.test.ts."
