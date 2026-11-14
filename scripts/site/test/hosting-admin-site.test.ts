@@ -128,6 +128,24 @@ describe('splitAdminSite', () => {
         expect(readFileSync(join(dir, 'public-admin/release.json'), 'utf8')).toContain('1.0.0+abc1234');
     });
 
+    it('happyPath_theAdminsPagesAndScriptsAreRevalidated_badPath_theInstallBundlesStayImmutable', () => {
+        // Lesson 707: a stale admin.mjs built the old pipeline.
+        // Scenarios: S-A160-HAPPY-ADMIN-NO-CACHE, S-A160-BAD-ADMIN-STALE-SCRIPT
+        const config = tree();
+        splitAdminSite({ config, siteId: SITE });
+
+        const [, admin] = (JSON.parse(readFileSync(config, 'utf8')) as { hosting: Entry[] }).hosting;
+        const cache = (admin?.headers ?? []) as { source?: string; regex?: string; headers: { key: string; value: string }[] }[];
+        const valueFor = (pattern: string): string | undefined =>
+            cache.find((rule) => (rule.source ?? rule.regex) === pattern)?.headers.find((header) => header.key === 'Cache-Control')?.value;
+        expect(valueFor('**/*.@(html|js|mjs|css|json)')).toBe('no-cache');
+        expect(valueFor('^/[^.]*$')).toBe('no-cache');
+        expect(valueFor('/admin/install/**')).toBe('public, max-age=31536000, immutable');
+        // The immutable bundles come after the no-cache rule, as in the one-site configuration, so they keep their year.
+        const order = cache.map((rule) => rule.source ?? rule.regex);
+        expect(order.indexOf('/admin/install/**')).toBeGreaterThan(order.indexOf('**/*.@(html|js|mjs|css|json)'));
+    });
+
     it('badPath_aTreeSplitBeforeIsLeftAlone', () => {
         const config = tree();
         splitAdminSite({ config, siteId: SITE });

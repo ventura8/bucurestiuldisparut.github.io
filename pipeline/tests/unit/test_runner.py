@@ -361,3 +361,61 @@ def test_happy_path_locate_again_unpacks_a_kept_delivery_when_the_segments_expir
 
     assert scripts["fetch"].runs == 0
     assert (scripts["extract"].runs, scripts["stitch"].runs, scripts["locate"].runs) == (1, 1, 1)
+
+
+def _parked_landsat(world: PipelineWorld, steps: dict[str, object]) -> tuple[Config, dict[str, Scripted]]:
+    """A Landsat import queued again on another computer: `locate` skipped (a scene needs none), `warp` and after pending."""
+    world.seed_city()
+    params = {"entityId": "LC81830292017243LGN00", "dataset": "landsat_ot_c2_l1", "sensor": "L8-OLI"}
+    world.seed_job(JOB, "usgs-import", params)
+    skipped = {"status": "skipped"}
+    world.store.documents[world.job_path(JOB)]["steps"] = {"stitch": skipped, "locate": skipped, "warp": {"status": "pending"}, **steps}
+    world.store.seed(
+        world.version_path(JOB),
+        {"layerId": "layer-1", "jobId": JOB, "origin": "usgs", "state": "processing", "label": {"ro": "x"}, "year": 2017},
+    )
+    names = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "pyramid", "register")
+    return Config(**{**world.config.__dict__, "job_id": JOB}), {name: Scripted(name) for name in names}
+
+
+def test_happy_path_a_landsat_job_without_its_bands_here_extracts_them_again_from_the_kept_delivery(world: PipelineWorld) -> None:
+    """Scenarios: S-P30-HAPPY-BANDS-AGAIN"""
+    # Lesson 706: a skipped `locate` once passed the bands over, and `warp` failed missingBand on another computer.
+    steps = {
+        "fetch": _stored(world, "usgs-raw/landsat_ot_c2_l1/x/a.tar"),
+        "extract": {"status": "done", "gcsPath": "work/c/j/bands/B4.tif"},
+    }
+    config, scripts = _parked_landsat(world, steps)
+
+    runner(world, config, scripts).run()
+
+    assert scripts["fetch"].runs == 0
+    assert (scripts["extract"].runs, scripts["warp"].runs) == (1, 1)
+
+
+def test_bad_path_a_landsat_job_without_its_bands_nor_its_delivery_downloads_the_scene_again(world: PipelineWorld) -> None:
+    """Scenarios: S-P30-BAD-BANDS-AND-DELIVERY-GONE"""
+    steps = {
+        "fetch": {"status": "done", "gcsPath": "usgs-raw/landsat_ot_c2_l1/x/a.tar"},
+        "extract": {"status": "done", "gcsPath": "work/c/j/bands/B4.tif"},
+    }
+    config, scripts = _parked_landsat(world, steps)
+
+    runner(world, config, scripts).run()
+
+    assert (scripts["fetch"].runs, scripts["extract"].runs, scripts["warp"].runs) == (1, 1, 1)
+
+
+def test_happy_path_a_landsat_job_whose_warp_is_kept_needs_neither_its_bands_nor_its_delivery(world: PipelineWorld) -> None:
+    """Scenarios: S-P30-HAPPY-BANDS-AGAIN"""
+    steps = {
+        "fetch": {"status": "done", "gcsPath": "usgs-raw/landsat_ot_c2_l1/x/a.tar"},
+        "extract": {"status": "done", "gcsPath": "work/c/j/bands/B4.tif"},
+        "warp": _stored(world, "work/c/j/warped.tif"),
+    }
+    config, scripts = _parked_landsat(world, steps)
+
+    runner(world, config, scripts).run()
+
+    assert (scripts["fetch"].runs, scripts["extract"].runs, scripts["warp"].runs) == (0, 0, 0)
+    assert scripts["export"].runs == 1

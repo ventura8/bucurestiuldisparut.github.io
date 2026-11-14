@@ -19070,6 +19070,28 @@
             "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
         },
         {
+            "id": "S-P30-HAPPY-BANDS-AGAIN",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A Landsat job resumed without its bands extracts them again",
+            "asserts": "extract recorded done but its bands not on this computer, locate skipped, the delivery kept -> extract runs again (fetch does not) and warp runs; with warp's output kept neither fetch nor extract runs",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 706 (2026-11-14: a skipped locate passed the bands over and warp failed missingBand on another computer). Test: pipeline/tests/unit/test_runner.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-BAD-BANDS-AND-DELIVERY-GONE",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A Landsat job without its bands nor its delivery downloads the scene again",
+            "asserts": "extract and fetch recorded done, neither the bands nor the delivery on this computer -> fetch, extract and warp run again; never missingBand for a band the bundle has",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 706. Test: pipeline/tests/unit/test_runner.py (pipeline-pytest)."
+        },
+        {
             "id": "S-P22-HAPPY-STITCHED-PREVIEW",
             "behaviour": "P22",
             "area": "pipeline",
@@ -21246,6 +21268,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-ADMIN-NO-CACHE",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin's own site revalidates its pages and scripts",
+            "asserts": "the split configuration's admin site keeps the no-cache rules of the pages, scripts and runtime files (the glob and the extension-less regex) and, after them, the install bundles' one-year immutable rule",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Lesson 707 (2026-11-14: a cached admin.mjs built the pipeline without its release). Unit test: scripts/site/test/hosting-admin-site.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-ADMIN-STALE-SCRIPT",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "A reload after a deploy never runs the older admin beside the newer release",
+            "asserts": "admin.mjs and index.html on the admin's site carry no-cache, never Hosting's one-hour default -> a reload revalidates them, so an install build names the release whose build steps it submits",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Lesson 707. Unit test: scripts/site/test/hosting-admin-site.test.ts."
         },
         {
             "id": "S-A160-HAPPY-ADMIN-TOKEN",

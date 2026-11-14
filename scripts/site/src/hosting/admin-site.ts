@@ -54,6 +54,18 @@ function isAdminRule(rule: Json): boolean {
     return typeof source === 'string' && (source === `/${ADMIN_FOLDER}` || source.startsWith(`/${ADMIN_FOLDER}/`));
 }
 
+/**
+ * A header rule of every folder (a `source` starting with `**`, such as the pages' and scripts' glob, or a `regex` such as
+ * the extension-less addresses'): both sites keep it.
+ * Live 2026-11-14 (lesson 707): the admin's site lost the `no-cache` of its pages and scripts, Hosting served `admin.mjs` with
+ * an hour's `max-age`, and a reload after a deploy ran the old admin beside the new `runtime.json`: Update the map built the
+ * pipeline with the old build steps (no `HCM_RELEASE`), so every computer said "processing 0.0.0".
+ */
+function isEveryFolderRule(rule: Json): boolean {
+    const source = rule['source'];
+    return typeof source === 'string' ? source.startsWith('**') : typeof rule['regex'] === 'string';
+}
+
 /** The keys both sites keep as they are; `predeploy` never (the tree is built already). */
 function common(entry: Json): Json {
     return Object.fromEntries(
@@ -116,7 +128,8 @@ function publicEntry(entry: Json, adminOrigin: string): Json {
 }
 
 /**
- * The admin's entry: its folder's rules and headers, every page's headers, `/` to `/admin/`, and a city's address
+ * The admin's entry: its folder's rules and headers, every folder's headers (`isEveryFolderRule`: the pages' and scripts'
+ * `no-cache`), `/` to `/admin/`, and a city's address
  * (`/<id>/`, which the admin's links build from its own origin) to the same address on the public map.
  */
 function adminEntry(entry: Json, siteId: string, adminPublic: string, publicOrigin: string): Json {
@@ -134,7 +147,7 @@ function adminEntry(entry: Json, siteId: string, adminPublic: string, publicOrig
             },
         ],
         rewrites: rules(entry, 'rewrites').filter(isAdminRule),
-        headers: rules(entry, 'headers').filter((rule) => isAdminRule(rule) || rule['source'] === '**'),
+        headers: rules(entry, 'headers').filter((rule) => isAdminRule(rule) || isEveryFolderRule(rule)),
     };
 }
 

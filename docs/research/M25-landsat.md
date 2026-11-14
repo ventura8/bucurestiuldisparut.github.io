@@ -59,6 +59,8 @@ Every Landsat import failed at `fetch` with `apiError.imagery.downloadIncomplete
 
 On the owner's computers every Landsat run then failed at `warp` with `apiError.worker.refused`: `worker.step` refuses a version field missing from `WORKER_VERSION_FIELDS`, and `landsat` (the report `warp` writes) was not on it. It is now (`S-A62-HAPPY-LANDSAT-REPORT`, `S-A62-BAD-LANDSAT-REPORT`; lesson 703). A connection dropped mid-download resumes from the bytes held (lesson 705).
 
+A Landsat job resumed on another computer (a retry, a released job) then failed at `warp` with `missingBand`: the bands `extract` keeps are in that computer's `work/`, and the runner passed `extract` over because a skipped `locate` counted as having consumed it. Only a step that ran (`done`, its output still here: `locate`, or a scene's `warp`) makes its inputs dispensable now, so the job extracts its bands again, fetching the scene again when its delivery is gone too (`S-P30-HAPPY-BANDS-AGAIN`, `S-P30-BAD-BANDS-AND-DELIVERY-GONE`; lesson 706).
+
 ## 8. Tests
 
 - Pipeline (`S-P30-*`): `pipeline/tests/synthetic/landsat.py` builds a Level-1 bundle of the synthetic world in UTM 35N; `tests/integration/test_landsat_job.py` runs the whole import against the loopback fakes (TM within a pixel at z13, ETM+ and OLI pan-sharpened at z14, a missing band (OLI's B4 too), Sentinel-2 moved 90 m with a cloud box over the city); `tests/unit/test_landsat.py` covers the routing, the band names, the masks, the stretch, Brovey and the phase correlation.

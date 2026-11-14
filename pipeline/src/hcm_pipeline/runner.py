@@ -133,6 +133,10 @@ STOP_SIGNALS: Final = (signal.SIGTERM, signal.SIGINT)
 # sweep empties: a resume after `locate` needs none of them, so they are made again only while `locate` is not finished.
 LOCATE_INPUTS: Final = ("fetch", "extract", "stitch")
 LOCATE_STEP: Final = "locate"
+# A Landsat scene skips `locate`: its bands (`extract`) feed `warp`. Only a consumer that ran (`done`, its output still here)
+# makes its inputs dispensable; a skipped `locate` proves nothing, so a Landsat job resumed on a computer without its bands
+# extracts them again instead of failing `warp` with `missingBand` (live, 2026-11-14: lesson 706).
+CONSUMERS: Final = (LOCATE_STEP, "warp")
 # ... and `extract` alone reads the delivery: with its segments still there, a retry after the delivery's seven days has nothing to
 # download (8.7 GB that nothing reads, and a disk check that counts the segments' 13 GB against it).
 DELIVERY_STEP: Final = "fetch"
@@ -310,10 +314,14 @@ class JobRunner:
         return False
 
     def _consumed(self, ctx: JobContext, name: str) -> bool:
-        """True for what feeds `locate` once `locate` is finished, and for the delivery once its segments are out: nothing after
-        them reads those outputs, maybe gone by now."""
-        finished_with = (LOCATE_STEP, EXTRACT_STEP) if name == DELIVERY_STEP else (LOCATE_STEP,)
-        return name in LOCATE_INPUTS and any(self._finished(ctx.job.step(step)) for step in finished_with)
+        """True for what feeds `locate` (a Landsat scene's `warp`) once that step ran, and for the delivery once its segments or
+        bands are out: nothing after them reads those outputs, maybe gone by now."""
+        finished_with = (*CONSUMERS, EXTRACT_STEP) if name == DELIVERY_STEP else CONSUMERS
+        return name in LOCATE_INPUTS and any(self._ran(ctx.job.step(step)) for step in finished_with)
+
+    def _ran(self, record: StepRecord) -> bool:
+        """The step ran (`done`, not `skipped`) and its output is still there."""
+        return record.status == "done" and self._finished(record)
 
     def _step(self, ctx: JobContext, name: str, base: float, weight: float) -> StepResult:
         self._refresh(ctx)
