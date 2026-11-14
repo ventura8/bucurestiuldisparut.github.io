@@ -1,6 +1,6 @@
 // The sharper scan's tiles (`scan-tiles.ts`): the file's layout, the tiles a view touches, and the cache that decodes only those and
 // keeps at most `SCAN_TILES_KEPT` (S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE).
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { DetailTiles } from '../../../src/admin/georef/scan-input.js';
 import {
@@ -105,8 +105,10 @@ describe('the scan pane holds its sharper scan', () => {
         // Replaced while it opens: the first is closed when it arrives, the second is the pane's.
         holder.load(tiles(), changed);
         holder.load(tiles(), changed);
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        expect(holder.scene(view, pane, 0.25)).toEqual({ scale: 1, pieces: [] });
+        // Waits for the second to open, however slow the machine (a fixed 50 ms failed under load).
+        await vi.waitFor(() => {
+            expect(holder.scene(view, pane, 0.25)).toEqual({ scale: 1, pieces: [] });
+        });
         // Not a tiles file: nothing to draw. Dropped while it opens: closed when it arrives.
         holder.load({ file: new Blob(['short']), scale: 1 }, changed);
         await new Promise((resolve) => setTimeout(resolve, 50));
