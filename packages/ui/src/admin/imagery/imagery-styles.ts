@@ -12,6 +12,21 @@ export const imageryStyles = [
     ...editingStyles,
     visuallyHidden,
     css`
+        /* M28: a part the map's sources turned off, with its way to Setup → Sources (a full target). */
+        .sources-off {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 16px;
+        }
+
+        .sources-off a {
+            display: inline-flex;
+            align-items: center;
+            min-block-size: 48px;
+            color: var(--md-sys-color-primary);
+        }
+
         .imagery-map {
             flex: none;
             block-size: clamp(240px, 45vh, 480px);

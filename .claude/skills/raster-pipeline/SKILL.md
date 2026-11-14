@@ -64,6 +64,16 @@ The Python + GDAL pipeline that turns declassified USGS film scans (Corona KH-4,
 - Every request carries the project User-Agent (Wikidata refuses a generic one) and nothing personal; a failed source writes nothing (exit 1).
 - Only licensed open sources are fetched. Line thinning is iterative Douglas-Peucker: the recursive one hit Python's recursion limit on a zigzag.
 
+## Crashes, power cuts and the worker's disk (M7 addendum of 2026-11-14)
+
+- Write every file the worker keeps through `hcm_pipeline.durable` (`write_atomic`, `write_json_atomic`, `copy_atomic`,
+  `replace_durably`): bytes and folder `fsync`ed; a plain `write_text` or a bare rename can leave an empty file after a power cut.
+- A resume on a worker trusts a local output only through `intact.py` (recorded size, first bytes); record `bytes` with every `Done`.
+- A full disk on a worker is a hand-back (`RunOutcome.DISK_FULL`, `diskFull` on `worker.end`), never a failure: keep ENOSPC visible
+  (do not swallow it into a generic message without its cause).
+- The work folder's sweep deletes by the server's `jobStates` (`worker/sweep.py`, `worker/housekeeping.py`); never delete a job's
+  scratch by age alone when the server lists it as unfinished. Crash tests cut at the `fsync`, not at the rename.
+
 ## Job state machine (`cities/{c}/jobs/{id}`)
 
 - Leases and heartbeat; `waiting_usgs` with backoff for maintenance (503 HTML); re-login at 100 minutes; a cancel flag; SIGTERM → `cancelled` with temp files removed.

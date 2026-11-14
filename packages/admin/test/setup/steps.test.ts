@@ -9,7 +9,8 @@ describe('SETUP_STEP_SPECS', () => {
     it('happyPath_theBootstrapStepsComeFirst_theImageryPipelineAlsoNeedsNoServer', () => {
         const withoutBackend = SETUP_STEPS.filter((id) => !SETUP_STEP_SPECS[id].needsBackend);
 
-        expect(withoutBackend).toEqual([...BOOTSTRAP, 'pipeline']);
+        // M28: the platform card reads the other steps' states, so it needs no server either.
+        expect(withoutBackend).toEqual([...BOOTSTRAP, 'pipeline', 'platform']);
         expect(SETUP_STEPS.slice(0, BOOTSTRAP.length)).toEqual(BOOTSTRAP);
         expect(SETUP_STEPS.at(-1)).toBe('site');
     });
@@ -58,8 +59,10 @@ describe('nextSetupStep', () => {
         expect(nextSetupStep(new Set(BOOTSTRAP))).toBe('claim');
     });
 
-    it('happyPath_afterMapboxComesUsgs_thenTheOptionalOnes_thenTheSite', () => {
-        const claimed = new Set<SetupStepId>([...BOOTSTRAP, 'claim', 'mapbox']);
+    it('happyPath_afterMapboxComeTheSources_thenUsgs_thenTheOptionalOnes_thenTheSite', () => {
+        // M28: the sources come after the platform's steps; the platform card itself is read from them (`withPlatform`).
+        expect(nextSetupStep(new Set<SetupStepId>([...BOOTSTRAP, 'claim', 'mapbox']))).toBe('sources');
+        const claimed = new Set<SetupStepId>([...BOOTSTRAP, 'claim', 'mapbox', 'platform', 'sources']);
 
         expect(nextSetupStep(claimed)).toBe('usgs');
         expect(nextSetupStep(new Set<SetupStepId>([...claimed, 'usgs']))).toBe('pipeline');
@@ -69,7 +72,9 @@ describe('nextSetupStep', () => {
 
     it('happyPath_aPostponedStepCountsAsSettled', () => {
         // CR-M6-4: the caller passes the postponed steps with the done ones (`settledSteps` of state.ts).
-        expect(nextSetupStep(new Set<SetupStepId>([...BOOTSTRAP, 'claim', 'mapbox', 'usgs', 'pipeline']))).toBe('analytics');
+        expect(nextSetupStep(new Set<SetupStepId>([...BOOTSTRAP, 'claim', 'mapbox', 'platform', 'sources', 'usgs', 'pipeline']))).toBe(
+            'analytics',
+        );
     });
 
     it('badPath_aStepWhosePrerequisiteIsMissingIsSkipped', () => {
@@ -83,9 +88,9 @@ describe('nextSetupStep', () => {
 });
 
 describe('setupInputBudget', () => {
-    it('happyPath_theWholeSetupTakesElevenInputsAndFourConsents', () => {
-        // M6 §4.2: a 1, b 1, c 1, d 1, e 1, f 3, g 1, h 1, i 1; consents a, b, c, g.
-        expect(setupInputBudget()).toEqual({ inputs: 11, consents: 4 });
+    it('happyPath_theWholeSetupTakesTwelveInputsAndFourConsents', () => {
+        // M6 §4.2: a 1, b 1, c 1, d 1, e 1, f 3, g 1, h 1, i 1; consents a, b, c, g. M28: e1 none, e2 1 (Save my choice).
+        expect(setupInputBudget()).toEqual({ inputs: 12, consents: 4 });
     });
 
     it('happyPath_theBootstrapTakesFourInputsAndThreeConsents', () => {

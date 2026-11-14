@@ -17,6 +17,7 @@ import type {
     SetupGoogleAuth,
     SetupHost,
     SetupLegacyImport,
+    SetupSourcesPort,
     SessionStore,
     VisibilityPort,
 } from '../../src/setup/ports.js';
@@ -206,6 +207,8 @@ export interface Harness {
     readonly cloud: Fake<SetupCloud>;
     readonly backend: Fake<SetupBackend>;
     readonly importer: Fake<SetupLegacyImport>;
+    /** M28: the city's sources; by default a saved choice of the defaults (`{}`), so the Sources step is done. */
+    readonly sources: Fake<SetupSourcesPort>;
     readonly host: Fake<SetupHost>;
     readonly logs: RecordingSink;
     /** The shell's snackbar (M6 setup-ux). */
@@ -284,6 +287,11 @@ export function createHarness(): Harness {
         detect: vi.fn<SetupLegacyImport['detect']>().mockResolvedValue({ done: 0, total: 45, failed: [] }),
         run: vi.fn<SetupLegacyImport['run']>().mockResolvedValue({ done: 45, total: 45, failed: [] }),
     };
+    const sources: Fake<SetupSourcesPort> = {
+        read: vi.fn<SetupSourcesPort['read']>().mockResolvedValue({}),
+        save: vi.fn<SetupSourcesPort['save']>().mockResolvedValue(undefined),
+        country: vi.fn<SetupSourcesPort['country']>().mockResolvedValue(null),
+    };
     const host: Fake<SetupHost> = {
         projectId: PROJECT_ID,
         projectNumber: '123456789012',
@@ -300,6 +308,6 @@ export function createHarness(): Harness {
     const log = createLogger('admin', { sink: logs.sink, minLevel: 'debug' }).child('setup');
     const notify = vi.fn<SetupDeps['notify']>();
     const installer = fakeInstaller();
-    const deps: SetupDeps = { host, google, cloud, backend, importer, clock, visibility, session, log, notify, installer };
-    return { deps, clock, visibility, session, google, cloud, backend, importer, host, logs, notify, installer };
+    const deps: SetupDeps = { host, google, cloud, backend, importer, sources, clock, visibility, session, log, notify, installer };
+    return { deps, clock, visibility, session, google, cloud, backend, importer, sources, host, logs, notify, installer };
 }

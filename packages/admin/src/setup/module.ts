@@ -29,6 +29,7 @@ import type {
     SetupGoogleAuth,
     SetupHost,
     SetupLegacyImport,
+    SetupSourcesPort,
     SetupNotice,
     VisibilityPort,
 } from './ports.js';
@@ -77,6 +78,8 @@ export interface SetupModuleOptions {
     readonly cloud: SetupCloud;
     /** google-clients' `createLegacyImport(...)`. */
     readonly importer: SetupLegacyImport;
+    /** M28: the city's sources (`cities/{city}.sources`, the Firestore SDK; `app/setup-wiring.ts`). */
+    readonly sources: SetupSourcesPort;
     /** `setup.createCity` with the bundled city (CR-M2b-1; the entry calls it through the registry, `app/setup-wiring.ts`). */
     readonly createCity: () => Promise<{ readonly created: boolean }>;
     /** The city the admin edits (`infra/project.json`'s first) and its bounding box for the USGS access request. */
@@ -170,6 +173,7 @@ export function setupDepsOf(shell: SetupShell, options: SetupModuleOptions): Set
         cloud: options.cloud,
         backend: backendOf(shell.firebase.callables, options.createCity),
         importer: options.importer,
+        sources: options.sources,
         installer: options.installer,
         clock: shell.clock,
         visibility: shell.visibility,

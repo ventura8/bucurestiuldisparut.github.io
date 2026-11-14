@@ -110,13 +110,14 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     "photos": 25,
     "pois": 25,
     # 21 since 2026-11-13 (§222, under the owner's §215 raise): 20.2 KB after the 25 languages' merge.
-    "settings": 21,
+    "settings": 22,  # §215 (the owner confirmed, 2026-11-14)
     "layers": 10,
     "history": 8,
     "admins": 6,
     "home": 5,
     "jobs": 5,
-    "crashes": 5,
+    # 6 since 2026-11-14 (§215b, M28): 5.0 KB after the merge, the setup page's elements it shares now beside it.
+    "crashes": 6,
     # M3 (docs/research/M3-interfaces.md §10.1, DECISIONS-for-review.md §47): the Imagery area (15.2 KB measured on
     # 2026-10-23), the georeferencer (14.0 KB) and the layer editor's Crop (`layer-geometry`, 1.9 KB), each the measurement
     # plus about 20 %, under the contract's ceilings of 30, 30 and 8 KB.
@@ -225,7 +226,7 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # moved the command into `worker-local`.
     # 8 since 2026-11-13 (§215, the owner's raise): 7.3 KB with W5's computers list.
     # 9 since 2026-11-13 (§222, under §215): 8.7 KB after the merge of the stitched films' wait (§217).
-    "worker": 9,
+    "worker": 10,  # §215 (the owner confirmed, 2026-11-14)
     # Finding 72 of 2026-11-02 ("Use this computer": `packages/admin/src/worker/worker-local.ts`, the feed's one dynamic
     # import): the starter file, the auto-pair, Stop using this computer, the command behind Advanced, `<hcm-worker-local>`
     # and its texts (`@hcm/shared/admin-worker-local`), fetched when the worker's panel first shows the computer's part:
@@ -247,6 +248,11 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # limits you need to raise" for beta.1): the join card reached 3.0 KB with the cloud estimate and the plain messages.
     "join-card": 4,
     "upload-panel": 2,
+    # M28 (docs/research/M28-sources.md §5, §10-§11; DECISIONS-for-review.md §215b): Setup's Platform and Sources cards with
+    # their catalogue (`@hcm/shared/admin-sources`: the sources, the collections, free translation and the country finder in
+    # two languages), fetched as the setup page is defined, so the entry stays within ADMIN_ENTRY_KB. Set from the first
+    # measurement plus about 20 %, rounded up: 34.7 KB measured on 2026-11-14.
+    "sources-cards": 42,
     # M12 (docs/research/M12-own-tiles.md, DECISIONS-for-review.md §96): a version's whole page, out of the Imagery chunk, which was at
     # 18.0 of 18 and is at 16.2 with the own tiles' map and Work's pictures in it: 3.5 KB measured on 2026-11-07 plus about 20 %, rounded
     # up. Mapbox's compute units, Studio steps and choices (`mapbox-choices.ts`), which a city on its own bucket, the default, never
@@ -311,7 +317,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # 750 since 2026-11-12, the owner's decision (§168d): the georeferencer's panes and its sharper scan's tiles (`georef-panes`,
 # `scan-tiles`) took the total to 701.8 KB; both load only with the georeferencer, and the entry's 450 KB is unchanged.
 # 770 since 2026-11-13 (§222, under the owner's §215 raise): 764.6 KB with the device accent (about 1.5 KB) and the merge.
-ADMIN_TOTAL_KB = 770
+# 820 since 2026-11-14 (§215b, M28): 805.7 KB with the Platform and Sources cards, free translation and the country finder
+# (their own `sources-cards` chunk, 34.7 KB, most of it the catalogue's texts in two languages) and the merge of origin.
+ADMIN_TOTAL_KB = 820
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k

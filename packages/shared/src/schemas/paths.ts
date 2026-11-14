@@ -178,6 +178,9 @@ export const FIRESTORE_PATHS = {
     /** M4: the month's Vertex AI requests, tokens and cost (`assist.translateDraft`'s monthly cap). */
     aiUsage: (month: string) => `usage/ai-${segment(month, matching(MONTH_PATTERN))}`,
     opsGuard: 'ops/guard',
+    /** M28: where a country's old maps and images can be found, researched and refreshed by `ops.tick` (`country-sources.ts`). */
+    countrySources: 'countrySources',
+    countrySource: (country: string) => `countrySources/${segment(country, matching(/^[A-Z]{2}$/))}`,
     /** M3: the dispatcher's execution slots (CR-M3-47). */
     opsDispatch: 'ops/dispatch',
     /** M6: the self-test's events probe, answered by `ops.onProbe` (`docs/research/M6-interfaces.md` §3.2). */

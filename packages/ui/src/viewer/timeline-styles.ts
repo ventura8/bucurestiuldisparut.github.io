@@ -343,6 +343,14 @@ export const timelineStyles = [
             transition: none;
         }
 
+        /* Standing, the pill is a fixed 96 px (88 px of year in 4 px of card), so the chip under it stays on its axis (lesson 697). */
+        :host([collapsed][orientation='vertical']) .thumb {
+            inline-size: 88px;
+            padding-inline: 0;
+            justify-content: center;
+            text-align: center;
+        }
+
         /*
          * The year chip: a chip of the small corner, placed by placeTip over the card lying and beside it standing; it never
          * takes the pointer. The owner (2026-11-13) asked for it bigger everywhere, to read easily above a finger: the year in

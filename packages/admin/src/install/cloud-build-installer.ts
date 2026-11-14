@@ -6,6 +6,8 @@
  * docker builder's digest, a map to show); it submits the build of the admin's own bundle.
  */
 import {
+    adminSiteId,
+    adminSiteUrl,
     CLOUD_RUN_JOBS,
     compareRelease,
     INSTALLER_ACCOUNT,
@@ -62,6 +64,17 @@ export interface CloudBuildInstallerDeps {
      * build then names it to the functions (`HCM_ADMIN_SITE`), whose links open it directly.
      */
     readonly adminSite?: string | null;
+}
+
+/**
+ * §210: the admin's own site's address when this tab is still on the public map's `/admin/`, which now answers 301 there
+ * (lesson 675): `adminOutdated` then names it, and a reload lands on it. Null on the admin's own site or without a move.
+ */
+async function movedTo(deps: CloudBuildInstallerDeps): Promise<string | null> {
+    const answer = deps.adminSite
+        ? null
+        : await deps.fetch(new URL('/admin/runtime.json', deps.origin), { redirect: 'manual' }).catch(() => null);
+    return answer?.type === 'opaqueredirect' ? adminSiteUrl(adminSiteId(deps.projectId)) : null;
 }
 
 /** §210: the admin's own site for a build's parameters, when the admin runs on it. */
@@ -171,7 +184,7 @@ class CloudBuildInstaller implements InstallerPort {
 
     /** The bundle a build of `target` installs: refused while a newer admin is out, or for a pipeline the bundle has none of. */
     async #bundleFor(target: InstallTarget): Promise<InstallBundle> {
-        const newer = await this.#deps.newerAdmin();
+        const newer = (await this.#deps.newerAdmin()) ?? (await movedTo(this.#deps));
         if (newer !== null) {
             throw new InstallBundleError('apiError.install.adminOutdated', { release: newer });
         }

@@ -1,4 +1,5 @@
 import { SITE_PUBLISH_TRANSFER_MB, SITE_PUBLISH_TRANSFER_TRIMMED_MB } from '@hcm/shared';
+import { COUNTRY_SEEDS } from '@hcm/shared/country-seeds';
 import { MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import type { Locator, Page, Request } from '@playwright/test';
 
@@ -10,11 +11,11 @@ import type { InputFlow } from '../../support/budget.js';
 import type { TestFixtures } from '../../support/test.js';
 import { engineEvents, waitForEngineEvent } from '../../support/viewer.js';
 import type { SetupBudget } from '../support/budget.js';
-import { capture } from '../support/capture.js';
+import { capture, captureElement } from '../support/capture.js';
 import type { GoogleConsent } from '../support/consent.js';
 import type { ServerDeployment } from '../support/deployment.js';
 import type { EmulatorWorld } from '../support/emulators.js';
-import { apiText, setupText, shellText } from '../support/i18n.js';
+import { apiText, setupText, shellText, sourcesText } from '../support/i18n.js';
 import {
     followSiteRelease,
     INSTALL_RELEASE,
@@ -281,6 +282,55 @@ async function connectMapbox({ page, lang, setup, setupBudget, upstream, console
     expect(JSON.stringify([city, await emulators.document('setup/status')])).not.toContain(MAPBOX_TOKENS.trial);
 }
 
+/** M28 §10: Romania's list as `ops.tick` writes it once the city is placed (the tick does not run in the e2e world). */
+async function seedCountryList(emulators: EmulatorWorld): Promise<void> {
+    const at = STEPS_AT;
+    const seed = COUNTRY_SEEDS['RO'];
+    await emulators.setDocument('countrySources/RO', {
+        country: 'RO',
+        language: 'ro',
+        cities: [E2E_CITY_ID],
+        places: (seed?.places ?? []).map((place) => ({ ...place, reachable: true })),
+        origin: 'curated',
+        factsCheckedOn: seed?.factsCheckedOn,
+        refreshedAt: at,
+        updatedBy: 'system:ops',
+        updatedAt: at,
+    });
+}
+
+/**
+ * 5b. M28: the app's platform (read from the steps before it, no input) and the map's sources: after Mapbox the Sources card
+ * opens with the suggested switches and the month's estimate; Save my choice (one input) writes the city's `sources` and
+ * USGS stays in the list (its frames and Landsat are on by default).
+ */
+async function chooseSources({ page, lang, setup, setupBudget, emulators }: Journey): Promise<void> {
+    const platform = await setup.show('platform');
+    await expect(platform.locator('[data-platform]')).toHaveCount(5);
+    await checkpoint(page, lang, '06b-platform', 'setup-platform');
+    const sources = await setup.show('sources');
+    await expect(sources.getByRole('switch', { name: sourcesText(lang, 'adminSources.usgs.title') })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    );
+    await expect(sources.getByText(startOf(sourcesText(lang, 'adminSources.summary.total')))).toBeVisible();
+    // M28 §10–§11: the free translation options and the country's archives, libraries and sellers (the list ops.tick wrote).
+    await expect(sources.locator('[data-translation]')).toHaveCount(6);
+    await expect(sources.locator('[data-finder="ready"] [data-place]')).toHaveCount(COUNTRY_SEEDS['RO']?.places.length ?? 0);
+    await checkpoint(page, lang, '06c-sources', 'setup-sources');
+    // Review screenshots only (HCM_SCREENSHOTS): the translation options and the finder, a visit guide open.
+    await sources.locator('[data-translation="deeplFree"] summary').click();
+    await sources.locator('[data-place="anrCentral"] [data-guide="offline"] summary').click();
+    await captureElement(page, sources.locator('section[aria-labelledby="sources-translations"]'), '06d-translations');
+    await captureElement(page, sources.locator('[data-finder]'), '06e-finder');
+    await setupBudget.inputs('sources').click(sources.getByRole('button', { name: sourcesText(lang, 'adminSources.save') }));
+    await setup.expectState('sources', 'ok');
+    await expect
+        .poll(async () => (await emulators.document('cities/bucharest'))?.['sources'])
+        .toMatchObject({ usgs: true, cloudAi: false });
+    await expect(setup.card('usgs')).toBeVisible();
+}
+
 /** 6. USGS can wait: Do it later (one input of its own budget); the chip says Later and Setup goes on. */
 async function postponeUsgs({ lang, setup, skipUsgs, page }: Journey): Promise<void> {
     const usgs = await setup.show('usgs');
@@ -467,6 +517,10 @@ test(
             '@S-A28-HAPPY',
             '@S-A31-HAPPY',
             '@S-A31-BAD-ALERTS',
+            '@S-A180-HAPPY-SAVE-DEFAULTS',
+            '@S-A181-HAPPY-PLATFORM',
+            '@S-A183-HAPPY-FINDER',
+            '@S-A184-HAPPY-TRANSLATIONS',
         ],
     },
     async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment, consoleErrors, adminWorld }) => {
@@ -494,6 +548,7 @@ test(
         await serveInstallBundle(page, { startUp: true });
         await followSiteRelease(page, upstream);
         const startUp = backendRequests(page);
+        await seedCountryList(emulators);
         await page.goto(adminPath(lang));
 
         await signInInStartUpMode(journey);
@@ -507,6 +562,7 @@ test(
 
         await installTheServer(journey, adminWorld.accounts.owner.uid);
         await connectMapbox(journey);
+        await chooseSources(journey);
         await postponeUsgs(journey);
         await enableAnalytics(journey);
         await importLegacyPhotos(journey);

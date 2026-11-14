@@ -31,13 +31,12 @@ import {
     newNotifySettings,
     newPhoto,
     newPoi,
-    newPoiCategory,
     photoDoc,
-    poiCategoryDoc,
     notifySettingsDoc,
     poiDoc,
     usgsSceneDoc,
 } from './support/documents.js';
+import { newPoiCategory, poiCategoryDoc } from './support/poi-categories.js';
 import { newStory, storyDoc } from './support/stories.js';
 import { createWorld, deleted, stampedBy, verdict, type Data, type Verdict, type World } from './support/world.js';
 

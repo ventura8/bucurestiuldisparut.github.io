@@ -185,7 +185,19 @@ export const GUARD_REASONS = ['budget', 'manual'] as const;
  * gives every admin document from before M5 its cities (`docs/research/M5-interfaces.md` §1.2), `exports` expires the
  * static exports past their time (§5.3).
  */
-export const OPS_STEPS = ['guard', 'jobs', 'mts', 'manifests', 'health', 'tokens', 'invites', 'users', 'memberships', 'exports'] as const;
+export const OPS_STEPS = [
+    'guard',
+    'jobs',
+    'mts',
+    'manifests',
+    'health',
+    'tokens',
+    'invites',
+    'users',
+    'memberships',
+    'exports',
+    'sources',
+] as const;
 export const MANIFEST_BUILD_STATES = ['idle', 'queued', 'building', 'failed'] as const;
 /** Entities a manifest build may skip (an invalid document is skipped and flagged, never fails the manifest). */
 export const MANIFEST_ENTITIES = ['layer', 'photo', 'poi', 'poiCategory', 'story'] as const;
@@ -211,6 +223,11 @@ export const jobDocSchema = z.strictObject({
     executionName: z.string().max(500).optional(),
     machine: z.enum(JOB_MACHINES).optional(),
     attempt: z.number().int().min(0).max(10).optional(),
+    /**
+     * P0-1 (2026-11-14): how many lost local runs (the computer stopped: a power cut or a crash) gave their attempt back
+     * (`LOST_RUN_REFUNDS` at most; then a lost run counts as any other attempt).
+     */
+    lostRuns: z.number().int().min(0).max(10).optional(),
     /**
      * M3: how many times the publisher started this job's publish (`PUBLISH_MAX_ATTEMPTS`; every delivery of a start task
      * counts, so a publish that keeps failing ends instead of streaming its COG to Mapbox again and again).
@@ -310,6 +327,12 @@ export const jobDocSchema = z.strictObject({
     releaseRequested: z.literal(true).optional(),
     ...stamp,
 });
+
+/**
+ * A job's status alone, its other fields left unread (cleanup item 1, 2026-11-14: `worker.claim` answers the status of each job whose
+ * scratch folder a computer holds, and one job that no longer passes its schema must not fail the whole answer).
+ */
+export const jobStatusOnlySchema = z.object({ status: z.enum(JOB_STATUSES) });
 
 /** `cities/{city}/jobs/{job}/logs/{line}` (id: `seq` zero-padded to 6 digits): redacted, at most 500 per job. */
 export const jobLogDocSchema = z.strictObject({

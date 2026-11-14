@@ -27,6 +27,8 @@ const CITY_EDITABLE = [
     'photosOverlay',
     /** M3: auto-publish, its RMSE threshold and the target years (`cityImagerySchema`; CR-M3-2). */
     'imagery',
+    /** M28: the sources the map uses (`citySourcesSchema`), saved on their own as the imagery settings are. */
+    'sources',
     'published',
     ...STAMP,
 ] as const;
@@ -95,7 +97,18 @@ const POI_EDITABLE = [
 /** M17 (`docs/research/M17-stories.md` §1). */
 const STORY_EDITABLE = ['title', 'body', 'yearStart', 'yearEnd', 'photoIds', 'poiIds', 'credit', 'published', ...STAMP] as const;
 
-const POI_CATEGORY_EDITABLE = ['label', 'icon', 'color', 'defaultOpacity', 'order', ...STAMP] as const;
+// M27: the manifest's `defaultVisible`, `pinned` and `attribution` are the editors' too (firestore.rules allows them).
+const POI_CATEGORY_EDITABLE = [
+    'label',
+    'icon',
+    'color',
+    'defaultOpacity',
+    'order',
+    'defaultVisible',
+    'pinned',
+    'attribution',
+    ...STAMP,
+] as const;
 
 export interface ClientWrites {
     readonly create: readonly string[];

@@ -3969,7 +3969,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 
 675. **A redirect added for people broke a download that refuses redirects.**
     - Seen: 2026-11-13, track/adminsite: once the public map's `/admin/…` answered 301 to the admin's own site, Update the map from a tab on the old address failed at "Download and check the install files" with `unexpected redirect`: the build's `fetch` uses `redirect: 'error'` and the tab named its own (old) origin as the bundle's.
-    - Fix: the `fetch` step follows one redirect, only to `HCM_REDIRECT_ORIGIN` (the project's admin site); a tab on the old address then installs as from the new one (a reload lands on the new address anyway) (`packages/admin/src/install/fetch-script.ts`).
+    - Fix: the `fetch` step follows one redirect, only to `HCM_REDIRECT_ORIGIN` (the project's admin site), and a tab on the old address refuses to submit with `apiError.install.adminOutdated` naming the new address (a reload lands there) (`packages/admin/src/install/fetch-script.ts`, `cloud-build-installer.ts`).
     - **Before a path starts to redirect, list every client that fetches it, including build steps and tabs already open.**
 
 676. **No Landsat over Bucharest: the USGS harvest was all or nothing, and a run past its timeout stored and recorded nothing.**
@@ -4107,7 +4107,17 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: commit `43bbe138` replaced the account menu's language list with `<hcm-language-select>` (a native `<select>`), and `de` is one of `UI_LOCALES`, so `uiLocaleOf('de-DE')` is `de`. The viewer and start-page specs already asserted a combobox; the admin A95 count and A21's unsupported tag were left on the old contract.
     - Fix and pin: `languages.spec.ts` asserts 25 `option`s on the Limbă combobox (no radios); `title.spec.ts` uses `sv-SE` (outside `UI_LOCALES`); rows `S-A95-HAPPY-LANGUAGE-PICKER` and `S-A21-BAD-UNSUPPORTED-LANGUAGE`.
     - **When a control or a locale list changes, update every e2e assertion that names the old shape or an old "unsupported" tag; unsupported means outside `UI_LOCALES`, not "not Romanian or English".**
-699. **Locate again for overview-hole restitching failed: `params has unknown keys: restitch`.**
+699. **A local worker lost a job's attempts to power cuts, and a rename alone let a torn file look finished.**
+    - Seen: 2026-11-14, `RESILIENCE-AUDIT.md` (P0-1 to P0-4) on household computers without a UPS, and the laptop worker's volume at 113 GB (`work/` 81 GB of jobs long published, 46 old pipeline images).
+    - Cause: a lost local run was re-queued with its attempt kept (three brownouts failed a job); writes went through a temp file and a rename with no `fsync`, so after a cut the new name could hold nothing; a resume trusted a local output by its mtime alone; the sweep only knew file ages, never whether the job was finished.
+    - Fix and pin: `imagery.tick` and a claim from the same computer give the attempt back (`lostRuns` capped at 5); `durable.py` syncs the bytes and the folder; `intact.py` checks a local output's size and first bytes before a step is passed over; a full disk hands the job back (`diskFull`); the sweep asks the server's `jobStates`; the supervisor keeps Docker's restart policy and only the current and previous pipeline image (`test_durable.py`, `test_runner_resilience.py`, `test_worker_cleanup.py`, `functions/test/imagery/tick-local.test.ts`, S-P04, S-A62).
+    - **A crash test simulates the cut at the `fsync`, not at the rename: what was not synced is not on the disk.**
+700. **The phone's year pill was wider than the card the chip was centred under.**
+    - Seen: 2026-11-13, track/green: the timeline specs at fn-c360 (and the `orientation` spec at every viewer project) failed: the photos chip stood 14 px off the standing timeline's axis, and the open menu showed two floating boxes, not three.
+    - Cause: V67 collapsed the upright card to a 96 px pill, but the chip kept the 14 px inset that centres it under the 68 px card; and a press on the menu button collapses the open card (V12), whose pill then steps aside while the menu is open, so the spec's count of three was stale.
+    - Fix: under the collapsed pill the chip is 28 px in (`timeline-dock-styles.ts`); the orientation spec expects the menu and the chip only.
+    - **When a component changes its size in one state, re-check everything docked relative to it in that state.**
+701. **Locate again for overview-hole restitching failed: `params has unknown keys: restitch`.**
     - Seen: 2026-11-14, an archive series re-queued by Locate again (`functions/src/imagery/restitch.ts`: `params.restitch: true`) failed as soon as the local worker started the job.
     - Cause: `archiveSeriesParamsSchema` and its Python twin (`_ARCHIVE_SERIES_KEYS` in `pipeline/src/hcm_pipeline/model.py`) were strict and never listed `restitch`, so `params_of` refused the flag the callable wrote.
     - Fix and pin: `restitch` is an optional boolean on `archive-series` only (shared zod + Python allow-list); other job types still reject it. Happy and bad pins in `packages/shared/test/schemas/imagery-archive.test.ts` and `pipeline/tests/unit/test_model.py` (S-A122-HAPPY-RESTITCH, S-P20-HAPPY-RESTITCH).

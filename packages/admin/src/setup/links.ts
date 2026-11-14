@@ -46,6 +46,9 @@ export const STEP_LINKS: Readonly<Record<SetupStepId, readonly SetupCardLinkId[]
     pipeline: [],
     // [end install]
     mapbox: ['mapbox.signup', 'mapbox.console', 'mapbox.usageThresholds', 'mapbox.accessTokens'],
+    // M28: the platform and sources cards link the steps' own pages (each section and source names the step's link).
+    platform: [],
+    sources: [],
     usgs: ['usgs.register', 'usgs.accessRequest'],
     analytics: ['gcp.firebaseConsole'],
     legacyImport: [],

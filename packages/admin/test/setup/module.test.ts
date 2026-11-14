@@ -54,11 +54,12 @@ function fakeShell() {
 }
 
 function options(): SetupModuleOptions {
-    const { cloud, importer, installer } = createHarness();
+    const { cloud, importer, installer, sources } = createHarness();
     return {
         ...{
             cloud,
             importer,
+            sources,
             createCity: vi.fn(() => Promise.resolve({ created: true })),
             cityId: 'bucharest',
             github: true,

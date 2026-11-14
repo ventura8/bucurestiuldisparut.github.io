@@ -22,7 +22,7 @@ from hcm_pipeline.georef.transforms import Gcp
 from hcm_pipeline.jobs import FilmElsewhereError, JobContext, StepFailedError
 from hcm_pipeline.model import UsgsImportParams
 from hcm_pipeline.steps.common import city_window, gdal_step, publish_scan
-from hcm_pipeline.steps.locate import camera_of, film_limits, within_limits, write_crop
+from hcm_pipeline.steps.locate import camera_of, delete_delivery, film_limits, within_limits, write_crop
 from hcm_pipeline.steps.whole import Box, RoughPointsError, WholeFrame, marked, rough_box
 
 STEP: Final = "georef"
@@ -103,4 +103,5 @@ def _cut(ctx: JobContext, georef: GeorefInfo, scan: ScanInfo, whole: WholeFrame)
         f"are cropped at full resolution ({cut.width} x {cut.height} px), {whole.factor} times the scan they were placed on",
         STEP,
     )
+    delete_delivery(ctx)
     return placed, cut

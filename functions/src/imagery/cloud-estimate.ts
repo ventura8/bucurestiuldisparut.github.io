@@ -31,12 +31,13 @@ interface Point {
 /** The image's corners on the ground: top left, top right, bottom right, bottom left. */
 type Quad = readonly [Point, Point, Point, Point];
 
-/** Twice the signed area of a ring in (lng, lat): negative when it turns clockwise with north up. */
-function signedArea(ring: readonly Point[]): number {
-    return ring.reduce((sum, point, index) => {
-        const next = ring[(index + 1) % ring.length] ?? point;
-        return sum + (point.lng * next.lat - next.lng * point.lat);
-    }, 0);
+function cross(point: Point, next: Point): number {
+    return point.lng * next.lat - next.lng * point.lat;
+}
+
+/** Twice the signed area of a four-vertex ring in (lng, lat): negative when it turns clockwise with north up. */
+function signedArea([a, b, c, d]: Quad): number {
+    return cross(a, b) + cross(b, c) + cross(c, d) + cross(d, a);
 }
 
 /** How far towards the north-west a vertex lies (the image's top left is the frame's north-western corner). */
@@ -50,11 +51,15 @@ function isFour(points: readonly Point[]): points is readonly [Point, Point, Poi
 
 /** Four vertices in clockwise order, starting from the north-western one. */
 function clockwiseFromNorthWest(points: readonly [Point, Point, Point, Point]): Quad {
-    const ring = signedArea(points) > 0 ? [...points].reverse() : [...points];
-    const scores = ring.map(northWestness);
-    const start = scores.indexOf(Math.max(...scores));
-    const at = (step: number): Point => ring[(start + step) % ring.length] ?? points[0];
-    return [at(0), at(1), at(2), at(3)];
+    const [a, b, c, d]: Quad = signedArea(points) > 0 ? [points[3], points[2], points[1], points[0]] : points;
+    const rotations: readonly [Quad, Quad, Quad, Quad] = [
+        [a, b, c, d],
+        [b, c, d, a],
+        [c, d, a, b],
+        [d, a, b, c],
+    ];
+    // The first rotation whose start lies furthest north-west (ties keep the earlier one).
+    return rotations.reduce((best, rotation) => (northWestness(rotation[0]) > northWestness(best[0]) ? rotation : best));
 }
 
 /** The frame's corners from its metadata, else its four-vertex footprint, else its footprint's box. */
@@ -92,7 +97,7 @@ function inBounds(point: Point, bounds: BoundsRecord): boolean {
 function medianOf(pixels: Uint8Array): number {
     const counts = new Array<number>(256).fill(0);
     pixels.forEach((value) => {
-        counts[value] = (counts[value] ?? 0) + 1;
+        counts[value] = Number(counts[value]) + 1;
     });
     let seen = 0;
     return counts.findIndex((count) => {
@@ -108,7 +113,7 @@ function spreadAt(image: GreyImage, x: number, y: number): number {
         for (let dx = -1; dx <= 1; dx += 1) {
             const column = Math.min(image.width - 1, Math.max(0, x + dx));
             const row = Math.min(image.height - 1, Math.max(0, y + dy));
-            values.push(image.pixels[row * image.width + column] ?? 0);
+            values.push(Number(image.pixels[row * image.width + column]));
         }
     }
     return Math.max(...values) - Math.min(...values);
@@ -130,7 +135,7 @@ function cityPixels(image: GreyImage, quad: Quad, bounds: BoundsRecord): (readon
 function countOver(image: GreyImage, quad: Quad, bounds: BoundsRecord): { readonly samples: number; readonly cloudy: number } {
     const bright = Math.max(BRIGHT, Math.min(BRIGHTEST, medianOf(image.pixels) + ABOVE_MEDIAN));
     const pixels = cityPixels(image, quad, bounds);
-    const cloudy = pixels.filter(([x, y]) => (image.pixels[y * image.width + x] ?? 0) >= bright && spreadAt(image, x, y) < FLAT);
+    const cloudy = pixels.filter(([x, y]) => Number(image.pixels[y * image.width + x]) >= bright && spreadAt(image, x, y) < FLAT);
     return { samples: pixels.length, cloudy: cloudy.length };
 }
 

@@ -4,7 +4,7 @@ The job's configuration (its id, the city, the lease owner `worker:<workerId>` t
 documents through `worker.step`, the objects routed between the work folder and signed URLs, USGS through the server,
 no secret at all; the delivery's download, STAC and Overpass as `run` builds them, behind the same address guard (and,
 under `--emulators`, sealed to this machine). The steps are the pipeline's own, unchanged. The bucket's lifecycle has no
-arm on this computer: `sweep` does its work for what a failed or waiting import leaves in the work folder.
+arm on this computer: `housekeeping.py` sweeps the work folder after each claim.
 """
 
 import os
@@ -15,7 +15,6 @@ from typing import Final
 
 import httpx
 
-from hcm_pipeline import paths
 from hcm_pipeline.config import DEFAULT_M2M_BASE_URL, Config
 from hcm_pipeline.jobs import M2MConnection, Services
 from hcm_pipeline.matcher.box import MatcherBudget
@@ -80,8 +79,6 @@ class WorkerRuntime:
     """Builds and runs one claimed job."""
 
     def __init__(self, args: WorkerArgs, api: WorkerApi, worker_id: str, state: WorkerState, steps: StepsFactory) -> None:
-        # What the sweep measures the work folder's ages with (tests give a controlled clock).
-        self.clock: Callable[[], float] = time.time
         # Where the matcher's volumes lie, and who hears of its state (`PageActions.announce_ai`: `worker.py`).
         self.ai_root = AI_ROOT
         self.announce_ai: Callable[[AiState], None] = state.set_ai
@@ -133,11 +130,6 @@ class WorkerRuntime:
                 budget=self.matcher_budget,
             )
         )
-
-    def sweep(self, claimed_job: str | None) -> None:
-        """The work folder rid of what no run wrote to for the lifecycle's days, never the job just claimed (`local_store.py`)."""
-        claimed = None if claimed_job is None else paths.work_prefix(self._args.city, claimed_job)
-        LocalObjectStore(self._args.work).sweep(self.clock(), claimed)
 
     def close(self) -> None:
         self._signed.close()

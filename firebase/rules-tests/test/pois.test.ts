@@ -6,7 +6,8 @@
 import { FIRESTORE_PATHS, MAX_GEOMETRY_VERTICES, MAX_POI_PHOTOS, MAX_POLYGON_RINGS, PHOTOS_OVERLAY_ID } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { cityDoc, closedRing, line, links, newPoi, newPoiCategory, poiCategoryDoc, poiDoc } from './support/documents.js';
+import { cityDoc, closedRing, line, links, newPoi, poiDoc } from './support/documents.js';
+import { newPoiCategory, poiCategoryDoc } from './support/poi-categories.js';
 import { createWorld, deleted, past, stampedBy, verdict, withChanges, type Data, type Verdict, type World } from './support/world.js';
 
 const CITY_ID = 'rules-pois';

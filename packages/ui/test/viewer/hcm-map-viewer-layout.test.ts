@@ -341,6 +341,7 @@ describe('<hcm-map-viewer>: details, lightbox and menu', () => {
 
         await page.getByRole('radio', { name: 'Întunecată' }).click();
         await page.getByRole('combobox', { name: 'Limbă' }).selectOptions('en');
+        fireKitEvent(about, 'hcm-theme-change', { accent: 'map' });
         mounted.store.openSheet('about');
         await mounted.element.updateComplete;
         expect(shadowQueryAll(about, 'hcm-segmented-button')).toEqual([]);
@@ -348,6 +349,7 @@ describe('<hcm-map-viewer>: details, lightbox and menu', () => {
         fireKitEvent(shadowQuery(about, 'hcm-dialog'), 'hcm-close', { returnValue: '' });
 
         expect(mounted.store.callsOf('setTheme')).toEqual([['dark']]);
+        expect(mounted.store.callsOf('setAccent')).toEqual([['map']]);
         expect(mounted.store.callsOf('setLocale')).toEqual([['en']]);
         expect(mounted.store.callsOf('setConsent')).toEqual([['denied']]);
         expect(mounted.store.callsOf('openSheet')).toEqual([['about'], ['none']]);

@@ -28,6 +28,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from hcm_pipeline import __version__
+from hcm_pipeline.durable import copy_atomic, replace_durably, write_atomic
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.matcher.box import TAMPERED
 from hcm_pipeline.urlguard import AddressRefusedError, Resolver, check_data_url, resolve
@@ -173,8 +174,7 @@ def unpack_lightglue(archive: Path, target: Path, commit: str) -> None:
 
 
 def _write(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(data)
+    write_atomic(path, data)
 
 
 def _matches(path: Path, sha256: str) -> bool:
@@ -212,7 +212,7 @@ class AiFiles:
         fetched = [self._fetched(pin) for pin in self._pins]
         for pin, path in zip(self._pins, fetched, strict=True):
             self._placed(pin, path)
-        (self._root / READY).write_text(json.dumps({"pins": self._stamp()}), encoding="utf-8")
+        write_atomic(self._root / READY, json.dumps({"pins": self._stamp()}))
         LOG.info("local AI: its %d files are verified", len(self._pins))
 
     def _weights_intact(self) -> bool:
@@ -232,9 +232,8 @@ class AiFiles:
 
     def _placed(self, pin: Pin, path: Path) -> None:
         if pin.kind == "weights":
-            target = self._root / "weights" / pin.name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(path, target)
+            # Durable (P1-4 of the resilience audit): a power cut leaves the old weights or the new, never half of them.
+            copy_atomic(path, self._root / "weights" / pin.name)
         elif pin.kind == "wheel":
             unpack_wheel(path, self._root / self._lib)
         else:
@@ -273,5 +272,5 @@ class AiFiles:
         if digest.hexdigest() != pin.sha256:
             part.unlink(missing_ok=True)
             return False
-        part.replace(path)
+        replace_durably(part, path)
         return True

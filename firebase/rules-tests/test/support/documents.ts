@@ -13,8 +13,11 @@ import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection } 
 
 import { archiveJobFields } from './archive-fields.js';
 import { derivative, reviewedFields, versionEdits, versionFields } from './photo-fields.js';
+import { POI_CATEGORY_EDITS } from './poi-categories.js';
 import { STORY_EDITS } from './stories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
+
+export { newPoiCategory, poiCategoryDoc } from './poi-categories.js';
 
 /** The bounds every test city gets: photo locations must fall within them (±0.5°). */
 export const CITY_BOUNDS = { west: 25.9, south: 44.3, east: 26.3, north: 44.6 } as const;
@@ -87,6 +90,8 @@ export function cityDoc(cityId: string): Data {
         engine: { minVersion: '1.0.0' },
         photosOverlay: { defaultOpacity: 0.9 },
         imagery: { autoPublish: true, rmseThresholdM: 15, targetYears: [1966, 1976, 1977, 1978, 1980] },
+        // M28: the map's sources, saved on their own (Setup's Sources step).
+        sources: { usgs: true, cloudAi: false },
         // M5 (docs/research/M5-interfaces.md §1.8): the city's share of the budgets, server-owned.
         limits: { computeUnitsPerMonth: 5, rasterJobsPerDay: 3, aiRequestsPerMonth: 100, geocodeCellsPerDay: 100, exportsPerDay: 3 },
         icon: { source: 'custom', url: 'https://storage.googleapis.com/b/icon-180.png', sha256: 'c'.repeat(64), ...systemStamp('icon') },
@@ -249,30 +254,6 @@ export function newPoi(uid: string): Data {
     };
 }
 
-export function poiCategoryDoc(): Data {
-    return {
-        label: { ro: 'Clădiri', en: 'Buildings' },
-        icon: 'church',
-        color: '#875329',
-        defaultOpacity: 0.8,
-        order: 1,
-        createdAt: past(),
-        ...systemStamp('bootstrap'),
-    };
-}
-
-export function newPoiCategory(uid: string): Data {
-    return {
-        label: { ro: 'Străzi dispărute' },
-        icon: 'add_road',
-        color: '#3366AA',
-        defaultOpacity: 1,
-        order: 2,
-        createdAt: serverTime(),
-        ...stampedBy(uid),
-    };
-}
-
 /** A running job with every field the runner owns. */
 export function jobDoc(creator: string, status = 'running'): Data {
     return {
@@ -289,6 +270,7 @@ export function jobDoc(creator: string, status = 'running'): Data {
         executionName: 'projects/demo-hcm/locations/us-central1/jobs/raster-std/executions/raster-std-abc',
         machine: 'std',
         attempt: 1,
+        lostRuns: 1,
         publishAttempts: 1,
         lease: { owner: 'raster-std-abc', until: later() },
         steps: { fetch: { status: 'running', gcsPath: 'usgs-raw/rules/frame.tgz', generation: '1700000000000000', sha256: SHA } },
@@ -518,11 +500,6 @@ export function opsGuardDoc(): Data {
     };
 }
 
-/** The dispatcher's execution slots (CR-M3-47). */
-export function opsDispatchDoc(): Data {
-    return { slots: { 'rules-city/job-1966': { at: past() } }, ...systemStamp('imagery') };
-}
-
 /** A city's last USGS harvest attempt (CR-M3-47). */
 export function harvestStateDoc(): Data {
     return {
@@ -633,6 +610,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         basemap: { style: 'https://example.org/styles/historic.json' },
         photosOverlay: { defaultOpacity: 0.5 },
         imagery: { autoPublish: false, rmseThresholdM: 25, targetYears: [1911, 1966] },
+        sources: { usgs: false, landsat: true },
         published: false,
     },
     photo: {
@@ -681,7 +659,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         photoIds: Array.from({ length: 20 }, (_, index) => `p${String(index)}`),
         ...{ published: false, credit: 'Maria Popescu', sourceLayer: 'plan-1911' },
     },
-    poiCategory: { label: { ro: 'Biserici', en: 'Churches' }, icon: 'mosque', color: '#aa00ff', defaultOpacity: 0, order: -1 },
+    poiCategory: POI_CATEGORY_EDITS,
     story: STORY_EDITS,
     job: { cancelRequested: true, placingPoints: true },
     usgsScene: { status: 'rejected', note: 'Nori peste oraș.' },

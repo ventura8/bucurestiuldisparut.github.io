@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import process from 'node:process';
 
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /**
  * Review screenshots of the admin (docs/TESTING.md → *Review screenshots*): when `HCM_SCREENSHOTS` names a folder
@@ -53,6 +53,36 @@ export async function capture(page: Page, name: string): Promise<void> {
             await settled(page);
             await page.screenshot({
                 path: join(dir, `${name}-${String(size.width)}x${String(size.height)}-${colorScheme}.png`),
+                animations: 'disabled',
+                caret: 'hide',
+            });
+        }
+    }
+    await page.emulateMedia({ colorScheme: null });
+    if (own !== null) {
+        await page.setViewportSize(own);
+    }
+    await settled(page);
+}
+
+/**
+ * One part of the page (a card, a section) whole, however tall, at a phone's and a desktop's width, light and dark:
+ * `<name>-<width>-<scheme>.png`; for a part below the first screen, which `capture` (the window as it is) does not reach.
+ * Unset `HCM_SCREENSHOTS`, it does nothing.
+ */
+export async function captureElement(page: Page, part: Locator, name: string): Promise<void> {
+    const dir = captureDir();
+    if (dir === null) {
+        return;
+    }
+    const own = page.viewportSize();
+    for (const size of [SIZES[0], SIZES[2]]) {
+        await page.setViewportSize(size);
+        for (const colorScheme of SCHEMES) {
+            await page.emulateMedia({ colorScheme });
+            await settled(page);
+            await part.screenshot({
+                path: join(dir, `${name}-${String(size.width)}-${colorScheme}.png`),
                 animations: 'disabled',
                 caret: 'hide',
             });

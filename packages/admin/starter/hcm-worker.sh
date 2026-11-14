@@ -32,7 +32,7 @@ set -u
 
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-STARTER_VERSION=c99ce4a91e15
+STARTER_VERSION=e0afe8c32568
 
 HCM_PROJECT='__HCM_PROJECT__'
 HCM_CITY='__HCM_CITY__'
@@ -773,7 +773,7 @@ start_worker() {
 	if [ -n "${HCM_WORKER_THREADS:-}" ]; then
 		set -- "$@" -e "GDAL_NUM_THREADS=$HCM_WORKER_THREADS"
 	fi
-	docker run --rm --name "$NAME" "$@" -p "127.0.0.1:$PORT:$PORT" -v "$NAME:/work" \
+	docker run --restart unless-stopped --name "$NAME" "$@" -p "127.0.0.1:$PORT:$PORT" -v "$NAME:/work" \
 		-v "$AI_FILES:/ai/files" -v "$AI_BOX:/ai/box" -e HCM_STARTER="$STARTER_VERSION" -e HCM_STARTER_UPDATE="$update_said" \
 		-e HCM_DOCKER_ARCH="$(docker_arch)" -e HCM_AI_VARIANT="$(ai_variant)" -e HCM_HOST_NAME="$(host_name)" \
 		-e HCM_HOST_OS="$(host_os)" -e HCM_REMOVABLE=1 "$image" \
@@ -869,6 +869,24 @@ starter_restart() {
 	exec /bin/sh "$0" run
 }
 
+# After a pipeline update: keep the current image ($1) and the previous one ($2, or the newest other pipeline image), remove older HCM images.
+prune_pipeline_images() {
+	kept=$2
+	docker images --format '{{.Repository}}@{{.Digest}}' 2>/dev/null | grep "^${IMAGE_PREFIX%@sha256:}@" | while IFS= read -r each; do
+		if [ "$each" = "$1" ]; then
+			continue
+		fi
+		if [ -z "$kept" ]; then
+			kept=$each
+			continue
+		fi
+		if [ "$each" != "$kept" ]; then
+			docker image rm "$each" >/dev/null 2>&1 </dev/null || true
+		fi
+	done
+	docker image prune -f --filter "label=$LABEL" >/dev/null 2>&1 || true
+}
+
 # The supervisor: a newer starter of the installed release first (this process then runs it), then the worker in the
 # foreground, started again whenever it ends (a newer starter, the daily look's too, first): at once after an outdated image (75),
 # else after a wait that grows to five minutes while it keeps failing (and starts small again after a long run). A worker
@@ -887,12 +905,21 @@ run_worker() {
 	updater_pid=$!
 	wait_seconds=10
 	refused=0
+	active_image=''
+	previous_image=''
 	while :; do
 		if image=$(current_image) && docker pull "$image" >/dev/null; then
 			docker rm -f "$NAME" >/dev/null 2>&1 || true
+			if [ -n "$active_image" ] && [ "$image" != "$active_image" ]; then
+				previous_image=$active_image
+			fi
+			active_image=$image
+			prune_pipeline_images "$image" "$previous_image"
 			started=$(date +%s)
 			start_worker "$image"
 			code=$?
+			# The supervisor decides what follows, not Docker's restart policy (that one is for a reboot before this runs).
+			docker rm -f "$NAME" >/dev/null 2>&1 || true
 			if [ "$code" -ge "$REMOVE_EXIT" ] && [ "$code" -le $((REMOVE_EXIT + 3)) ]; then
 				remove_by_order "$code" "$image"
 				exit 0

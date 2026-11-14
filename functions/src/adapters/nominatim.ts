@@ -45,6 +45,7 @@ function placeOf(body: unknown): ReversePlace {
         nameEn: named(stringAt(body, 'namedetails', 'name:en')),
         road: firstOf(address, ['road', 'pedestrian', 'square']),
         area: firstOf(address, ['suburb', 'quarter', 'neighbourhood']),
+        countryCode: firstOf(address, ['country_code'])?.toUpperCase(),
     };
     const present = Object.fromEntries(Object.entries(parts).filter((entry): entry is [string, string] => entry[1] !== undefined));
     return { ...present, licence: named(stringAt(body, 'licence')) ?? NOMINATIM_ATTRIBUTION };

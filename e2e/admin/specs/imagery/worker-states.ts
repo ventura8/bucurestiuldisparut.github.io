@@ -110,6 +110,11 @@ export const WORKER_STATES = {
         title: 'Jobs: Remove this computer: keep the scanned maps, also remove Docker, Remove it and Cancel',
         visit: 'specs/imagery/household.spec.ts',
     },
+    // Cleanup item 6 (2026-11-14): a computer's disk below its floor, and Free space now.
+    'worker.household-low-disk': {
+        title: 'Jobs: a computer whose disk is almost full: why it takes no new work, Free space now, or make room on it',
+        visit: 'specs/imagery/household.spec.ts',
+    },
     'worker.household-forced': {
         title: 'Jobs: a computer that is off waits to clean up; Disconnect now anyway, then the line that cleans it by hand',
         visit: 'specs/imagery/household.spec.ts',

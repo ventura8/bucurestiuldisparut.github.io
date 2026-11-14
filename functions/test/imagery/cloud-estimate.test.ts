@@ -9,6 +9,7 @@ import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 
 import { browseFunction } from '../../src/imagery/browse.js';
+import { measureClouds } from '../../src/imagery/cloud-record.js';
 import { estimateClouds, frameQuad } from '../../src/imagery/cloud-estimate.js';
 import type { GreyImage } from '../../src/ports/image-processor.js';
 import { adminCall } from '../publish/fakes.js';
@@ -162,6 +163,17 @@ describe('the estimate recorded by imagery.browse', () => {
         expect(world.deps.blobs.recorder.argsOf('read')).toHaveLength(1);
     });
 
+    it('badPath_aFrameBesideTheCityIsLeftUnmeasured_theCopyStands', async () => {
+        const world = await readyWorld();
+        const path = RASTER_PATHS.browse('declassiii', F039);
+        const beside = OVER_THE_CITY.footprint.map((point) => ({ lat: point.lat + 1, lng: point.lng }));
+        await seedScene(world, F039, frameFields({ footprint: beside, browse: { state: 'copied', path } }));
+        world.deps.blobs.put('private', path, await jpegOf(greyImage(() => true)), { contentType: 'image/jpeg' });
+
+        await expect(browse(world, F039)).resolves.toEqual({ path, contentType: 'image/jpeg' });
+        expect(await readScene(world, F039)).not.toHaveProperty('cloudEstimate');
+    });
+
     it('badPath_anUnreadableBrowseImageLeavesTheSceneUnmeasured_theCopyStands', async () => {
         const world = await readyWorld();
         const path = RASTER_PATHS.browse('declassiii', F039);
@@ -170,5 +182,33 @@ describe('the estimate recorded by imagery.browse', () => {
 
         await expect(browse(world, F039)).resolves.toEqual({ path, contentType: 'image/jpeg' });
         expect(await readScene(world, F039)).not.toHaveProperty('cloudEstimate');
+    });
+});
+
+describe('measureClouds', () => {
+    /** The seeded scene over the city, read back, then `gone` deleted before the clouded browse image is measured. */
+    async function measuredAfter(gone: (world: ImageryWorld) => string): Promise<ImageryWorld> {
+        const world = await readyWorld();
+        await seedScene(world, F039, frameFields({ footprint: OVER_THE_CITY.footprint }));
+        const scene = await readScene(world, F039);
+        if (scene === undefined) {
+            throw new Error('the scene was not seeded');
+        }
+        await world.deps.documents.delete(gone(world));
+        const bytes = await jpegOf(greyImage(() => true));
+        await measureClouds(world.deps, { cityId: CITY, scene, bytes: () => Promise.resolve(bytes), rewritePlan: true });
+        return world;
+    }
+
+    it('badPath_aCityRemovedMeanwhileLeavesTheSceneUnmeasured', async () => {
+        const world = await measuredAfter(() => FIRESTORE_PATHS.city(CITY));
+
+        expect(await readScene(world, F039)).not.toHaveProperty('cloudEstimate');
+    });
+
+    it('badPath_aSceneRemovedMeanwhileIsNotWrittenBack', async () => {
+        const world = await measuredAfter(() => FIRESTORE_PATHS.usgsScene(CITY, F039));
+
+        expect(await readScene(world, F039)).toBeUndefined();
     });
 });

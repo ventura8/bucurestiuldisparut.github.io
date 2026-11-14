@@ -17,6 +17,11 @@ import type { CallableSpec, WorkerCallableName } from './registry.js';
 import { WORKER_PAIR_CODE_PATTERN, WORKER_PAIR_ID_PATTERN, WORKER_URLS_MAX, WORKER_USGS_ENDPOINTS } from './worker.js';
 
 const workerIdSchema = z.string().regex(WORKER_ID_PATTERN);
+/** Cleanup item 1: the most job folders a claim names in `held`. */
+const WORKER_HELD_MAX = 200;
+const byteCount = z.number().int().min(0);
+/** Cleanup item 6: the worker's disk as a claim says it (the worker's document adds when). */
+const workerDiskSchema = z.strictObject({ workBytes: byteCount, freeBytes: byteCount, floorBytes: byteCount });
 /** The most local archives a claim names (the worker sends its newest ones first). */
 const WORKER_ARCHIVES_MAX = 200;
 const versionSchema = z.string().regex(/^[0-9A-Za-z.+-]{1,40}$/);
@@ -112,6 +117,18 @@ export const workerClaimRequestSchema = z.strictObject({
         .optional(),
     /** 2026-11-13: the jobs whose stitched film is on this computer: a job waiting for its film (`film-copy`) is given to it. */
     films: z.array(idSchema).max(WORKER_ARCHIVES_MAX).optional(),
+    /**
+     * Cleanup item 1 (2026-11-14): the jobs that have a scratch folder (`work/<city>/<job>`) on this computer, sent at most once an
+     * hour; the answer's `jobStates` says what became of each, so the worker deletes only a folder no job needs any more.
+     */
+    held: z.array(idSchema).max(WORKER_HELD_MAX).optional(),
+    /**
+     * Cleanup item 6: the worker's disk, on every claim: what its folder uses, the free bytes of its disk and the floor under which it
+     * takes no job (`lowDisk`).
+     */
+    disk: workerDiskSchema.optional(),
+    /** Cleanup item 6: what the last "Free space now" the admin asked freed on this computer, and when. */
+    freed: z.strictObject({ bytes: byteCount, at: isoTimeSchema }).optional(),
 });
 export const workerClaimResponseSchema = z.strictObject({
     job: z.strictObject({ jobId: idSchema }).nullable(),
@@ -127,6 +144,12 @@ export const workerClaimResponseSchema = z.strictObject({
     outdated: z.boolean().optional(),
     /** Pause (2026-11-13): who paused the computer (the admin or its own page), when, and `until` when it ends on its own. */
     pause: z.strictObject({ by: z.string().min(1).max(128), at: isoTimeSchema, until: isoTimeSchema.optional() }).optional(),
+    /** Cleanup item 1: for each job of the claim's `held`, its status now, or `gone` when the job no longer exists. */
+    jobStates: z.record(idSchema, z.union([z.enum(JOB_STATUSES), z.literal('gone')])).optional(),
+    /** Cleanup item 6: the admin asked this computer to free space now ("Free space now"); it says what it freed with `freed`. */
+    freeSpace: z.literal(true).optional(),
+    /** Cleanup item 6: no job was given because the computer's disk is below its floor (`disk.freeBytes < disk.floorBytes`). */
+    lowDisk: z.literal(true).optional(),
 });
 
 /**
@@ -229,6 +252,11 @@ export const workerEndRequestSchema = z.strictObject({
     error: z.strictObject({ code: z.string().max(64), message: z.string().max(2000) }).optional(),
     /** The computer's own page paused it during the run (`released` follows): recorded before the job is handed back. */
     pause: workerPauseCommandSchema.optional(),
+    /**
+     * P1-6 of the resilience audit (2026-11-14): the computer's disk filled up during the run (`released` follows): the job goes back
+     * without using an attempt (no fault of the job); the worker claims nothing until it has room (`lowDisk`).
+     */
+    diskFull: z.literal(true).optional(),
 });
 export const workerEndResponseSchema = z.strictObject({ status: z.enum(JOB_STATUSES) });
 

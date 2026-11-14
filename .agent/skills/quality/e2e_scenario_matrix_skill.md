@@ -30,7 +30,7 @@ This file holds the rules; it never states test counts. Counts appear only in th
 | `path` | `happy` or `bad` |
 | `title` | the test title |
 | `asserts` | what the user sees when it passes; never "no crash" |
-| `tier` | `e2e-viewer`, `e2e-admin`, `e2e-starter-kit`, `e2e-pipeline`, `functions` or `rules` |
+| `tier` | `e2e-viewer`, `e2e-admin`, `e2e-starter-kit`, `e2e-pipeline`, `functions` or `rules` (no `unit`: a UI or shared behaviour proved by unit tests only is an `e2e-admin` or `e2e-viewer` row with status `planned` and the unit test named in `notes`, M28 2026-11-14) |
 | `status` | `planned` until a test names the id, then `exists` |
 | `notes` | optional: the milestone that delivers it, caveats |
 
