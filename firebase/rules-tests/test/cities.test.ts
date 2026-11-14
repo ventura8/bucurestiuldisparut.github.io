@@ -200,7 +200,7 @@ describe('the sources (M28)', () => {
         ['sources that are not a map (M28) @S-A180-BAD-RULES-SHAPE', { sources: 'all' }],
         ['a source the schema does not know (M28)', { sources: { usgs: true, scraped: true } }],
         ['a source choice that is not a boolean (M28)', { sources: { cloudAi: 'yes' } }],
-        ['the sources with a city setting (M28)', { sources: { usgs: false }, zoom: 12 }],
+        ['the sources with a city setting (M28)', { sources: { usgs: false }, zoom: 13 }],
     ])('badPath_theSourcesAreRefused_%s', async (_label, changes) => {
         expect(await edit(changes)).toBe('deny');
     });

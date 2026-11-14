@@ -1,5 +1,5 @@
-// M28 (docs/research/M28-sources.md §10): the country lists' test document, beside documents.ts (at its size limit).
-import { past, type Data } from './world.js';
+// Server-written test documents beside documents.ts (at its size limit): the dispatcher's slots and (M28 §10) a country's list.
+import { past, systemStamp, type Data } from './world.js';
 
 /** M28: a country's list of where old maps and images are, as ops.tick writes it. */
 export function countrySourcesDoc(): Data {
@@ -14,4 +14,9 @@ export function countrySourcesDoc(): Data {
         updatedBy: 'system:ops',
         updatedAt: past(),
     };
+}
+
+/** The dispatcher's execution slots (CR-M3-47). */
+export function opsDispatchDoc(): Data {
+    return { slots: { 'rules-city/job-1966': { at: past() } }, ...systemStamp('imagery') };
 }

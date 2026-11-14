@@ -320,7 +320,10 @@ describe('<hcm-settings-page> export', () => {
         await updated(element);
 
         expect(deepText(element)).toContain('Export the city');
-        expect(deepAll(element, 'a.section-row').at(-1)?.textContent).toContain('A .zip with everything the city needs');
+        // M28: the map's sources row comes after the export's.
+        expect(deepAll(element, 'a.section-row').some((row) => row.textContent.includes('A .zip with everything the city needs'))).toBe(
+            true,
+        );
         expect(deepAll(element, '[slot="detail"] hcm-button').map((button) => button.textContent.trim())).toEqual(['Download', 'Export']);
         expect(await axeViolations(element)).toEqual([]);
     });

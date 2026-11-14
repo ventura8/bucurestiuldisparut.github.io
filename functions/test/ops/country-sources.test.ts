@@ -3,7 +3,8 @@
  * that has one (every website checked), Wikidata's institutions for a country without one, a fresh list a second city only
  * joins, a month-old list refreshed, and the failures (no country, Wikidata down, a website that does not answer).
  */
-import { COUNTRY_SEEDS, countrySourcesDocSchema, type CountrySourcesDoc } from '@hcm/shared/sources';
+import { COUNTRY_SEEDS } from '@hcm/shared/country-seeds';
+import { countrySourcesDocSchema, type CountrySourcesDoc } from '@hcm/shared/sources';
 import { FIRESTORE_PATHS, cityDocSchema, timestampFromDate } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 

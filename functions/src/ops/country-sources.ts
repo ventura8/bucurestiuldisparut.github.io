@@ -6,7 +6,8 @@
  * Wikidata's national archives, library and mapping agency of the country (open data, CC0; `verified: false`); and every
  * place's website is checked to answer, through `remote` (https only, no credential, no redirect followed, small reads).
  */
-import { COUNTRY_SEEDS, countrySourcesDocSchema, countrySourcesDue, type CountryPlace, type CountrySourcesDoc } from '@hcm/shared/sources';
+import { COUNTRY_SEEDS } from '@hcm/shared/country-seeds';
+import { countrySourcesDocSchema, countrySourcesDue, type CountryPlace, type CountrySourcesDoc } from '@hcm/shared/sources';
 import { FIRESTORE_PATHS, cityDocSchema, systemWriter, timestampFromDate, timestampToDate, type CityDoc } from '@hcm/shared';
 
 import type { Ports } from '../ports/index.js';

@@ -1,5 +1,5 @@
 import { SITE_PUBLISH_TRANSFER_MB, SITE_PUBLISH_TRANSFER_TRIMMED_MB } from '@hcm/shared';
-import { COUNTRY_SEEDS } from '@hcm/shared/sources';
+import { COUNTRY_SEEDS } from '@hcm/shared/country-seeds';
 import { MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import type { Locator, Page, Request } from '@playwright/test';
 

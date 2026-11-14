@@ -28,9 +28,7 @@ import { defineHcmSetupPipeline } from './hcm-setup-pipeline.js';
 import { defineHcmSetupSite } from './hcm-setup-site.js';
 import { defineHcmSetupImport } from './hcm-setup-import.js';
 import { defineHcmSetupMapbox } from './hcm-setup-mapbox.js';
-import { defineHcmSetupPlatform } from './hcm-setup-platform.js';
 import { defineHcmSetupProvision } from './hcm-setup-provision.js';
-import { defineHcmSetupSources } from './hcm-setup-sources.js';
 import { defineHcmSetupStep, type ConsentNoteParams } from './hcm-setup-step.js';
 import { defineHcmSetupUsgs } from './hcm-setup-usgs.js';
 import { installCardAsks } from './install-status.js';
@@ -355,6 +353,19 @@ function pageStyles(): ReturnType<typeof css> {
 }
 
 /** Registers `<hcm-setup-page>`, every card and body, and the kit elements they render. */
+/**
+ * M28: fetches the Platform and Sources cards' chunk and registers them; a failed fetch leaves the two cards empty until the
+ * page loads again, and the next definition tries again.
+ */
+export async function loadSourcesCards(registry: CustomElementRegistry = customElements): Promise<void> {
+    try {
+        (await import('./sources-cards.js')).defineSourcesCards(registry);
+    } catch {
+        // The cards stay unregistered: the steps' own cards and links still work, and the next page load fetches it again.
+        return;
+    }
+}
+
 export function defineHcmSetupPage(registry: CustomElementRegistry = customElements): void {
     defineHcmButton(registry);
     defineHcmProgress(registry);
@@ -366,8 +377,7 @@ export function defineHcmSetupPage(registry: CustomElementRegistry = customEleme
     defineHcmSetupSite(registry);
     defineHcmSetupMapbox(registry);
     defineHcmSetupUsgs(registry);
-    defineHcmSetupPlatform(registry);
-    defineHcmSetupSources(registry);
+    void loadSourcesCards(registry);
     defineHcmSetupAnalytics(registry);
     defineHcmSetupImport(registry);
     defineHcmCrashGroups(registry);

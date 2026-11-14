@@ -87,6 +87,8 @@ export function cityDoc(cityId: string): Data {
         engine: { minVersion: '1.0.0' },
         photosOverlay: { defaultOpacity: 0.9 },
         imagery: { autoPublish: true, rmseThresholdM: 15, targetYears: [1966, 1976, 1977, 1978, 1980] },
+        // M28: the map's sources, saved on their own (Setup's Sources step).
+        sources: { usgs: true, cloudAi: false },
         // M5 (docs/research/M5-interfaces.md §1.8): the city's share of the budgets, server-owned.
         limits: { computeUnitsPerMonth: 5, rasterJobsPerDay: 3, aiRequestsPerMonth: 100, geocodeCellsPerDay: 100, exportsPerDay: 3 },
         icon: { source: 'custom', url: 'https://storage.googleapis.com/b/icon-180.png', sha256: 'c'.repeat(64), ...systemStamp('icon') },
@@ -518,11 +520,6 @@ export function opsGuardDoc(): Data {
     };
 }
 
-/** The dispatcher's execution slots (CR-M3-47). */
-export function opsDispatchDoc(): Data {
-    return { slots: { 'rules-city/job-1966': { at: past() } }, ...systemStamp('imagery') };
-}
-
 /** A city's last USGS harvest attempt (CR-M3-47). */
 export function harvestStateDoc(): Data {
     return {
@@ -633,6 +630,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         basemap: { style: 'https://example.org/styles/historic.json' },
         photosOverlay: { defaultOpacity: 0.5 },
         imagery: { autoPublish: false, rmseThresholdM: 25, targetYears: [1911, 1966] },
+        sources: { usgs: false, landsat: true },
         published: false,
     },
     photo: {

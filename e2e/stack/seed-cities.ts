@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 
 import { citiesCreateRequestSchema, createLogger, poiCategoryDocSchema, poiDocSchema } from '@hcm/shared';
-import { COUNTRY_SEEDS, countrySourcesDocSchema } from '@hcm/shared/sources';
+import { COUNTRY_SEEDS } from '@hcm/shared/country-seeds';
+import { countrySourcesDocSchema } from '@hcm/shared/sources';
 import type { APIRequestContext } from '@playwright/test';
 
 import type { EmulatorWorld, SignedInAccount } from '../admin/support/emulators.js';

@@ -1,5 +1,6 @@
 // M28 (docs/research/M28-sources.md §4): the Sources step's flow, the USGS step it leaves out and the platform card's state.
-import { COUNTRY_SEEDS, DEFAULT_SOURCES } from '@hcm/shared/sources';
+import { COUNTRY_SEEDS } from '@hcm/shared/country-seeds';
+import { DEFAULT_SOURCES } from '@hcm/shared/sources';
 import { describe, expect, it } from 'vitest';
 
 import { createSetupController } from '../../src/setup/controller.js';

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { defineSetupElements, SETUP_PAGE_TAGS } from '../../../src/admin/setup/define.js';
+import { loadSourcesCards } from '../../../src/admin/setup/hcm-setup-page.js';
 import { copyToClipboard } from '../../../src/admin/setup/setup-body.js';
 import { formatDate, formatDateTime, formatMoney, setupLabel, setupText } from '../../../src/admin/setup/setup-text.js';
 
@@ -79,7 +80,7 @@ describe('copyToClipboard', () => {
 });
 
 describe('defineSetupElements', () => {
-    it('happyPath_registersEveryElementOnceInTheGivenRegistry', () => {
+    it('happyPath_registersEveryElementOnceInTheGivenRegistry', async () => {
         const defined = new Map<string, CustomElementConstructor>();
         const definitions: string[] = [];
         const registry = {
@@ -93,6 +94,8 @@ describe('defineSetupElements', () => {
         defineSetupElements(registry);
         defineSetupElements(registry);
         defineSetupElements();
+        // M28: the Platform and Sources cards come in their own chunk.
+        await loadSourcesCards(registry);
 
         expect(Object.values(SETUP_PAGE_TAGS).map((tag) => defined.has(tag))).toEqual([true, true]);
         expect(

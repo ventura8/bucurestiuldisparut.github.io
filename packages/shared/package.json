@@ -35,6 +35,10 @@
             "types": "./src/i18n/admin-sources/index.ts",
             "default": "./src/i18n/admin-sources/index.ts"
         },
+        "./country-seeds": {
+            "types": "./src/country-seeds.ts",
+            "default": "./src/country-seeds.ts"
+        },
         "./sources": {
             "types": "./src/sources.ts",
             "default": "./src/sources.ts"

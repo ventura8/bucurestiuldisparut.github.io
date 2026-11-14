@@ -28,7 +28,6 @@ import {
     newPhoto,
     newPoi,
     newPoiCategory,
-    opsDispatchDoc,
     opsGuardDoc,
     ownerDoc,
     photoDoc,
@@ -40,7 +39,7 @@ import {
     usgsSceneDoc,
     workerDoc,
 } from './support/documents.js';
-import { countrySourcesDoc } from './support/country-documents.js';
+import { countrySourcesDoc, opsDispatchDoc } from './support/server-documents.js';
 import {
     ADMIN_ONLY,
     ANY_ADMIN,

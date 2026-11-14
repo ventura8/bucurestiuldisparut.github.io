@@ -64,7 +64,6 @@ import {
     newPhoto,
     newPoi,
     newPoiCategory,
-    opsDispatchDoc,
     opsGuardDoc,
     ownerDoc,
     photoDoc,
@@ -74,7 +73,7 @@ import {
     usageDoc,
     usgsSceneDoc,
 } from './support/documents.js';
-import { countrySourcesDoc } from './support/country-documents.js';
+import { countrySourcesDoc, opsDispatchDoc } from './support/server-documents.js';
 import { past, type Data } from './support/world.js';
 
 /** What the tests need of a zod object schema. */

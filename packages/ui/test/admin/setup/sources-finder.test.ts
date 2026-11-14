@@ -1,5 +1,6 @@
 // M28 (docs/research/M28-sources.md §10, §11): the Sources card's free translation options and the country finder.
-import { COUNTRY_SEEDS, type CountryPlace } from '@hcm/shared/sources';
+import { COUNTRY_SEEDS } from '@hcm/shared/country-seeds';
+import type { CountryPlace } from '@hcm/shared/sources';
 import { axeViolations } from '@hcm/test-support/axe';
 import { html } from 'lit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
