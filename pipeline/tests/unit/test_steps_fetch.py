@@ -164,7 +164,8 @@ def test_bad_path_a_delivery_host_error_fails_as_unavailable(world: PipelineWorl
 
 
 def test_happy_path_a_landsat_bundle_larger_than_announced_is_kept(world: PipelineWorld) -> None:
-    """Scenarios: S-P30-HAPPY-BUNDLE-SIZE — Landsat announces a band-scale filesize; Content-Length is the full tar."""
+    """Scenarios: S-P30-HAPPY-BUNDLE-SIZE."""
+    # Landsat announces a band-scale filesize; Content-Length is the full tar.
     world.seed_import()
     world.offer_download(TEST_CHUNK_BYTES + 10)
 
@@ -173,7 +174,8 @@ def test_happy_path_a_landsat_bundle_larger_than_announced_is_kept(world: Pipeli
 
 
 def test_bad_path_a_truncated_delivery_is_discarded(world: PipelineWorld) -> None:
-    """Scenarios: S-P01-BAD-SIZE-MISMATCH — short of the transfer size (announcement or Content-Length)."""
+    """Scenarios: S-P01-BAD-SIZE-MISMATCH."""
+    # Short of the transfer size (the announcement or Content-Length).
     world.seed_import()
     world.offer_download(len(world.delivery) + 4096)
 

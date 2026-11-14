@@ -47,17 +47,15 @@ def _records(value: object) -> list[dict[str, object]]:
 
 def _filesize(value: object) -> int | None:
     """A positive byte count from `filesize` (int or digit string); bool is not a size."""
-    if isinstance(value, bool) or value is None:
-        return None
-    if isinstance(value, int):
-        return value if value > 0 else None
-    return int(value) if isinstance(value, str) and value.isdigit() and int(value) > 0 else None
+    text = str(value) if isinstance(value, int | str) and not isinstance(value, bool) else ""
+    return int(text) if text.isdigit() and int(text) > 0 else None
 
 
 def _option_of(item: Mapping[str, object]) -> DownloadOption | None:
     product, size = item.get("id"), _filesize(item.get("filesize"))
-    usable = item.get("available") is True and isinstance(product, str | int) and size is not None
-    return DownloadOption(str(product), size) if usable else None
+    if size is None or item.get("available") is not True or not isinstance(product, str | int):
+        return None
+    return DownloadOption(str(product), size)
 
 
 def _products(answer: object) -> list[dict[str, object]]:

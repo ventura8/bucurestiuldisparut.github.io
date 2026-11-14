@@ -175,6 +175,14 @@ describe('the report and the job (§2.4, §4)', () => {
         expect(validate(imageryArchiveImportRequestSchema, { ...request, series: [choice, choice] }).ok).toBe(false);
     });
 
+    it('happyPath_onlyAnArchiveSeriesJobTakesTheRestitchFlag', () => {
+        const params = { archiveId: 'ar-0123456789abcdef', seriesId: 's-0123456789ab', class: 'pieces', sheets: 60, order: 0 };
+        expect(validate(archiveSeriesParamsSchema, { ...params, restitch: true }).ok).toBe(true);
+        expect(validate(archiveSeriesParamsSchema, { ...params, restitch: false }).ok).toBe(true);
+        expect(validate(archiveSeriesParamsSchema, { ...params, unknownFlag: true }).ok).toBe(false);
+        expect(validate(JOB_PARAMS_SCHEMAS.regeoref, { basedOn: 'v1', restitch: true }).ok).toBe(false);
+    });
+
     it('happyPath_anArchiveSeriesJobIsLocalOnlyAndCountsWhenReleased', () => {
         const params = {
             archiveId: 'ar-0123456789abcdef',
@@ -187,10 +195,6 @@ describe('the report and the job (§2.4, §4)', () => {
         };
         expect(validate(JOB_PARAMS_SCHEMAS['archive-series'], params).ok).toBe(true);
         expect(validate(archiveSeriesParamsSchema, { ...params, sheets: 0 }).ok).toBe(false);
-        expect(validate(archiveSeriesParamsSchema, { ...params, restitch: true }).ok).toBe(true);
-        expect(validate(archiveSeriesParamsSchema, { ...params, restitch: false }).ok).toBe(true);
-        expect(validate(archiveSeriesParamsSchema, { ...params, unknownFlag: true }).ok).toBe(false);
-        expect(validate(JOB_PARAMS_SCHEMAS.regeoref, { basedOn: 'v1', restitch: true }).ok).toBe(false);
         const job = {
             type: 'archive-series',
             status: 'queued',
