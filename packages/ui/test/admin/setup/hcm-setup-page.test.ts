@@ -142,13 +142,15 @@ describe('<hcm-setup-page> one column', () => {
             provision: 'hcm-setup-provision',
             deploy: 'hcm-setup-deploy',
             mapbox: 'hcm-setup-mapbox',
+            platform: 'hcm-setup-platform',
+            sources: 'hcm-setup-sources',
             usgs: 'hcm-setup-usgs',
             analytics: 'hcm-setup-analytics',
             legacyImport: 'hcm-setup-import',
         } as const;
 
         for (const [step, tag] of Object.entries(bodies)) {
-            port.set({ openStep: step as keyof typeof bodies });
+            port.set({ openStep: step as keyof typeof bodies, order: [...STEP_IDS, 'platform', 'sources'] });
             await element.updateComplete;
             const open = steps(element).find((card) => card.open);
             expect(open?.firstElementChild?.localName).toBe(tag);
