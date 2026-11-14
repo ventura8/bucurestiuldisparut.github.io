@@ -289,6 +289,7 @@ export function jobDoc(creator: string, status = 'running'): Data {
         executionName: 'projects/demo-hcm/locations/us-central1/jobs/raster-std/executions/raster-std-abc',
         machine: 'std',
         attempt: 1,
+        lostRuns: 1,
         publishAttempts: 1,
         lease: { owner: 'raster-std-abc', until: later() },
         steps: { fetch: { status: 'running', gcsPath: 'usgs-raw/rules/frame.tgz', generation: '1700000000000000', sha256: SHA } },
