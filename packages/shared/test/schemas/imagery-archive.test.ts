@@ -123,7 +123,15 @@ describe('rights (§7)', () => {
 
 describe('the restitch flag (DECISIONS §216g)', () => {
     it('happyPath_onlyAnArchiveSeriesJobTakesTheRestitchFlag', () => {
-        const params = { archiveId: 'ar-0123456789abcdef', seriesId: 's-0123456789ab', class: 'pieces', sheets: 60, order: 0 };
+        const params = {
+            archiveId: 'ar-0123456789abcdef',
+            seriesId: 's-0123456789ab',
+            class: 'pieces',
+            sheets: 60,
+            encoding: 'lineart',
+            order: 0,
+            referenceLayerIds: [],
+        };
         expect(validate(archiveSeriesParamsSchema, { ...params, restitch: true }).ok).toBe(true);
         expect(validate(archiveSeriesParamsSchema, { ...params, restitch: false }).ok).toBe(true);
         expect(validate(archiveSeriesParamsSchema, { ...params, unknownFlag: true }).ok).toBe(false);
