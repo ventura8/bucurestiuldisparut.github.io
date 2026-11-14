@@ -244,6 +244,20 @@ class IconDouble extends LitElement {
     static override readonly properties = { name: {}, filled: { type: Boolean } };
 }
 
+/** The kit language dropdown: the segmented button's options as a native list, firing `hcm-change` with `{value}`. */
+class LanguageSelectDouble extends SegmentedButtonDouble {
+    override render(): TemplateResult {
+        const change = (event: Event): void => {
+            fire(this, 'hcm-change', { value: (event.currentTarget as HTMLSelectElement).value });
+        };
+        return html`<select aria-label=${this.label} @change=${change}>
+            ${this.options.map(
+                (option) => html`<option value=${option.value} ?selected=${option.value === this.value}>${option.label}</option>`,
+            )}
+        </select>`;
+    }
+}
+
 const DOUBLES: readonly (readonly [string, CustomElementConstructor])[] = [
     ['hcm-sheet', SheetDouble],
     ['hcm-dialog', DialogDouble],
@@ -255,6 +269,7 @@ const DOUBLES: readonly (readonly [string, CustomElementConstructor])[] = [
     ['hcm-fab-menu', FabMenuDouble],
     ['hcm-consent-banner', ConsentBannerDouble],
     ['hcm-segmented-button', SegmentedButtonDouble],
+    ['hcm-language-select', LanguageSelectDouble],
     ['hcm-icon', IconDouble],
 ];
 

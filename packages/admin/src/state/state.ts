@@ -11,6 +11,9 @@ import type { AdminRoute, AdminRouteId } from '../routing/routes.js';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+/** The colours: the device's accent (the default) or the city's own (`@hcm/ui`'s `theme/device-accent.ts`). */
+export type AccentChoice = 'device' | 'map';
+
 export type ConsentState = 'unknown' | 'granted' | 'denied';
 
 type AdminRole = 'owner' | 'admin';
@@ -32,6 +35,7 @@ interface AdminNotice extends NoticeInput {
 
 interface AdminThemeState {
     readonly mode: ThemeMode;
+    readonly accent: AccentChoice;
     /** The city's precomputed tokens (`cities/{city}.theme.tokens`) once read; the kit's baseline before. */
     readonly city: ThemeTokens | null;
     /** A live preview (Settings' seed colour) shown over the city's until it is cleared. */

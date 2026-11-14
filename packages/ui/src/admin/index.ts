@@ -12,7 +12,7 @@ export { AdminPanel, issueTemplate } from './auth/panel.js';
 export { HCM_ACCOUNT_MENU_TAG, HcmAccountMenu } from './shell/hcm-account-menu.js';
 export { HCM_ADMIN_NAV_TAG, HcmAdminNav } from './shell/hcm-admin-nav.js';
 export type { AdminNavVariant } from './shell/hcm-admin-nav.js';
-export { HCM_ADMIN_SHELL_TAG, HcmAdminShell, shellLayout, themeTokensOf } from './shell/hcm-admin-shell.js';
+export { HCM_ADMIN_SHELL_TAG, HcmAdminShell, shellLayout, shownTokens, themeTokensOf } from './shell/hcm-admin-shell.js';
 export type { ShellLayout } from './shell/hcm-admin-shell.js';
 export { HCM_PAGE_OUTLET_TAG, HcmPageOutlet } from './shell/hcm-page-outlet.js';
 export { adminBase, panelStyles } from './shell/admin-styles.js';

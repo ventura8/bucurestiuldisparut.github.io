@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { bootAdmin, configMissingApp } from '../../src/app/boot.js';
 import type { BootEnvironment } from '../../src/app/boot.js';
 import { PROJECT_URL, RUNTIME_URL, WEB_CONFIG_URL } from '../../src/app/config.js';
-import { THEME_KEY } from '../../src/app/mount.js';
+import { ACCENT_KEY, THEME_KEY } from '../../src/app/mount.js';
 import { NO_SETUP } from '../../src/app/services.js';
 import { AdminTelemetry } from '../../src/app/telemetry.js';
 import { PageRegistry } from '../../src/routing/pages.js';
@@ -109,6 +109,7 @@ describe('configMissingApp', () => {
     it('happyPath_reloadLanguageAndThemeStillWork', async () => {
         const e = environment({});
         e.local.set(THEME_KEY, 'dark');
+        e.local.set(ACCENT_KEY, 'map');
         const app = configMissingApp(e.env);
         const seen: string[] = [];
         const stop = app.subscribe((state) => {
@@ -117,14 +118,17 @@ describe('configMissingApp', () => {
 
         app.intents.reload();
         app.intents.setLocale('ro');
+        expect(app.state.theme.accent).toBe('map');
         app.intents.setTheme('light');
+        app.intents.setAccent('device');
         stop();
 
         expect(e.location.reloads).toBe(1);
+        expect(e.local.get(ACCENT_KEY)).toBe('device');
         expect(e.local.get(LANGUAGE_KEY)).toBe('ro');
         expect(e.local.get(THEME_KEY)).toBe('light');
         expect(app.state.theme.mode).toBe('light');
-        expect(seen).toEqual(['ro', 'ro']);
+        expect(seen).toEqual(['ro', 'ro', 'ro']);
         await expect(app.loadPage('setup')).resolves.toBeNull();
     });
 

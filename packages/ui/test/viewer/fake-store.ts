@@ -4,7 +4,15 @@
  * The engine's real store is tested in `packages/engine`; this one only has to be faithful enough to drive the UI.
  */
 import { isCompactHeight, isDockable, windowClassFor } from '../../src/theme/tokens.js';
-import type { MapCamera, MyLocationState, SheetName, ThemeMode, ViewerState, ViewerStorePort } from '../../src/viewer/store-port.js';
+import type {
+    AccentChoice,
+    MapCamera,
+    MyLocationState,
+    SheetName,
+    ThemeMode,
+    ViewerState,
+    ViewerStorePort,
+} from '../../src/viewer/store-port.js';
 import {
     overlaysFromManifest,
     withOverlayOpacity,
@@ -48,6 +56,7 @@ export function idleState(): ViewerState {
         compactHeight: false,
         dockable: false,
         theme: 'system',
+        accent: 'device',
         consent: 'unknown',
         toast: null,
         compare: null,
@@ -248,6 +257,11 @@ export class FakeStore implements ViewerStorePort {
     setTheme(theme: ThemeMode): void {
         this.#record('setTheme', theme);
         this.set({ theme });
+    }
+
+    setAccent(accent: AccentChoice): void {
+        this.#record('setAccent', accent);
+        this.set({ accent });
     }
 
     setConsent(consent: 'granted' | 'denied'): void {

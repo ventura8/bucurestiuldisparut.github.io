@@ -526,6 +526,10 @@ function scenarioTable(state: CloudBuildState, world: BuildWorld, create: Create
         serverQueuedElsewhere: () => {
             create('server', 'succeeds');
         },
+        /** A pipeline build still queued from an earlier visit (S-A55-BAD-UPDATE-STALE-RECORD). */
+        pipelineQueuedElsewhere: () => {
+            create('pipeline', 'succeeds');
+        },
         /**
          * A server build an admin from before finding 30 queued (S-A55-BAD-NO-FUNCTIONS-PACKAGES): its steps, without
          * `packages`, so firebase-tools' discovery stops it at `functions` once it finishes.

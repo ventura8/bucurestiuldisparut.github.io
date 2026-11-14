@@ -7,6 +7,7 @@ import { defineHcmFabMenu } from './fab-menu.js';
 import { defineHcmFab } from './fab.js';
 import { defineHcmIconButton } from './icon-button.js';
 import { defineHcmIcon } from './icon.js';
+import { defineHcmLanguageSelect } from './language-select.js';
 import { defineHcmList } from './list.js';
 import { defineHcmLoadingIndicator } from './loading-indicator.js';
 import { defineHcmOverlayList } from './overlay-list.js';
@@ -28,6 +29,7 @@ const DEFINERS: readonly ((registry: CustomElementRegistry) => void)[] = [
     defineHcmSlider,
     defineHcmChip,
     defineHcmSegmentedButton,
+    defineHcmLanguageSelect,
     defineHcmCard,
     defineHcmList,
     defineHcmSheet,

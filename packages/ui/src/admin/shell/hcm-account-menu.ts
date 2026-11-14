@@ -1,7 +1,8 @@
 /**
  * `<hcm-account-menu>`: the account button of the top app bar (or of the rail's foot on a landscape phone) and its
  * dialog (`docs/research/M2b-interfaces.md` §1.2): who is signed in, the language (any of `docs/I18N.md`'s: switching keeps
- * every form's state), the theme (automatic, light, dark), the analytics consent (withdrawable at any time, when GA4 is
+ * every form's state), the theme (follow my device, light, dark), the colours (device accent, map colours), the analytics
+ * consent (withdrawable at any time, when GA4 is
  * configured) and Sign out. A rotation of a phone moves it between the top bar and the rail: the shell then gives the
  * new one's button the focus the old one held (`active`, `focusButton`).
  */
@@ -13,6 +14,7 @@ import { UI_LANGUAGE_OPTIONS } from '../../components/language-options.js';
 
 import type { SegmentOption } from '../../components/segmented-button.js';
 import type { ThemeMode } from '../../theme/apply.js';
+import { ACCENT_CHOICES, accentOf } from '../../theme/device-accent.js';
 import type { AdminAppPort, AdminStatePort } from '../admin-port.js';
 import { adminBase } from './admin-styles.js';
 import { EMPTY } from './empty.js';
@@ -29,6 +31,10 @@ function themeOptions(locale: UiLocale): SegmentOption[] {
 
 function isThemeMode(value: string): value is ThemeMode {
     return (THEMES as readonly string[]).includes(value);
+}
+
+function accentOptions(locale: UiLocale): SegmentOption[] {
+    return ACCENT_CHOICES.map((accent) => ({ value: accent, label: translate(locale, `accent.${accent}`) }));
 }
 
 export class HcmAccountMenu extends LitElement {
@@ -128,8 +134,8 @@ export class HcmAccountMenu extends LitElement {
                 @hcm-close=${hide}
             >
                 <div class="content">
-                    ${this.#who(state)} ${this.#city(state)} ${this.#language(state)} ${this.#theme(state)} ${this.#consent(state)}
-                    ${this.#signOut(state)}
+                    ${this.#who(state)} ${this.#city(state)} ${this.#language(state)} ${this.#theme(state)} ${this.#accent(state)}
+                    ${this.#consent(state)} ${this.#signOut(state)}
                 </div>
             </hcm-dialog>`;
     }
@@ -160,12 +166,12 @@ export class HcmAccountMenu extends LitElement {
         };
         return html`<div class="group">
             <span class="group-label">${label}</span>
-            <hcm-segmented-button
+            <hcm-language-select
                 .label=${label}
                 .options=${UI_LANGUAGE_OPTIONS}
                 .value=${live(state.locale)}
                 @hcm-change=${change}
-            ></hcm-segmented-button>
+            ></hcm-language-select>
         </div>`;
     }
 
@@ -183,6 +189,23 @@ export class HcmAccountMenu extends LitElement {
                 .label=${label}
                 .options=${themeOptions(state.locale)}
                 .value=${state.theme.mode}
+                @hcm-change=${change}
+            ></hcm-segmented-button>
+        </div>`;
+    }
+
+    /** The colours: the device's accent (the default) or the city's own (`theme/device-accent.ts`). */
+    #accent(state: AdminStatePort): TemplateResult {
+        const label = translate(state.locale, 'accent.label');
+        const change = (event: CustomEvent<{ readonly value: string }>): void => {
+            this.app?.intents.setAccent(accentOf(event.detail.value));
+        };
+        return html`<div class="group">
+            <span class="group-label">${label}</span>
+            <hcm-segmented-button
+                .label=${label}
+                .options=${accentOptions(state.locale)}
+                .value=${state.theme.accent ?? 'device'}
                 @hcm-change=${change}
             ></hcm-segmented-button>
         </div>`;

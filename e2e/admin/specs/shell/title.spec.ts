@@ -1,4 +1,4 @@
-import { LANGUAGE_NAMES, translateAdminShell } from '@hcm/shared';
+import { translateAdminShell } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../../support/content-test.js';
@@ -43,7 +43,7 @@ test.describe('an English browser', () => {
                 .getByRole('button', { name: translateAdminShell('en', 'adminShell.account.label') })
                 .filter({ visible: true })
                 .click();
-            await page.getByRole('radio', { name: LANGUAGE_NAMES.ro }).click();
+            await page.locator('hcm-language-select select').selectOption('ro');
             await page.keyboard.press('Escape');
             await expect(page).toHaveTitle(translateAdminShell('ro', 'adminShell.appName'));
             await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
@@ -52,7 +52,8 @@ test.describe('an English browser', () => {
 });
 
 test.describe('a browser in a language the admin does not have', () => {
-    test.use({ locale: 'de-DE' });
+    // Swedish is not in UI_LOCALES (`docs/I18N.md`); German (`de`) is, so de-DE would open the admin in Deutsch.
+    test.use({ locale: 'sv-SE' });
 
     test(
         'A browser language the admin does not have keeps the Romanian title and language',
@@ -63,7 +64,7 @@ test.describe('a browser in a language the admin does not have', () => {
             await expect(page.getByRole('heading', { level: 1, name: translateAdminShell('ro', 'adminShell.nav.photos') })).toBeVisible();
             await expect(page).toHaveTitle(translateAdminShell('ro', 'adminShell.appName'));
             await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
-            expect(await page.evaluate(() => navigator.language)).toBe('de-DE');
+            expect(await page.evaluate(() => navigator.language)).toBe('sv-SE');
         },
     );
 });

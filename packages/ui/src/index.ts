@@ -33,6 +33,7 @@ export { HCM_OVERLAY_LIST_TAG, HcmOverlayList, defineHcmOverlayList } from './co
 export type { OverlayListGroup, OverlayListItem } from './components/overlay-list.js';
 export { HCM_PROGRESS_TAG, HcmProgress, defineHcmProgress } from './components/progress.js';
 export type { ProgressKind } from './components/progress.js';
+export { HCM_LANGUAGE_SELECT_TAG, HcmLanguageSelect, defineHcmLanguageSelect } from './components/language-select.js';
 export { HCM_SEGMENTED_BUTTON_TAG, HcmSegmentedButton, defineHcmSegmentedButton } from './components/segmented-button.js';
 export type { SegmentOption } from './components/segmented-button.js';
 export { HCM_SHEET_TAG, HcmSheet, SHEET_DETENTS, defineHcmSheet, detentHeights, settleDetent } from './components/sheet.js';
@@ -63,6 +64,8 @@ export type { HeightClass, ResizeObserverConstructor, WindowClassControllerOptio
 export { THEME_ATTRIBUTE, applyTheme, clearTheme, themeRules, writeThemeSheet } from './theme/apply.js';
 export type { ThemeMode, ThemeRule } from './theme/apply.js';
 export { BASELINE_THEME } from './theme/baseline.js';
+export { ACCENT_CHOICES, ACCENT_PROPERTY, accentOf, accentTokens, readDeviceAccent, withAccent } from './theme/device-accent.js';
+export type { AccentChoice } from './theme/device-accent.js';
 export {
     MOTION_EASINGS,
     MOTION_SPRINGS,

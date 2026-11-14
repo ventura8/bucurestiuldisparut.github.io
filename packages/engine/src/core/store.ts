@@ -17,6 +17,7 @@ import {
     type MessageKey,
     type PhotoView,
 } from '@hcm/shared';
+import type { AccentChoice } from '@hcm/ui';
 import type { MapLabels } from '@hcm/shared/map-labels';
 import { Listeners, type CameraOffset, type Unsubscribe } from '@hcm/ui/map';
 
@@ -31,6 +32,7 @@ import type { ViewerDeps } from './deps.js';
 import { LocaleSwitch } from './locale-switch.js';
 import { withRequestedLabels } from './map-labels.js';
 import { Preferences } from './preferences.js';
+import { accentChooser, themeChooser } from './theme-choice.js';
 import {
     comparePosition,
     hasPoi,
@@ -108,6 +110,8 @@ export interface ViewerActions {
     logInput(device: 'gamepad' | 'console'): void;
     setWindowSize(width: number, height: number): void;
     setTheme(theme: ThemeMode): void;
+    /** The theme's colours: the device's accent or the map's own, remembered for the city. */
+    setAccent(accent: AccentChoice): void;
     setConsent(consent: 'granted' | 'denied'): void;
     showToast(key: MessageKey, params?: Readonly<Record<string, string>>): void;
     dismissToast(): void;
@@ -416,13 +420,8 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         }
     }
 
-    setTheme(theme: ThemeMode): void {
-        if (theme !== this.#state.theme) {
-            this.set({ ...this.#state, theme });
-            this.deps.telemetry.logEvent({ name: 'theme_change', theme });
-            this.preferences.set(this.#state.manifest?.city.id ?? this.deps.config.cityId, 'theme', theme);
-        }
-    }
+    readonly setTheme: ViewerStore['setTheme'] = themeChooser(this);
+    readonly setAccent: ViewerStore['setAccent'] = accentChooser(this);
 
     setConsent(consent: 'granted' | 'denied'): void {
         this.deps.telemetry.setConsent(consent);

@@ -128,7 +128,11 @@ describe('createSetupCloud', () => {
         // finding 72: worker.image; finding 73: worker.starter; imagery.locateAgain; M12: imagery.previewUrl;
         // M13: the roles' and review's 7; M16: imagery.recalibrate; M17: the stories' 2; M20: the local archive's 4 (with worker.archiveCopy); imagery.deleteVersion;
         // the tab icon's cities.setIcon;
+<<<<<<< HEAD
         // M20 §19.10: the tile wizard's imagery.saveLayout and imagery.acceptLayout; the owner's not-useful mark imagery.markScene; W5: worker.manage; imagery.pause); the fake deploys a third of them.
+=======
+        // M20 §19.10: the tile wizard's imagery.saveLayout and imagery.acceptLayout; the owner's not-useful mark imagery.markScene; household computers' worker.manage; Pause's imagery.pause); the fake deploys a third of them.
+>>>>>>> origin/feat/engine-rewrite
         expect(partial).toEqual({ ready: 34, total: 104, failed: [] });
         expect(failed).toEqual({ ready: 103, total: 104, failed: ['admin-session'] });
         expect(deployed).toEqual({ ready: 104, total: 104, failed: [] });

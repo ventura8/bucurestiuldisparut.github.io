@@ -89,6 +89,7 @@ Pitfalls the M2b admin specs met:
 - A deep link opens a provider's tab that the firewall would block: answer its host with `standInProviderPages` and close the tab (`followDeepLink`).
 - Resizing for a capture re-creates the Setup cards (one column versus list and detail): state that must survive lives in the controller.
 - Run `expectStateSound` on a settled state: after a load, wait for Setup's open card and an enabled **Check again** (a card opening mid-walk moved the steps below it off screen), and point at a snackbar the checks must see (its 8 s timer waits while it is pointed at), or the Tab round loses its Close button. A snackbar's text is also in its live region a moment later: locate the visible message with `.and(page.locator(':not([aria-live])'))`. A toast left from an earlier state is closed before a state that is not about it (`dismissToast` of `e2e/support/viewer.ts`): the viewer's language switch re-words it and restarts its timer, and on a slow machine it went mid-check (the Tab round then never reached its Close).
+- The account menu's language control is `<hcm-language-select>` (a native `<select>` / combobox named Limbă / Language with 25 options), never a radiogroup: assert `option` count and `selectOption`, as the viewer and the start page do (`S-A95-HAPPY-LANGUAGE-PICKER`, lesson 698). An "unsupported browser language" row must use a tag whose primary subtag is outside `UI_LOCALES` (`sv-SE`; `de-DE` resolves to Deutsch).
 
 Pitfalls the M2c editor specs met (`docs/LESSONS.md` 71–80):
 

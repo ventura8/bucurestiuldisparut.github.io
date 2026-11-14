@@ -6,7 +6,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { AdminAuthStatePort } from '../../../src/admin/admin-port.js';
 import { ADMIN_TAGS, defineAdminElements } from '../../../src/admin/define.js';
 import { HcmAdminNav } from '../../../src/admin/shell/hcm-admin-nav.js';
-import { shellLayout, themeTokensOf, type HcmAdminShell } from '../../../src/admin/shell/hcm-admin-shell.js';
+import { shellLayout, shownTokens, themeTokensOf, type HcmAdminShell } from '../../../src/admin/shell/hcm-admin-shell.js';
 import { noticeOf, noticeText } from '../../../src/admin/shell/text.js';
 import { BASELINE_THEME } from '../../../src/theme/baseline.js';
 import { adminState, cleanup, deep, deepAll, deepText, defineAll, DESTINATIONS, FakeAdminApp, mount, updated } from './fake-app.js';
@@ -178,6 +178,24 @@ describe('the shell helpers', () => {
         expect(themeTokensOf(adminState({ theme: { mode: 'system', city, preview } }))).toBe(preview);
         expect(themeTokensOf(adminState({ theme: { mode: 'system', city, preview: null } }))).toBe(city);
         expect(themeTokensOf(adminState())).toBe(BASELINE_THEME);
+    });
+
+    it('happyPath_theShellWearsTheDevicesAccentButThePreviewItsOwnColours', () => {
+        document.documentElement.style.setProperty('--hcm-device-accent', '#0b57d0');
+        const city = { ...BASELINE_THEME };
+        const preview = { ...BASELINE_THEME };
+        try {
+            expect(shownTokens(adminState({ theme: { mode: 'system', city, preview: null } }), document)).not.toBe(city);
+            expect(shownTokens(adminState({ theme: { mode: 'system', accent: 'device', city, preview } }), document)).toBe(preview);
+        } finally {
+            document.documentElement.style.removeProperty('--hcm-device-accent');
+        }
+    });
+
+    it('badPath_mapColoursKeepTheCitysOwn', () => {
+        const city = { ...BASELINE_THEME };
+
+        expect(shownTokens(adminState({ theme: { mode: 'dark', accent: 'map', city, preview: null } }), document)).toBe(city);
     });
 
     it('happyPath_everyNoticeFamilyIsTranslated', () => {

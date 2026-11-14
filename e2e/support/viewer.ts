@@ -1,6 +1,5 @@
 import { expect, type Locator, type Page, type Route } from '@playwright/test';
 import {
-    LANGUAGE_NAMES,
     registerCatalogue,
     translate,
     VIEWER_LOCALES,
@@ -118,19 +117,19 @@ export async function chooseMenuItem(page: Page, lang: ViewerLocale, label: stri
     await menuItemNamed(page, label).click();
 }
 
-/** Settings' language list, its first choice (slotted into the kit's dialog: found through `<hcm-about-dialog>`). */
+/** Settings' language dropdown, its first choice (slotted into the kit's dialog: found through `<hcm-about-dialog>`). */
 export function languageList(page: Page): Locator {
-    return viewer(page).locator('hcm-about-dialog hcm-segmented-button').first();
+    return viewer(page).locator('hcm-about-dialog hcm-language-select select');
 }
 
 /**
- * The menu's Settings (Setări) lists the viewer's 25 languages by their own names: picks `to`
+ * The menu's Settings (Setări) offers the viewer's 25 languages by their own names in one dropdown: picks `to`
  * there and closes the dialog once the page has switched (`<html lang>`).
  */
 export async function chooseLanguage(page: Page, from: ViewerLocale, to: ViewerLocale): Promise<void> {
     await chooseMenuItem(page, from, t(from, 'settings.title'));
     await expect(page.getByRole('dialog', { name: t(from, 'settings.title') })).toBeVisible();
-    await languageList(page).getByRole('radio', { name: LANGUAGE_NAMES[to], exact: true }).click();
+    await languageList(page).selectOption(to);
     await expect(page.locator('html')).toHaveAttribute('lang', to);
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog', { name: t(to, 'settings.title') })).toBeHidden();
