@@ -184,8 +184,8 @@ export const timelineStyles = [
             flex-direction: column;
             align-items: center;
 
-            /* The label's row begins below the pill (4 to 44 px), not beside it. */
-            gap: 28px;
+            /* The label's row begins below the pill (4 to 44 px) and the rail, not beside them (no tick holds it down). */
+            padding-block-start: 28px;
             font-size: var(--md-sys-typescale-label-small-size, 0.6875rem);
             color: var(--md-sys-color-on-surface-variant, GrayText);
             white-space: nowrap;
@@ -195,6 +195,7 @@ export const timelineStyles = [
         :host([orientation='vertical']) .stop {
             inset-inline: 0;
             inset-block: auto var(--hcm-stop);
+            padding-block-start: 0;
             transform: translateY(50%);
         }
 

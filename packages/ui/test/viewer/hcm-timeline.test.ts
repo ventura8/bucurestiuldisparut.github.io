@@ -336,6 +336,10 @@ describe('<hcm-timeline> many years', () => {
         const gaps = centres.slice(1).map((centre, at) => Math.abs(centre - (centres[at] ?? 0)));
         expect(Math.min(...gaps)).toBeGreaterThanOrEqual(55.5);
         expect(crowdedLabels(element)).toEqual([]);
+        // The live site, 2026-11-14: without a tick above it the label sat on the rail (lying; standing it interrupts the rail).
+        const rail = shadowQuery(element, '.rail').getBoundingClientRect();
+        const tops = shadowQueryAll(element, '.stop .label').map((label) => label.getBoundingClientRect().top);
+        expect(orientation === 'vertical' || Math.min(...tops) >= rail.bottom, 'the labels below the rail').toBe(true);
     });
 
     it.each(['horizontal', 'vertical'] as const)(
