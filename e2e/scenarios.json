@@ -11329,6 +11329,28 @@
             "notes": "Live admin of 2026-11-14 (server 62c7179 -> bca1891 at 17:02, pipeline left on 62c7179, the computers on the old processing): the watch stopped without a token, the pipeline's update was dropped with an info log line, and a refused submit hid under the done chip. Tests: e2e/admin/steps/install/update-order.spec.ts, packages/admin/test/setup/install-wait.test.ts, packages/admin/test/install/install-flow.test.ts."
         },
         {
+            "id": "S-A56-HAPPY-RECORDED-WORKING",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "happy",
+            "title": "Continue over a build only a record says is at work looks at it and lifts the notice",
+            "asserts": "setup/status records the pipeline 'working' (an older release, a build id), the page holds no Google token -> step d3 says following paused with Continue; Continue asks one consent, the look with its token answers and the notice and Continue are gone",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live admin of 2026-11-14, 18:41 (lesson 721): Update the map's pipeline build ended and every computer ran 1.0.0-beta.1+cd570a8, yet step d3 kept 'Last seen installing' on 62c7179 with no button; the tab had reloaded itself after the deploy (lesson 718) with no Google token, and its flow, never having looked, never paused. Tests: e2e/admin/steps/install/stale-record.spec.ts, packages/admin/test/setup/install-wait.test.ts."
+        },
+        {
+            "id": "S-A56-BAD-RECORDED-WORKING",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "bad",
+            "title": "A build only a record says is at work never leaves step d3 frozen without a button",
+            "asserts": "setup/status records the pipeline 'working', the admin opened without a Google token (it reloaded itself after a deploy) -> step d3 says Setup stopped following the installation and offers Continue (before: 'Last seen installing' with no button); with a live token the card just looks and shows no notice",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live admin of 2026-11-14, 18:41 (lesson 721): Update the map's pipeline build ended and every computer ran 1.0.0-beta.1+cd570a8, yet step d3 kept 'Last seen installing' on 62c7179 with no button; the tab had reloaded itself after the deploy (lesson 718) with no Google token, and its flow, never having looked, never paused. Tests: e2e/admin/steps/install/stale-record.spec.ts, packages/admin/test/setup/install-wait.test.ts."
+        },
+        {
             "id": "S-A57-HAPPY",
             "behaviour": "A57",
             "area": "admin",
@@ -12702,6 +12724,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Finding 74 of docs/research/manual-test-2026-10-25.md (the live test of 2026-11-03: worker.image answered the release before's digest beside the new release, and the supervisor looped on 'unrecognized arguments'); DECISIONS-for-review.md §87; docs/research/M7-local-worker.md, its addendum of 2026-11-03. Test: functions/test/worker/pairing.test.ts, functions/test/worker/installed-image.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-RECORD-FOLLOWS-JOB",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "The pipeline's record follows the image the job runs once the build has ended",
+            "asserts": "setup/status.install.pipeline 'working' on the release before's digest, the job raster-pipeline runs a new digest labelled with the new release and its build time -> worker.image (the supervisors ask it every few minutes) answers the new image and the record becomes 'installed' with the job's release, build time and digest, the build id kept, logged 'pipeline record follows the job'",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live admin of 2026-11-14, 18:41 (lesson 721): setup/status.install.pipeline stayed 'working' on 62c7179 (image sha256:6dc8...) while the job raster-pipeline and all three computers ran cd570a8 (sha256:0cd7...). Test: functions/test/worker/installed-image.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-RECORD-FOLLOWS-JOB",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A build still at work, an unlabelled job or a refused write never rewrites the record wrongly",
+            "asserts": "the job still runs the recorded digest (the build at work) -> the record is unchanged; the job's label names no release -> unchanged; the record's write refused -> the job's answer stands and 'pipeline record not brought up to the job' is logged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live admin of 2026-11-14, 18:41 (lesson 721): setup/status.install.pipeline stayed 'working' on 62c7179 (image sha256:6dc8...) while the job raster-pipeline and all three computers ran cd570a8 (sha256:0cd7...). Test: functions/test/worker/installed-image.test.ts."
         },
         {
             "id": "S-A62-BAD-STARTER-OLD-IMAGE",

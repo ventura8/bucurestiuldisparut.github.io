@@ -3,7 +3,8 @@
  * `raster-pipeline` runs wins over the record, its release comes from the job's label (or from the record only for the
  * same digest), a refused or absent job falls back to the record, and what the job runs is kept a minute.
  */
-import { describe, expect, it } from 'vitest';
+import { FIRESTORE_PATHS, setupStatusDocSchema, type InstallRecord } from '@hcm/shared';
+import { describe, expect, it, vi } from 'vitest';
 
 import { UpstreamError } from '../../src/ports/errors.js';
 import { installedImage, JOB_CACHE_MS } from '../../src/worker/installed-image.js';
@@ -12,10 +13,15 @@ import { NOW, workerWorld, type WorkerWorld } from './world.js';
 
 const OLD = `sha256:${'ae'.repeat(32)}`;
 const NEW = `sha256:${'eb'.repeat(32)}`;
+const BUILD = 'cdef0f7d-626b-471a-b801-5b29117869b9';
 const REPOSITORY = 'us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline';
 
 async function recorded(world: WorkerWorld, image: string, release = '1.0.0+bf74d17'): Promise<void> {
     await seedSetup(world, { install: { pipeline: { state: 'installed', release, checkedAt: NOW, image } } });
+}
+
+async function pipelineRecord(world: WorkerWorld): Promise<InstallRecord | undefined> {
+    return (await world.deps.documents.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema))?.install?.pipeline;
 }
 
 function jobRuns(world: WorkerWorld, image: string, labels: Readonly<Record<string, string>> = {}): void {
@@ -81,5 +87,50 @@ describe('installedImage', () => {
         world.deps.clock.set(new Date(Date.parse(NOW) + JOB_CACHE_MS).toISOString());
         await expect(installedImage(world.deps)).resolves.toMatchObject({ digest: NEW });
         expect(world.jobs.recorder.argsOf('job')).toEqual([['raster-pipeline'], ['raster-pipeline']]);
+    });
+
+    it('happyPath_aRecordLeftWorkingFollowsTheJobOnceItRunsTheNewImage @S-A62-HAPPY-RECORD-FOLLOWS-JOB', async () => {
+        // The live finding of 2026-11-14 (lesson 721): the build ended, every computer ran the new image, d3 said "Last seen installing".
+        const world = await workerWorld();
+        const working: InstallRecord = { state: 'working', release: '1.0.0+62c7179', buildId: BUILD, checkedAt: NOW, image: OLD };
+        await seedSetup(world, { install: { pipeline: working } });
+        jobRuns(world, `${REPOSITORY}@${NEW}`, { 'hcm-release': '1-0-0-cd570a8', 'hcm-release-time': '1794673759' });
+
+        await expect(installedImage(world.deps)).resolves.toEqual({ digest: NEW, release: '1.0.0+cd570a8', from: 'job' });
+        await expect(pipelineRecord(world)).resolves.toEqual({
+            state: 'installed',
+            release: '1.0.0+cd570a8',
+            releaseTime: 1794673759,
+            buildId: BUILD,
+            image: NEW,
+            checkedAt: NOW,
+        });
+        expect(world.deps.recording.records.map((record) => record.message)).toContain('pipeline record follows the job');
+    });
+
+    it('badPath_aBuildStillAtWorkOrAJobWithoutAReleaseLeavesTheRecord @S-A62-BAD-RECORD-FOLLOWS-JOB', async () => {
+        const running = await workerWorld();
+        const working: InstallRecord = { state: 'working', release: '1.0.0+62c7179', checkedAt: NOW, image: OLD };
+        await seedSetup(running, { install: { pipeline: working } });
+        jobRuns(running, `${REPOSITORY}@${OLD}`, { 'hcm-release': '1-0-0-62c7179' });
+        await installedImage(running.deps);
+        await expect(pipelineRecord(running)).resolves.toEqual(working);
+
+        const unlabelled = await workerWorld();
+        await seedSetup(unlabelled, { install: { pipeline: working } });
+        jobRuns(unlabelled, `${REPOSITORY}@${NEW}`);
+        await installedImage(unlabelled.deps);
+        await expect(pipelineRecord(unlabelled)).resolves.toEqual(working);
+    });
+
+    it('badPath_aRefusedRecordWriteIsLoggedAndTheJobsAnswerStands @S-A62-BAD-RECORD-FOLLOWS-JOB', async () => {
+        const world = await workerWorld();
+        await seedSetup(world, { install: { pipeline: { state: 'working', checkedAt: NOW, image: OLD } } });
+        jobRuns(world, `${REPOSITORY}@${NEW}`, { 'hcm-release': '1-0-0-cd570a8' });
+        vi.spyOn(world.deps.documents, 'transaction').mockRejectedValueOnce(new Error('contention'));
+
+        await expect(installedImage(world.deps)).resolves.toMatchObject({ digest: NEW, from: 'job' });
+        expect(world.deps.recording.records.map((record) => record.message)).toContain('pipeline record not brought up to the job');
+        await expect(pipelineRecord(world)).resolves.toMatchObject({ state: 'working', image: OLD });
     });
 });

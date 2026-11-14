@@ -670,6 +670,12 @@ The live test of 2026-11-03 after Update the map to `1.0.0+bf74d17` (`docs/resea
   record answers). The admin reads the same job image on every look of the pipeline card (`InstalledInfo.image`), before
   the build log's `image` event (which Cloud Logging may not have yet when the build has just ended), and records the
   pipeline again when the image changes, not only its state. `worker.image` answers `{image, digest, release?}` as before.
+  Since 2026-11-14 (lesson 721) the resolver also brings the record up to the job: when the job runs another digest than
+  `setup/status.install.pipeline.image` names and its label names a release, the record becomes `installed` with the job's
+  release, `hcm-release-time` and digest (its build id kept; written as `system:setup`, logged `pipeline record follows the
+  job`). The supervisors ask `worker.image` every few minutes, so a record an admin tab left `working` (it reloaded after a
+  deploy with no Google token, lesson 718) is corrected without anyone opening Setup; a build still at work (the job on the
+  recorded digest) or a job without a release label leaves the record alone.
 - **The supervisor and an image older than it (finding 74).** A worker that ends with its usage error (`2`, argparse: an
   image from before `--supervised --image`) three times in a row makes the supervisor say once, in its log (the journal,
   `~/Library/Logs/hcm-worker.log`, the task's output), "The server named an image that does not support this computer's

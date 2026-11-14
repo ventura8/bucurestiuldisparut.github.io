@@ -179,6 +179,21 @@ class Cards implements InstallCards {
         targets.forEach((target) => {
             this.#flows[target].watch();
         });
+        this.#offerContinueOverRecords(targets);
+    }
+
+    /**
+     * Lesson 721 (2026-11-14): a page opened without a Google token (the admin reloads itself after a deploy) shows a build
+     * that only the record says is at work; its flow has never looked, so it never paused, and step d3 said "Last seen
+     * installing" with no button. Such a card now says the follow is paused and offers Continue, whose token looks again.
+     */
+    #offerContinueOverRecords(targets: readonly InstallTarget[]): void {
+        if (this.#live() !== null) {
+            return;
+        }
+        const { install } = this.#ctx.state();
+        const stale = targets.filter((target) => install[target].recorded && isRunning(install[target].state));
+        this.#tellWaiting(stale, 'adminSetup.install.followPaused', true);
     }
 
     async installServer(): Promise<void> {

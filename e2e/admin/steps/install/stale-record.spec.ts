@@ -1,6 +1,6 @@
 import { OLDER_SERVER_RELEASE } from '@hcm/test-support/fakes';
 
-import { setupText } from '../../support/i18n.js';
+import { setupText, shellText } from '../../support/i18n.js';
 import { recordsSettled, serveInstallBundle, submittedBuilds, trackRecords } from '../../support/install.js';
 import { SetupPage } from '../../support/setup-page.js';
 import { seedClaimedCity, seedSetupStatus, STEPS_AT, withConsent } from '../../support/steps.js';
@@ -81,5 +81,41 @@ test(
 
         await expect(update).toHaveCount(0);
         expect(await serverBuilds(upstream)).toBe(0);
+    },
+);
+
+/**
+ * Lesson 721 (the live admin of 2026-11-14, 18:41): Update the map's pipeline build ended and every computer ran its image, but
+ * the tab that submitted it had reloaded itself after the deploy, held no Google token and never looked again; step d3 kept
+ * "Last seen installing" with no button. A card over a build only a record says is at work now says the follow is paused and
+ * offers Continue; the server also brings the record up to the job's image by itself (`functions/src/worker/installed-image.ts`).
+ */
+test(
+    'A build only a record says is at work tells, on a page without a token, that following paused, and offers Continue',
+    { tag: ['@S-A56-BAD-RECORDED-WORKING'] },
+    async ({ page, lang }) => {
+        const setup = new SetupPage(page, lang);
+        await page.goto(adminPath(lang, 'setup'));
+        const pipeline = await setup.show('pipeline');
+
+        await expect(pipeline).toContainText(setupText(lang, 'adminSetup.install.followPaused'));
+        await expect(pipeline.getByRole('button', { name: shellText(lang, 'adminShell.session.continue') })).toBeVisible();
+    },
+);
+
+test(
+    "Continue's one consent looks at the recorded build and lifts the notice",
+    { tag: ['@S-A56-HAPPY-RECORDED-WORKING'] },
+    async ({ page, lang, consent, inputBudget }) => {
+        const setup = new SetupPage(page, lang);
+        await page.goto(adminPath(lang, 'setup'));
+        const pipeline = await setup.show('pipeline');
+        const proceed = pipeline.getByRole('button', { name: shellText(lang, 'adminShell.session.continue') });
+        await expect(proceed).toBeVisible();
+
+        await withConsent(page, consent, proceed, inputBudget.flow('followContinue', 1), inputBudget.flow('followContinueConsent', 1));
+
+        await expect(pipeline).not.toContainText(setupText(lang, 'adminSetup.install.followPaused'));
+        await expect(proceed).toHaveCount(0);
     },
 );

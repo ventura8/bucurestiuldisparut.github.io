@@ -8,6 +8,7 @@ import { InstallBundleError } from '../../src/install/bundle.js';
 import type { TargetObservation } from '../../src/install/ports.js';
 import { createSetupContext, createSetupStore } from '../../src/setup/context.js';
 import { createInstallCards } from '../../src/setup/install.js';
+import { withRecordedInstall } from '../../src/setup/install-records.js';
 import { initialSetupState, withStep } from '../../src/setup/state.js';
 import { ADMIN_RELEASE, createHarness, flush } from './harness.js';
 
@@ -154,6 +155,53 @@ describe('a refused pipeline update is never hidden under a done chip (2026-11-1
         await flush();
         expect(world.ctx.state().install.pipeline.state).toBe('updateAvailable');
         expect(world.ctx.state().steps.pipeline.state).toBe('ok');
+        world.cards.dispose();
+    });
+});
+
+describe('a build only the record says is at work offers Continue on a page without a token (lesson 721)', () => {
+    function reloadedWorld() {
+        const world = setup();
+        const record = { state: 'working' as const, release: '0.9.0', buildId: 'b-pipeline', checkedAt: '2026-11-14T16:41:31.073Z' };
+        world.ctx.update((state) => withRecordedInstall(state, { pipeline: record }));
+        world.harness.installer.observe.mockResolvedValue(
+            observed({ installed: { complete: true, release: ADMIN_RELEASE }, build: build('pipeline', 'SUCCESS') }),
+        );
+        return world;
+    }
+
+    it('badPath_aRecordedBuildAtWorkWithoutATokenSaysTheFollowIsPaused_withContinue @S-A56-BAD-RECORDED-WORKING', async () => {
+        const world = reloadedWorld();
+        world.cards.watch(['server', 'pipeline']);
+        await flush();
+
+        expect(world.ctx.state().install.pipeline).toMatchObject({ state: 'working', recorded: true });
+        expect(world.ctx.state().steps.pipeline).toMatchObject({ needsContinue: true, error: { key: 'adminSetup.install.followPaused' } });
+        expect(world.ctx.state().steps.deploy.error).toBeNull();
+        world.cards.dispose();
+    });
+
+    it('happyPath_continuesTokenLooksAtTheBuildAndTheCardSaysInstalled @S-A56-HAPPY-RECORDED-WORKING', async () => {
+        const world = reloadedWorld();
+        world.cards.watch(['server', 'pipeline']);
+        await flush();
+
+        await world.cards.recheck('pipeline');
+        await flush();
+
+        expect(world.ctx.state().install.pipeline).toMatchObject({ state: 'installed', recorded: false });
+        expect(world.ctx.state().steps.pipeline).toMatchObject({ needsContinue: false, error: null });
+        world.cards.dispose();
+    });
+
+    it('happyPath_aPageWithALiveTokenJustLooks_noNotice', async () => {
+        const world = reloadedWorld();
+        world.harness.google.grant('cloudPlatform');
+        world.cards.watch(['server', 'pipeline']);
+        await flush();
+
+        expect(world.ctx.state().steps.pipeline.error).toBeNull();
+        expect(world.ctx.state().install.pipeline.state).toBe('installed');
         world.cards.dispose();
     });
 });
