@@ -37,8 +37,8 @@ export const ro = {
     'adminSources.tr.localModels.step.1': 'Instalați Ollama de pe pagina lui de descărcare (un program obișnuit, gratuit).',
     'adminSources.tr.localModels.step.2': 'Modelul de traducere potrivit este TranslateGemma (de la 3,3 GB);',
     'adminSources.tr.localModels.step.2+2': 'descărcarea lui de către aplicație este plănuită.',
-    'adminSources.tr.localModels.step.3':
-        'Porniți „Rulează pe calculatorul meu” în Procesări: acolo vor rula traducerile, cu verificarea lor.',
+    'adminSources.tr.localModels.step.3': 'Porniți „Rulează pe calculatorul meu” în Procesări:',
+    'adminSources.tr.localModels.step.3+2': 'acolo vor rula traducerile, cu verificarea lor.',
     'adminSources.tr.deeplFree.title': 'DeepL API Free',
     'adminSources.tr.deeplFree.step.1': 'Faceți-vă contul DeepL API Free.',
     'adminSources.tr.deeplFree.step.2': 'Cheia apare în contul dumneavoastră, la Chei API.',
@@ -53,10 +53,10 @@ export const ro = {
     'adminSources.tr.azureTranslator.step.3': 'Cheia apare la resursă, la Chei și punct de acces;',
     'adminSources.tr.azureTranslator.step.3+2': 'lipirea ei în aplicație, într-o casetă sigură, este plănuită.',
     'adminSources.tr.libreTranslate.title': 'LibreTranslate pe calculatorul dumneavoastră',
-    'adminSources.tr.libreTranslate.step.1':
-        'Program liber, gratuit, care merge și fără internet; varianta găzduită de ei nu are plan gratuit.',
-    'adminSources.tr.libreTranslate.step.2':
-        'Rularea lui de către „Rulează pe calculatorul meu” este plănuită: nu instalați nimic de mână.',
+    'adminSources.tr.libreTranslate.step.1': 'Program liber, gratuit, care merge și fără internet;',
+    'adminSources.tr.libreTranslate.step.1+2': 'varianta găzduită de ei nu are plan gratuit.',
+    'adminSources.tr.libreTranslate.step.2': 'Rularea lui de către „Rulează pe calculatorul meu” este plănuită:',
+    'adminSources.tr.libreTranslate.step.2+2': 'nu instalați nimic de mână.',
     'adminSources.tr.myMemory.title': 'MyMemory (Translated)',
     'adminSources.tr.myMemory.step.1': 'Faceți-vă un cont gratuit Translated.',
     'adminSources.tr.myMemory.step.2': 'Pagina cheii MyMemory vă dă cheia contului.',
@@ -72,8 +72,8 @@ export const ro = {
     'adminSources.finder.none': 'Lista pentru țara orașului nu este gata încă: aplicația o caută singură la următoarea',
     'adminSources.finder.none+2': 'verificare obișnuită (în cel mult o oră). Reveniți apoi pe această pagină.',
     'adminSources.finder.failed': 'Lista nu s-a putut citi acum (conexiunea sau permisiunile).',
-    'adminSources.finder.failed+2':
-        'Apăsați Verifică din nou; dacă se repetă, deschideți Administratori și verificați că aveți rol în acest oraș.',
+    'adminSources.finder.failed+2': 'Apăsați Verifică din nou; dacă se repetă, deschideți Administratori',
+    'adminSources.finder.failed+3': 'și verificați că aveți rol în acest oraș.',
     'adminSources.finder.curated': 'Listă verificată de o persoană pe paginile instituțiilor pe {date};',
     'adminSources.finder.curated+2': 'site-urile au fost verificate automat pe {refreshed}.',
     'adminSources.finder.researched': 'Găsit automat în datele deschise (Wikidata) pe {refreshed}, neverificat încă de o persoană:',

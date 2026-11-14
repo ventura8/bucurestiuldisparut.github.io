@@ -13,7 +13,7 @@ import type { CountryFinderView } from './setup-port.js';
 import { actionLink, sourcesKey, type SourcesText } from './sources-parts.js';
 
 /** The texts a place's data holds in Romanian and English, in the page's language (English for any other). */
-export type PickText = (text: { readonly ro: string; readonly en: string }) => string;
+type PickText = (text: { readonly ro: string; readonly en: string }) => string;
 
 export interface FinderContext {
     readonly t: SourcesText;

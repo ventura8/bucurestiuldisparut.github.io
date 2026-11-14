@@ -51,7 +51,7 @@ export interface SourcesSlice {
 export const NO_SOURCES: SourcesSlice = { choices: DEFAULT_SOURCES, saved: null, finder: NO_FINDER };
 
 /** Whether the map's sources need a USGS account (the declassified frames or Landsat), as the city holds them; before a choice, the defaults. */
-export function usgsChosen(state: { readonly sources: SourcesSlice }): boolean {
+function usgsChosen(state: { readonly sources: SourcesSlice }): boolean {
     return needsUsgsAccount(state.sources.saved ?? DEFAULT_SOURCES);
 }
 

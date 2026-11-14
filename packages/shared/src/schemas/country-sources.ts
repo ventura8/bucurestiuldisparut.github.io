@@ -32,10 +32,8 @@ export type PlaceMaterial = (typeof PLACE_MATERIALS)[number];
 
 /** Online (a website or an API), in person (a reading room), or both. */
 export const PLACE_ACCESS = ['online', 'offline', 'both'] as const;
-export type PlaceAccess = (typeof PLACE_ACCESS)[number];
 
 export const PLACE_COSTS = ['free', 'paid', 'mixed', 'unknown'] as const;
-export type PlaceCost = (typeof PLACE_COSTS)[number];
 
 /** Where what the owner brings home comes into the app: a map or an image (Imagery → Upload), a folder of scans (the local import), a photo. */
 export const IMPORT_ROUTES = ['imageryUpload', 'localImport', 'photos'] as const;
