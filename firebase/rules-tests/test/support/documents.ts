@@ -224,10 +224,12 @@ function poiText(): Data {
 export function poiDoc(creator: string): Data {
     return {
         ...poiText(),
+        yearSeen: 1939,
         geometry: { type: 'Polygon', rings: [{ points: closedRing(5) }] },
         published: true,
         ...reviewedFields(creator),
         credit: 'Ion Mureșan',
+        sourceLayer: 'plan-1911',
         createdAt: past(),
         createdBy: creator,
         updatedBy: creator,
@@ -238,9 +240,11 @@ export function poiDoc(creator: string): Data {
 export function newPoi(uid: string): Data {
     return {
         ...poiText(),
+        yearSeen: 1939,
         geometry: { type: 'Point', point: { lat: 44.4355, lng: 26.1003 } },
         published: false,
         credit: 'Ion Mureșan',
+        sourceLayer: 'plan-1911',
         createdAt: serverTime(),
         createdBy: uid,
         ...stampedBy(uid),
@@ -676,10 +680,12 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         description: { ro: 'O [sursă](https://example.org).' },
         yearStart: 1900,
         yearEnd: 1980,
+        yearSeen: 1939,
         links: links(5),
         photoIds: Array.from({ length: 20 }, (_, index) => `p${String(index)}`),
         published: false,
         credit: 'Maria Popescu',
+        sourceLayer: 'plan-1911',
     },
     poiCategory: { label: { ro: 'Biserici', en: 'Churches' }, icon: 'mosque', color: '#aa00ff', defaultOpacity: 0, order: -1 },
     story: STORY_EDITS,

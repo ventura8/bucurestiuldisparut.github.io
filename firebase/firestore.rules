@@ -466,6 +466,7 @@ service cloud.firestore {
                 && isYear(data.get('yearStart', 1800))
                 && isYear(data.get('yearEnd', 2100))
                 && data.get('yearStart', 1800) <= data.get('yearEnd', 2100)
+                && isYear(data.get('yearSeen', 1800))
                 && validLinks(data.get('links', []))
                 && data.get('photoIds', []) is list
                 && data.get('photoIds', []).size() <= 20
@@ -477,13 +478,15 @@ service cloud.firestore {
         }
 
         // A place names a year at least (the owner's request of 2026-11-12; `placeYearIssues` of @hcm/shared): one year, an
-        // open start or end, or a span. Every create needs one; a place stored before the rule keeps loading, and an update
-        // that only publishes, unpublishes or moves it to another category (the list's bulk actions) passes without one.
-        // No year is after next year (`latestPlaceYear`), as the editor and the import say.
+        // open start or end, a span, or only `yearSeen` (traced on a plan of that year). Every create needs one; a place
+        // stored before the rule keeps loading, and an update that only publishes, unpublishes or moves it to another
+        // category (the list's bulk actions) passes without one. No year is after next year (`latestPlaceYear`), as the
+        // editor and the import say.
         function dated(data) {
-            return ('yearStart' in data || 'yearEnd' in data)
+            return ('yearStart' in data || 'yearEnd' in data || 'yearSeen' in data)
                 && data.get('yearStart', 0) <= request.time.year() + 1
-                && data.get('yearEnd', 0) <= request.time.year() + 1;
+                && data.get('yearEnd', 0) <= request.time.year() + 1
+                && data.get('yearSeen', 0) <= request.time.year() + 1;
         }
 
         function datedOrOnlyFiled(data) {
@@ -714,7 +717,8 @@ service cloud.firestore {
                         : (isCityUploader(city) && request.resource.data.get('reviewStatus', '') == 'pending'))
                     && isId(poi)
                     && request.resource.data.keys().hasOnly(['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd',
-                        'links', 'photoIds', 'published', 'credit', 'sourceLayer', 'reviewStatus', 'createdAt', 'createdBy', 'updatedBy', 'updatedAt'])
+                        'yearSeen', 'links', 'photoIds', 'published', 'credit', 'sourceLayer', 'reviewStatus', 'createdAt', 'createdBy',
+                        'updatedBy', 'updatedAt'])
                     && validPoi(request.resource.data)
                     && dated(request.resource.data)
                     && (isCityMember(city) || request.resource.data.published == false)
@@ -723,8 +727,8 @@ service cloud.firestore {
                         ? publishedStaysTheServers()
                         : (isCityUploader(city) && ownItem(resource.data) && resource.data.get('reviewStatus', '') == 'pending'
                             && !('published' in changedKeys())))
-                    && changedKeys().hasOnly(['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'links', 'photoIds',
-                        'published', 'credit', 'sourceLayer', 'updatedBy', 'updatedAt'])
+                    && changedKeys().hasOnly(['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'yearSeen',
+                        'links', 'photoIds', 'published', 'credit', 'sourceLayer', 'updatedBy', 'updatedAt'])
                     && validPoi(request.resource.data)
                     && datedOrOnlyFiled(request.resource.data);
                 allow delete: if isCityMember(city)
