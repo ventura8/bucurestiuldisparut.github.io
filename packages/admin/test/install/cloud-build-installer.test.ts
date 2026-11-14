@@ -368,6 +368,20 @@ describe('submit', () => {
         });
         expect(world.fakes.callsTo('cloud-build.builds.create')).toHaveLength(0);
     });
+
+    // §210: the public map's /admin/ forwards to the admin's own site; a tab still open there is told the new address.
+    it('badPath_aTabLeftOnTheOldAddressSubmitsNothingAndNamesTheNewOne', async () => {
+        const world = await installWorld();
+        world.moved = true;
+
+        const error = await world.installer.submit('server', ACCESS).catch((caught: unknown) => caught);
+
+        expect((error as InstallBundleError).notice()).toEqual({
+            key: 'apiError.install.adminOutdated',
+            params: { release: 'https://demo-hcm-admin.web.app/admin/' },
+        });
+        expect(world.fakes.callsTo('cloud-build.builds.create')).toHaveLength(0);
+    });
 });
 
 describe('buildLog and consoleUrl', () => {

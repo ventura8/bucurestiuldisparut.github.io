@@ -43,12 +43,16 @@ async function walk(page: Page, lang: 'ro' | 'en', later: string, earlier: strin
     await expect(thumb).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1966' }));
 }
 
-/** Opens the menu: its items cover neither the chip nor the timeline, and all of them are on screen. */
+/**
+ * Opens the menu: its items cover neither the chip nor the timeline, and all of them are on screen. Upright the press
+ * collapses the open card (V12) and its pill steps aside while the menu is open (`timeline-dock-styles.ts`): the menu and
+ * the chip remain.
+ */
 async function expectOpenMenuClear(page: Page, lang: 'ro' | 'en'): Promise<void> {
     await menuButton(page, lang).click();
     await expect(page.getByRole('menu', { name: t(lang, 'action.menu') })).toBeVisible();
     const boxes = await visibleBoxes(page, FLOATING);
-    expect(boxes).toHaveLength(3);
+    expect(boxes).toHaveLength(2);
     expect(overlaps(boxes)).toEqual([]);
     const menu = await boxOf(page, '[role="menu"]');
     expect(menu.y).toBeGreaterThanOrEqual(0);

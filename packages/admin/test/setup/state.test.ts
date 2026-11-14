@@ -41,7 +41,7 @@ describe('initialSetupState', () => {
         expect(state.steps.billing.scope).toBe('cloudBilling');
         // Sign-in and the claim ask Google from the shell's panels, never from their cards.
         expect([state.steps.signIn.scope, state.steps.claim.scope, state.steps.mapbox.scope]).toEqual([null, null, null]);
-        expect({ done: state.done, total: state.total, ready: state.ready }).toEqual({ done: 0, total: 11, ready: false });
+        expect({ done: state.done, total: state.total, ready: state.ready }).toEqual({ done: 0, total: 13, ready: false });
     });
 
     it('happyPath_theCardsKnowTheProjectBeforeAnyCheck', () => {
@@ -84,7 +84,15 @@ describe('availability', () => {
         const state = done(initialSetupState(createHarness().host, 'bootstrap'), 'signIn', 'billing', 'provision', 'deploy');
 
         // The imagery pipeline (d3, M6) installs before the server answers: it needs Google only.
-        expect(SETUP_STEPS.filter((id) => state.steps[id].available)).toEqual(['signIn', 'billing', 'provision', 'deploy', 'pipeline']);
+        // M28: so does the platform card, which only reads the other steps.
+        expect(SETUP_STEPS.filter((id) => state.steps[id].available)).toEqual([
+            'signIn',
+            'billing',
+            'provision',
+            'deploy',
+            'pipeline',
+            'platform',
+        ]);
     });
 
     it('happyPath_normalModeOpensEveryStepWhosePrerequisitesAreDone', () => {

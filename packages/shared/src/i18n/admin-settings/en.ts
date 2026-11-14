@@ -17,6 +17,8 @@ export const en: Readonly<Record<AdminSettingsKey, string>> = {
     'adminContent.settings.section.textsHint': 'Name, About, privacy, credits',
     'adminContent.settings.section.theme': 'Theme and basemap',
     'adminContent.settings.section.themeHint': 'The city colour, the visitors’ basemap',
+    'adminContent.settings.section.sources': "The map's sources",
+    'adminContent.settings.section.sourcesHint': 'Which old images, places and photos the map uses, and what they cost (in Setup)',
     'adminContent.settings.section.icon': 'Browser tab icon',
     'adminContent.settings.section.iconHint': 'The small picture in the public map’s tab',
     'adminContent.settings.icon.intro': 'Shown in the browser tab and on a phone’s home screen. By default: the map icon from Layers.',

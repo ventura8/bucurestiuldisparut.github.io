@@ -27,6 +27,7 @@ describe('reverse', () => {
             nameEn: 'Romanian Athenaeum',
             road: 'Strada Benjamin Franklin',
             area: 'Sector 1',
+            countryCode: 'RO',
             licence: OSM_LICENCE,
         });
         const [call] = fakes.callsTo('nominatim.reverse');
@@ -50,6 +51,7 @@ describe('reverse', () => {
             name: 'Calea Victoriei',
             road: 'Calea Victoriei',
             area: 'Sector 1',
+            countryCode: 'RO',
             licence: OSM_LICENCE,
         });
     });
@@ -59,6 +61,7 @@ describe('reverse', () => {
 
         await expect(geocoder.reverse({ lat: 44.4325, lng: 26.07, lang: 'ro' })).resolves.toEqual({
             area: 'Cotroceni',
+            countryCode: 'RO',
             licence: OSM_LICENCE,
         });
     });

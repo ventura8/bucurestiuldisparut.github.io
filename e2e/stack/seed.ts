@@ -7,7 +7,7 @@ import { EmulatorWorld, type SignedInAccount } from '../admin/support/emulators.
 import { PERSONAS } from '../admin/world.js';
 import { E2E_TOKEN, MOCK_API_ORIGIN } from '../fixtures/world.js';
 import { callable } from './callable.js';
-import { seedSecondCity } from './seed-cities.js';
+import { seedCountryList, seedSecondCity } from './seed-cities.js';
 import { editPlace, firestoreShape, seedCategories, seedCity, seedLayers, seedPhotos, seedPlaces } from './seed-content.js';
 import { StackImagery, type ImagerySeed } from './seed-imagery.js';
 
@@ -160,6 +160,7 @@ export async function seedStack(profile: SeedProfile): Promise<StackSeed> {
     log.info('city seeded: photos, places, categories, layers, admins, Setup green');
     await connectMapbox(api, owner);
     await seedSecondCity(api, emulators, owner);
+    await seedCountryList(emulators, ['bucharest', 'bacau']);
     const imagery = await seedImagery(api, world, owner);
     return { settled: imagery?.published ?? Promise.resolve(), close: () => api.dispose() };
 }

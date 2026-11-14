@@ -4,8 +4,9 @@
  * beats late whose execution ended: finding 58; an out-of-memory exit runs again on the next larger job; past
  * `JOB_MAX_ATTEMPTS` the job fails), cancellations and approvals a lost event left behind carried
  * out, and the MTS jobs whose poll went missing polled again. M7 (`docs/research/M7-local-worker.md` §3,
- * S-A62-BAD-WORKER-LOST): a local run whose worker stopped beating (its lease lapsed, `starting` or `running`) waits for a
- * worker again, with `apiError.imagery.workerLost` in its log; Cloud Run is never asked about it.
+ * S-A62-BAD-WORKER-LOST): a local run whose worker stopped beating (its lease lapsed, or, P1-3 of 2026-11-14, its heartbeat three
+ * beats late, `starting` or `running`) waits for a worker again (`lost-run.ts`: its attempt given back while the job had fewer than
+ * `LOST_RUN_REFUNDS` such losses, S-A62-HAPPY-LOST-REFUND); Cloud Run is never asked about it.
  */
 import {
     FIRESTORE_PATHS,
@@ -32,7 +33,8 @@ import { releaseDaily } from './daily.js';
 import { dispatchJob } from './dispatch.js';
 import { endWork, type Ending } from './end.js';
 import { enqueuePublish } from './publish-queue.js';
-import { IMAGERY_WRITER, appendJobLog, stampOf, versionIdOf } from './records.js';
+import { requeueLost } from './lost-run.js';
+import { IMAGERY_WRITER, stampOf, versionIdOf } from './records.js';
 
 export type TickJobsDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs' | 'tasks'>;
 
@@ -201,45 +203,45 @@ function cloudLost(job: JobDoc, now: Date): boolean {
     return job.status === 'running' && (leaseLapsed(job, now) || heartbeatLate(job, now));
 }
 
-/** Where a starting or running job's run was lost, if it was: on the owner's computer (lease lapsed) or in Cloud Run. */
+/**
+ * A local run whose computer stopped: its lease lapsed, or (P1-3) its heartbeat is three beats late. The worker's heartbeat
+ * (`lease.py`, through `worker.step`, which stamps `updatedAt` at the server's time) writes every `HEARTBEAT_SECONDS`, so a
+ * silent run is lost after three minutes instead of the lease's ten.
+ */
+function localLost(job: JobDoc, now: Date): 'lease' | 'heartbeat' | undefined {
+    if (leaseLapsed(job, now)) {
+        return 'lease';
+    }
+    return heartbeatLate(job, now) ? 'heartbeat' : undefined;
+}
+
+/** Where a starting or running job's run was lost, if it was: on the owner's computer or in Cloud Run. */
 function lostRun(job: JobDoc, now: Date): 'local' | 'cloud' | undefined {
     if (job.runOn === 'local') {
-        return leaseLapsed(job, now) ? 'local' : undefined;
+        return localLost(job, now) === undefined ? undefined : 'local';
     }
     return cloudLost(job, now) ? 'cloud' : undefined;
 }
 
 /**
- * A local run whose worker stopped (M7, `docs/research/M7-local-worker.md` §3): back to `queued`, waiting for a worker,
- * the worker and the lease removed, its attempt kept (the dispatcher fails it past `JOB_MAX_ATTEMPTS`), in one
- * transaction that finds it still where it was and still unleased.
+ * A local run whose worker stopped (M7, `docs/research/M7-local-worker.md` §3): back to `queued`, waiting for a worker, the
+ * worker and the lease removed, its attempt given back while it had fewer than `LOST_RUN_REFUNDS` such losses (`lost-run.ts`),
+ * in one transaction that finds it still where it was and still lost.
  */
-async function loseLocal(deps: TickJobsDeps, { cityId, jobId, from }: Requeue, now: Date): Promise<void> {
-    const path = FIRESTORE_PATHS.job(cityId, jobId);
-    const lost = await deps.documents.transaction(async (transaction) => {
-        const job = await transaction.get(path, jobDocSchema);
-        if (job?.status !== from || !leaseLapsed(job, now)) {
-            return false;
-        }
-        const kept = omit(job, ['lease', 'worker', 'executionName', 'retryAt', 'waitReason']);
-        await transaction.set(path, jobDocSchema, { ...kept, status: 'queued', waitReason: 'worker', ...stampOf(IMAGERY_WRITER, now) });
-        return true;
-    });
-    if (lost) {
-        deps.log.warn('lost local run', { cityId, jobId });
-        await appendJobLog(deps, cityId, jobId, { level: 'warn', message: 'apiError.imagery.workerLost' });
-    }
+async function loseLocal(deps: TickJobsDeps, { cityId, jobId, from }: Requeue, seen: JobDoc, now: Date): Promise<void> {
+    const why = localLost(seen, now) ?? 'lease';
+    await requeueLost(deps, { cityId, jobId, why, still: (job) => job.status === from && localLost(job, now) !== undefined }, now);
 }
 
 /**
  * Step 2: running jobs whose lease lapsed or whose heartbeat is late: their execution is asked how it ended (one still
- * running is left alone); local runs whose worker's lease lapsed wait for a worker again (M7).
+ * running is left alone); local runs whose worker's lease lapsed or whose heartbeat is late wait for a worker again (M7, P1-3).
  */
 export async function recoverLost(deps: TickJobsDeps, cityId: string, now: Date): Promise<void> {
     for (const { id, data } of await jobsIn(deps, cityId, ['running', 'starting'])) {
         const lost = lostRun(data, now);
         if (lost === 'local') {
-            await loseLocal(deps, { cityId, jobId: id, from: data.status }, now);
+            await loseLocal(deps, { cityId, jobId: id, from: data.status }, data, now);
         } else if (lost === 'cloud') {
             await recover(deps, cityId, id, data);
         }

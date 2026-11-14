@@ -25,6 +25,8 @@ interface ReversePlace {
     readonly road?: string;
     /** `address.suburb`, `address.quarter` or `address.neighbourhood`. */
     readonly area?: string;
+    /** M28: `address.country_code`, upper case (`RO`): the country whose list of archives and libraries the city gets. */
+    readonly countryCode?: string;
     /** `licence`, which the attribution repeats. */
     readonly licence: string;
 }

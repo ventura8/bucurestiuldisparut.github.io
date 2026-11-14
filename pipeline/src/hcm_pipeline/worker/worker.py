@@ -29,8 +29,9 @@ from hcm_pipeline.worker.app import PageActions
 from hcm_pipeline.worker.args import WorkerArgs
 from hcm_pipeline.worker.copying import copier
 from hcm_pipeline.worker.household import host_on_hello, share_of
+from hcm_pipeline.worker.housekeeping import Housekeeping
 from hcm_pipeline.worker.imports import ImportRoutes
-from hcm_pipeline.worker.local_store import held_films
+from hcm_pipeline.worker.local_store import LocalObjectStore, held_films
 from hcm_pipeline.worker.loop import WorkerLoop
 from hcm_pipeline.worker.page import PageSettings, content_security_policy
 from hcm_pipeline.worker.pairing import Connector, Pairing, SessionFile, Signer
@@ -78,6 +79,8 @@ class Worker:
     ) -> Worker:
         session_file = SessionFile(args.work, args.city)
         worker_id = session_file.worker_id(new_worker_id)
+        # A power cut's leftovers (`*.tmp`, `*.part` of an interrupted write) go before anything runs.
+        LocalObjectStore(args.work).sweep_leftovers(clock())
         client = http()
         web_config = WebConfig(client, args.endpoints.init_json, args.project)
         session = Session(
@@ -91,7 +94,8 @@ class Worker:
         LOG.info("%s", starter_words(state.starter))
         ids = {"cityId": args.city, "workerId": worker_id}
         # Finding 72: the image the starter's supervisor runs, which `worker.hello` compares with the installed one.
-        hello = {**ids, "host": host_on_hello(os.environ), **({"image": args.image} if args.image else {})}
+        host = host_on_hello(os.environ)
+        hello = {**ids, **({"host": host} if host else {}), **({"image": args.image} if args.image else {})}
         actions = PageActions(session, api, state, web_config, hello)
         emulators = [host for host in (args.endpoints.auth_emulator,) if host]
         settings = PageSettings(args.project, args.city, LocalServer.new_csrf_token(), args.endpoints.auth_emulator)
@@ -102,7 +106,6 @@ class Worker:
         server.serve_imports(imports)
         server.on_admin = state.pace.wake
         runtime = WorkerRuntime(args, api, worker_id, state, steps)
-        runtime.clock = clock
         runtime.announce_ai = actions.announce_ai
         pairing = Pairing(client, api, args.endpoints, web_config, args.city)
         loop = WorkerLoop(session, api, state, runtime, ids)
@@ -125,7 +128,11 @@ class Worker:
         actions.pausing = loop.pausing
         state.paused = loop.pausing.snapshot
         loop.connect_with(connector)
-        loop.sweep = runtime.sweep
+        # The worker's disk (`housekeeping.py`): said with each claim, swept with the server's job states after it.
+        housekeeping = Housekeeping(args.work, args.city, clock)
+        loop.claim_extra = housekeeping.claim_extra
+        loop.on_claim_answer = housekeeping.answered
+        loop.sweep = housekeeping.sweep
         archives = ArchiveStore(args.work)
         loop.archives = archives.held
         loop.films = lambda: held_films(args.work, args.city)

@@ -24,8 +24,8 @@ from hcm_pipeline.store import DELETE
 from hcm_pipeline.worker.ai_files import AiFiles
 from hcm_pipeline.worker.ai_state import STARTER_VERSION
 from hcm_pipeline.worker.args import Endpoints, WorkerArgs
-from hcm_pipeline.worker.local_store import DAY_SECONDS
 from hcm_pipeline.worker.loop import Pass
+from hcm_pipeline.worker.sweep import DAY_SECONDS
 from hcm_pipeline.worker.worker import Worker
 
 from tests.contracts_loader import record

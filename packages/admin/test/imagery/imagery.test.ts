@@ -356,3 +356,14 @@ describe('the browse image on the map', () => {
         imagery.close();
     });
 });
+
+// M28: the Sources step's "bring it into the app" links `#/imagery/upload`.
+describe('the upload address', () => {
+    it('happyPath_theUploadAddressOpensTheUploadTabWithNoLayer', () => {
+        const { services } = seeded();
+        const imagery = IMAGERY_MODULE.create(services);
+        imagery.open(['upload']);
+
+        expect([imagery.state.tab, imagery.state.replaceLayer]).toEqual(['upload', null]);
+    });
+});

@@ -35,6 +35,7 @@ import {
     usgsSceneDocSchema,
     type ClientCollection,
 } from '@hcm/shared';
+import { countrySourcesDocSchema } from '@hcm/shared/sources';
 import firebase from 'firebase/compat/app';
 import { describe, expect, it } from 'vitest';
 
@@ -63,7 +64,6 @@ import {
     newPhoto,
     newPoi,
     newPoiCategory,
-    opsDispatchDoc,
     opsGuardDoc,
     ownerDoc,
     photoDoc,
@@ -73,6 +73,7 @@ import {
     usageDoc,
     usgsSceneDoc,
 } from './support/documents.js';
+import { countrySourcesDoc, opsDispatchDoc } from './support/server-documents.js';
 import { past, type Data } from './support/world.js';
 
 /** What the tests need of a zod object schema. */
@@ -114,6 +115,7 @@ const SERVER_ONLY: readonly (readonly [string, DocumentSchema, () => Data])[] = 
     ['invite', inviteDocSchema, () => inviteDoc(UID)],
     ['owner', ownerDocSchema, () => ownerDoc(UID)],
     ['setup status', setupStatusDocSchema, setupStatusDoc],
+    ['country sources', countrySourcesDocSchema, countrySourcesDoc],
     ['usage', usageDocSchema, usageDoc],
     ['ops guard', opsGuardDocSchema, opsGuardDoc],
     ['dispatch slots', opsDispatchDocSchema, opsDispatchDoc],

@@ -313,6 +313,8 @@ export interface ImageryViewState {
         /** M12: on, this city keeps Mapbox's publishing path; off (the default), its own public bucket. */
         readonly publishThroughMapbox: boolean;
     };
+    /** M28: the city's sources: Find needs the USGS frames or Landsat, the local import the scanned maps. */
+    readonly sources: { readonly usgs: boolean; readonly landsat: boolean; readonly archives: boolean };
     readonly search: SearchStatePort;
     readonly filters: SceneFiltersPort;
     readonly scenes: ListStatePort<SceneItemPort>;

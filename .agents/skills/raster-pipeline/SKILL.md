@@ -17,7 +17,7 @@ The Python + GDAL pipeline that turns declassified USGS film scans (Corona KH-4,
 
 ## Steps (short, idempotent, resumable)
 
-1. `fetch`: M2M with the deterministic label `hcm-{job}`, a resumable stream into GCS (`pipeline/usgs_m2m_skill.md`); transfer size is the larger of `download-options` and Content-Length (Landsat Product Bundle by name; lesson 699); `extract` keeps only the TIFF segments; `stitch` mosaics them and crops the film border. The letters are the film's order, not the image's: the first pair is matched both ways and the better way holds (the 1966 KH-7 strip runs right to left), the matched strip starts `EDGE_SKIP_SHARE` in from the scanner's edge band, and a pair under `MIN_PAIR_SCORE` either way (a segment of another frame) fails the step (lesson 645).
+1. `fetch`: M2M with the deterministic label `hcm-{job}`, a resumable stream into GCS (`pipeline/usgs_m2m_skill.md`); transfer size is the larger of `download-options` and Content-Length (Landsat Product Bundle by name; lesson 702); `extract` keeps only the TIFF segments; `stitch` mosaics them and crops the film border. The letters are the film's order, not the image's: the first pair is matched both ways and the better way holds (the 1966 KH-7 strip runs right to left), the matched strip starts `EDGE_SKIP_SHARE` in from the scanner's edge band, and a pair under `MIN_PAIR_SCORE` either way (a segment of another frame) fails the step (lesson 645).
 2. `inspect` (uploads): GDAL decides whether an upload carries its own georeference. Only here is a GDAL failure `apiError.imagery.unreadableRaster` ("check the file and upload it again"); every other step's is `apiError.imagery.processingFailed` (`gdal_step`'s `code`, CR-M3-47: an admin is never told to re-upload a USGS frame).
 3. `locate`: the corner guess (the frame's rotation and mirror among the square-pixel ones of eight, a camera with a half angle through its panoramic model and on its exposure alone, scored against Sentinel-2; under 0.2 searched around a window widened by half with masked gradients, whose ratio and z can accept it: findings 62–63, DECISIONS §84, lesson 361), the city window plus 10 %, a crop no side of which exceeds `MAX_SCAN_PIXELS`, four corner GCPs. A guess nothing accepts is weak, no failure: the union of every orientation that reaches the window with a 10 km margin, never cut, the delivery kept, its corners cleared when the scan waits for points (`weakCorners`). `apiError.imagery.cityNotFound` only for a frame that reaches the window under no orientation.
 4. `reference`: Sentinel-2 L2A from a public STAC and OSM features from Overpass, cached in the private bucket. **The reference is OSM data plus open Sentinel-2, never Mapbox Satellite** (Mapbox terms). The Sentinel-2 date is the least cloudy of up to 5 clear covering sets that agrees with the others within 7.5 m (`agreement.py`, M15 *The reference guard*, lesson 464); the verdict is `reference.s2Check`.
@@ -63,6 +63,16 @@ The Python + GDAL pipeline that turns declassified USGS film scans (Corona KH-4,
 - `hcm_pipeline/lost_streets.py` is a CLI, not a job step: `python -m hcm_pipeline.lost_streets --bounds W,S,E,N --out f.geojson` writes the admin's POI import format from OpenHistoricalMap (CC0), OSM's lifecycle-prefixed highways (ODbL) and Wikidata (CC0).
 - Every request carries the project User-Agent (Wikidata refuses a generic one) and nothing personal; a failed source writes nothing (exit 1).
 - Only licensed open sources are fetched. Line thinning is iterative Douglas-Peucker: the recursive one hit Python's recursion limit on a zigzag.
+
+## Crashes, power cuts and the worker's disk (M7 addendum of 2026-11-14)
+
+- Write every file the worker keeps through `hcm_pipeline.durable` (`write_atomic`, `write_json_atomic`, `copy_atomic`,
+  `replace_durably`): bytes and folder `fsync`ed; a plain `write_text` or a bare rename can leave an empty file after a power cut.
+- A resume on a worker trusts a local output only through `intact.py` (recorded size, first bytes); record `bytes` with every `Done`.
+- A full disk on a worker is a hand-back (`RunOutcome.DISK_FULL`, `diskFull` on `worker.end`), never a failure: keep ENOSPC visible
+  (do not swallow it into a generic message without its cause).
+- The work folder's sweep deletes by the server's `jobStates` (`worker/sweep.py`, `worker/housekeeping.py`); never delete a job's
+  scratch by age alone when the server lists it as unfinished. Crash tests cut at the `fsync`, not at the rename.
 
 ## Job state machine (`cities/{c}/jobs/{id}`)
 

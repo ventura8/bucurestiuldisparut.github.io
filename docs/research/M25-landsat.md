@@ -55,7 +55,7 @@ A Landsat version has no georeference; the policy reads its `landsat` report ins
 
 ### Addendum (2026-11-14): download size
 
-Every Landsat import failed at `fetch` with `apiError.imagery.downloadIncomplete` ("the delivery is larger than USGS announced"). Cause: M2M `download-options` returns several products; the Product Bundle's `filesize` is often a band-scale figure, while the signed address sends the full tar. Fix: prefer the Bundle by name (flattening `secondaryDownloads`), and take the transfer size as the larger of that announcement and the response's Content-Length (or a 206's Content-Range total), so a larger full bundle is kept and a truncated body is still refused (`S-P30-HAPPY-BUNDLE-SIZE`, `S-P01-BAD-SIZE-MISMATCH`; lesson 699).
+Every Landsat import failed at `fetch` with `apiError.imagery.downloadIncomplete` ("the delivery is larger than USGS announced"). Cause: M2M `download-options` returns several products; the Product Bundle's `filesize` is often a band-scale figure, while the signed address sends the full tar. Fix: prefer the Bundle by name (flattening `secondaryDownloads`), and take the transfer size as the larger of that announcement and the response's Content-Length (or a 206's Content-Range total), so a larger full bundle is kept and a truncated body is still refused (`S-P30-HAPPY-BUNDLE-SIZE`, `S-P01-BAD-SIZE-MISMATCH`; lesson 702).
 
 ## 8. Tests
 

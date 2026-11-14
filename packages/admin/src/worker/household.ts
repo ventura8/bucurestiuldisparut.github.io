@@ -6,6 +6,8 @@
  * - **The city's computers.** Every worker of the city (`cities/{city}/workers`, live): its name (the owner's, else the
  *   computer's own), online or not (seen within `WORKER_FRESH_SECONDS`), what it does, its share of the computer (M26), its
  *   helper's and pipeline's versions. Rename, Pause and Resume are `worker.manage`.
+ * - **Its disk** (cleanup item 6, 2026-11-14): what the worker's folder uses and the free space of its disk, a warning when it is below
+ *   the worker's floor (it takes no new map work), and **Free space now** (`worker.manage` `freeSpace`), then what it freed.
  * - **Remove this computer** (the owner's order: clean up first, disconnect second, no command): `worker.manage` `remove` asks
  *   the computer's worker, at its next claim, to clean the computer up; the list follows its word (asked, cleaning, done, or
  *   failed and why). An offline computer does it when it next comes on. **Disconnect now anyway** is `worker.revoke`, and only
@@ -61,6 +63,12 @@ interface ComputerView {
     readonly seenAt: string;
     readonly removal: Omit<WorkerRemoval, 'askedAt'> | null;
     readonly revoked: boolean;
+    /** Cleanup item 6: the worker's disk as its last claim said it (null: a worker too old to say). */
+    readonly disk: { readonly workBytes: number; readonly freeBytes: number; readonly floorBytes: number } | null;
+    /** "Free space now" was asked and the computer has not said yet what it freed. */
+    readonly freeing: boolean;
+    /** What its last "Free space now" freed, and when. */
+    readonly freed: { readonly bytes: number; readonly at: string } | null;
 }
 
 export interface HouseholdState {
@@ -89,6 +97,8 @@ export interface HouseholdIntents {
     rename(id: string, name: string): Promise<boolean>;
     pause(id: string): Promise<boolean>;
     resume(id: string): Promise<boolean>;
+    /** Free space now (cleanup item 6): the computer deletes what no job needs at its next check. */
+    freeSpace(id: string): Promise<boolean>;
     remove(id: string, options: { readonly docker: boolean; readonly keep: boolean }): Promise<boolean>;
     /** Disconnect now anyway (`worker.revoke`): the last resort when the computer cannot clean itself up. */
     disconnect(id: string): Promise<boolean>;
@@ -140,6 +150,18 @@ function saidOf(data: WorkerDoc): Pick<ComputerView, 'name' | 'os' | 'starter' |
     return { name: nameOf(data), os, starter, starterCurrent: starter === WORKER_STARTER_VERSION, share, jobId };
 }
 
+/** True while "Free space now" waits for the computer: asked, and nothing freed since. */
+function waiting(asked: WorkerDoc['freeSpaceAskedAt'], freed: ComputerView['freed']): boolean {
+    return asked !== undefined && (freed === null || Date.parse(freed.at) < Date.parse(isoOf(asked)));
+}
+
+/** The worker's disk (without when it said it), its pending "Free space now" and what the last one freed (cleanup item 6). */
+function diskOf({ disk, freeSpaceAskedAt, freed }: WorkerDoc): Pick<ComputerView, 'disk' | 'freeing' | 'freed'> {
+    const done = freed === undefined ? null : { bytes: freed.bytes, at: isoOf(freed.at) };
+    const said = disk === undefined ? null : { workBytes: disk.workBytes, freeBytes: disk.freeBytes, floorBytes: disk.floorBytes };
+    return { disk: said, freeing: waiting(freeSpaceAskedAt, done), freed: done };
+}
+
 /** The owner's name for it, else the computer's own, else null. */
 function nameOf({ name, host }: WorkerDoc): string | null {
     return name ?? host ?? null;
@@ -154,6 +176,7 @@ function computerOf(doc: Stored<WorkerDoc>, now: number): ComputerView {
     return {
         ...{ id: doc.id, online, state: data.state, paused: data.pausedAt !== undefined, ...saidOf(data) },
         ...{ version: data.version, outdated: data.outdated === true, seenAt, removal: removalOf(data.removal), revoked },
+        ...diskOf(data),
     };
 }
 
@@ -200,6 +223,7 @@ export class Household {
             rename: (id, name) => this.#manage(id, { action: 'rename', name }),
             pause: (id) => this.#manage(id, { action: 'pause' }),
             resume: (id) => this.#manage(id, { action: 'resume' }),
+            freeSpace: (id) => this.#manage(id, { action: 'freeSpace' }),
             remove: (id, options) => this.#manage(id, { action: 'remove', ...options }),
             disconnect: (id) =>
                 this.#act(id, () => this.#services.callables.call('worker.revoke', { cityId: this.#services.cityId, workerId: id })),
@@ -280,7 +304,7 @@ export class Household {
         id: string,
         change:
             | { readonly action: 'rename'; readonly name: string }
-            | { readonly action: 'pause' | 'resume' }
+            | { readonly action: 'pause' | 'resume' | 'freeSpace' }
             | { readonly action: 'remove'; readonly docker: boolean; readonly keep: boolean },
     ): Promise<boolean> {
         return this.#act(id, () =>

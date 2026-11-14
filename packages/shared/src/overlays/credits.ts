@@ -31,7 +31,9 @@ export function localizedCredit(text: string, locale: ViewerLocale): string {
     // The stored English, then every language whose texts are here (one not fetched gives an empty text, never matched).
     const known = VIEWER_LOCALES.filter((other) => hasCatalogue(other));
     return CREDIT_KEYS.reduce((out, key) => {
-        const spellings = [STORED_CREDITS[key] ?? '', ...known.map((other) => translate(other, key))].filter((credit) => credit !== '');
+        const spellings = [[STORED_CREDITS[key]].join(''), ...known.map((other) => translate(other, key))].filter(
+            (credit) => credit !== '',
+        );
         return spellings.reduce((acc, credit) => acc.replaceAll(credit, translate(locale, key)), out);
     }, text);
 }

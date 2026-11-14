@@ -1045,3 +1045,68 @@ the localhost forwarding of a port Docker publishes on WSL's loopback, the keep-
 **UNVERIFIED** (§11, added): `loginctl enable-linger` without sudo over SSH on each distribution (polkit's `set-self-linger`), `sg`
 in a user service on each distribution, `apt-get install docker.io` on Debian and Ubuntu releases older than 22.04, and the remote
 removal's last run on a computer whose Docker was just removed. The first headless computer of a real owner proves the line.
+
+## Addendum of 2026-11-14: crashes, power cuts and the worker's disk
+
+Sources: `RESILIENCE-AUDIT.md` (a household computer without a UPS: a hard power cut mid-step, an unclean Docker shutdown, a full
+disk) and the owner's cleanup brief ("workers must not leave behind temp or unnecessary data": on the laptop the `hcm-worker` volume
+held 113 GB, `work/` 81 GB of 100 jobs mostly published, `usgs-raw/` 24 GB, and 46 old pipeline images 156 GB of Docker's disk).
+
+### Crashes and power cuts
+
+1. **A lost run does not use an attempt (P0-1).** A local run whose worker stopped without `worker.end` (lease lapsed, or its
+   heartbeat late by `HEARTBEAT_LATE_BEATS` beats, as for Cloud Run) is queued again by `imagery.tick` with its attempt given back
+   (`functions/src/imagery/lost-run.ts`), and the job's log says the computer stopped and the try was not counted
+   (`apiError.imagery.workerLostRefunded`). `lostRuns` counts these refunds; past `LOST_RUN_REFUNDS` (5) the attempt counts again
+   (`apiError.imagery.workerLost`), so a job that brings its computer down every time still ends.
+2. **The same computer frees its own job at once (P1-3).** A worker claims only when it runs nothing (`loop.py` `run_once`), so a
+   claim from a worker whose document still says `busy` with a job that is `starting` or `running` under its id means that run died
+   with the computer: the job is queued again in the claim's transaction, with the same refund, before the claim looks for work.
+3. **Durable writes (P0-2, `pipeline/src/hcm_pipeline/durable.py`).** Every file the worker keeps (the session and worker id, the
+   governor's choice, the fetch checkpoint, the store's objects, the AI files and their `ready.json`) goes to a hidden
+   `.<name>.<hex>.tmp`, is `fsync`ed, renamed over the target, and the folder is `fsync`ed. Each chunk of a local delivery session
+   is `fsync`ed before the next is asked for, and the finished session is renamed the same way. The matcher's request box is not:
+   its files mean nothing after a restart, which clears them.
+4. **A resume checks what it passes over (P0-3, `intact.py`).** On a worker, a step recorded `done` is passed over only when its
+   local output (`work/`, `usgs-raw/`, `reference/`) has the size the step recorded, is not empty, and starts as its kind does (a
+   TIFF's byte order and magic, `PMTiles`, a JSON document that parses). A damaged output is said in the job's log and its step runs
+   again in the same run, without an attempt. Objects in Cloud Storage are whole or absent and keep the generation check.
+5. **Uploads restart clean (P0-4).** A signed PUT a cut stops leaves no object; the step was not recorded, so it runs again. An
+   upload whose `x-goog-hash` names another MD5 than the file's is sent once more, then fails: a damaged object is never recorded.
+   Resumable signed sessions are not built: the version files are a few hundred MB and the clean restart costs one upload.
+6. **A full disk hands the job back (P1-6).** An `ENOSPC` anywhere in a step on a worker (an `OSError`, or GDAL's "No space left
+   on device") puts the step back to `pending`, says in the job's log what happened and where to free space, and ends the run
+   `released` with `diskFull`: the server gives the attempt back (`worker.end`), and the worker claims nothing while its disk is
+   under its floor (`lowDisk`, below).
+7. **Restart after a reboot (P1-1).** The worker's container runs with `--restart unless-stopped` (not `--rm`), so Docker brings it
+   back after a reboot even when the supervisor needs a logon first (Windows, macOS). The supervisor stays in charge while it runs:
+   it removes the container after each run (`docker rm -f`) and decides what follows, as before. `docker stop` (stop, uninstall)
+   is not restarted by Docker.
+8. **Leftovers.** On start, and on each pass, `*.tmp` and `*.part` files not written for an hour (a resumable session's own
+   `.sessions/*.part` excepted) are deleted: a live write touches its file every few seconds.
+
+### Disk: what the worker keeps
+
+1. **Job scratch (`worker/sweep.py`, `worker/housekeeping.py`).** Once an hour each claim names the jobs whose scratch is on the
+   computer (`held`, at most 200, longest unwritten first); the answer's `jobStates` gives each one's status or `gone`. A folder
+   goes when its job is `succeeded`, `failed`, `cancelled` or `gone` and nothing in it was written for 48 hours; a job the server
+   lists in any other state (queued for points, awaiting approval: its stitched film is there) is never deleted, however old; a
+   folder the server said nothing about ages out after 14 days as before; the claimed job's folder is never touched.
+2. **Raw deliveries.** `locate` deletes the job's `usgs-raw/` delivery on every branch on a worker (proved, not proved, whole frame)
+   and `recrop` once rough points are cut at full resolution; an unreferenced delivery still goes after 7 days. Deleting an object
+   removes the folders it leaves empty.
+3. **The disk floor and Free space now.** Each claim says `disk` (`workBytes`, measured every 10 minutes; `freeBytes`;
+   `floorBytes`, 15 GB): under the floor the server answers `lowDisk` and gives no job, and the worker sweeps finished jobs without
+   their grace. The admin's computer card shows the use and the free space, a warning under the floor, and **Free space now**
+   (`worker.manage` `freeSpace`): the next claim's `freeSpace` makes the worker sweep finished jobs at once and report `freed`
+   (bytes, time), which the card shows. Both deletions without grace use job states no older than 10 minutes, asking again first:
+   a failed job the owner retried since must keep its scratch.
+4. **Old images.** Before each run the supervisor keeps the pipeline image it runs and the previous one (the rollback) and removes
+   older `…/hcm/pipeline@sha256:` images, then prunes dangling images labelled `org.historiccitymap.worker` (the Windows starter:
+   `Remove-OldPipelineImages`); no other image is touched. The AI sidecar's old image goes at once after a new pin, as before.
+5. **Not done.** The `import/` copy of an archive is the owner's source on the computer that imported it and stays (M20);
+   a startup check of a Docker volume damaged by a power cut (P1-7), the browser-only session after a reboot (P1-2, pairing is the
+   starter's path), clock and network waits at boot (P1-5) and a Windows task that runs without a logon (P2-3) are open.
+
+Tests: `pipeline/tests/unit/test_durable.py`, `test_runner_resilience.py`, `test_worker_cleanup.py`, `test_worker_objects.py`;
+`functions/test/imagery/tick-local.test.ts`, `functions/test/worker/{claim,cleanup,pause,starter}.test.ts`; scenarios S-P04 and S-A62.

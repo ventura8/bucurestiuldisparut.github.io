@@ -19,10 +19,23 @@ import type {
     TransientDeployReason,
     UsgsRole,
 } from '@hcm/shared';
+import type { CountryPlace, SourceChoices, SourceToggle } from '@hcm/shared/sources';
 
 // [section install] owner: installer (M6, CR-M6-6): the imagery pipeline (d3) and Publish the map (i) join the steps.
 export type SetupStepId =
-    'signIn' | 'billing' | 'provision' | 'deploy' | 'claim' | 'pipeline' | 'mapbox' | 'usgs' | 'analytics' | 'legacyImport' | 'site';
+    | 'signIn'
+    | 'billing'
+    | 'provision'
+    | 'deploy'
+    | 'claim'
+    | 'pipeline'
+    | 'mapbox'
+    | 'platform'
+    | 'sources'
+    | 'usgs'
+    | 'analytics'
+    | 'legacyImport'
+    | 'site';
 // [end install]
 
 type SetupMode = 'bootstrap' | 'normal';
@@ -199,6 +212,8 @@ export interface SetupViewState {
         /** The city's credits do not name every old photo's author yet: the next click adds them. */
         readonly credits?: boolean;
     };
+    /** M28: the Sources step's switches and what the city holds (null: not chosen yet). */
+    readonly sources: { readonly choices: SourceChoices; readonly saved: SourceChoices | null; readonly finder: CountryFinderView };
     /** The last self-test's checks (Check again in normal mode), each with its state and a failure's reason. */
     readonly selfTest: {
         readonly checks: readonly {
@@ -301,6 +316,10 @@ export interface SetupIntentsPort {
     enableApi(api: string): void;
     loadCrashGroups(): void;
     importLegacy(): void;
+    /** M28: one switch of the Sources step. */
+    chooseSource(id: SourceToggle, on: boolean): void;
+    /** M28: Save my choice. */
+    saveSources(): void;
     // [section install] owner: installer (M6)
     /** Install the server (d): it also starts the imagery pipeline. */
     installServer(): void;
@@ -317,4 +336,23 @@ export interface SetupPort {
     getState(): SetupViewState;
     subscribe(listener: (state: SetupViewState) => void): () => void;
     readonly intents: SetupIntentsPort;
+}
+
+/**
+ * M28 (`docs/research/M28-sources.md` §10): where the city's country keeps its old maps and images, as `ops.tick` last wrote
+ * `countrySources/{country}`: still reading, ready, not looked up yet, or unreadable.
+ */
+export interface CountryFinderView {
+    readonly state: 'loading' | 'ready' | 'none' | 'failed';
+    /** ISO 3166-1 alpha-2 (`RO`); null until the list is read. */
+    readonly country: string | null;
+    /** The institutions' language, which the ready requests are written in. */
+    readonly language: string;
+    readonly origin: 'curated' | 'researched';
+    readonly factsCheckedOn: string | null;
+    /** When the websites were last checked (ISO). */
+    readonly refreshedAt: string | null;
+    readonly places: readonly CountryPlace[];
+    /** The city's name, in the institutions' language when it has one: what a request's `{city}` becomes. */
+    readonly cityName: string | null;
 }

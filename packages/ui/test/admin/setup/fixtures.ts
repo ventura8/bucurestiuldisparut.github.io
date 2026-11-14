@@ -1,8 +1,16 @@
 // A Setup Assistant state as the admin's controller builds it (packages/admin/src/setup/state.ts; the ui tests cannot
 // import the admin), and a fake port that records every intent the elements call.
 import { PROVISION_ITEMS, type ServiceState } from '@hcm/shared';
+import { DEFAULT_SOURCES } from '@hcm/shared/sources';
 
-import type { SetupIntentsPort, SetupPort, SetupStepId, SetupStepView, SetupViewState } from '../../../src/admin/setup/setup-port.js';
+import type {
+    CountryFinderView,
+    SetupIntentsPort,
+    SetupPort,
+    SetupStepId,
+    SetupStepView,
+    SetupViewState,
+} from '../../../src/admin/setup/setup-port.js';
 import { installSliceView } from './install-fixtures.js';
 
 export const STEP_IDS: readonly SetupStepId[] = [
@@ -24,6 +32,8 @@ const LETTERS: Readonly<Record<SetupStepId, string>> = {
     deploy: 'd',
     claim: 'd2',
     mapbox: 'e',
+    platform: 'e1',
+    sources: 'e2',
     usgs: 'f',
     analytics: 'g',
     legacyImport: 'h',
@@ -58,6 +68,18 @@ export function stepView(id: SetupStepId, changes: Partial<SetupStepView> = {}):
     };
 }
 
+/** M28 §10: no list for the city's country yet (`ops.tick` has not placed the city). */
+export const FINDER_NONE: CountryFinderView = {
+    state: 'none',
+    country: null,
+    language: 'en',
+    origin: 'curated',
+    factsCheckedOn: null,
+    refreshedAt: null,
+    places: [],
+    cityName: null,
+};
+
 export type ViewChanges = Partial<Omit<SetupViewState, 'steps'>> & {
     readonly steps?: Partial<Record<SetupStepId, Partial<SetupStepView>>>;
 };
@@ -67,7 +89,11 @@ export function setupView(changes: ViewChanges = {}): SetupViewState {
     const { steps: stepChanges = {}, ...rest } = changes;
     const done: ServiceState = 'ok';
     const steps = Object.fromEntries(
-        STEP_IDS.map((id, index) => [id, stepView(id, { ...(index < 5 ? { state: done } : {}), ...stepChanges[id] })]),
+        // M28: the platform and sources steps exist in every state; the default order leaves them out (their specs add them).
+        [...STEP_IDS, 'platform' as const, 'sources' as const].map((id, index) => [
+            id,
+            stepView(id, { ...(index < 5 ? { state: done } : {}), ...stepChanges[id] }),
+        ]),
     ) as Record<SetupStepId, SetupStepView>;
     return {
         mode: 'normal',
@@ -130,6 +156,7 @@ export function setupView(changes: ViewChanges = {}): SetupViewState {
         analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: false, reports: null },
         crashes: { loaded: false, busy: false, groups: [], error: null, disabledApi: null, lastReportAt: null },
         legacyImport: { done: 0, total: 45, failed: [], running: false },
+        sources: { choices: DEFAULT_SOURCES, saved: null, finder: FINDER_NONE },
         selfTest: { checks: [] },
         install: installSliceView(),
         ...rest,
@@ -169,6 +196,8 @@ function recordingIntents(calls: IntentCall[]): SetupIntentsPort {
         'enableApi',
         'loadCrashGroups',
         'importLegacy',
+        'chooseSource',
+        'saveSources',
         // [section setup-ux] owner: setup-ux (M6)
         'postponeUsgs',
         // [end setup-ux]

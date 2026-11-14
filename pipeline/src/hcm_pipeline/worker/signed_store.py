@@ -5,6 +5,9 @@ the object's metadata when it exists: `stat` reads that metadata; `upload_file` 
 else sends the file, streamed, with the method and headers the server gave (`PUT` on Cloud Storage; the emulators'
 stand-in may answer another), and takes the generation from `x-goog-generation` or the answer's JSON; `download_file`
 and `open_read` stream a GET (a download the network fails is an `ObjectStoreError` and leaves no partial file).
+A PUT a power cut or the network stops is never half an object (Cloud Storage commits an upload whole or not at all), so
+an interrupted upload restarts clean at the step's next run (RESILIENCE-AUDIT P0-4); one whose `x-goog-hash` names another MD5
+than the file's arrived damaged and is sent once more, then refused, so the step is never recorded done on a bad object.
 Listing, deleting and resumable sessions are refused: no step needs them for these objects (the delivery and the
 scratch are local, `local_store.py`). Every signed address passes the address guard of the client the worker builds
 (https and public, or this machine's under `--emulators`) and is never logged.
@@ -24,6 +27,18 @@ from hcm_pipeline.worker.api import ARCHIVE_COPY, URLS, WorkerApi
 from hcm_pipeline.worker.documents import JobIds
 
 GENERATION_HEADER: Final = "x-goog-generation"
+HASH_HEADER: Final = "x-goog-hash"
+# One more PUT after an upload that arrived different from the file (then the step fails and its retry starts clean).
+UPLOAD_TRIES: Final = 2
+
+
+def _md5_said(response: httpx.Response) -> str | None:
+    """The MD5 Cloud Storage computed of what it received (`x-goog-hash: crc32c=..., md5=...`), when it says one."""
+    for part in str(response.headers.get(HASH_HEADER, "")).split(","):
+        name, _, value = part.strip().partition("=")
+        if name == "md5" and value:
+            return value
+    return None
 
 
 def _first(answer: Mapping[str, object]) -> Mapping[str, object]:
@@ -124,13 +139,23 @@ class SignedObjectStore:
     def upload_file(self, local: Path, path: str, content_type: str) -> ObjectInfo:
         """The file sent to its signed URL, unless an identical object is already there."""
         signed, md5 = self._sign(path, "PUT", content_type), md5_of(local)
-        if signed.exists and signed.md5 == md5:
-            return signed.info()
+        return signed.info() if signed.exists and signed.md5 == md5 else self._sent(signed, local, (path, content_type, md5))
+
+    def _sent(self, signed: SignedObject, local: Path, what: tuple[str, str, str]) -> ObjectInfo:
+        """The file PUT until Cloud Storage says it received its MD5 (`UPLOAD_TRIES`), else an error: never a damaged object recorded."""
+        path, content_type, md5 = what
+        for _ in range(UPLOAD_TRIES):
+            response = self._put(signed, local, content_type)
+            if _md5_said(response) in (None, md5):
+                generation = _generation(response) or self._generation_of(path)
+                return ObjectInfo(path, local.stat().st_size, generation, md5)
+            signed = self._sign(path, "PUT", content_type)
+        raise ObjectStoreError(f"the signed upload of {path} arrived different from the file, twice")
+
+    def _put(self, signed: SignedObject, local: Path, content_type: str) -> httpx.Response:
         with local.open("rb") as file:
             headers = {"Content-Type": content_type, **signed.headers}
-            response = _checked(self._http.request(signed.method, signed.url, content=file, headers=headers), "upload")
-        generation = _generation(response) or self._generation_of(path)
-        return ObjectInfo(path, local.stat().st_size, generation, md5)
+            return _checked(self._http.request(signed.method, signed.url, content=file, headers=headers), "upload")
 
     def _generation_of(self, path: str) -> str:
         info = self.stat(path)

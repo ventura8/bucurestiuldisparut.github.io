@@ -38,6 +38,21 @@ const HCM_ADMIN_MAP_SELECTOR = 'hcm-admin-map';
 
 const TABS: readonly ImageryTabPort[] = ['find', 'work', 'upload'];
 
+/** M28: a part of Imagery the map's sources turned off: why, and the way to Setup → Sources. */
+function sourcesOff(context: ImageryContext, part: 'find' | 'archives'): TemplateResult {
+    return html`<div class="pane sources-off" data-sources-off=${part}>
+        <p>${contentText(context.locale, `adminContent.imagery.sourcesOff.${part}`)}</p>
+        <p>${contentText(context.locale, `adminContent.imagery.sourcesOff.${part}Fix`)}</p>
+        <a href="#/setup/sources">${contentText(context.locale, 'adminContent.imagery.sourcesOff.open')}</a>
+    </div>`;
+}
+
+/** M28: Find, while the USGS frames or Landsat are among the sources. */
+function findOrOff(context: ImageryContext): TemplateResult {
+    const { sources } = context.view;
+    return sources.usgs || sources.landsat ? findView(context) : sourcesOff(context, 'find');
+}
+
 /** The Upload view as a chunk of its own, fetched when its tab first opens (M8: room in the area's chunk for the join's plan). */
 export const UPLOAD_PANEL_CHUNK = chunkLoader(async () => import('./upload-panel.js'));
 
@@ -223,19 +238,21 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     #tab(context: ImageryContext): TemplateResult {
         const { view, intents } = context;
         if (view.tab === 'find') {
-            return findView(context);
+            return findOrOff(context);
         }
         if (view.tab === 'work') {
             return workView(context);
         }
-        const archive = html`<hcm-archive-panel
-            class="pane"
-            .app=${context.app}
-            .locale=${context.locale}
-            @hcm-archive-arrived=${(event: Event) => {
-                context.go(['archive', (event as CustomEvent<{ id: string }>).detail.id]);
-            }}
-        ></hcm-archive-panel>`;
+        const archive = !view.sources.archives
+            ? sourcesOff(context, 'archives')
+            : html`<hcm-archive-panel
+                  class="pane"
+                  .app=${context.app}
+                  .locale=${context.locale}
+                  @hcm-archive-arrived=${(event: Event) => {
+                      context.go(['archive', (event as CustomEvent<{ id: string }>).detail.id]);
+                  }}
+              ></hcm-archive-panel>`;
         return html`${chunkTemplate(context, UPLOAD_PANEL_CHUNK, ({ uploadPanel }) =>
             uploadPanel(
                 context.locale,

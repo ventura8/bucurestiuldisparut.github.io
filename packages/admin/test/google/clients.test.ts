@@ -226,6 +226,7 @@ describe('the deployment', () => {
                 'worker-starter',
                 'worker-archiveReport',
                 'worker-archiveCopy',
+                'worker-manage',
                 'imagery-archiveImport',
                 'imagery-confirmRights',
                 'imagery-deleteVersion',

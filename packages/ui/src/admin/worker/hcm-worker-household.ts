@@ -1,8 +1,8 @@
 /**
  * `<hcm-worker-household>` (W5, household computers: `docs/research/M7-local-worker.md` *Household computers*; behaviour A143), in
  * the lazy `worker-household` chunk, below "This computer" in the worker's panel: the city's computers (name, on or off, what it
- * does, its share of the computer and why, its helper's and pipeline's versions) with Rename, Pause or Resume and Remove this
- * computer; how far a removal got (asked, waiting for the computer to come on, cleaning up, removed, or why not, with Disconnect
+ * does, its share of the computer and why, its helper's and pipeline's versions, its disk with Free space now and, when nearly full,
+ * a warning: cleanup item 6) with Rename, Pause or Resume and Remove this computer; how far a removal got (asked, waiting for the computer to come on, cleaning up, removed, or why not, with Disconnect
  * now anyway and only then the line or file that cleans it up by hand); and **Add another computer**: for a computer with a
  * screen, this admin's address to open there; for one without, the one line to paste over SSH.
  */
@@ -26,6 +26,7 @@ import {
     type PartContext,
     type Translate,
 } from './household-parts.js';
+import { diskPart } from './household-disk.js';
 import { workerStyles } from './worker-element.js';
 import type { ComputerViewPort, HouseholdPort, HouseholdViewPort } from './worker-port.js';
 
@@ -181,6 +182,7 @@ export class HcmWorkerHousehold extends LitElement {
             <span class="row-detail">${presence(context, computer)}</span>
             ${share(context, computer)}
             <span class="row-detail">${versions(context, computer)}</span>
+            ${diskPart(context, view, computer)}
             <p class="note" role="status" data-removal=${computer.removal?.step ?? 'none'}>${said}</p>
             ${this.#actions(context, view, computer)} ${manualCleanup(context, computer)}
         </li>`;

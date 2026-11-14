@@ -319,7 +319,7 @@ day; delete public objects no manifest names, older than `UNPUBLISH_DELETE_MINUT
 `retrieveToken` and a USGS login; a `pending` USGS role whose `nextCheckAt` passed is checked again and turns `ok` on
 approval), `tokens` (delete `setup/status.mapbox.retiring` tokens past `retireAt`), `invites` (delete expired
 invitations), `users` (delete Auth accounts without an `admins/{uid}` document created more than `STALE_USER_HOURS`
-ago; never the owner). `ops.onBudget` (Pub/Sub topic `budget`) turns `ops/guard` red when the cost reaches the budget;
+ago; never the owner); since M28 `sources` (place one city a tick in its country with one Nominatim reverse lookup, then refresh at most one `countrySources/{country}` list that is missing or a month old: the curated list or Wikidata's institutions, every website checked; `docs/research/M28-sources.md` §10). `ops.onBudget` (Pub/Sub topic `budget`) turns `ops/guard` red when the cost reaches the budget;
 it never touches the public site; turning it green again is an admin action of M3 (nothing consumes the guard before
 the raster pipeline).
 

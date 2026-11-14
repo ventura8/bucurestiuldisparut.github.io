@@ -290,6 +290,21 @@ service cloud.firestore {
                 && validYears(imagery.get('targetYears', []));
         }
 
+        // M28 sources (`citySourcesSchema`, docs/research/M28-sources.md §3): which sources the map uses, each an optional
+        // boolean; saved on their own, as the imagery settings are. A source added to `SOURCE_TOGGLES` is added here too.
+        function validSources(sources) {
+            return sources is map
+                && sources.keys().hasOnly(['usgs', 'usgsOrders', 'landsat', 'archives', 'contributors', 'openData', 'localAi', 'cloudAi'])
+                && sources.get('usgs', true) is bool
+                && sources.get('usgsOrders', false) is bool
+                && sources.get('landsat', true) is bool
+                && sources.get('archives', true) is bool
+                && sources.get('contributors', true) is bool
+                && sources.get('openData', true) is bool
+                && sources.get('localAi', true) is bool
+                && sources.get('cloudAi', false) is bool;
+        }
+
         // The settings an admin edits; id, mapbox, analytics, engine and createdAt are server-owned.
         function validCity(data) {
             return titled(data.name, '[\\s\\S]{1,100}')
@@ -588,6 +603,11 @@ service cloud.firestore {
 
         // ---- end of M4 notifications and assists --------------------------------------------------------------------
 
+        // M28: where each country keeps its old maps and images, written by ops.tick only; Setup's Sources step reads it.
+        match /countrySources/{country} {
+            allow read: if isStaff();
+        }
+
         // setup/status (non-secret health: secrets live in Secret Manager, never here) and setup/owner.
         match /setup/{doc} {
             allow read: if isStaff();
@@ -637,13 +657,16 @@ service cloud.firestore {
         match /cities/{city} {
             allow read: if hasCityRole(city);
             // The imagery settings (M3) are saved on their own and checked on their own: a request has room for twenty
-            // target years or for the rest of the settings, not for both (the 1000 expressions of a request).
+            // target years or for the rest of the settings, not for both (the 1000 expressions of a request). M28: so are
+            // the sources (Setup's Sources step and Settings → Sources).
             allow update: if isCityMember(city)
                 && changedKeys().hasOnly(['name', 'bounds', 'center', 'zoom', 'minZoom', 'maxZoom', 'about', 'privacy', 'credits',
-                    'theme', 'basemap', 'photosOverlay', 'imagery', 'published', 'updatedBy', 'updatedAt'])
+                    'theme', 'basemap', 'photosOverlay', 'imagery', 'sources', 'published', 'updatedBy', 'updatedAt'])
                 && (changedKeys().hasOnly(['imagery', 'updatedBy', 'updatedAt'])
                     ? (!('imagery' in request.resource.data) || validImagery(request.resource.data.imagery)) && stamped(request.resource.data)
-                    : !('imagery' in changedKeys()) && validCity(request.resource.data));
+                    : (changedKeys().hasOnly(['sources', 'updatedBy', 'updatedAt'])
+                        ? validSources(request.resource.data.sources) && stamped(request.resource.data)
+                        : !('imagery' in changedKeys()) && !('sources' in changedKeys()) && validCity(request.resource.data)));
 
             // Every audited document keeps a `history` subcollection written by the history.*
             // triggers and history.revert only: admins read it, nobody writes it from a client.

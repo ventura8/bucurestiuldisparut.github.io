@@ -206,6 +206,14 @@ M26 has no `machine`: the card asks to update it. Scenarios: A141 (`S-A141-HAPPY
 `HCM_GOVERNOR=off` leaves a worker ungoverned: only the tests' own process uses it (a governed test would renice pytest
 and set GDAL's options for every later test).
 
+### Disk (2026-11-14)
+
+The governor's share caps the processor, the memory and the graphics card; the disk has its own floor beside it
+(`worker/housekeeping.py`, `DISK_FLOOR_BYTES`, 15 GB free): each `worker.claim` says `disk` (`workBytes`, `freeBytes`,
+`floorBytes`), the server gives no job under the floor (`lowDisk`, a hold-back after `paused`), and the worker sweeps finished
+jobs' scratch at once until there is room. A run that fills the disk anyway hands its job back with its attempt (`diskFull`). The
+admin's household card shows the use and the free space and offers **Free space now** (M7, *Disk: what the worker keeps*).
+
 ## 7. What this builds on
 
 `track/stripfix` (another agent, 2026-11-12, merged into `feat/engine-rewrite` at `8c794234`) added GDAL memory sized to the

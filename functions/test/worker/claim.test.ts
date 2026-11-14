@@ -36,6 +36,8 @@ import {
     type WorkerWorld,
 } from './world.js';
 
+const THIRD_WORKER = 'w-1111111111111111';
+
 const ARCHIVE_PARAMS = {
     archiveId: 'ar-0123456789abcdef',
     seriesId: 's-0123456789ab',
@@ -107,13 +109,15 @@ describe('worker.claim', () => {
         await claim(world);
 
         await expect(claim(world, OTHER_WORKER, OTHER)).resolves.toEqual({ job: { jobId: 'j-new' } });
-        await expect(claim(world, OTHER_WORKER, OTHER)).resolves.toEqual({ job: null });
+        // A worker claims only when it runs nothing (a busy one's claim releases its orphan: cleanup.test.ts): a third one finds none.
+        await seedWorker(world, THIRD_WORKER, { uid: OTHER, updatedBy: OTHER });
+        await expect(claim(world, THIRD_WORKER, OTHER)).resolves.toEqual({ job: null });
 
         expect(await readJob(world, 'j-new')).toMatchObject({ attempt: 1, worker: { id: OTHER_WORKER, uid: OTHER } });
         await expect(readJob(world, 'j-cloud')).resolves.toMatchObject({ status: 'queued', waitReason: 'capacity' });
-        const other = await readWorker(world, OTHER_WORKER);
-        expect(other).toMatchObject({ state: 'idle', lastSeenAt: at(NOW) });
-        expect(other).not.toHaveProperty('jobId');
+        const third = await readWorker(world, THIRD_WORKER);
+        expect(third).toMatchObject({ state: 'idle', lastSeenAt: at(NOW) });
+        expect(third).not.toHaveProperty('jobId');
     });
 
     it.each([

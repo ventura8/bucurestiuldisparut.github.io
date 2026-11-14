@@ -6,6 +6,7 @@ import {
     type AdminShellKey,
     type ApiErrorCode,
 } from '@hcm/shared';
+import { translateAdminSources, type AdminSourcesKey } from '@hcm/shared/admin-sources';
 
 /**
  * The admin's texts as the user reads them (docs/research/M2b-interfaces.md §1.6): specs find controls by role and
@@ -20,6 +21,11 @@ export function shellText(lang: 'ro' | 'en', key: AdminShellKey, params: Readonl
 /** A Setup Assistant text (`adminSetup.*`). */
 export function setupText(lang: 'ro' | 'en', key: AdminSetupKey, params: Readonly<Record<string, string>> = {}): string {
     return translateAdminSetup(lang, key, params);
+}
+
+/** M28: a text of the Platform and Sources cards (`adminSources.*`). */
+export function sourcesText(lang: 'ro' | 'en', key: AdminSourcesKey, params: Readonly<Record<string, string>> = {}): string {
+    return translateAdminSources(lang, key, params);
 }
 
 /** A server error's message (`apiError.*`), as a card shows the reason a callable gave. */

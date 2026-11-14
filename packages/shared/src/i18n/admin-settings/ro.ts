@@ -19,6 +19,8 @@ export const ro = {
     'adminContent.settings.section.textsHint': 'Numele, Despre, confidențialitate, mulțumiri',
     'adminContent.settings.section.theme': 'Temă și hartă de bază',
     'adminContent.settings.section.themeHint': 'Culoarea orașului, harta vizitatorilor',
+    'adminContent.settings.section.sources': 'Sursele hărții',
+    'adminContent.settings.section.sourcesHint': 'Ce imagini vechi, locuri și fotografii folosește harta și cât costă (în Configurare)',
     'adminContent.settings.section.icon': 'Iconița din fila browserului',
     'adminContent.settings.section.iconHint': 'Imaginea mică din fila hărții publice',
     'adminContent.settings.icon.intro': 'Apare în fila browserului și pe ecranul telefonului. Implicit: harta din Straturi.',

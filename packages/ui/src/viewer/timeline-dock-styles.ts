@@ -16,6 +16,11 @@ export const timelineDockStyles = css`
         inset-block-start: auto;
     }
 
+    /* Upright the 40 px chip stays centred under the 96 px pill (88 px of year in 4 px of card): 28 px in, not the card's 14. */
+    .frame[data-timeline='vertical'][data-timeline-collapsed] .dock.chip {
+        inset-inline-start: calc(var(--hcm-gutter) + 28px);
+    }
+
     .frame[data-compact-height][data-timeline-collapsed] .dock.timeline {
         inset-inline: auto max(var(--hcm-gutter), 50% - 356px);
         max-inline-size: none;

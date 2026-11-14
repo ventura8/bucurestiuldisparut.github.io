@@ -155,6 +155,10 @@ export interface ComputerViewPort {
     readonly seenAt: string;
     readonly removal: Omit<WorkerRemoval, 'askedAt'> | null;
     readonly revoked: boolean;
+    /** Cleanup item 6: the worker's disk (null: not said), "Free space now" pending, and what the last one freed. */
+    readonly disk: { readonly workBytes: number; readonly freeBytes: number; readonly floorBytes: number } | null;
+    readonly freeing: boolean;
+    readonly freed: { readonly bytes: number; readonly at: string } | null;
 }
 
 export type AddKindPort = WorkerOsPort | 'headless';
@@ -184,6 +188,7 @@ export interface HouseholdPort {
         rename(id: string, name: string): Promise<boolean>;
         pause(id: string): Promise<boolean>;
         resume(id: string): Promise<boolean>;
+        freeSpace(id: string): Promise<boolean>;
         remove(id: string, options: { readonly docker: boolean; readonly keep: boolean }): Promise<boolean>;
         disconnect(id: string): Promise<boolean>;
         retry(): void;

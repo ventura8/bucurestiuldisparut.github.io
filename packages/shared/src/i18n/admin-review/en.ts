@@ -65,6 +65,8 @@ export const en: Readonly<Record<AdminReviewKey, string>> = {
     'adminContent.contribute.retry': 'You can ask again after {date}.',
     'adminContent.contribute.blocked': 'This account can no longer contribute to this city.',
     'adminContent.contribute.member': 'You are already a member of this city.',
+    'adminContent.contribute.satelliteNote': "Satellite search is for the map's owner, because it uses paid quota.",
+    'adminContent.contribute.satelliteNote2': 'You can still send old photos, with their author and licence.',
     'adminContent.contribute.openAdmin': 'Open the admin',
     'adminContent.contribute.place.title': 'Where was this taken?',
     'adminContent.contribute.place.intro': 'Put the pin where the photographer stood. Nothing changes until someone approves it.',
