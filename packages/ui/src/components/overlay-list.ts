@@ -27,6 +27,11 @@ export interface OverlayListItem {
      * categories without one: only a historical layer has a "shown at start" (CR-M2c-10).
      */
     readonly toggleable?: boolean;
+    /**
+     * A secondary line below the name, in smaller supporting text (the viewer's historical layer: its date or year). The
+     * two lines fit the row's 48 px: the name ellipsizes on one line, so a dated row is no taller than an undated one.
+     */
+    readonly detail?: string;
 }
 
 /** A group heading (`layers.group.historical`, `layers.group.places`); a kind without one is listed without heading. */
@@ -134,6 +139,28 @@ export class HcmOverlayList extends LitElement {
                 overflow-wrap: anywhere;
             }
 
+            .name.dated {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .name.dated > span {
+                overflow: hidden;
+                white-space: nowrap;
+                text-overflow: ellipsis;
+            }
+
+            /* Two lines in the row's 48 px: 20 + 16 px, the name a touch tighter than body-large's 24 px. */
+            .name.dated > .label {
+                line-height: 20px;
+            }
+
+            .detail {
+                color: var(--md-sys-color-on-surface-variant);
+                font-size: var(--md-sys-typescale-body-small-size);
+                line-height: 16px;
+            }
+
             .opacity {
                 display: flex;
                 grid-column: 2 / -1;
@@ -228,9 +255,7 @@ export class HcmOverlayList extends LitElement {
         const percent = String(opacityPercent(item.opacity));
         const valueText = fillTemplate(this.valueText, { percent });
         return html`<li data-overlay=${item.id}>
-            ${this.renderSwatch(item)}
-            <span class="name body-large">${name}</span>
-            ${this.renderSwitch(item)}
+            ${this.renderSwatch(item)} ${this.renderName(item)} ${this.renderSwitch(item)}
             <div class="opacity">
                 <hcm-slider
                     min="0"
@@ -250,6 +275,16 @@ export class HcmOverlayList extends LitElement {
                 <span class="value body-medium" aria-hidden="true">${valueText}</span>
             </div>
         </li>`;
+    }
+
+    /** The name, with its date below when the row has one (the name then ellipsizes, keeping the row's height). */
+    private renderName(item: OverlayListItem): TemplateResult {
+        if (item.detail === undefined) {
+            return html`<span class="name body-large">${item.label}</span>`;
+        }
+        return html`<span class="name dated"
+            ><span class="label body-large">${item.label}</span><span class="detail">${item.detail}</span></span
+        >`;
     }
 
     private renderSwitch(item: OverlayListItem): TemplateResult | typeof nothing {

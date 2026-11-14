@@ -56,6 +56,26 @@ function liveRegion(element: HcmOverlayList): string {
 describe('<hcm-overlay-list>', () => {
     afterEach(cleanup);
 
+    it('happyPath_dateBelowTheNameWithoutATallerRow', async () => {
+        const long = 'Ortofoto '.repeat(20);
+        const dated = ITEMS.map((item, index) => (index === 0 ? { ...item, label: long, detail: '12 aprilie 1966' } : item));
+        const plain = await list('ro');
+        const before = shadowPart(plain, '[data-overlay="ortofoto-1945"]').getBoundingClientRect().height;
+        cleanup();
+        const element = await list('ro', dated);
+        const row = shadowPart(element, '[data-overlay="ortofoto-1945"]');
+        expect(shadowPart(element, '[data-overlay="ortofoto-1945"] .detail').textContent).toBe('12 aprilie 1966');
+        expect(row.getBoundingClientRect().height).toBe(before);
+        const label = shadowPart(element, '[data-overlay="ortofoto-1945"] .label');
+        expect(label.scrollWidth).toBeGreaterThan(label.clientWidth);
+    });
+
+    it('badPath_rowWithoutDateShowsNoSecondLine', async () => {
+        const element = await list('en');
+        expect(element.shadowRoot?.querySelector('.detail')).toBeNull();
+        expect(shadowPart(element, '[data-overlay="plan-1911"] .name').textContent.trim()).toBe('Planul 1911');
+    });
+
     it('happyPath_rowsUnderTheirGroupHeadingsInRomanian', async () => {
         const element = await list('ro');
 

@@ -7,17 +7,24 @@ import { creditParts } from '@hcm/shared/credits';
 import { translateMapLabels } from '@hcm/shared/map-labels';
 
 import type { OverlayListGroup, OverlayListItem } from '../components/overlay-list.js';
+import { dateText } from './timeline-dates.js';
 
-/** The list rows: overlay labels in `locale`; a POI category also gets its colour and its bundled icon. */
+/**
+ * The list rows: overlay labels in `locale`; a POI category also gets its colour and its bundled icon; a historical layer its
+ * date (or year) in `locale` as the row's second line. A row without a manifest layer (photos, places) has no date.
+ */
 export function overlayItems(overlays: readonly Overlay[], manifest: Manifest, locale: ViewerLocale): readonly OverlayListItem[] {
     const categories = new Map((manifest.poiCategories ?? []).map((category) => [category.id, category]));
+    const layers = new Map(manifest.layers.map((layer) => [layer.id, layer]));
     return overlays.map((overlay) => {
+        const layer = overlay.kind === 'raster' ? layers.get(overlay.id) : undefined;
         const item = {
             id: overlay.id,
             kind: overlay.kind,
             label: overlayLabel(overlay, locale),
             visible: overlay.visible,
             opacity: overlay.opacity,
+            ...(layer === undefined ? {} : { detail: dateText(layer, locale) }),
         };
         const category = overlay.kind === 'poi' ? categories.get(overlay.id) : undefined;
         return category === undefined ? item : { ...item, color: category.color, icon: poiIcon(category.icon) };

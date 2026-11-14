@@ -46,8 +46,8 @@ describe('overlay list data', () => {
 
     it('happyPath_everyOverlayWithLocalizedLabelsAndCategorySwatches', () => {
         expect(overlayItems(overlays, manifest, 'en')).toEqual([
-            { id: 'kh4-1966', kind: 'raster', label: 'Corona 1966', visible: true, opacity: 0.9 },
-            { id: 'kh9-1977', kind: 'raster', label: 'KH-9 1977', visible: false, opacity: 1 },
+            { id: 'kh4-1966', kind: 'raster', label: 'Corona 1966', visible: true, opacity: 0.9, detail: '1966' },
+            { id: 'kh9-1977', kind: 'raster', label: 'KH-9 1977', visible: false, opacity: 1, detail: '1977' },
             { id: 'photos', kind: 'photos', label: 'Photos', visible: true, opacity: 1 },
             {
                 id: 'cladiri',
