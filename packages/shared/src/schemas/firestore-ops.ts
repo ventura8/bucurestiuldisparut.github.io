@@ -185,7 +185,19 @@ export const GUARD_REASONS = ['budget', 'manual'] as const;
  * gives every admin document from before M5 its cities (`docs/research/M5-interfaces.md` §1.2), `exports` expires the
  * static exports past their time (§5.3).
  */
-export const OPS_STEPS = ['guard', 'jobs', 'mts', 'manifests', 'health', 'tokens', 'invites', 'users', 'memberships', 'exports'] as const;
+export const OPS_STEPS = [
+    'guard',
+    'jobs',
+    'mts',
+    'manifests',
+    'health',
+    'tokens',
+    'invites',
+    'users',
+    'memberships',
+    'exports',
+    'sources',
+] as const;
 export const MANIFEST_BUILD_STATES = ['idle', 'queued', 'building', 'failed'] as const;
 /** Entities a manifest build may skip (an invalid document is skipped and flagged, never fails the manifest). */
 export const MANIFEST_ENTITIES = ['layer', 'photo', 'poi', 'poiCategory', 'story'] as const;

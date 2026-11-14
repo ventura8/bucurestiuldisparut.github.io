@@ -6,6 +6,7 @@
  * `setup/status`. It satisfies the elements' `SetupPort` (`packages/ui/src/admin/setup/setup-port.ts`).
  */
 import type { InstallTarget, MapboxTokenAudience, SaveUsgsRequest, SelfTestResponse, ServiceState } from '@hcm/shared';
+import type { SourceToggle } from '@hcm/shared/sources';
 
 import { createAnalyticsFlow, type AnalyticsFlow } from './analytics.js';
 import { clearBootstrapRecord, readBootstrapRecord, type BootstrapRecord } from './bootstrap-record.js';
@@ -29,6 +30,7 @@ import {
     type SetupMode,
     type SetupState,
 } from './state.js';
+import { createSourcesFlow, type SourcesFlow } from './sources.js';
 import { SETUP_STEPS, type SetupStepId } from './steps.js';
 import { createUsgsFlow, type UsgsFlow } from './usgs.js';
 
@@ -68,6 +70,10 @@ interface SetupIntents {
     /** Lists the crash groups again (the panel's Retry and the `#/crashes` page). */
     loadCrashGroups(): Promise<void>;
     importLegacy(): Promise<void>;
+    /** M28: one switch of the Sources step (one input). */
+    chooseSource(id: SourceToggle, on: boolean): void;
+    /** M28: Save my choice on the Sources step (one input). */
+    saveSources(): Promise<void>;
     // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.8, §4.1)
     /** Install the server (d): one click; it also starts the imagery pipeline (d3). */
     installServer(): Promise<void>;
@@ -103,6 +109,7 @@ interface Flows {
     readonly usgs: UsgsFlow;
     readonly analytics: AnalyticsFlow;
     readonly legacyImport: LegacyImportFlow;
+    readonly sources: SourcesFlow;
     readonly install: InstallCards;
 }
 
@@ -116,6 +123,7 @@ function createFlows(ctx: SetupContext): Flows {
         usgs: createUsgsFlow(ctx),
         analytics: createAnalyticsFlow(ctx),
         legacyImport: createLegacyImportFlow(ctx),
+        sources: createSourcesFlow(ctx),
         install: createInstallCards(ctx, (access, recordAfter) => provision.update(access, recordAfter)),
     };
 }
@@ -192,6 +200,7 @@ class Controller implements SetupController {
             await this.restoreBootstrap();
         } else {
             await this.loadStatus();
+            await this.flows.sources.detect();
             this.ctx.update((state) => withChecksAnswered(state, STATUS_ANSWERS));
             this.resume(step, (next) => next !== 'legacyImport');
             await this.flows.legacyImport.detect();
@@ -295,6 +304,7 @@ class Controller implements SetupController {
 
     private async loadNormal(): Promise<void> {
         await this.loadStatus();
+        await this.flows.sources.detect();
         await this.flows.legacyImport.detect();
     }
 
@@ -399,6 +409,7 @@ class Controller implements SetupController {
             claim: () => this.loadNormal(),
             analytics: () => this.flows.analytics.open(),
             legacyImport: () => this.flows.legacyImport.detect(),
+            sources: () => this.flows.sources.detect(),
         };
         await (checks[step] ?? (() => this.recheckPage()))();
     }
@@ -459,6 +470,10 @@ class Controller implements SetupController {
             enableApi: (api) => analytics.enableApi(api),
             loadCrashGroups: () => analytics.loadCrashGroups(),
             importLegacy: () => legacyImport.run(),
+            chooseSource: (id, on) => {
+                this.flows.sources.choose(id, on);
+            },
+            saveSources: () => this.flows.sources.save(),
             installServer: async () => {
                 await this.flows.install.installServer();
                 this.flows.deploy.watch();

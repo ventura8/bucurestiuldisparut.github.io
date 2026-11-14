@@ -1233,6 +1233,41 @@
             "name": "A paused job stops at its next step boundary; a paused computer claims nothing and hands its job back without using an attempt",
             "milestone": "M26",
             "source": "the owner, 2026-11-13: \"I want the user to be able to pause jobs, and to pause using a machine\"; docs/research/M7-local-worker.md, Pause; docs/research/M26-governor.md"
+        },
+        {
+            "id": "A180",
+            "area": "admin",
+            "name": "Setup's Sources step: each source's facts, pros, cons, costs and account, switches saved as the city's sources, the month's estimate, the USGS step and the importers following the choice",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1, Setup's Sources and Platform steps); docs/research/M28-sources.md; DECISIONS-for-review.md §225"
+        },
+        {
+            "id": "A181",
+            "area": "admin",
+            "name": "Setup's Platform step: Google Cloud, Firebase, Firestore, storage and processing, and Mapbox in one card, each with its role, costs, limits, sign-up help and state",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1, Setup's Sources and Platform steps); docs/research/M28-sources.md; DECISIONS-for-review.md §225"
+        },
+        {
+            "id": "A182",
+            "area": "admin",
+            "name": "Uploaders and the sources: photos and open data allowed through Contribute and review, the satellite sources kept for the owner and the editors",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1, Setup's Sources and Platform steps); docs/research/M28-sources.md; DECISIONS-for-review.md §225"
+        },
+        {
+            "id": "A183",
+            "area": "admin",
+            "name": "Setup's Sources step: the country finder lists where the city's country keeps old maps, air photos and satellite images, online and in person, with a guided setup, a visit guide and a ready request; ops.tick researches, caches and refreshes the lists",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-14 (finish Setup's Sources: free translation sources and a per-country finder); docs/research/M28-sources.md §10–§11; DECISIONS-for-review.md §225"
+        },
+        {
+            "id": "A184",
+            "area": "admin",
+            "name": "Setup's Sources step: free translation options, each with its quality, monthly limit, privacy and sign-up wizard",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-14 (finish Setup's Sources: free translation sources and a per-country finder); docs/research/M28-sources.md §10–§11; DECISIONS-for-review.md §225"
         }
     ],
     "scenarios": [
@@ -21618,6 +21653,259 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_worker_pausing.py."
+        },
+        {
+            "id": "S-A180-HAPPY-SAVE-DEFAULTS",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "happy",
+            "title": "After Mapbox the Sources card opens with the suggested switches and Save my choice keeps them",
+            "asserts": "the card shows the free sources on and the paid ones off, the month's estimate with the platform's fixed line -> Save my choice (one input) writes cities/<city>.sources and the chip reads Done; USGS stays in the list",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "journey.spec.ts step 5b. Unit: packages/admin/test/setup/sources.test.ts, packages/ui/test/admin/setup/hcm-setup-sources.test.ts."
+        },
+        {
+            "id": "S-A180-HAPPY-RULES-SAVE",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "happy",
+            "title": "An editor saves the city's sources on their own",
+            "asserts": "an update of cities/<city> that changes only sources (each a boolean) with the admin's stamp -> allowed",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "firebase/rules-tests/test/cities.test.ts."
+        },
+        {
+            "id": "S-A180-BAD-RULES-SHAPE",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "bad",
+            "title": "Sources that are not a map of known booleans, or mixed with a city setting, are refused",
+            "asserts": "sources 'all', an unknown source, a non-boolean, or sources with zoom in one write -> denied",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "firebase/rules-tests/test/cities.test.ts."
+        },
+        {
+            "id": "S-A180-HAPPY-USGS-LEFT-OUT",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "happy",
+            "title": "Without the USGS photos and Landsat the USGS account step leaves the list and Setup is done without it",
+            "asserts": "both switches off -> Save my choice -> the USGS card is gone, the count drops by one, USGS is recorded for later so Home and the header read done",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/admin/test/setup/sources.test.ts (happyPath_withoutUsgsAndLandsat…, ready without USGS)."
+        },
+        {
+            "id": "S-A180-BAD-USGS-OFF",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "bad",
+            "title": "Paid scans wait for the declassified photos",
+            "asserts": "the declassified photos off -> the paid-scans switch is off and disabled, with the line saying to turn the photos on first",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/hcm-setup-sources.test.ts."
+        },
+        {
+            "id": "S-A180-BAD-SAVE-REFUSED",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "bad",
+            "title": "A choice the database refuses is not lost and says what to do",
+            "asserts": "the write is refused -> the card says the choice was not saved, why, and to press Save again or open Admins; the switches keep the choice; the log names the code",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/admin/test/setup/sources.test.ts."
+        },
+        {
+            "id": "S-A180-HAPPY-ACCOUNT-STATES",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "happy",
+            "title": "A chosen source's account reads Account needed, Waiting for approval or Signed in, with its next action",
+            "asserts": "no USGS account -> Account needed with Create the free USGS account (ERS) and Open the USGS step; a saved key waiting -> Waiting for approval with the usual 24–48 working hours and that the map goes on by itself; USGS ok -> Signed in",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/hcm-setup-sources.test.ts."
+        },
+        {
+            "id": "S-A180-BAD-ACCOUNT-BILLING",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "bad",
+            "title": "The cloud AI drafts without a billing account send to the billing step",
+            "asserts": "cloud AI on, billing not done -> Account needed and Open the billing step (#/setup/billing)",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/hcm-setup-sources.test.ts."
+        },
+        {
+            "id": "S-A180-HAPPY-IMAGERY-GATED",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "happy",
+            "title": "Imagery follows the sources: Landsat alone keeps Find",
+            "asserts": "the declassified photos off, Landsat on -> Imagery → Find still searches",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/imagery/sources-off.test.ts."
+        },
+        {
+            "id": "S-A180-BAD-IMAGERY-OFF",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "bad",
+            "title": "With the USGS photos and Landsat off, Find says why and links Sources; without scanned maps the local import is off",
+            "asserts": "both off -> Find shows the plain line and Open Sources (#/setup/sources); archives off -> Upload shows the line instead of the archive panel",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/imagery/sources-off.test.ts."
+        },
+        {
+            "id": "S-A180-BAD-LANDSAT-OFF",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "bad",
+            "title": "Landsat left out of the sources imports nothing on its own",
+            "asserts": "sources.landsat false -> imagery.tick's Landsat part picks no scene",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "functions/test/imagery/landsat.test.ts."
+        },
+        {
+            "id": "S-A180-HAPPY-SETTINGS-ROW",
+            "behaviour": "A180",
+            "area": "admin",
+            "path": "happy",
+            "title": "Settings lists the map's sources, which open Setup's Sources step",
+            "asserts": "Settings' list ends with The map's sources -> #/setup/sources",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/settings/settings-page.test.ts."
+        },
+        {
+            "id": "S-A181-HAPPY-PLATFORM",
+            "behaviour": "A181",
+            "area": "admin",
+            "path": "happy",
+            "title": "The platform card shows five sections with their state, costs, limits and steps",
+            "asserts": "Google Cloud, Firebase, Firestore, storage and processing, Mapbox -> each Ready or To do in its step, its details folded, Open the step to its card; the generic checkers pass",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "journey.spec.ts step 5b. Unit: packages/ui/test/admin/setup/hcm-setup-sources.test.ts, packages/admin/test/setup/sources.test.ts."
+        },
+        {
+            "id": "S-A181-BAD-SIGN-UP",
+            "behaviour": "A181",
+            "area": "admin",
+            "path": "bad",
+            "title": "A section still to do offers the provider's sign-up page",
+            "asserts": "Mapbox not done -> Sign up or sign in: Mapbox opens Mapbox's sign-up page in a new tab; the app never types a credential",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/hcm-setup-sources.test.ts."
+        },
+        {
+            "id": "S-A182-HAPPY-UPLOADER-PHOTOS",
+            "behaviour": "A182",
+            "area": "admin",
+            "path": "happy",
+            "title": "An uploader sends a photo found in an allowed source, held for review",
+            "asserts": "an uploader adds a photo with its author, licence and source address through Contribute -> it waits in Review until a moderator approves",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "The existing M13 path (S-A92, S-A93); docs/research/M28-sources.md §7."
+        },
+        {
+            "id": "S-A182-BAD-UPLOADER-SATELLITE",
+            "behaviour": "A182",
+            "area": "admin",
+            "path": "bad",
+            "title": "An uploader is told why satellite search is missing",
+            "asserts": "an uploader on Contribute -> the line says satellite search is for the map's owner because it uses paid quota; imagery.search refuses an uploader (cityEditor) and the Imagery route is not offered",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/contribute/contribute-page.test.ts; the callable's access in packages/shared/src/api/registry.ts."
+        },
+        {
+            "id": "S-A183-HAPPY-FINDER",
+            "behaviour": "A183",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Sources card lists Romania's archives, libraries and sellers with a visit guide and a ready request",
+            "asserts": "the city placed in Romania -> each place shows its kind, online or in person, cost with the published figures, years, what to ask for and its website; the visit guide opens Google Maps with the address as the destination, calls the number, and writes the request email filled in with the city's name; the online guide shows the account, key, site status and the import; the generic checkers pass",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "journey.spec.ts step 5b (the list seeded as ops.tick writes it). Unit: packages/ui/test/admin/setup/sources-finder.test.ts, packages/admin/test/setup/sources.test.ts, packages/admin/test/app/setup-wiring.test.ts."
+        },
+        {
+            "id": "S-A183-BAD-NOT-YET",
+            "behaviour": "A183",
+            "area": "admin",
+            "path": "bad",
+            "title": "Before ops.tick has placed the city, the finder says the list comes within the hour; an unreadable list says what to do",
+            "asserts": "no list names the city -> the finder says the app looks it up at its next regular check; a refused read -> Check again, then Admins; the step's state stays as it was",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/sources-finder.test.ts, packages/admin/test/setup/sources.test.ts."
+        },
+        {
+            "id": "S-A183-BAD-NO-EMAIL",
+            "behaviour": "A183",
+            "area": "admin",
+            "path": "bad",
+            "title": "A place that publishes no email offers printing the request, and a site that did not answer is said so",
+            "asserts": "ANCPI has no email -> Print the letter prints it; a website that did not answer at the last refresh -> a plain line says it may be down for a while",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/sources-finder.test.ts."
+        },
+        {
+            "id": "S-A183-HAPPY-REFRESH",
+            "behaviour": "A183",
+            "area": "admin",
+            "path": "happy",
+            "title": "ops.tick places a city in its country, writes the curated list with every website checked, and refreshes it monthly",
+            "asserts": "a Romanian city -> countrySources/RO with the curated places, each reachable or not; a second city joins without a refresh; a list a month old is refreshed; a country without a curated list gets Wikidata's national archives, library and mapping agency, unverified",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "functions/test/ops/country-sources.test.ts; the rules: firebase/rules-tests/test/matrix.test.ts (countrySources read by staff, written by nobody)."
+        },
+        {
+            "id": "S-A183-BAD-REFRESH",
+            "behaviour": "A183",
+            "area": "admin",
+            "path": "bad",
+            "title": "No country, no city or Wikidata down writes nothing wrong",
+            "asserts": "Nominatim finds no country -> nothing written; no city -> no lookup; Wikidata down or unreadable -> no places, the list says found automatically",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "functions/test/ops/country-sources.test.ts."
+        },
+        {
+            "id": "S-A184-HAPPY-TRANSLATIONS",
+            "behaviour": "A184",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Sources card shows six free translation options with quality, limit, privacy and a sign-up wizard",
+            "asserts": "local models (with the mandatory check), DeepL API Free, Google Cloud Translation, Azure Translator F0, LibreTranslate, MyMemory -> each its quality, free limit and what happens past it, card or not, what happens to the texts, numbered sign-up steps with the provider's page one press away; what is planned says so",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "journey.spec.ts step 5b. Unit: packages/ui/test/admin/setup/sources-finder.test.ts, packages/shared/test/schemas/country-sources.test.ts."
+        },
+        {
+            "id": "S-A184-BAD-UNSTATED",
+            "behaviour": "A184",
+            "area": "admin",
+            "path": "bad",
+            "title": "A limit or a privacy rule the provider does not state is said to be unstated, never guessed",
+            "asserts": "MyMemory states no over-limit rule nor what it keeps -> the card says the provider does not say; Google bills past its free amount -> said",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/sources-finder.test.ts."
         }
     ]
 }

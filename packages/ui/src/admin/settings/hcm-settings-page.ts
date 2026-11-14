@@ -149,7 +149,19 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
                             </a>
                         </li>`,
                 )}
+                <li>${this.#sourcesRow(locale)}</li>
             </ul>`;
+    }
+
+    /** M28: the map's sources are chosen in Setup's Sources step; the row goes there (Setup stays open after it is done). */
+    #sourcesRow(locale: UiLocale): TemplateResult {
+        return html`<a class="row section-row" href="#/setup/sources" data-settings-sources>
+            <hcm-icon name="travel_explore"></hcm-icon>
+            <span class="row-text">
+                <span class="row-title">${contentText(locale, 'adminContent.settings.section.sources')}</span>
+                <span class="row-detail">${contentText(locale, 'adminContent.settings.section.sourcesHint')}</span>
+            </span>
+        </a>`;
     }
 
     #detail(locale: UiLocale, view: SettingsViewState): TemplateResult {

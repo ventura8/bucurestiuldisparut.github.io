@@ -27,6 +27,8 @@ const CITY_EDITABLE = [
     'photosOverlay',
     /** M3: auto-publish, its RMSE threshold and the target years (`cityImagerySchema`; CR-M3-2). */
     'imagery',
+    /** M28: the sources the map uses (`citySourcesSchema`), saved on their own as the imagery settings are. */
+    'sources',
     'published',
     ...STAMP,
 ] as const;

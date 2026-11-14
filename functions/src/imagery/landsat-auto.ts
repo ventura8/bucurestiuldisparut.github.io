@@ -24,8 +24,10 @@ import {
     usgsSceneDocSchema,
     workerDocSchema,
     yearOfDate,
+    type CityDoc,
     type UsgsSceneDoc,
 } from '@hcm/shared';
+import { sourcesOf } from '@hcm/shared/sources';
 
 import type { Ports } from '../ports/index.js';
 import { startImport } from './import.js';
@@ -92,11 +94,19 @@ async function onlineWorkers(deps: Pick<Ports, 'documents'>, cityId: string, now
     return seen.documents.filter((worker) => timestampToDate(worker.data.lastSeenAt).getTime() > since).length;
 }
 
-/** The scenes this tick imports for the city: none when it turned the switch off, or USGS cannot download. */
+/** The city exists, keeps Landsat's own imports on, and has Landsat among its sources (M28). */
+function importsLandsat(city: CityDoc | undefined, landsatAuto: boolean): city is CityDoc {
+    return city !== undefined && landsatAuto && sourcesOf(city.sources).landsat;
+}
+
+/**
+ * The scenes this tick imports for the city: none when it turned the switch off, left Landsat out of its sources (M28), or USGS
+ * cannot download.
+ */
 async function picksFor(deps: LandsatAutoDeps, cityId: string, perTick: number): Promise<UsgsSceneDoc[]> {
     const city = await deps.documents.get(FIRESTORE_PATHS.city(cityId), cityDocSchema);
     const settings = imagerySettingsOf(city?.imagery);
-    if (city === undefined || !settings.landsatAuto || !(await downloadsApproved(deps))) {
+    if (!importsLandsat(city, settings.landsatAuto) || !(await downloadsApproved(deps))) {
         return [];
     }
     const scenes = await deps.documents.query(FIRESTORE_PATHS.usgsScenes(cityId), usgsSceneDocSchema);

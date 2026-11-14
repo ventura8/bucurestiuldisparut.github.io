@@ -186,8 +186,13 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
             : this.#refused(locale, asked, form);
     }
 
+    /** An uploader: a member who may ask for more; M28: the satellite sources stay with the owner and the editors, and why. */
     #askMore(locale: UiLocale, form: TemplateResult): TemplateResult {
         return html`${this.#member(locale)}
+            <p class="note" data-satellite-note>
+                ${contentText(locale, 'adminContent.contribute.satelliteNote')}
+                ${contentText(locale, 'adminContent.contribute.satelliteNote2')}
+            </p>
             <p>${contentText(locale, 'adminContent.contribute.askMore')}</p>
             ${form}`;
     }

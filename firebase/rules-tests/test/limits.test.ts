@@ -45,7 +45,7 @@ describe('creates', () => {
 });
 
 /** The city's settings but its imagery ones, which are saved and checked on their own (M3, CR-M3-2). */
-const CITY_SETTINGS: Data = Object.fromEntries(Object.entries(EDITS.city).filter(([field]) => field !== 'imagery'));
+const CITY_SETTINGS: Data = Object.fromEntries(Object.entries(EDITS.city).filter(([field]) => field !== 'imagery' && field !== 'sources'));
 
 describe('updates of every editable field at once', () => {
     it.each([

@@ -27,10 +27,11 @@ import {
     newNotifySettings,
     newPhoto,
     newPoi,
-    opsDispatchDoc,
+    newPoiCategory,
     opsGuardDoc,
     ownerDoc,
     photoDoc,
+    poiCategoryDoc,
     poiDoc,
     pushDeviceDoc,
     setupStatusDoc,
@@ -38,7 +39,7 @@ import {
     usgsSceneDoc,
     workerDoc,
 } from './support/documents.js';
-import { newPoiCategory, poiCategoryDoc } from './support/poi-categories.js';
+import { countrySourcesDoc, opsDispatchDoc } from './support/server-documents.js';
 import {
     ADMIN_ONLY,
     ANY_ADMIN,
@@ -111,6 +112,8 @@ const ROWS: Readonly<Record<string, Row>> = {
     'admins/{uid}': serverOwned(FIRESTORE_PATHS.admins, 'someone-else', adminDoc),
     'setup/status': projectOwned('setup', 'status', setupStatusDoc),
     'setup/owner': projectOwned('setup', 'owner', () => ownerDoc(admin())),
+    // M28: where each country keeps its old maps and images (ops.tick writes it; Setup's Sources step reads it).
+    'countrySources/{country}': projectOwned(FIRESTORE_PATHS.countrySources, 'RO', countrySourcesDoc),
     'invites/{sha256}': serverOwned(FIRESTORE_PATHS.invites, INVITE_ID, () => inviteDoc(admin())),
     'usage/{month}': projectOwned('usage', 'mapbox-2026-10', usageDoc),
     // M5: the ops documents are read one by one (their rule names the document), never listed.

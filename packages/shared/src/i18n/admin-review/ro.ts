@@ -62,6 +62,8 @@ export const ro = {
     'adminContent.contribute.refusedNote': 'Mesajul primit: {note}',
     'adminContent.contribute.retry': 'Poți cere din nou după {date}.',
     'adminContent.contribute.blocked': 'Acest cont nu mai poate contribui la acest oraș.',
+    'adminContent.contribute.satelliteNote': 'Căutarea prin satelit este a proprietarului: folosește o cotă plătită.',
+    'adminContent.contribute.satelliteNote2': 'Puteți totuși trimite fotografii vechi, cu autorul și licența lor.',
     'adminContent.contribute.member': 'Ești deja membru al acestui oraș.',
     'adminContent.contribute.openAdmin': 'Deschide administrarea',
     'adminContent.contribute.place.title': 'Unde a fost făcută?',

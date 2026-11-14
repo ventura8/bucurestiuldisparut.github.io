@@ -21,6 +21,7 @@ import type { Ports } from '../ports/index.js';
 import { expireInvites, removeStaleUsers } from './accounts.js';
 import { refreshAdminToken } from './admin-token.js';
 import { checkCrashSpike } from './crash-spike.js';
+import { refreshCountrySources } from './country-sources.js';
 import { expireExports } from './exports.js';
 import { nightlyManifests } from './manifests.js';
 import { migrateMemberships } from './memberships.js';
@@ -29,7 +30,7 @@ import { refreshViewerTokens } from './viewer-tokens.js';
 
 export type OpsDeps = Pick<
     Ports,
-    'log' | 'clock' | 'config' | 'documents' | 'blobs' | 'tasks' | 'auth' | 'secrets' | 'mapbox' | 'usgs' | 'errors'
+    'log' | 'clock' | 'config' | 'documents' | 'blobs' | 'tasks' | 'auth' | 'secrets' | 'mapbox' | 'usgs' | 'errors' | 'remote' | 'geocoder'
 >;
 
 type TickStep = NonNullable<OpsGuardDoc['lastTick']>['steps'][number];
@@ -109,6 +110,11 @@ const STEPS: Readonly<Record<OpsStep, Step>> = {
     // M5 (docs/research/M5-interfaces.md §5.3; owner: export): the static exports past their time.
     exports: async (deps, context) => {
         deps.log.info('exports expired or failed', { count: await expireExports(deps, context.now) });
+        return {};
+    },
+    // M28 (docs/research/M28-sources.md §10): where each city's country keeps its old maps and images, refreshed monthly.
+    sources: async (deps, context) => {
+        await refreshCountrySources(deps, context.now);
         return {};
     },
 };

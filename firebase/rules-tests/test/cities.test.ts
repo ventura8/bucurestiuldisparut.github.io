@@ -172,6 +172,40 @@ describe('update', () => {
     });
 });
 
+// M28 (docs/research/M28-sources.md §3): the map's sources, saved on their own as the imagery settings are.
+describe('the sources (M28)', () => {
+    it.each([
+        ['the default sources @S-A180-HAPPY-RULES-SAVE', { sources: {} }],
+        [
+            'every source chosen',
+            {
+                sources: {
+                    usgs: true,
+                    usgsOrders: true,
+                    landsat: true,
+                    archives: true,
+                    contributors: true,
+                    openData: true,
+                    localAi: true,
+                    cloudAi: true,
+                },
+            },
+        ],
+        ['USGS and Landsat off', { sources: { usgs: false, landsat: false } }],
+    ])('happyPath_adminSavesTheSources_%s', async (_label, changes) => {
+        expect(await edit(changes)).toBe('allow');
+    });
+
+    it.each([
+        ['sources that are not a map (M28) @S-A180-BAD-RULES-SHAPE', { sources: 'all' }],
+        ['a source the schema does not know (M28)', { sources: { usgs: true, scraped: true } }],
+        ['a source choice that is not a boolean (M28)', { sources: { cloudAi: 'yes' } }],
+        ['the sources with a city setting (M28)', { sources: { usgs: false }, zoom: 13 }],
+    ])('badPath_theSourcesAreRefused_%s', async (_label, changes) => {
+        expect(await edit(changes)).toBe('deny');
+    });
+});
+
 describe('many cities (M5, docs/research/M5-interfaces.md §1.4)', () => {
     const OTHER_STAMP = (persona: Persona) => stampedBy(world.uid(persona));
 

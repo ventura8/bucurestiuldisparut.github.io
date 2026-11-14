@@ -72,6 +72,10 @@ const BODIES: Partial<Record<SetupStepId, (input: BodyInput) => TemplateResult>>
         html`<hcm-setup-provision .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-provision>`,
     deploy: (input) => html`<hcm-setup-deploy .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-deploy>`,
     mapbox: (input) => html`<hcm-setup-mapbox .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-mapbox>`,
+    // M28: the app's platform (e1) and the map's sources (e2).
+    platform: (input) =>
+        html`<hcm-setup-platform .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-platform>`,
+    sources: (input) => html`<hcm-setup-sources .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-sources>`,
     usgs: (input) => html`<hcm-setup-usgs .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-usgs>`,
     analytics: (input) =>
         html`<hcm-setup-analytics .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-analytics>`,
@@ -349,6 +353,19 @@ function pageStyles(): ReturnType<typeof css> {
 }
 
 /** Registers `<hcm-setup-page>`, every card and body, and the kit elements they render. */
+/**
+ * M28: fetches the Platform and Sources cards' chunk and registers them; a failed fetch leaves the two cards empty until the
+ * page loads again, and the next definition tries again.
+ */
+export async function loadSourcesCards(registry: CustomElementRegistry = customElements): Promise<void> {
+    try {
+        (await import('./sources-cards.js')).defineSourcesCards(registry);
+    } catch {
+        // The cards stay unregistered: the steps' own cards and links still work, and the next page load fetches it again.
+        return;
+    }
+}
+
 export function defineHcmSetupPage(registry: CustomElementRegistry = customElements): void {
     defineHcmButton(registry);
     defineHcmProgress(registry);
@@ -360,6 +377,7 @@ export function defineHcmSetupPage(registry: CustomElementRegistry = customEleme
     defineHcmSetupSite(registry);
     defineHcmSetupMapbox(registry);
     defineHcmSetupUsgs(registry);
+    void loadSourcesCards(registry);
     defineHcmSetupAnalytics(registry);
     defineHcmSetupImport(registry);
     defineHcmCrashGroups(registry);
