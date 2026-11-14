@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.28.0@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b
+# syntax=docker/dockerfile:1.29.0@sha256:572cebbc2b15e6f84c077742952674889cb63cd5e9b80abdffcbe587b6f19183
 #
 # Raster pipeline image: the Cloud Run Jobs `raster-pipeline` (4 vCPU, 16 GiB) and `raster-pipeline-xl`
 # (8 vCPU, 32 GiB) run its `runtime` target; each execution passes the argument `run` (the job's remaining steps,

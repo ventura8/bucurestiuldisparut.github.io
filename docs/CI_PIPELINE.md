@@ -100,29 +100,30 @@ All npm versions were checked with `npm view` on 2026-10-11 and are pinned exact
 
 | Area | Pin |
 | --- | --- |
-| Node / npm | Node 24.21.0, npm 11.19.0 (from `node:24-bookworm-slim`, by digest) |
+| Node / npm | Node 24.22.3, npm 11.19.1 (from `node:24-bookworm-slim`, by digest) |
 | TypeScript | 6.0.3 (**held**, see below) |
-| Build and test | vite 8.3.5, vitest 5.0.5, @vitest/coverage-v8 5.0.5, @vitest/browser-playwright 5.0.5, playwright 1.64.1, @playwright/test 1.64.1 (`@hcm/e2e`) |
-| Lint | eslint 10.14.0, @eslint/js 10.0.1, typescript-eslint 8.72.1, eslint-plugin-sonarjs 4.2.2, eslint-plugin-no-unsanitized 4.1.5, eslint-plugin-lit 2.3.1, eslint-plugin-wc 3.1.0, @vitest/eslint-plugin 1.6.28, eslint-plugin-playwright 2.12.1, eslint-config-prettier 10.1.8, globals 17.13.0 |
-| Format and style | prettier 3.9.10, stylelint 17.16.0, stylelint-config-standard 40.0.0, postcss-lit 1.4.1 |
-| HTML and Markdown | htmlhint 1.9.2, html-validate 11.17.0, markdownlint-cli2 0.24.0 |
-| Architecture | knip 6.44.0, dependency-cruiser 18.7.0 |
+| Build and test | vite 8.3.8, vitest 5.1.0, @vitest/coverage-v8 5.1.0, @vitest/browser-playwright 5.1.0, playwright 1.65.1, @playwright/test 1.65.1 (`@hcm/e2e`) |
+| Lint | eslint 10.15.0, @eslint/js 10.0.1, typescript-eslint 8.72.2, eslint-plugin-sonarjs 4.2.2, eslint-plugin-no-unsanitized 4.1.5, eslint-plugin-lit 2.3.1, eslint-plugin-wc 3.1.0, @vitest/eslint-plugin 1.6.28, eslint-plugin-playwright 2.12.2, eslint-config-prettier 10.1.8, globals 17.14.0 |
+| Format and style | prettier 3.10.1, stylelint 18.0.0, stylelint-config-standard 41.0.0, postcss-lit 1.4.1 |
+| HTML and Markdown | htmlhint 1.9.2, html-validate 11.21.1, markdownlint-cli2 0.24.1 |
+| Architecture | knip 6.45.1, dependency-cruiser 18.7.2 |
 | Runtime | lit 3.3.3; Mapbox GL JS 3.34.1 (external, from `api.mapbox.com`) |
-| Firebase | firebase-tools 15.34.2 (emulator JARs baked into the image), JDK 21; functions: firebase-functions 7.4.0, firebase-admin 14.5.0, google-auth-library 11.3.2; rules tests: @firebase/rules-unit-testing 6.0.0, firebase 13.1.0 |
-| Python | 3.14.4 (the GDAL image's interpreter); CI tools in `scripts/ci/requirements.txt`: ruff 0.17.3, mypy 2.4.1, pytest 9.2.0, pytest-cov 7.1.0, pytest-xdist 3.8.0, coverage 7.17.0, yamllint 1.38.0, check-jsonschema 0.39.0, bandit 1.9.4, pip-audit 2.10.1, radon 6.0.1, taplo 0.9.3 |
-| Raster pipeline | Poetry 2.5.1 (`pipeline/requirements-poetry.txt`); `pipeline/poetry.lock`: numpy 2.5.4, opencv-python-headless 5.0.0.93, httpx 0.28.1, google-cloud-firestore 2.34.1, google-cloud-storage 3.17.1, pikepdf 10.18.0 (with Pillow 13.0.0, lxml 6.1.3); dev pytest 9.2.0, pytest-cov 7.1.0, coverage 7.17.0, respx 0.23.1, hypothesis 6.170.14; GDAL from the base image |
+| Firebase | firebase-tools 15.36.0 (emulator JARs baked into the image), JDK 21; functions: firebase-functions 7.4.0, firebase-admin 14.5.1, google-auth-library 11.3.4; rules tests: @firebase/rules-unit-testing 6.0.0, firebase 13.3.0 |
+| Python | 3.14.4 (the GDAL image's interpreter); CI tools in `scripts/ci/requirements.txt`: ruff 0.17.5, mypy 2.4.1, pytest 9.2.0, pytest-cov 7.1.0, pytest-xdist 3.8.0, coverage 7.17.3, yamllint 1.38.0, check-jsonschema 0.39.0, bandit 1.9.4, pip-audit 2.10.1, radon 6.0.1, taplo 0.9.3 |
+| Raster pipeline | Poetry 2.5.1 (`pipeline/requirements-poetry.txt`); `pipeline/poetry.lock`: numpy 2.5.4, opencv-python-headless 5.0.0.93, httpx 0.28.1, google-cloud-firestore 2.34.1, google-cloud-storage 3.17.1, pikepdf 10.18.0 (with Pillow 13.0.0, lxml 6.1.3); dev pytest 9.2.0, pytest-cov 7.1.0, coverage 7.17.3, respx 0.23.1, hypothesis 6.170.14; GDAL from the base image |
 | Image base | `ghcr.io/osgeo/gdal:ubuntu-small-3.13.3` (Ubuntu 26.04, GDAL 3.13.3), by digest |
-| Binaries | actionlint 1.7.12, hadolint 2.15.1, shellcheck 0.11.0, shfmt 3.14.1, gitleaks 8.30.1, SonarScanner CLI 8.1.0.6389 (`sonarsource/sonar-scanner-cli:12.3.0.4285_8.1.0`, run on the image's JDK 21), all copied from digest-pinned images |
+| Binaries | actionlint 1.7.12, hadolint 2.15.1, shellcheck 0.11.0, shfmt 3.14.1, gitleaks 8.30.1, SonarScanner CLI 8.4.0.16527 (`sonarsource/sonar-scanner-cli:12.4.0.4321_8.4.0`, run on the image's JDK 21), all copied from digest-pinned images |
 
 ## Held dependencies
 
 Every dependency stays on its latest stable release; a deliberate hold is a `HELD` entry with its reason in `scripts/ci/check_dependency_updates.py` (the `deps` stage), repeated here. A held pin that is behind is reported and passes; a hold that no longer matches its pin, or is no longer needed, fails the stage.
 
-| Dependency | Held at | Latest (2026-10-31) | Reason |
+| Dependency | Held at | Latest (2026-11-14) | Reason |
 | --- | --- | --- | --- |
-| `typescript` (npm) | 6.0.3 | 7.0.2 | `typescript-eslint@8.72.1` peers `typescript >=4.8.4 <6.1.0` |
+| `typescript` (npm) | 6.0.3 | 7.0.2 | `typescript-eslint@8.72.2` peers `typescript >=4.8.4 <6.1.0` |
 | `@types/node` (npm) | 24.19.2 | 26.6.6 | follows the Node 24 runtime, not the newest Node line |
 | `@axe-core/playwright` (npm, `e2e/`) | 4.13.0 | 4.14.0 | 4.14.0 brings `axe-core` 4.14.0, whose element grid leaves slotted content of a scrolling shadow-root pane unclipped: false `target-size` and `color-contrast` violations on every such pane ([LESSONS.md](LESSONS.md) 294); `@hcm/test-support` keeps its own `axe-core` 4.14.0 |
+| `mapbox-gl` (npm, `e2e/`) | 3.34.1 | 3.35.0 | the released engine (`cdn/engine/release.json`) and the starter kit pin Mapbox GL JS 3.34.1 from `api.mapbox.com` with its SRI, which the kit tests compute from this package; the engine sources, the package and the kit move together with the next engine release |
 | `node` (Docker) | `24-bookworm-slim` | `26-bookworm-slim` | Node 24 is the runtime line (`engines` `>=24.12.0`); it moves together with `engines` |
 | `mando` (PyPI) | 0.7.1 | 0.8.2 | `radon` 6.0.1, the latest radon, requires `mando >=0.6,<0.8` |
 | `findpython` (PyPI, `pipeline/requirements-poetry.txt`) | 0.8.0 | 0.9.0 | Poetry 2.5.1, the latest Poetry, requires `findpython >=0.6.2,<0.9.0` |
@@ -134,9 +135,9 @@ Every dependency stays on its latest stable release; a deliberate hold is a `HEL
 
 The four audit gates (`npm-audit`, `deploy-lock-audit`, `pip-audit`, `pipeline-pip-audit`) failed the `static` stage from 2026-10-24 to 2026-10-25 on advisories published after §44 (body-parser GHSA-27r3-jxmh-p828, `fast-uri` and `undici` in `firebase-tools`' tree, filelock). The user approved the bumps on 2026-10-25: `body-parser` 2.4.0 and 1.20.9 (with `qs` 6.16.1), `fast-uri` 3.1.9, `undici` 6.29.1 and 8.12.3 through a lockfile refresh of those entries (no new `overrides`), `filelock` 4.2.1 in both requirements files ([research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §64).
 
-`npm audit --audit-level=low` reports zero vulnerabilities through `overrides` in the root `package.json` (`@grpc/grpc-js` under `@firebase/firestore@4.19.0`, `@opentelemetry/core`, `basic-ftp`, `uuid` under `gaxios@6.7.1`, `glob`, `katex`, `re2js`, `smol-toml`), `braces`, which has no fixed release, through the patched copy in `vendor/npm/braces` (its README explains the patch), and `minimatch` through the vendored 11.0.3 with a callable CommonJS entry in `vendor/npm/minimatch` (its README). Delete an override when upstream ships the fix. Reasons for each: [research/M0-handoff.md](research/M0-handoff.md) → *npm audit fixes (no allowlist)*.
+`npm audit --audit-level=low` reports zero vulnerabilities through `overrides` in the root `package.json` (`@grpc/grpc-js` under `@firebase/firestore@4.20.0`, `@opentelemetry/core`, `basic-ftp`, `uuid` under `gaxios@6.7.1`, `glob`, `katex`, `re2js`, `smol-toml`), `braces`, which has no fixed release, through the patched copy in `vendor/npm/braces` (its README explains the patch), and `minimatch` through the vendored 11.0.3 with a callable CommonJS entry in `vendor/npm/minimatch` (its README). Delete an override when upstream ships the fix. Reasons for each: [research/M0-handoff.md](research/M0-handoff.md) → *npm audit fixes (no allowlist)*.
 
-On 2026-10-30 `npm-audit` failed on GHSA-gg6h-894w-4m9c (`re2js` 2.2.0–2.8.6 through `markdownlint-cli2@0.24.0`), and on 2026-10-31 also on GHSA-3g3m-2fjr-6pw4 (`glob` 9.0.0–14.0.1, also in `functions/deploy-lock`) and `pipeline-pip-audit` on `pyasn1` 0.6.4. The dependency update of 2026-10-31 fixed all three: the `overrides` `"re2js": "2.9.1"` and `"glob": "14.0.3"`, the deploy lock refreshed, `pyasn1` 0.6.5 in `pipeline/poetry.lock` ([research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §74). Then GHSA-g3hv-75wg-m249 (published 2026-10-30, moderate) flagged every `minimatch` below 11.0.1. 11 is a rewrite whose CommonJS entry is not callable, and `firebase-tools` and `superstatic` call `require('minimatch')(...)`, so a plain `overrides` to 11 would break `firebase deploy`; the user chose a vendored copy: `vendor/npm/minimatch` is 11.0.3 with a callable CommonJS entry, wired like `braces` (`"minimatch": "$minimatch"`). The install bundle's `tools/` carries the copy and the root `overrides` too ([research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §74f).
+On 2026-10-30 `npm-audit` failed on GHSA-gg6h-894w-4m9c (`re2js` 2.2.0–2.8.6 through `markdownlint-cli2@0.24.1`), and on 2026-10-31 also on GHSA-3g3m-2fjr-6pw4 (`glob` 9.0.0–14.0.1, also in `functions/deploy-lock`) and `pipeline-pip-audit` on `pyasn1` 0.6.4. The dependency update of 2026-10-31 fixed all three: the `overrides` `"re2js": "2.9.1"` and `"glob": "14.0.3"`, the deploy lock refreshed, `pyasn1` 0.6.5 in `pipeline/poetry.lock` ([research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §74). Then GHSA-g3hv-75wg-m249 (published 2026-10-30, moderate) flagged every `minimatch` below 11.0.1. 11 is a rewrite whose CommonJS entry is not callable, and `firebase-tools` and `superstatic` call `require('minimatch')(...)`, so a plain `overrides` to 11 would break `firebase deploy`; the user chose a vendored copy: `vendor/npm/minimatch` is 11.0.3 with a callable CommonJS entry, wired like `braces` (`"minimatch": "$minimatch"`). The install bundle's `tools/` carries the copy and the root `overrides` too ([research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §74f).
 
 ## Reports
 

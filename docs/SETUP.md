@@ -29,12 +29,12 @@ The host's Node 22 and npm 9 are too old (`engines` requires Node 24.12 or later
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/h -e npm_config_cache=/tmp/h/.npm \
   -v "$PWD:$PWD" -w "$PWD" \
-  node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 \
+  node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 \
   npm view <pkg> version
 
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/h -e npm_config_cache=/tmp/h/.npm \
   -v "$PWD:$PWD" -w "$PWD" \
-  node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 \
+  node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 \
   npm install --save-exact <pkg>@<version> --workspace @hcm/<name>
 ```
 

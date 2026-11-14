@@ -25,7 +25,7 @@
 # Exit status: 0 clean (or skipped), 1 not clean, 2 bad token, not configured or scan failed.
 set -euo pipefail
 
-readonly SCANNER_IMAGE="sonarsource/sonar-scanner-cli:12.3.0.4285_8.1.0@sha256:47956b669bf486bdad919e1cbd0533223515aa0b6d1d31763e5a3754942df6d7"
+readonly SCANNER_IMAGE="sonarsource/sonar-scanner-cli:12.4.0.4321_8.4.0@sha256:6e6eca4d552695a98fb7dab84f0c1bd0885ebbfe272654d1552e24bd7f452d51"
 readonly QUALITY_IMAGE="${HCM_IMAGE:-hcm-quality:local}"
 readonly DEFAULT_HOST="https://sonarcloud.io"
 readonly REPORT_TASK=".scannerwork/report-task.txt"

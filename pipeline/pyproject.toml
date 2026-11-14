@@ -19,7 +19,7 @@ dependencies = [
     "google-cloud-storage==3.17.1",
     # M20 (docs/research/M20-import-local.md §3, PDFs): page images out of an archive's PDFs without re-encoding, an owner-only
     # encrypted file (an empty user password) read, a password one skipped. qpdf is bundled in its wheel.
-    "pikepdf==10.18.0",
+    "pikepdf==10.18.1",
 ]
 
 [tool.poetry]
@@ -28,9 +28,9 @@ packages = [{ include = "hcm_pipeline", from = "src" }]
 [tool.poetry.group.dev.dependencies]
 pytest = "9.2.0"
 pytest-cov = "7.1.0"
-coverage = "7.17.0"
+coverage = "7.17.3"
 respx = "0.23.1"
-hypothesis = "6.170.14"
+hypothesis = "6.170.15"
 
 [build-system]
 requires = ["poetry-core==2.5.0"]

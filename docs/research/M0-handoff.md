@@ -29,20 +29,20 @@ All npm versions were checked with `npm view` on 2026-10-11 and are pinned exact
 
 | Area | Pin |
 | --- | --- |
-| Node / npm | Node 24.21.0, npm 11.19.0 (from `node:24-bookworm-slim`) |
-| TypeScript | `typescript@6.0.3` **HELD**: `typescript-eslint@8.72.1` peers `typescript <6.1.0` (latest is 7.0.2) |
-| Build / test | `vite@8.3.5`, `vitest@5.0.5`, `@vitest/coverage-v8@5.0.5`, `@vitest/browser-playwright@5.0.5`, `playwright@1.64.1`, `@playwright/test@1.64.1` (`@hcm/e2e`) |
-| Lint | `eslint@10.14.0`, `@eslint/js@10.0.1`, `typescript-eslint@8.72.1`, `eslint-plugin-sonarjs@4.2.2`, `eslint-plugin-no-unsanitized@4.1.5`, `eslint-plugin-lit@2.3.1`, `eslint-plugin-wc@3.1.0`, `@vitest/eslint-plugin@1.6.28`, `eslint-config-prettier@10.1.8`, `globals@17.13.0` |
-| Format / style | `prettier@3.9.10`, `stylelint@17.16.0`, `stylelint-config-standard@40.0.0`, `postcss-lit@1.4.1` |
-| HTML / Markdown | `htmlhint@1.9.2`, `html-validate@11.17.0`, `markdownlint-cli2@0.24.0` |
-| Architecture | `knip@6.44.0`, `dependency-cruiser@18.7.0` |
-| Runtime | `lit@3.3.3` (in `@hcm/ui`); `zod@4.6.7` (`@hcm/shared`), `@material/material-color-utilities@0.4.0` (`@hcm/ui`), both added by the M1 contracts (§10g); `firebase@13.1.0` (`@hcm/engine`, the lazy analytics chunk, M1); `web-vitals@6.2.3` (`@hcm/engine`, `@hcm/admin`: the lazy field chunks after consent, `DECISIONS-for-review.md` §76) |
-| UI kit build (M1) | devDependencies of `@hcm/ui`: `harfbuzzjs@1.6.4`, `wawoff2@2.0.1`, `material-symbols@0.48.2`, `@fontsource-variable/roboto-flex@5.3.0` (`npm run fonts:build`/`fonts:check`); `axe-core@4.14.0` (`@hcm/test-support`, entry `@hcm/test-support/axe`) |
+| Node / npm | Node 24.22.3, npm 11.19.1 (from `node:24-bookworm-slim`) |
+| TypeScript | `typescript@6.0.3` **HELD**: `typescript-eslint@8.72.2` peers `typescript <6.1.0` (latest is 7.0.2) |
+| Build / test | `vite@8.3.8`, `vitest@5.1.0`, `@vitest/coverage-v8@5.1.0`, `@vitest/browser-playwright@5.1.0`, `playwright@1.65.1`, `@playwright/test@1.65.1` (`@hcm/e2e`) |
+| Lint | `eslint@10.15.0`, `@eslint/js@10.0.1`, `typescript-eslint@8.72.2`, `eslint-plugin-sonarjs@4.2.2`, `eslint-plugin-no-unsanitized@4.1.5`, `eslint-plugin-lit@2.3.1`, `eslint-plugin-wc@3.1.0`, `@vitest/eslint-plugin@1.6.28`, `eslint-config-prettier@10.1.8`, `globals@17.14.0` |
+| Format / style | `prettier@3.10.1`, `stylelint@18.0.0`, `stylelint-config-standard@41.0.0`, `postcss-lit@1.4.1` |
+| HTML / Markdown | `htmlhint@1.9.2`, `html-validate@11.21.1`, `markdownlint-cli2@0.24.1` |
+| Architecture | `knip@6.45.1`, `dependency-cruiser@18.7.2` |
+| Runtime | `lit@3.3.3` (in `@hcm/ui`); `zod@4.6.7` (`@hcm/shared`), `@material/material-color-utilities@0.4.0` (`@hcm/ui`), both added by the M1 contracts (§10g); `firebase@13.3.0` (`@hcm/engine`, the lazy analytics chunk, M1); `web-vitals@6.2.3` (`@hcm/engine`, `@hcm/admin`: the lazy field chunks after consent, `DECISIONS-for-review.md` §76) |
+| UI kit build (M1) | devDependencies of `@hcm/ui`: `harfbuzzjs@1.6.4`, `wawoff2@2.0.1`, `material-symbols@0.49.0`, `@fontsource-variable/roboto-flex@5.3.0` (`npm run fonts:build`/`fonts:check`); `axe-core@4.14.0` (`@hcm/test-support`, entry `@hcm/test-support/axe`) |
 | E2E (M1) | devDependencies of `@hcm/e2e`: `@axe-core/playwright@4.13.0` (held, lesson 294), `mapbox-gl@3.34.1` (served by the mock APIs, never bundled), `sharp@0.35.5` |
 | Seed tooling | `sharp@0.35.5` (root devDependency, the legacy migration CLI; prebuilt `@img/sharp-linux-x64`) |
-| Firebase CLI | `firebase-tools@15.34.2` (root devDependency; emulator JARs baked into the image) |
+| Firebase CLI | `firebase-tools@15.36.0` (root devDependency; emulator JARs baked into the image) |
 | Types | `@types/node@24.19.2` (Node 24 line, not the 26.x latest) |
-| Python CI tools | `scripts/ci/requirements.txt`: ruff 0.17.3, mypy 2.4.1, pytest 9.2.0, pytest-cov 7.1.0, pytest-xdist 3.8.0 (2026-10-17), coverage 7.17.0, yamllint 1.38.0, check-jsonschema 0.39.0, bandit 1.9.4, pip-audit 2.10.1, radon 6.0.1, defusedxml 0.7.1, editorconfig 0.17.1, requests-mock 1.12.1, taplo 0.9.3, plus every transitive dependency pinned; pip 26.2.1 |
+| Python CI tools | `scripts/ci/requirements.txt`: ruff 0.17.5, mypy 2.4.1, pytest 9.2.0, pytest-cov 7.1.0, pytest-xdist 3.8.0 (2026-10-17), coverage 7.17.3, yamllint 1.38.0, check-jsonschema 0.39.0, bandit 1.9.4, pip-audit 2.10.1, radon 6.0.1, defusedxml 0.7.1, editorconfig 0.17.1, requests-mock 1.12.1, taplo 0.9.3, plus every transitive dependency pinned; pip 26.2.1 |
 | Python | 3.14.4 (the GDAL image's interpreter). The raster pipeline uses `requires-python = ">=3.14,<3.15"` (§10c) |
 
 Not added yet (add with the milestone that first imports them, so knip stays clean): `msw`, `jsdom`; `mapbox-gl` as
@@ -59,7 +59,7 @@ adopted (`packages/ui/README.md` → *Decisions*). (`firebase`,
 | Override | Why |
 | --- | --- |
 | `@opentelemetry/core` → 2.12.0 | GHSA-8988-4f7v-96qf; pulled by `@google-cloud/pubsub@5` in firebase-tools (pubsub 6 itself moved to 2.x; only `W3CTraceContextPropagator` is used) |
-| `@firebase/firestore@4.19.0` → `@grpc/grpc-js` 1.14.7 | GHSA-m9gg-hp2v-232j, GHSA-f596-whhp-79r4; firestore still pins `~1.9.0` (the key follows `firebase` 13.1.0's firestore since 2026-10-31, §74) |
+| `@firebase/firestore@4.20.0` → `@grpc/grpc-js` 1.14.7 | GHSA-m9gg-hp2v-232j, GHSA-f596-whhp-79r4; firestore still pins `~1.9.0` (the key follows `firebase` 13.3.0's firestore since 2026-11-14) |
 | `basic-ftp` → 6.2.4 | GHSA-c475-qrg2-pj4r; firebase-tools → proxy-agent → get-uri (only `Client` is used) |
 | `gaxios@6.7.1` → `uuid` 11.1.1 | GHSA-w5hq-g745-h8pq; gaxios only calls `v4()`; uuid 11 is the last CJS-compatible line |
 | `glob` → 14.0.3 | GHSA-3g3m-2fjr-6pw4 (9.0.0–14.0.1): `rimraf` 5 and `gaxios` 7 (also in `functions/deploy-lock`), `archiver-utils`, `exegesis`, `firebase-tools`, `htmlhint`; every one calls `glob`, `sync` or `globSync`, which 14 keeps (§74) |
@@ -76,9 +76,9 @@ taplo, ruff and the suppression scan, and knip ignores the `braces` and `minimat
 
 | Image | Pin |
 | --- | --- |
-| Dockerfile frontend | `docker/dockerfile:1.28.0@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b` |
+| Dockerfile frontend | `docker/dockerfile:1.29.0@sha256:572cebbc2b15e6f84c077742952674889cb63cd5e9b80abdffcbe587b6f19183` |
 | Base | `ghcr.io/osgeo/gdal:ubuntu-small-3.13.3@sha256:64250faf833c06d4b21afce4c27190039ba7ab58d70f0eebc87cf77d929c0b40` (Ubuntu 26.04, Python 3.14.4, GDAL 3.13.3, `osgeo` in `/usr/lib/python3/dist-packages`) |
-| Node | `node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20` (same digest as `node:24-slim`) |
+| Node | `node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54` (same digest as `node:24-slim`) |
 | actionlint | `rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667` |
 | hadolint | `hadolint/hadolint:v2.15.1-debian@sha256:9a3944b7fddcb947d1ffd90829ac1a6e5c30479223358f249d8b96c7d0019e27` |
 | shellcheck | `koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d` |
@@ -98,7 +98,7 @@ What the image contains, and where:
   `--system-site-packages` (so `osgeo` is importable) and `--without-pip` (§10c).
 - `/opt/hcm/npm-cache` (`npm_config_cache`): the npm cache filled by a build-time `npm ci`. The
   build-time `node_modules` is deleted; the runtime installs from this cache.
-- `/ms-playwright` (`PLAYWRIGHT_BROWSERS_PATH`): Chromium, Firefox, WebKit for Playwright 1.64.1.
+- `/ms-playwright` (`PLAYWRIGHT_BROWSERS_PATH`): Chromium, Firefox, WebKit for Playwright 1.65.1.
 - `/opt/hcm/firebase-emulators` (`FIREBASE_EMULATORS_PATH`): Firestore, Storage and Pub/Sub
   emulator JARs (`npm run emulators:setup`). World-writable so any uid can use them.
 - `ENV HCM_TEST_IMAGE=1`, `USER 10001:10001`, `git config --system safe.directory '*'`.
@@ -138,7 +138,7 @@ Ad-hoc npm commands (install a dependency, regenerate the lockfile), always in a
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/h -e npm_config_cache=/tmp/h/.npm \
   -v "$PWD:$PWD" -w "$PWD" \
-  node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 \
+  node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 \
   npm install --save-exact <pkg>@<version> --workspace @hcm/<name>
 ```
 
@@ -310,10 +310,10 @@ Added by the M0 CI agent on 2026-10-11. The stage table stays in
   `.github/actions/upsert-issue` opens or updates the weekly deps/contract issue.
 - **Action pins** (resolved with `gh api repos/<o>/<r>/git/ref/tags/<tag>`, annotated tags
   dereferenced, 2026-10-11): checkout v7.0.1, upload-artifact v7.0.2, download-artifact v8.0.2,
-  setup-buildx v4.4.1, build-push v7.4.0, login v4.7.0 (2026-10-31), ghaction-github-runtime v4.0.0,
-  action-junit-report v6.6.1, sonarqube-scan v8.4.0 (2026-10-31), sonarqube-quality-gate v1.2.1,
+  setup-buildx v4.4.1, build-push v7.4.0, login v4.8.0 (2026-11-14), ghaction-github-runtime v4.0.0,
+  action-junit-report v6.7.1 (2026-11-14), sonarqube-scan v8.5.0 (2026-11-14), sonarqube-quality-gate v1.2.1,
   configure-pages v6.0.0, upload-pages-artifact v5.0.0, deploy-pages v5.0.1, google auth v3.0.0,
-  codeql-action v4.39.1 (2026-10-31), action-gh-release v3.0.3. The SHAs are in the workflows.
+  codeql-action v4.39.3, action-gh-release v3.0.4 (2026-11-14). The SHAs are in the workflows.
 - **Deploys are off** until M2: the jobs exist in `ci.yml` but need the repository variable
   `DEPLOY_ENABLED=true`, the `deploy` environment and the WIF variables `GCP_WIF_PROVIDER`,
   `GCP_DEPLOY_SA`, `GCP_PROJECT_ID`, `GCP_REGION` (none exist yet). GitHub Pages is still the
@@ -514,7 +514,7 @@ the shipped image; its `test` target runs the same suite on the same base digest
 - **Pins** (latest stable, checked on PyPI 2026-10-11): numpy 2.5.4, opencv-python-headless
   5.0.0.93 (abi3 wheel), httpx 0.28.1, google-cloud-firestore 2.34.1, google-cloud-storage 3.17.1, pikepdf 10.18.0 (M20's
   PDF pages, 2026-11-09; with Pillow 13.0.0 and lxml 6.1.3);
-  dev: pytest 9.2.0, pytest-cov 7.1.0, coverage 7.17.0, respx 0.23.1, hypothesis 6.170.14 (bumped 2026-10-31); build
+  dev: pytest 9.2.0, pytest-cov 7.1.0, coverage 7.17.3, respx 0.23.1, hypothesis 6.170.15 (bumped 2026-11-14); build
   backend poetry-core 2.5.0; Poetry 2.5.1. The venv's numpy shadows the image's numpy 2.3.5;
   `osgeo.gdal_array` works with it (same 2.x ABI line).
 - **No pip in the pipeline venvs.** `python3 -m venv` seeds pip 25.1.1, which has 12 advisories
@@ -686,8 +686,8 @@ Verdicts: `static`, `tests`, `e2e`, `build`, `sonar` (skipped: no token on this 
 
 ### What landed
 
-- **`sonar` stage.** `docker/Dockerfile.quality` copies the SonarScanner CLI 8.1.0.6389 (`bin`, `lib`, `conf`)
-  from `sonarsource/sonar-scanner-cli:12.3.0.4285_8.1.0`, pinned by the same digest `scripts/ci/sonar_scan.sh`
+- **`sonar` stage.** `docker/Dockerfile.quality` copies the SonarScanner CLI 8.4.0.16527 (`bin`, `lib`, `conf`)
+  from `sonarsource/sonar-scanner-cli:12.4.0.4321_8.4.0`, pinned by the same digest `scripts/ci/sonar_scan.sh`
   uses on the host, as a late layer (a scanner bump does not rebuild the npm, Playwright and emulator layers), and
   links it into `/usr/local/bin`; it runs on the image's JDK 21. Gate `sonar` = `bash scripts/ci/sonar_scan.sh`,
   which already skipped with a notice without a token and runs `sonar_report.py` after the scan. New in the script:
