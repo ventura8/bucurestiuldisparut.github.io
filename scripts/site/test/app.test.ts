@@ -79,6 +79,10 @@ describe('appIconFiles', () => {
         expect(outlines.length).toBeGreaterThan(2);
         expect(glyphOutlines('M0,0L10,0Q10,10 0,10Z')).toHaveLength(1);
         expect(glyphOutlines('M0,0L10,0Z')).toEqual([]);
+        // One Q with two curves: the second starts where the first ended.
+        const [curves] = glyphOutlines('M0,0Q5,0 10,0 15,0 20,0Z');
+        expect(curves).toHaveLength(17);
+        expect(curves?.at(-1)).toEqual([20, 0]);
     });
 });
 

@@ -1,4 +1,4 @@
-import { deflateSync } from 'node:zlib';
+import { crc32, deflateSync } from 'node:zlib';
 
 import { APP_ICON_FILES } from '@hcm/shared/app';
 import { MAP_GLYPH_PATH, MAP_ICON_GEOMETRY } from '@hcm/shared/tab-icon';
@@ -15,7 +15,7 @@ import { MAP_GLYPH_PATH, MAP_ICON_GEOMETRY } from '@hcm/shared/tab-icon';
  *
  * Drawing: the glyph's outline (`MAP_GLYPH_PATH`: M, L, Q and Z in font units, y up) is flattened to line segments and
  * filled by the non-zero rule, the square by its rounded-corner test, each at `SAMPLES`² points per pixel, so the edges
- * are smooth. The PNG is 8-bit RGBA, unfiltered rows, zlib's deflate.
+ * are smooth. The PNG is 8-bit RGBA, unfiltered rows, zlib's deflate and CRC-32 (`node:zlib`).
  */
 
 /** Points per pixel side (16 per pixel). */
@@ -54,9 +54,9 @@ function numbers(text: string): number[] {
         .map(Number);
 }
 
-/** The number at `index`, 0 past the end. */
+/** The number at `index` (the caller stays within the command's numbers). */
 function valueAt(values: readonly number[], index: number): number {
-    return values[index] ?? 0;
+    return Number(values[index]);
 }
 
 /** One command's points after `last`: a move or line's own, a curve's flattened. */
@@ -96,12 +96,16 @@ function glyphEdges(size: number, scale: number): Edge[] {
     const half = MAP_ICON_GEOMETRY.em / 2;
     const unit = size / MAP_ICON_GEOMETRY.em;
     const place = ([x, y]: Point): Point => [(half + scale * (x - half)) * unit, (half - scale * (y - half)) * unit];
-    return glyphOutlines().flatMap((outline) =>
-        outline.map((point, index) => {
-            const [a, b] = [place(point), place(outline[(index + 1) % outline.length] ?? point)];
-            return [a[0], a[1], b[0], b[1]] as const;
-        }),
-    );
+    // Each point joins the one before it, the first the last: the outline is closed.
+    return glyphOutlines().flatMap((outline) => {
+        let previous = place(lastPoint(outline));
+        return outline.map((point) => {
+            const at = place(point);
+            const edge = [previous[0], previous[1], at[0], at[1]] as const;
+            previous = at;
+            return edge;
+        });
+    });
 }
 
 /** Where `edge` crosses the line `y`, with its direction (1 down, -1 up), or null where it does not. */
@@ -132,7 +136,7 @@ function addSpan(counts: Uint8Array, size: number, { row, from, to }: Span): voi
     const base = Math.floor(row / SAMPLES) * size;
     for (let sample = first; sample < last; sample += 1) {
         const pixel = base + Math.floor(sample / SAMPLES);
-        counts[pixel] = (counts[pixel] ?? 0) + 1;
+        Atomics.add(counts, pixel, 1);
     }
 }
 
@@ -172,7 +176,7 @@ function squareCoverage(size: number, radius: number): Uint8Array {
         for (let column = 0; column < size * SAMPLES; column += 1) {
             if (inSquare((column + 0.5) * unit, (row + 0.5) * unit, radius)) {
                 const pixel = Math.floor(row / SAMPLES) * size + Math.floor(column / SAMPLES);
-                counts[pixel] = (counts[pixel] ?? 0) + 1;
+                Atomics.add(counts, pixel, 1);
             }
         }
     }
@@ -192,29 +196,13 @@ function pixels(shape: IconShape, color: string): Uint8Array {
     const fill = rgb(color);
     const out = new Uint8Array(shape.size * shape.size * 4);
     square.forEach((count, pixel) => {
-        const white = Math.min(glyph[pixel] ?? 0, full) / full;
+        const white = Math.min(Atomics.load(glyph, pixel), full) / full;
         fill.forEach((channel, index) => {
             out[pixel * 4 + index] = Math.round(channel + (255 - channel) * white);
         });
         out[pixel * 4 + 3] = Math.round((count / full) * 255);
     });
     return out;
-}
-
-const CRC_TABLE = Array.from({ length: 256 }, (_unused, byte) => {
-    let value = byte;
-    for (let bit = 0; bit < 8; bit += 1) {
-        value = value & 1 ? 0xed_b8_83_20 ^ (value >>> 1) : value >>> 1;
-    }
-    return value >>> 0;
-});
-
-function crc32(bytes: Uint8Array): number {
-    let crc = 0xff_ff_ff_ff;
-    for (const byte of bytes) {
-        crc = (CRC_TABLE[(crc ^ byte) & 255] ?? 0) ^ (crc >>> 8);
-    }
-    return (crc ^ 0xff_ff_ff_ff) >>> 0;
 }
 
 function chunk(type: string, data: Uint8Array): Uint8Array {
