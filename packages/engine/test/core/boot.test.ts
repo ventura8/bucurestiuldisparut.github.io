@@ -233,21 +233,27 @@ describe('viewer boot: language and theme', () => {
     });
 
     it('happyPath_theStoredLanguageAndThemeOfTheCityApply', async () => {
-        const before = harness({ config: { cityId: 'bucuresti' }, stored: { 'hcm:bucuresti:lang': 'en', 'hcm:bucuresti:theme': 'dark' } });
-        const after = await loaded({ stored: { 'hcm:bucuresti:lang': 'en', 'hcm:bucuresti:theme': 'light' } });
+        const before = harness({
+            config: { cityId: 'bucuresti' },
+            stored: { 'hcm:bucuresti:lang': 'en', 'hcm:bucuresti:theme': 'dark', 'hcm:bucuresti:accent': 'map' },
+        });
+        const after = await loaded({
+            stored: { 'hcm:bucuresti:lang': 'en', 'hcm:bucuresti:theme': 'light', 'hcm:bucuresti:accent': 'map' },
+        });
 
-        expect(before.store.getState()).toMatchObject({ locale: 'en', theme: 'dark' });
-        expect(after.store.getState()).toMatchObject({ locale: 'en', theme: 'light' });
+        expect(before.store.getState()).toMatchObject({ locale: 'en', theme: 'dark', accent: 'map' });
+        expect(after.store.getState()).toMatchObject({ locale: 'en', theme: 'light', accent: 'map' });
     });
 
     it('badPath_anUnsupportedLanguageOrThemeFallsBack', async () => {
         const { store } = await loaded({
             search: '?lang=fr',
             config: { lang: 'de' },
-            stored: { 'hcm:bucuresti:lang': 'xx', 'hcm:bucuresti:theme': 'neon' },
+            stored: { 'hcm:bucuresti:lang': 'xx', 'hcm:bucuresti:theme': 'neon', 'hcm:bucuresti:accent': 'neon' },
         });
 
-        expect(store.getState()).toMatchObject({ locale: 'ro', theme: 'system' });
+        // Follow my device and its accent: the defaults.
+        expect(store.getState()).toMatchObject({ locale: 'ro', theme: 'system', accent: 'device' });
     });
 
     it('happyPath_thePageLanguageIsTheDefault', async () => {

@@ -4096,3 +4096,14 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `versionsOf` used `outdated !== true`, and a worker only learns `outdated` at its next `worker.claim`, so a busy run kept the flag false after a newer pipeline was installed.
     - Fix and pin: when `setup/status.install.pipeline.image` is known (`WorkerFeed` → `LocalComputer`), compare the worker's reported digest with it; fall back to the flag only when the installed digest is unknown (`packages/admin/src/worker/machine.ts`, `packages/admin/test/worker/machine.test.ts`, S-A142).
     - **A status flag that updates only on the next poll is late for the UI: compare the facts the UI already has.**
+
+697. **A build only a record said was at work hid Update the map, with no word why.**
+    - Seen: 2026-11-13 23:45, the live admin: step d offered the server's update but showed no button; step d3's pipeline was recorded "installing" at 23:20 and nothing had looked since (no Google token on the page).
+    - Cause: `building()` counted a recorded, unconfirmed build as at work to close finding 71's race, so the way out (the look) needed a click the owner could not guess (Check again on d3).
+    - Fix and pin: such a build no longer hides the button; Update the map's click looks at it with its own token first and goes on only when no build is at work (`S-A55-HAPPY-UPDATE-STALE-RECORD`, `S-A55-BAD-UPDATE-STALE-RECORD`).
+    - **A guard that waits on a check must run the check itself, not hide the button that would.**
+698. **Admin language e2e still expected radios and treated German as unsupported after the dropdown and the 25 languages.**
+    - Seen: 2026-11-14, `admin-c360-ro` / `admin-l1440-ro`: `S-A95-HAPPY-LANGUAGE-PICKER` timed out on a `radiogroup` named Limbă; `S-A21-BAD-UNSUPPORTED-LANGUAGE` opened Deutsch under `locale: 'de-DE'` instead of Romanian.
+    - Cause: commit `43bbe138` replaced the account menu's language list with `<hcm-language-select>` (a native `<select>`), and `de` is one of `UI_LOCALES`, so `uiLocaleOf('de-DE')` is `de`. The viewer and start-page specs already asserted a combobox; the admin A95 count and A21's unsupported tag were left on the old contract.
+    - Fix and pin: `languages.spec.ts` asserts 25 `option`s on the Limbă combobox (no radios); `title.spec.ts` uses `sv-SE` (outside `UI_LOCALES`); rows `S-A95-HAPPY-LANGUAGE-PICKER` and `S-A21-BAD-UNSUPPORTED-LANGUAGE`.
+    - **When a control or a locale list changes, update every e2e assertion that names the old shape or an old "unsupported" tag; unsupported means outside `UI_LOCALES`, not "not Romanian or English".**

@@ -4,6 +4,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { HcmAccountMenu } from '../../../src/admin/shell/hcm-account-menu.js';
 import type { HcmAdminNav } from '../../../src/admin/shell/hcm-admin-nav.js';
+import type { HcmLanguageSelect } from '../../../src/components/language-select.js';
 import type { HcmSegmentedButton } from '../../../src/components/segmented-button.js';
 import type { HcmSheet } from '../../../src/components/sheet.js';
 import type { HcmSwitch } from '../../../src/components/switch.js';
@@ -132,18 +133,23 @@ describe('<hcm-account-menu>', () => {
     it('happyPath_languageThemeConsentAndSignOut', async () => {
         const app = new FakeAdminApp(adminState({ analytics: true, consent: 'unknown' }));
         const menu = await opened(app);
-        const [language, theme] = deepAll(menu, 'hcm-segmented-button') as HcmSegmentedButton[];
+        const language = deep(menu, 'hcm-language-select') as HcmLanguageSelect;
+        const [theme, accent] = deepAll(menu, 'hcm-segmented-button') as HcmSegmentedButton[];
+        expect(accent?.value).toBe('device');
 
-        language?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'ro' } }));
-        language?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'en' } }));
+        language.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'ro' } }));
+        language.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'en' } }));
         // Any of the interface's 25 languages (docs/I18N.md); an unknown code is ignored, and the list keeps the admin's
         // language until the app has switched.
-        language?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'fa' } }));
-        language?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'sv' } }));
-        expect(language?.options).toHaveLength(25);
-        expect(language?.value).toBe(app.state.locale);
+        language.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'fa' } }));
+        language.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'sv' } }));
+        expect(language.options).toHaveLength(25);
+        expect(language.value).toBe(app.state.locale);
         theme?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'dark' } }));
         theme?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'sepia' } }));
+        accent?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'map' } }));
+        // A value that is no choice reads as the default, the device's accent.
+        accent?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'sepia' } }));
         const consent = deep(menu, 'hcm-switch') as HcmSwitch;
         consent.dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: true } }));
         consent.dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: false } }));
@@ -156,6 +162,8 @@ describe('<hcm-account-menu>', () => {
             'setLocale "en"',
             'setLocale "fa"',
             'setTheme "dark"',
+            'setAccent "map"',
+            'setAccent "device"',
             'setConsent "granted"',
             'setConsent "denied"',
             'signOut',
@@ -177,7 +185,7 @@ describe('<hcm-account-menu>', () => {
 
         expect(deepAll(menu, 'hcm-switch')).toEqual([]);
         expect(deepAll(menu, 'hcm-button')).toEqual([]);
-        expect(deepText(menu)).toContain('Automată');
+        expect(deepText(menu)).toContain('Ca dispozitivul');
         deep(menu, 'hcm-dialog').dispatchEvent(new CustomEvent('hcm-close', { detail: { returnValue: 'cancel' } }));
         await updated(menu);
         expect(menu.open).toBe(false);
@@ -189,8 +197,8 @@ describe('<hcm-account-menu>', () => {
         deep(orphan, 'hcm-icon-button').click();
         await updated(orphan);
 
-        deepAll(orphan, 'hcm-segmented-button')[0]?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'ro' } }));
-        deepAll(orphan, 'hcm-segmented-button')[1]?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'dark' } }));
+        deep(orphan, 'hcm-language-select').dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'ro' } }));
+        deepAll(orphan, 'hcm-segmented-button')[0]?.dispatchEvent(new CustomEvent('hcm-change', { detail: { value: 'dark' } }));
         deep(orphan, 'hcm-switch').dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: true } }));
         deepAll(orphan, 'hcm-button').at(-1)?.click();
 

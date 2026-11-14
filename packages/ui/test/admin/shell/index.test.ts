@@ -40,6 +40,7 @@ describe('@hcm/ui/admin', () => {
                 'panelStyles',
                 'shellLayout',
                 'shellText',
+                'shownTokens',
                 'themeTokensOf',
                 'contentText',
             ]),

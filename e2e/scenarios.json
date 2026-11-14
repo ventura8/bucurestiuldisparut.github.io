@@ -2275,7 +2275,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "Any of the sixteen languages from the list or the address",
-            "asserts": "Settings' list shows the 16 languages by their own names, each with its lang, the current one checked; German, Arabic and Japanese chosen in turn relabel the whole viewer with no text of another language, the hash keeps lang=<code> and a reload keeps the last; each language's file is fetched once; every other language boots from ?lang=",
+            "asserts": "Settings' Language is one dropdown (a combobox named Limbă / Language, at least 48 px tall, no radio list) of the languages by their own names, each with its lang, the current one selected; German, Arabic and Japanese chosen in turn relabel the whole viewer with no text of another language, the hash keeps lang=<code> and a reload keeps the last; each language's file is fetched once; every other language boots from ?lang=",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts."
@@ -7511,10 +7511,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A browser language the admin does not have keeps the Romanian title and language",
-            "asserts": "a German browser (de-DE) -> the Romanian screens, the tab titled 'Administrarea hărții' and <html lang> ro (never de, never the English title)",
+            "asserts": "a Swedish browser (sv-SE; sv is not in UI_LOCALES) -> the Romanian screens, the tab titled 'Administrarea hărții' and <html lang> ro (never sv, never the English title); de-DE would open Deutsch because de is one of the 25",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M3 (the integrator, 2026-10-24). Test: e2e/admin/specs/shell/title.spec.ts."
+            "notes": "Milestone M3 (the integrator, 2026-10-24). After the 25 languages (2026-11-12) the unsupported tag is sv-SE, not de-DE. Test: e2e/admin/specs/shell/title.spec.ts."
         },
         {
             "id": "S-A22-HAPPY",
@@ -11046,6 +11046,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Findings 70 and 59 of docs/research/manual-test-2026-10-25.md (2026-11-02); DECISIONS-for-review.md §86. Test: e2e/admin/steps/install/update.spec.ts; packages/ui/test/admin/setup/install-cards.test.ts, packages/admin/test/setup/install.test.ts. The review of the stale fixes (2026-11-08): one failed read made the card Unavailable now, which settled the server's wait, so Provision's record went to the old server mid-build; test: the same spec, packages/admin/test/setup/install.test.ts, packages/admin/test/install/install-flow.test.ts."
+        },
+        {
+            "id": "S-A55-HAPPY-UPDATE-STALE-RECORD",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "Update the map beside a build only a record says is at work: the click looks at it first, then updates",
+            "asserts": "the server behind and the pipeline recorded at work with no token to look with -> step d shows Update the map; its click asks one consent, looks at the recorded build with that token (ended: installed), then submits the server's build",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live admin of 2026-11-13 23:45: the pipeline's record of 23:20 hid Update the map with no word why; the owner had to find Check again on step d3. Tests: e2e/admin/steps/install/stale-record.spec.ts, packages/admin/test/setup/install-stale.test.ts, packages/ui/test/admin/setup/install-recorded.test.ts."
+        },
+        {
+            "id": "S-A55-BAD-UPDATE-STALE-RECORD",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "A recorded build the click's look finds still at work holds the update; one a look saw at work hides it",
+            "asserts": "the click's look finds the recorded pipeline build still WORKING -> nothing is submitted and the card shows the build at work (finding 71's race stays closed); a build a look saw at work hides Update the map",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Tests: e2e/admin/steps/install/stale-record.spec.ts, packages/admin/test/setup/install-stale.test.ts, packages/ui/test/admin/setup/install-recorded.test.ts."
         },
         {
             "id": "S-A56-HAPPY",
@@ -20260,10 +20282,10 @@
             "area": "admin",
             "path": "happy",
             "title": "The account menu lists the 25 languages; French is fetched, shown and kept after a reload; Arabic turns the page right to left",
-            "asserts": "25 radios by their own names; /admin/i18n/fr.json fetched, the photos page's empty text in French, html lang fr, again after a reload; Arabic: html dir rtl, the page's area marked lang en (no Arabic admin file yet), the tour's layout, axe and i18n checks read as Arabic (admin.shell.language-rtl); the latest choice wins over a file still loading (packages/admin/test/app/language.test.ts)",
+            "asserts": "one language dropdown (hcm-language-select / combobox Limbă) with 25 options by their own names, no radios; /admin/i18n/fr.json fetched, the photos page's empty text in French, html lang fr, again after a reload; Arabic: html dir rtl, the page's area marked lang en (no Arabic admin file yet), the tour's layout, axe and i18n checks read as Arabic (admin.shell.language-rtl); the latest choice wins over a file still loading (packages/admin/test/app/language.test.ts)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md. Picker is a dropdown since 2026-11-14 (hcm-language-select), not a radiogroup."
         },
         {
             "id": "S-A95-BAD-MISSING-KEY-FALLS-BACK",
