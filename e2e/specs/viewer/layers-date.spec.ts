@@ -33,9 +33,13 @@ for (const size of WIDTHS) {
             const dated = row(page, 'e2e-1980');
             await expect(dated.locator('.detail')).toBeVisible();
             await expect(dated.locator('.detail')).toContainText('1980');
-            const nameBox = await dated.locator('.label').boundingBox();
-            const dateBox = await dated.locator('.detail').boundingBox();
-            expect((dateBox?.y ?? 0) >= (nameBox?.y ?? 0) + (nameBox?.height ?? 0) - 1, 'the date sits below the name').toBe(true);
+            // One read of both boxes: the phone's bottom sheet may still be sliding in between two separate reads.
+            const below = await dated.evaluate((element) => {
+                const name = element.querySelector('.label')?.getBoundingClientRect();
+                const date = element.querySelector('.detail')?.getBoundingClientRect();
+                return name !== undefined && date !== undefined && date.top >= name.bottom - 1;
+            });
+            expect(below, 'the date sits below the name').toBe(true);
             const photos = await height(row(page, 'photos'));
             expect(await height(dated)).toBe(photos);
             expect(await height(row(page, 'e2e-1966'))).toBe(photos);
