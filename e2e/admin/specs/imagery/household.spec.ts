@@ -19,6 +19,7 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * a computer without a screen (its one-time code minted by `worker.pairCode`) or this admin's address for one with a screen, and
  * Remove this computer waits for a computer that is off, with Disconnect now anyway and then the line that cleans it up by hand.
  * Cleanup item 6 (2026-11-14): a computer's disk below its worker's floor is said with why and the fix, and Free space now asks it.
+ * M20 §22 (2026-11-14): a computer that holds scanned maps says it shares them with the others and how far, or why it stopped today.
  */
 test.use({ persona: 'owner', mapOwner: 'owner' });
 
@@ -200,5 +201,42 @@ test(
             .toBeDefined();
         await expect(nuc.locator('[data-freed]')).toHaveText(text(lang, 'adminWorkerHousehold.freeing'), { timeout: FUNCTIONS_TIMEOUT_MS });
         await expect(nuc.getByRole('button', { name: text(lang, 'adminWorkerHousehold.freeSpace') })).toBeDisabled();
+    },
+);
+
+test(
+    'A computer that holds scanned maps says it shares them with the others and how far; at the daily limit it says why it stopped',
+    { tag: ['@S-A143-HAPPY-SHARING', '@S-A143-BAD-SHARING-DAY-LIMIT', '@S-A143-BAD-SHARING-STALE'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const owner = adminWorld.accounts.owner.uid;
+        const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
+        await recordPipeline(imagery);
+        await seedComputers(imagery, owner);
+        const path = `cities/${imagery.city}/workers/${NUC}`;
+        const mb = 1024 ** 2;
+        const day = NOW.toISOString().slice(0, 10);
+        const sending = { state: 'sending', computers: 2, jobId: 'ar-series', sentBytes: 120 * mb, totalBytes: 677 * mb, day, dayBytes: 0 };
+        await imagery.cityWorld.emulators.updateFields(path, { sharing: { ...sending, at: new Date(NOW.getTime() - 20_000) } }, [
+            'sharing',
+        ]);
+
+        await page.goto(adminPath(lang, 'jobs'));
+        const nuc = computers(page).locator(`[data-computer="${NUC}"]`);
+        const progress = text(lang, 'adminWorkerHousehold.sharingProgress', { sent: '120', total: '677' });
+        await expect(nuc.locator('[data-sharing="sending"]')).toContainText(progress, { timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(nuc.getByRole('progressbar', { name: text(lang, 'adminWorkerHousehold.sharingBar') })).toBeVisible();
+        await expectStateSound(page, adminVisit('worker.household-sharing', lang));
+
+        const limit = { ...sending, state: 'dayLimit', dayBytes: 20 * 1024 * mb, at: new Date() };
+        await imagery.cityWorld.emulators.updateFields(path, { sharing: limit }, ['sharing']);
+        await expect(nuc.locator('[data-sharing="dayLimit"]')).toContainText(text(lang, 'adminWorkerHousehold.sharingDayLimit2'), {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(nuc.locator('[data-sharing="dayLimit"]')).toContainText(text(lang, 'adminWorkerHousehold.sharingDayLimit3'));
+
+        // A copy said over 10 minutes ago: the computer stopped (its next start resumes it), so the card no longer says it shares.
+        const stale = { ...sending, at: new Date(NOW.getTime() - 3_600_000) };
+        await imagery.cityWorld.emulators.updateFields(path, { sharing: stale }, ['sharing']);
+        await expect(nuc.locator('[data-sharing]')).toHaveCount(0, { timeout: FUNCTIONS_TIMEOUT_MS });
     },
 );

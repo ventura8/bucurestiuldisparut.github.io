@@ -23,6 +23,7 @@ export function computer(changes: Partial<ComputerViewPort> = {}): ComputerViewP
         disk: { workBytes: 13_207_024_435, freeBytes: 44_023_414_784, floorBytes: 10_737_418_240 },
         freeing: false,
         freed: null,
+        sharing: null,
         ...changes,
     };
 }

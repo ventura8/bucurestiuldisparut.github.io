@@ -869,6 +869,12 @@ worker as a copy through the private bucket (`tmp/archive-copies/{city}/{job}/`,
 `archive-copy` is claimed by nobody until its copy is done. `RoutedObjectStore` reads `tmp/archive-copies/` through `worker.urls`,
 whose allow-list adds the job's own copy folder (`isOwnArchiveCopy`).
 
+**2026-11-14, sharing while busy (M20 §22, DECISIONS-for-review.md §229).** The holder no longer waits for its claim: a thread of its own
+(`worker/sharing.py`) asks `worker.archiveCopy {kind: 'wanted', archives}` (no `jobId`) and sends the named series under the governor's
+budget, also while the loop runs a job; `progress` keeps the worker's `sharing` (the Computers card). Its claims say `shares: true` and
+are never answered `copy`. A series waiting `archive-copy` is now claimable by a worker whose claim names its archive (the holder runs it
+itself when it cannot share it), and by nobody else.
+
 ## Addendum of 2026-11-13: Pause (a job, every job, a computer)
 
 The owner, 2026-11-13: "I want the user to be able to pause jobs, and to pause using a machine". DECISIONS-for-review.md §216.

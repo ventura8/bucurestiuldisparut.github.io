@@ -18061,6 +18061,39 @@
             "notes": "M20 §20 (live report of 2026-11-13; DECISIONS §204). Tests: functions/test/worker/archive-host.test.ts."
         },
         {
+            "id": "S-A120-HAPPY-ARCHIVE-SHARE",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "The computer with the scanned maps shares a series while it works, before any computer hands it back",
+            "asserts": "worker.archiveCopy wanted (no job) from a holder that is busy and has its person at it names a series handed back first, else the newest queued series not copied yet when another computer was seen in the last 10 minutes and is not paused; the worker's sharing says sending, for how many computers; objects and progress are accepted for that queued series; done records archiveCopy, puts it back to worker, adds the bytes to today's and any computer claims it; a holder whose claim says shares is never answered copy and runs a series waiting for its copy itself; a new UTC day starts the day's bytes again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 §22 (the owner's request of 2026-11-14; DECISIONS §229). Tests: functions/test/worker/archive-share.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-ARCHIVE-SHARE",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "Nothing is shared when no other computer could take it, nothing waits, or the job no longer takes a copy",
+            "asserts": "wanted answers alone (no copy) when the other computer was seen over 10 minutes ago, is paused or there is none; nothing when the series runs, is cancelled, waits for a later day or is paused, and a copy that was being sent is said done; progress or done without a job, wanted with a job, progress or done for a running series are refused and change nothing; the guard red refuses wanted",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 §22 (the owner's request of 2026-11-14; DECISIONS §229). Tests: functions/test/worker/archive-share.test.ts, archive-host.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-ARCHIVE-SHARE-DAY",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "A computer that shared 20 GB today stops sharing until tomorrow and runs those series itself",
+            "asserts": "with today's dayBytes at ARCHIVE_SHARE_DAY_BYTES, wanted answers dayLimit (even for a series handed back) and the worker's sharing says dayLimit; the holder's claim takes the series waiting for its copy itself",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 §22 (the owner's request of 2026-11-14; DECISIONS §229). Cost guard: every byte shared is downloaded once (about 0.12 USD a GB). Tests: functions/test/worker/archive-share.test.ts."
+        },
+        {
             "id": "S-A120-HAPPY-FILM-HOST",
             "behaviour": "A120",
             "area": "admin",
@@ -19698,6 +19731,39 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 §20 (live report of 2026-11-13). Tests: pipeline/tests/unit/test_archive_copy.py, test_worker_loop.py."
+        },
+        {
+            "id": "S-P20-HAPPY-ARCHIVE-SHARE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The holder's sharing thread sends a series under the governor's budget, also while it runs a job",
+            "asserts": "the thread asks wanted with the archives held whole, sends the named series' sheets and manifest with progress at the start and every 15 s, then done; the average rate is 1 MiB/s while quiet and 8 MiB/s at full; no series, alone or a refusal waits 2 minutes, dayLimit 30 minutes; the claim says shares",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §22 (the owner's request of 2026-11-14; DECISIONS §229). Tests: pipeline/tests/unit/test_worker_sharing.py, test_worker_loop.py."
+        },
+        {
+            "id": "S-P20-BAD-ARCHIVE-SHARE-PAUSED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A paused, signed-out or empty holder shares nothing",
+            "asserts": "with the governor's profile paused (the owner's pause, the battery, the heat) or no session the thread asks nothing and looks again in 30 s; a computer holding no archive asks nothing; a copy paused mid-way waits at its next sheet",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §22 (the owner's request of 2026-11-14; DECISIONS §229). Tests: pipeline/tests/unit/test_worker_sharing.py."
+        },
+        {
+            "id": "S-P20-BAD-ARCHIVE-SHARE-STOPPED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A copy the worker's end or a refused progress cuts short is never said done",
+            "asserts": "SIGTERM mid-copy stops it at the next sheet (ShareStoppedError) without done; a refused progress (the job claimed or cancelled) ends the copy quietly; the next start resends only the sheets not already in the bucket with the same MD5",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §22 (the owner's request of 2026-11-14; DECISIONS §229). Tests: pipeline/tests/unit/test_worker_sharing.py."
         },
         {
             "id": "S-P20-HAPPY-FILM-HOST",
@@ -21524,6 +21590,39 @@
             "tier": "functions",
             "status": "exists",
             "notes": "docs/research/M7-local-worker.md, Household computers. Tests: functions/test/worker/household.test.ts."
+        },
+        {
+            "id": "S-A143-HAPPY-SHARING",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Computers card says a computer shares its scanned maps with N others and how far",
+            "asserts": "a computer whose sharing says sending in the last 10 minutes shows \"Sharing scanned maps with 2 other computers\" with MB sent of MB and a progress bar (or that the copy is getting ready); ro and en with plural forms; axe and layout checkers clean (tour state worker.household-sharing)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 §22 (the owner's request of 2026-11-14; DECISIONS §229). Tests: e2e/admin/specs/imagery/household.spec.ts, packages/admin/test/worker/household.test.ts, packages/ui/test/admin/worker/household-sharing.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-SHARING-DAY-LIMIT",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "At the daily limit the card says sharing stopped until tomorrow, why, and what goes on meanwhile",
+            "asserts": "sharing dayLimit for today: what happened (stopped until tomorrow at 20 GB), why (the cloud bill) and what goes on (this computer works on those maps itself, the others on other work), as a status line",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 §22 (the owner's request of 2026-11-14; DECISIONS §229). Tests: e2e/admin/specs/imagery/household.spec.ts, packages/ui/test/admin/worker/household-sharing.test.ts."
+        },
+        {
+            "id": "S-A143-BAD-SHARING-STALE",
+            "behaviour": "A143",
+            "area": "admin",
+            "path": "bad",
+            "title": "A finished, stale or yesterday's share is not shown",
+            "asserts": "sharing done, sending said over 10 minutes ago (the computer stopped), dayLimit of another day, a disconnected computer and one that never shared show no sharing line",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 §22 (the owner's request of 2026-11-14; DECISIONS §229). Tests: packages/admin/test/worker/household.test.ts."
         },
         {
             "id": "S-A143-BAD-PAUSED",

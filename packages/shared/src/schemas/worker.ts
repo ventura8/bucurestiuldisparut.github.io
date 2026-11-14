@@ -83,6 +83,24 @@ export const workerRemovalSchema = z.strictObject({
     dockerLeft: z.boolean().optional(),
 });
 
+/**
+ * M20 §22 (2026-11-14): what a computer that holds scanned maps shares with the city's other computers through the bucket:
+ * `sending` a series' copy (how far, for how many computers), or stopped for the day (`dayLimit`: `ARCHIVE_SHARE_DAY_BYTES`).
+ */
+export const WORKER_SHARING_STATES = ['sending', 'done', 'dayLimit'] as const;
+export const workerSharingSchema = z.strictObject({
+    state: z.enum(WORKER_SHARING_STATES),
+    /** The other computers of the city that could take the shared series (connected, seen lately, not paused). */
+    computers: z.number().int().min(0).max(1000),
+    jobId: idSchema.optional(),
+    sentBytes: byteCount,
+    totalBytes: byteCount,
+    /** The UTC day `dayBytes` counts (YYYY-MM-DD): the bytes this computer shared that day, against `ARCHIVE_SHARE_DAY_BYTES`. */
+    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    dayBytes: byteCount,
+    at: timestampSchema,
+});
+
 /** `cities/{city}/workers/{workerId}`: one local worker process, refreshed by `worker.hello` and `worker.claim`. */
 export const workerDocSchema = z.strictObject({
     uid: uidSchema,
@@ -133,6 +151,8 @@ export const workerDocSchema = z.strictObject({
     freeSpaceAskedAt: timestampSchema.optional(),
     /** What the worker's last "Free space now" freed, and when (the worker's word, with a claim). */
     freed: z.strictObject({ bytes: byteCount, at: timestampSchema }).optional(),
+    /** M20 §22: the scanned maps it shares with the other computers (`worker.archiveCopy`), and how far. */
+    sharing: workerSharingSchema.optional(),
     ...stamp,
 });
 
@@ -174,6 +194,7 @@ export const cloudRunUsageDocSchema = z.strictObject({
 export type WorkerDoc = z.infer<typeof workerDocSchema>;
 export type WorkerAi = z.infer<typeof workerAiSchema>;
 export type WorkerShare = z.infer<typeof workerShareSchema>;
+export type WorkerSharing = z.infer<typeof workerSharingSchema>;
 export type WorkerRemoval = z.infer<typeof workerRemovalSchema>;
 export type RunChoiceDoc = z.infer<typeof runChoiceDocSchema>;
 export type CloudRunUsageDoc = z.infer<typeof cloudRunUsageDocSchema>;

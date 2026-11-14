@@ -159,6 +159,13 @@ export interface ComputerViewPort {
     readonly disk: { readonly workBytes: number; readonly freeBytes: number; readonly floorBytes: number } | null;
     readonly freeing: boolean;
     readonly freed: { readonly bytes: number; readonly at: string } | null;
+    /** M20 §22: the scanned maps it shares with the other computers now, how far, or stopped for today; null otherwise. */
+    readonly sharing: {
+        readonly state: 'sending' | 'dayLimit';
+        readonly computers: number;
+        readonly sentBytes: number;
+        readonly totalBytes: number;
+    } | null;
 }
 
 export type AddKindPort = WorkerOsPort | 'headless';

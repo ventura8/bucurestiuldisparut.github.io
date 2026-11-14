@@ -113,8 +113,8 @@ describe('archive series on any computer', () => {
         await expect(failureOf(urls(`tmp/archive-copies/${CITY}/${JOB}/../x`))).resolves.toBeDefined();
     });
 
-    it('badPath_aCopyIsSignedOnlyForASeriesWaitingForItAndOnlyItsOwnFiles @S-A120-BAD-ARCHIVE-COPY', async () => {
-        const made = await world();
+    it('badPath_aCopyIsSignedOnlyForASeriesThatStillTakesItAndOnlyItsOwnFiles @S-A120-BAD-ARCHIVE-COPY', async () => {
+        const made = await world({ status: 'succeeded' });
         const put = (path: string) => ({ kind: 'objects', objects: [{ path, method: 'PUT', contentType: 'application/octet-stream' }] });
 
         await expect(failureOf(copyCall(made, put(`${COPY}/${SHA}`)))).resolves.toMatchObject({

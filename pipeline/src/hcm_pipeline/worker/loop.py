@@ -17,7 +17,8 @@ W5 (household computers): a claim also says the governor's share (`share`), so t
 M20 (2026-11-13): a claim also names the local archives this computer holds whole (`archives`); its answer may instead be
 `copy`, a series another worker waits for, whose sheets this computer sends through the bucket (`copier`, `archive/copy.py`)
 before its next claim; a run that finds neither the sheets nor their copy ends `returned`, and the server queues the job again
-unspent, waiting for that copy.
+unspent, waiting for that copy. M20 §22 (2026-11-14): a worker that shares from its own thread (`sharing.py`, also while it runs a
+job) says `shares`, and its claim is never answered `copy`.
 Finding 72 (the starter file, M7 §1.5): under the starter's supervisor (`supervised`) an outdated claim ends the loop
 instead (`outdated_exit`), and the command exits with `ExitCode.OUTDATED`, so the supervisor pulls the installed image.
 Each pass that holds a session sweeps the work folder after its claim (`sweep`, `runtime.py`), told the job it claimed.
@@ -165,6 +166,8 @@ class WorkerLoop:
         self.films: Callable[[], list[str]] = list
         # M20: the copy of a series another worker waits for, sent before any job (`CopySender.send`).
         self.copier: Callable[[Mapping[str, object]], None] = lambda _duty: None
+        # M20 §22: this worker shares its archives from its own thread (`sharing.py`): the claim says so and is never asked for a copy.
+        self.shares = False
         # Finding 72: under the starter's supervisor an outdated image ends the loop (the supervisor updates it).
         self.supervised = False
         self.outdated_exit = False
@@ -288,6 +291,7 @@ class WorkerLoop:
         said: dict[str, object] = {} if share is None else {"share": share}
         claim: dict[str, object] = {**self._ids, "types": list(RUN_JOB_TYPES), "archives": self.archives()[:CLAIM_ARCHIVES_MAX], **said}
         claim["films"] = self.films()[:CLAIM_ARCHIVES_MAX]
+        claim.update({"shares": True} if self.shares else {})
         claim.update(self.claim_extra())
         return claim if sent is None else {**claim, "pause": sent.wire()}
 

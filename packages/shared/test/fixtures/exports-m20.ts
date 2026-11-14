@@ -12,6 +12,9 @@ export const M20_EXPORTS = [
     'ARCHIVE_PLACE_METHODS',
     'ARCHIVE_SERIES_CLASSES',
     'ARCHIVE_SERIES_MAX_BYTES',
+    // M20 §22 (2026-11-14): sharing while busy: one computer's bytes a day, and why none is shared now.
+    'ARCHIVE_SHARE_DAY_BYTES',
+    'ARCHIVE_SHARE_IDLE_WHYS',
     'ARCHIVE_SKIP_REASONS',
     'DEFAULT_MAP_THRESHOLD_MAX_M',
     'HELP_REASONS',

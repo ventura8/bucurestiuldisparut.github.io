@@ -113,6 +113,58 @@ describe('the city computers', () => {
     });
 });
 
+describe('what each computer shares (M20 §22)', () => {
+    const sharing = (world: ContentWorld, seconds: number, more: Record<string, unknown> = {}) => ({
+        state: 'sending',
+        computers: 2,
+        jobId: 'ar-series',
+        sentBytes: 300,
+        totalBytes: 1000,
+        day: new Date(world.clock.now()).toISOString().slice(0, 10),
+        dayBytes: 0,
+        at: at(before(world, seconds)),
+        ...more,
+    });
+
+    it('happyPath_aCopyUnderWayAndTodaysLimitAreShown @S-A143-HAPPY-SHARING', async () => {
+        const world = contentWorld();
+        const seen = before(world, 30);
+        world.store.docs.set(FIRESTORE_PATHS.worker(CITY, WORKER), workerDoc(seen, { sharing: sharing(world, 20) }));
+        world.store.docs.set(
+            FIRESTORE_PATHS.worker(CITY, 'w-1111111111111111'),
+            workerDoc(seen, { sharing: sharing(world, 3000, { state: 'dayLimit' }) }),
+        );
+        const household = householdOf(world);
+        await settle();
+
+        const byId = new Map(household.state.computers.map((computer) => [computer.id, computer.sharing]));
+        expect(byId.get(WORKER)).toEqual({ state: 'sending', computers: 2, sentBytes: 300, totalBytes: 1000 });
+        expect(byId.get('w-1111111111111111')).toMatchObject({ state: 'dayLimit' });
+        household.stop();
+    });
+
+    it('badPath_aFinishedStaleOrYesterdaysShareIsNotShown @S-A143-BAD-SHARING-STALE', async () => {
+        const world = contentWorld();
+        const seen = before(world, 30);
+        const docs: [string, Record<string, unknown> | undefined, boolean?][] = [
+            [WORKER, sharing(world, 20, { state: 'done' })],
+            ['w-1111111111111111', sharing(world, 3600)],
+            ['w-2222222222222222', sharing(world, 60, { state: 'dayLimit', day: '2020-01-01' })],
+            ['w-3333333333333333', sharing(world, 20), true],
+            ['w-4444444444444444', undefined],
+        ];
+        for (const [id, said, revoked] of docs) {
+            const more = { ...(said === undefined ? {} : { sharing: said }), ...(revoked === true ? { revokedAt: at(seen) } : {}) };
+            world.store.docs.set(FIRESTORE_PATHS.worker(CITY, id), workerDoc(seen, more));
+        }
+        const household = householdOf(world);
+        await settle();
+
+        expect(household.state.computers.map((computer) => computer.sharing)).toEqual([null, null, null, null, null]);
+        household.stop();
+    });
+});
+
 describe('the disk of each computer', () => {
     const GB = 1024 ** 3;
     const disk = { workBytes: 12 * GB, freeBytes: 4 * GB, floorBytes: 10 * GB };

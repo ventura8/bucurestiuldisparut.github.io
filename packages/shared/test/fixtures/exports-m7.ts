@@ -124,4 +124,7 @@ export const M7_EXPORTS: readonly string[] = [
     'WORKER_MANAGE_ACTIONS',
     'workerManageRequestSchema',
     'workerManageResponseSchema',
+    // M20 §22 (2026-11-14): a computer shares its scanned maps with the others, its progress on the Computers card.
+    'WORKER_SHARING_STATES',
+    'workerSharingSchema',
 ];

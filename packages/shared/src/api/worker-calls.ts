@@ -102,6 +102,11 @@ export const workerClaimRequestSchema = z.strictObject({
         .max(20)
         .optional(),
     archives: z.array(z.string().regex(ARCHIVE_ID_PATTERN)).max(WORKER_ARCHIVES_MAX).optional(),
+    /**
+     * M20 §22 (2026-11-14): this worker shares its archives' series from a thread of its own (`worker.archiveCopy` `wanted`), also
+     * while it runs a job: its claim is never answered `copy`.
+     */
+    shares: z.literal(true).optional(),
     /** W5: the computer's share as its governor says it now; a computer whose person is busy leaves jobs to a calm one. */
     share: workerShareSchema.optional(),
     /**
@@ -130,10 +135,17 @@ export const workerClaimRequestSchema = z.strictObject({
     /** Cleanup item 6: what the last "Free space now" the admin asked freed on this computer, and when. */
     freed: z.strictObject({ bytes: byteCount, at: isoTimeSchema }).optional(),
 });
+
+/** M20: a series another worker can run once its sheets are copied, of an archive the asking worker holds whole. */
+const archiveCopyDutySchema = z.strictObject({
+    jobId: idSchema,
+    archiveId: z.string().regex(ARCHIVE_ID_PATTERN),
+    seriesId: z.string().max(40),
+});
 export const workerClaimResponseSchema = z.strictObject({
     job: z.strictObject({ jobId: idSchema }).nullable(),
     /** M20 (2026-11-13): a series another worker waits for, whose archive this worker holds: send a copy of its sheets first. */
-    copy: z.strictObject({ jobId: idSchema, archiveId: z.string().regex(ARCHIVE_ID_PATTERN), seriesId: z.string().max(40) }).optional(),
+    copy: archiveCopyDutySchema.optional(),
     /** W5: Remove this computer was asked: clean up (with Docker when `docker`, keeping the scanned maps when `keep`), then say done. */
     remove: z.strictObject({ docker: z.boolean(), keep: z.boolean() }).optional(),
     /** W5: paused in the admin's list of computers (no job until Resume). */
@@ -264,13 +276,36 @@ export const workerEndResponseSchema = z.strictObject({ status: z.enum(JOB_STATU
 export const ARCHIVE_COPY_MAX_BYTES = 8 * 1024 ** 3;
 
 /**
+ * M20 §22 (2026-11-14): the most bytes one computer shares through the bucket in a day (UTC). Every byte shared is downloaded once
+ * by another computer, and that download is the bucket's only billed traffic (about 0.12 USD a GB): 20 GB is about 2.4 USD a day at
+ * most. Over it the computer stops sharing until the next day and runs those series itself.
+ */
+export const ARCHIVE_SHARE_DAY_BYTES = 20 * 1024 ** 3;
+
+/** M20 §22: why `wanted` names no series to share now: none waits, no other computer could take one, or today's bytes are spent. */
+export const ARCHIVE_SHARE_IDLE_WHYS = ['nothing', 'alone', 'dayLimit'] as const;
+
+/**
  * `worker.archiveCopy` (M20, live report of 2026-11-13): the computer holding an archive sends a series' sheets for a job another
  * worker waits on. `objects`: signed PUTs (and GETs, to see what is there) of `tmp/archive-copies/{city}/{job}/` files, each
  * a sheet by its SHA-256 or `manifest.json`; `done`: the copy is complete, `bytes` sent, and the job may be claimed again.
+ * M20 §22 (2026-11-14): `wanted` (no job) asks which series to share next, from the sharing thread, also while the computer runs a
+ * job; `progress` says how far the copy got (the Computers card). Every kind but `wanted` names its job.
  */
 export const workerArchiveCopyRequestSchema = z.strictObject({
-    ...workerJobFields,
+    cityId: cityIdSchema,
+    workerId: workerIdSchema,
+    jobId: idSchema.optional(),
     copy: z.discriminatedUnion('kind', [
+        z.strictObject({
+            kind: z.literal('wanted'),
+            archives: z.array(z.string().regex(ARCHIVE_ID_PATTERN)).min(1).max(WORKER_ARCHIVES_MAX),
+        }),
+        z.strictObject({
+            kind: z.literal('progress'),
+            sentBytes: z.number().int().min(0).max(ARCHIVE_COPY_MAX_BYTES),
+            totalBytes: z.number().int().min(0).max(ARCHIVE_COPY_MAX_BYTES),
+        }),
         z.strictObject({
             kind: z.literal('objects'),
             objects: z
@@ -293,6 +328,10 @@ export const workerArchiveCopyRequestSchema = z.strictObject({
 export const workerArchiveCopyResponseSchema = z.strictObject({
     objects: z.array(workerSignedObjectSchema).max(WORKER_URLS_MAX).optional(),
     status: z.enum(JOB_STATUSES).optional(),
+    /** `wanted`: the series to share now, or why none (`idle`); and how many other computers of the city could take it. */
+    copy: archiveCopyDutySchema.optional(),
+    idle: z.enum(ARCHIVE_SHARE_IDLE_WHYS).optional(),
+    computers: z.number().int().min(0).max(1000).optional(),
 });
 
 /**

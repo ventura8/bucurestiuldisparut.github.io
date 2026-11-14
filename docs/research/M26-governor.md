@@ -145,6 +145,11 @@ Actuators:
 - `Gate`: paused, `RunFlags.check()` and `RunFlags.gdal_progress()` wait (a GDAL call blocks inside its own progress
   callback: memory kept, no processor time used); the time waited moves the step's time limit, and a cancel or a
   SIGTERM still ends the wait at once.
+- Sharing scanned maps (M20 §22, 2026-11-14; `worker/sharing.py` `SharePacing`): the holder's sharing thread reads the profile in
+  force (`profile_of(governor.budget)`): nothing while `paused` (the owner's pause, the battery, the heat; a copy under way waits at
+  its next sheet), and an average upload of at most 1 MiB/s while `quiet` (about 8 Mbit/s of a home line, so the person at the computer
+  keeps their connection) or 8 MiB/s at `full`, a sheet at a time; an unknown profile (before the first tick) counts as quiet. Its
+  reads are in the idle I/O class with the rest of the worker.
 - The matcher: each request (`matcher/box.py` `MatcherBudget`, an optional `budget` array in the request's `.npz`)
   carries the processor threads, keypoints, the card's share and whether the card must be left; the sidecar's child
   sets `torch.set_num_threads`, `torch.cuda.set_per_process_memory_fraction` and ALIKED's `max_num_keypoints`.

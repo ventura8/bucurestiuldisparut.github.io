@@ -853,10 +853,8 @@ too (`imagery.retry` drops `archiveReturns` and `archiveCopy`).
 Tests: `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/{test_archive_copy,test_worker_copying,test_worker_loop}.py`;
 scenarios `S-A120-HAPPY-ARCHIVE-COPY`, `S-A120-BAD-ARCHIVE-COPY`, `S-P20-HAPPY-ARCHIVE-COPY`, `S-P20-BAD-ARCHIVE-COPY`.
 
-**Step 2 (next): the copy over the home network and pre-seeding.** The holding worker serves its archive's files on a separate LAN
-endpoint (off unless the city has more than one paired worker; a short-lived read-only token minted by a callable for the city's
-paired workers; archive files only, no path outside the archive), advertised in the worker's document; the bucket stays the fallback.
-While idle, the holder pre-seeds the other computers under the governor's limits.
+**Step 2 (done 2026-11-14 through the bucket, §22): sharing while busy and pre-seeding.** The copy over the home network (a LAN
+endpoint on the holder) stays a later option, the bucket its fallback: §22 says why the bucket came first.
 
 ## 21. A stitched film on another computer (live report of 2026-11-13; DECISIONS §217)
 
@@ -878,3 +876,39 @@ preference is the whole fix; the LAN copy of step 2 could carry films later.
 Tests: `functions/test/worker/film-host.test.ts`, `pipeline/tests/unit/test_film_host.py`, `test_worker_loop.py`,
 `pipeline/tests/integration/test_whole_frame.py`; scenarios `S-A120-HAPPY-FILM-HOST`, `S-A120-BAD-FILM-GONE`, `S-P20-HAPPY-FILM-HOST`,
 `S-P20-BAD-FILM-GONE`.
+
+## 22. Sharing while busy: the holder pre-seeds the other computers (the owner's request of 2026-11-14; DECISIONS §229)
+
+**What happened.** Eight queued "Bucuresti actual" series (4,534 and 525 sheets among them) waited `archive-copy` while the PC and
+the NUC idled. The laptop that imported `harti.zip` (worker `w-c9cc212966de0cb3`) was running a long declassified-frame job with its
+person at it (`quiet`, `user-active`): §20's copy was asked only by the holder's **claim**, and a busy holder does not claim, while a
+pressed one is answered `yielded` before any copy offer. Only the holder has the files, so the series waited for it to be idle and
+calm. The owner: other household computers should work on `harti.zip` and the other imported files, with no step of theirs.
+
+| Part | What it does |
+| --- | --- |
+| The sharing thread (`worker/sharing.py` `Sharer`, started by `Worker.serve`) | Beside the job loop, also while a job runs: `worker.archiveCopy {kind: 'wanted', archives}` (no `jobId`) with the archives this computer holds whole; a named series is sent with `CopySender` (`archive/copy.py`), then it asks again after 1 s; `nothing` or `alone` waits 2 minutes, `dayLimit` 30 minutes, a refusal or a network failure 2 minutes; while paused or without a session it asks nothing (30 s). |
+| What the server names (`functions/src/worker/archive-share.ts`, `archive-host.ts`) | A series a worker handed back (`archive-copy`, oldest first) whatever else; else, when another computer of the city was seen in the last 10 minutes (`SHARE_PEER_SECONDS`; a busy one's heartbeat refreshes it) and is neither paused, disconnected nor being removed, the **newest** queued series of its archives not copied yet (`sharable`: queued, not cancelled, not paused, not waiting for a later day's share, no `archiveCopy`) among the oldest 20 queued local jobs; the holder's own claim takes the oldest. |
+| Signing and `done` | `objects` and `done` take any `sharable` series, not only one waiting: a pre-seeded series is copied before any computer claims it; `done` records `archiveCopy` and `waitReason: 'worker'` as before. A computer that claims a series whose copy is still under way finds no manifest (it is written last) and hands it back once (§20); `done` then lets it be claimed again. |
+| The claim | A worker that shares on its own says `shares: true` and is never answered `copy`. A series waiting `archive-copy` is claimable by a worker whose claim names its archive (`archiveHere`): the holder runs it itself when it does not share it (an older worker, the day's limit), and nobody else takes it. |
+| The governor (M26 §4) | `SharePacing`: nothing while the profile is `paused` (the owner's pause, the battery, the heat; a copy under way waits at its next sheet); an average upload of at most 1 MiB/s while `quiet` and 8 MiB/s at `full`, a sheet at a time; the worker's I/O is already in the idle class. |
+| Resumable, verified | A sheet already in the bucket with the same MD5 is not sent again (`SignedObjectStore.upload_file`), so a copy cut short (SIGTERM: `ShareStoppedError` at the next sheet, never `done`; a power cut) resumes where it stopped; every upload is checked against Cloud Storage's MD5, and the receiving worker checks every sheet's SHA-256 (§20). |
+| Progress (`progress`, the Computers card) | At the copy's start and at most every 15 s: `worker.sharing {state: 'sending', computers, jobId, sentBytes, totalBytes, day, dayBytes, at}`; `done` sets `state: 'done'` and adds the bytes to the day's. The card (`household-sharing.ts`) shows "Sharing scanned maps with 2 other computers, so they can work on them too. 120 MB of 677 MB sent." with a progress bar while `sending` was said in the last 10 minutes. |
+| Cost guards | Uploading to the bucket is free; each byte shared is downloaded once by another computer, the only billed traffic (about USD 0.12 a GB). Each computer shares at most `ARCHIVE_SHARE_DAY_BYTES` (20 GB, about USD 2.4) a UTC day: past it `wanted` answers `dayLimit`, the card says "Sharing stopped until tomorrow: today's copies reached 20 GB. That daily limit keeps the cloud bill low. Meanwhile this computer works on these maps itself; the others do other work.", and the holder claims the waiting series itself. One copy may pass the limit by at most one series (`ARCHIVE_COPY_MAX_BYTES`). The budget guard red refuses every kind (`apiError.guardPaused`), and nothing is shared when no other computer could take it (`alone`). |
+| Cleanup | `tmp/` is deleted by the bucket's lifecycle after one day (`PRIVATE_BUCKET_LIFECYCLE`): one sharing costs at most a day of storage, a few cents for gigabytes. The receiving computer keeps the sheets as a partial record (§20), so a later run of the same series (after the owner's points) needs no second copy; they count in its folder's size on the Computers card. |
+| Privacy | The sheets go only to the project's private bucket, under `tmp/archive-copies/{city}/{job}/`, by signed URLs minted for the city's paired workers, and only to a worker claiming that job; nothing reaches the public bucket or the viewer. A series marked `do-not-publish` is shared like any other (it stays private), never published. |
+
+**Why the bucket, not the home network.** The bucket path existed, is verified end to end and works between computers on different
+networks (the PC's WSL and the NUC sit behind NAT and Docker's bridges); a LAN endpoint needs a listening port on the holder, its
+token and the starter's firewall rule on three systems. With the 20 GB daily cap the bucket costs at most about USD 2.4 a day; the LAN
+copy stays the later saving.
+
+**What Update the map enables.** The functions (`worker.archiveCopy`'s `wanted` and `progress`, `worker.claim`'s `shares` and the
+holder's claim of a waiting series) and the pipeline image (the sharing thread) ship together with Setup's **Update the map**; the
+workers then update themselves to the installed image. Until then the laptop keeps §20's behaviour.
+
+Tests: `functions/test/worker/archive-share.test.ts`, `archive-host.test.ts`, `pipeline/tests/unit/test_worker_sharing.py`,
+`test_worker_loop.py`, `packages/admin/test/worker/household.test.ts`, `packages/ui/test/admin/worker/household-sharing.test.ts`,
+`e2e/admin/specs/imagery/household.spec.ts` (tour state `worker.household-sharing`); scenarios `S-A120-HAPPY-ARCHIVE-SHARE`,
+`S-A120-BAD-ARCHIVE-SHARE`, `S-A120-BAD-ARCHIVE-SHARE-DAY`, `S-P20-HAPPY-ARCHIVE-SHARE`, `S-P20-BAD-ARCHIVE-SHARE-PAUSED`,
+`S-P20-BAD-ARCHIVE-SHARE-STOPPED`, `S-A143-HAPPY-SHARING`, `S-A143-BAD-SHARING-DAY-LIMIT`, `S-A143-BAD-SHARING-STALE`.

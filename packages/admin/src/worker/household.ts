@@ -8,6 +8,8 @@
  *   helper's and pipeline's versions. Rename, Pause and Resume are `worker.manage`.
  * - **Its disk** (cleanup item 6, 2026-11-14): what the worker's folder uses and the free space of its disk, a warning when it is below
  *   the worker's floor (it takes no new map work), and **Free space now** (`worker.manage` `freeSpace`), then what it freed.
+ * - **What it shares** (M20 §22, 2026-11-14): a computer holding scanned maps sends their series to the others through the bucket,
+ *   also while it works: "Sharing scanned maps with 2 computers", how far, or stopped for today at the day's limit.
  * - **Remove this computer** (the owner's order: clean up first, disconnect second, no command): `worker.manage` `remove` asks
  *   the computer's worker, at its next claim, to clean the computer up; the list follows its word (asked, cleaning, done, or
  *   failed and why). An offline computer does it when it next comes on. **Disconnect now anyway** is `worker.revoke`, and only
@@ -26,6 +28,7 @@ import {
     type WorkerOs,
     type WorkerRemoval,
     type WorkerShare,
+    type WorkerSharing,
 } from '@hcm/shared';
 
 import { isoOf, LiveList, type ListState, type LoadStatus } from '../content/list.js';
@@ -38,6 +41,8 @@ import { Store } from '../state/store.js';
 const TICK_MS = 30_000;
 /** A disconnected computer stays in the list this long, with how it ended. */
 const GONE_MS = 24 * 3600 * 1000;
+/** A copy said `sending` longer ago than this is no longer shown: the computer stopped (its next start resumes the copy). */
+const SHARING_FRESH_MS = 10 * 60 * 1000;
 /** The most computers one list shows. */
 const COMPUTERS_MAX = 20;
 
@@ -69,6 +74,8 @@ interface ComputerView {
     readonly freeing: boolean;
     /** What its last "Free space now" freed, and when. */
     readonly freed: { readonly bytes: number; readonly at: string } | null;
+    /** M20 §22: the scanned maps it is sharing now (for how many computers, how far), or stopped for today; null otherwise. */
+    readonly sharing: (Pick<WorkerSharing, 'computers' | 'sentBytes' | 'totalBytes'> & { readonly state: 'sending' | 'dayLimit' }) | null;
 }
 
 export interface HouseholdState {
@@ -162,6 +169,23 @@ function diskOf({ disk, freeSpaceAskedAt, freed }: WorkerDoc): Pick<ComputerView
     return { disk: said, freeing: waiting(freeSpaceAskedAt, done), freed: done };
 }
 
+/** True when the worker's sharing is worth a line now: a copy said lately, or today's limit reached today (UTC). */
+function current(sharing: WorkerSharing, now: number): boolean {
+    if (sharing.state === 'dayLimit') {
+        return sharing.day === new Date(now).toISOString().slice(0, 10);
+    }
+    return sharing.state === 'sending' && Date.parse(isoOf(sharing.at)) + SHARING_FRESH_MS > now;
+}
+
+/** M20 §22: what the computer shares now, or null (nothing, a copy finished, or a word too old). */
+function sharingOf({ sharing }: WorkerDoc, now: number): ComputerView['sharing'] {
+    if (sharing === undefined || !current(sharing, now)) {
+        return null;
+    }
+    const { computers, sentBytes, totalBytes } = sharing;
+    return { state: sharing.state === 'dayLimit' ? 'dayLimit' : 'sending', computers, sentBytes, totalBytes };
+}
+
 /** The owner's name for it, else the computer's own, else null. */
 function nameOf({ name, host }: WorkerDoc): string | null {
     return name ?? host ?? null;
@@ -177,6 +201,7 @@ function computerOf(doc: Stored<WorkerDoc>, now: number): ComputerView {
         ...{ id: doc.id, online, state: data.state, paused: data.pausedAt !== undefined, ...saidOf(data) },
         ...{ version: data.version, outdated: data.outdated === true, seenAt, removal: removalOf(data.removal), revoked },
         ...diskOf(data),
+        sharing: revoked ? null : sharingOf(data, now),
     };
 }
 

@@ -365,6 +365,8 @@ export type {
 // M7: the local worker's callables, and the whole table (the functions' and the tests'; the admin reads ADMIN_CALLABLES).
 export {
     ARCHIVE_COPY_MAX_BYTES,
+    ARCHIVE_SHARE_DAY_BYTES,
+    ARCHIVE_SHARE_IDLE_WHYS,
     WORKER_CALLABLES,
     workerArchiveCopyRequestSchema,
     workerArchiveCopyResponseSchema,

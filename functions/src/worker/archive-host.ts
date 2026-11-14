@@ -6,6 +6,8 @@
  * series to send (`copy`) before any job; `worker.archiveCopy` signs the copy's files under `tmp/archive-copies/` (deleted after a
  * day) and, once it is complete, lets the job be claimed again. The computer the archive's report came from never hands it back
  * (its files are gone: `archiveMissing`), and neither does a job handed back `ARCHIVE_RETURNS_MAX` times.
+ * M20 §22 (2026-11-14): the holder shares from a thread of its own (`archive-share.ts`), also while it runs a job, and before any
+ * worker hands the series back: any queued series of its archive not copied yet is `sharable` when another computer could take it.
  */
 import { FIRESTORE_PATHS, archiveDocSchema, jobDocSchema, type CallableResponse, type JobDoc } from '@hcm/shared';
 
@@ -38,12 +40,41 @@ async function reporterOf(reader: DocumentReader, cityId: string, archiveId: str
     return (await reader.get(FIRESTORE_PATHS.archive(cityId, archiveId), archiveDocSchema))?.workerId;
 }
 
+/**
+ * Whether a worker may take `job` for the sheets it waits on: a series waiting for its sheets' copy (`archive-copy`) goes only to a
+ * worker that holds its archive whole (M20 §22: the holder runs it itself when it cannot share it, e.g. past today's limit); every
+ * other job, to any worker.
+ */
+export function archiveHere(job: JobDoc, archives: readonly string[] | undefined): boolean {
+    return job.waitReason !== 'archive-copy' || (archives ?? []).includes(String(archiveOf(job)));
+}
+
 /** A queued archive series waiting for its sheets' copy. */
-export function awaitingCopy(job: JobDoc | undefined): job is JobDoc {
+function awaitingCopy(job: JobDoc | undefined): job is JobDoc {
     return job?.status === 'queued' && job.waitReason === 'archive-copy' && job.cancelRequested !== true && archiveOf(job) !== undefined;
 }
 
-type Copy = NonNullable<CallableResponse<'worker.claim'>['copy']>;
+/** What makes a job one whose sheets the holder may put in the bucket for another computer (M20 §22), each rule on its own. */
+const SHARABLE_RULES: readonly ((job: JobDoc) => boolean)[] = [
+    (job) => job.status === 'queued' && archiveOf(job) !== undefined,
+    (job) => job.cancelRequested !== true && job.paused === undefined,
+    // A series waiting for a later day's share runs later; a copy now would expire before it.
+    (job) => job.waitReason !== 'daily',
+    // One copy a job: a series copied already is not sent again, unless a worker handed it back for a new one.
+    (job) => job.waitReason === 'archive-copy' || job.archiveCopy === undefined,
+];
+
+/** A queued archive series whose copy may be sent now: waiting for it, or (M20 §22) not copied yet. */
+export function sharable(job: JobDoc | undefined): job is JobDoc {
+    return job !== undefined && SHARABLE_RULES.every((rule) => rule(job));
+}
+
+export type Copy = NonNullable<CallableResponse<'worker.claim'>['copy']>;
+
+/** The copy duty of a job of an archive series (its archive and series from its parameters). */
+function dutyOf(jobId: string, job: JobDoc): Copy {
+    return { jobId, archiveId: String(archiveOf(job)), seriesId: String(job.params['seriesId']) };
+}
 
 /** The oldest series waiting for a copy whose archive the claiming worker holds whole, or undefined. */
 export async function copyFor(
@@ -58,10 +89,25 @@ export async function copyFor(
         where: [['waitReason', '==', 'archive-copy']],
         limit: COPY_SCAN,
     });
-    const copies = waiting.documents
-        .filter((job) => awaitingCopy(job.data))
-        .map((job) => ({ jobId: job.id, archiveId: String(archiveOf(job.data)), seriesId: String(job.data.params['seriesId']) }));
+    const copies = waiting.documents.filter((job) => awaitingCopy(job.data)).map((job) => dutyOf(job.id, job.data));
     return copies.find((copy) => archives.includes(copy.archiveId));
+}
+
+/**
+ * M20 §22: a queued series of an archive the worker holds whole, not copied yet, for another computer to run: the newest of the
+ * oldest `COPY_SCAN` queued local jobs (the holder's own claim takes the oldest), or undefined.
+ */
+export async function preseedFor(deps: Pick<Ports, 'documents'>, cityId: string, archives: readonly string[]): Promise<Copy | undefined> {
+    const queued = await deps.documents.query(FIRESTORE_PATHS.jobs(cityId), jobDocSchema, {
+        where: [
+            ['runOn', '==', 'local'],
+            ['status', '==', 'queued'],
+        ],
+        orderBy: ['createdAt', 'asc'],
+        limit: COPY_SCAN,
+    });
+    const copies = queued.documents.filter((job) => sharable(job.data)).map((job) => dutyOf(job.id, job.data));
+    return copies.toReversed().find((copy) => archives.includes(copy.archiveId));
 }
 
 /** True when the job's next return ends it: the computer its archive came from lost the files, or the copies never helped. */

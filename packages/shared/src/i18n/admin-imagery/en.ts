@@ -54,7 +54,7 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.wait.parts': 'Waiting for its frames',
     'adminContent.imagery.wait.daily': 'Waiting for a later day: today’s share of new layers is used',
     'adminContent.imagery.wait.filmCopy': 'Waiting for the computer that cut this frame from its film: turn it on, it goes on by itself.',
-    'adminContent.imagery.wait.archiveCopy': 'Waiting for the computer that has these scanned maps: turn it on, it sends a copy.',
+    'adminContent.imagery.wait.archiveCopy': 'Waiting for the computer with these scanned maps to send a copy: turn it on if it is off.',
     'adminContent.imagery.version.processing': 'Processing',
     'adminContent.imagery.version.needsGcps': 'Needs points',
     'adminContent.imagery.version.awaitingApproval': 'Awaiting approval',

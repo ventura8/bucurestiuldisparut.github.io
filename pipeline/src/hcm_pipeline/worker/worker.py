@@ -18,6 +18,7 @@ import httpx
 
 from hcm_pipeline.archive.intake import ArchiveStore
 from hcm_pipeline.governor.actuate import Actuators, idle_io
+from hcm_pipeline.governor.budget import Budget
 from hcm_pipeline.governor.governor import Governor, owner_threads
 from hcm_pipeline.governor.probe_linux import LinuxProbe
 from hcm_pipeline.log import get_logger
@@ -38,6 +39,7 @@ from hcm_pipeline.worker.pairing import Connector, Pairing, SessionFile, Signer
 from hcm_pipeline.worker.runtime import StepsFactory, WorkerRuntime, signed_client
 from hcm_pipeline.worker.server import LocalServer
 from hcm_pipeline.worker.session import Session
+from hcm_pipeline.worker.sharing import Sharer, sharer
 from hcm_pipeline.worker.state import WorkerState
 from hcm_pipeline.worker.webconfig import WebConfig
 
@@ -47,6 +49,24 @@ LOG = get_logger("worker")
 EVERY_INTERFACE: Final = ""
 WORKER_ID_PREFIX: Final = "w-"
 HOST_ROOT: Final = Path("/")
+
+
+def profile_of(budget: Budget | None) -> str | None:
+    """The governor's profile in force (`full`, `quiet`, `paused`), None before its first tick."""
+    return None if budget is None else budget.profile
+
+
+def sharing_thread(
+    args: WorkerArgs, caller: tuple[WorkerApi, str], parts: tuple[Session, Governor, WorkerLoop], store: ArchiveStore
+) -> Sharer:
+    """M20 §22: the archives' series shared from a thread of their own, also while a job runs, under the governor's budget; the
+    loop's claims then say `shares`."""
+    (api, worker_id), (session, governor, loop) = caller, parts
+    sharing = sharer(api, args.city, worker_id, store, signed_client(args.emulators))
+    sharing.signed_in = lambda: session.active
+    sharing.profile = lambda: profile_of(governor.budget)
+    loop.shares = True
+    return sharing
 
 
 def new_worker_id() -> str:
@@ -68,6 +88,7 @@ class Worker:
     connector: Connector
     governor: Governor
     governing: threading.Event
+    sharer: Sharer
 
     @classmethod
     def build(
@@ -141,7 +162,11 @@ class Worker:
         # W5: each claim says the governor's share, so a computer whose person is at it leaves the job to a calm one.
         loop.share = lambda: share_of(governor.machine())
         actions.remove_here = loop.remove_here
-        return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector, governor, threading.Event())
+        # M20 §22: the archives' series shared from a thread of their own (`sharing_thread`).
+        return cls(
+            *(session, api, state, actions, server, loop, runtime, client, worker_id, connector, governor, threading.Event()),
+            sharing_thread(args, (api, worker_id), (session, governor, loop), archives),
+        )
 
     def govern(self, lower: Callable[[], None] = idle_io) -> None:
         """The person at the computer first: the idle I/O class (the command niced the process), then the governor's ticks in a thread
@@ -153,6 +178,7 @@ class Worker:
     def serve(self) -> None:
         """The page in a thread, the loop here, until SIGTERM or Ctrl-C."""
         self.server.start()
+        threading.Thread(target=self.sharer.run, name="sharing", daemon=True).start()
         LOG.info(
             "worker %s: open http://localhost:%d/ to see what it does (the admin's command signs it in)", self.worker_id, self.server.port
         )
@@ -165,6 +191,7 @@ class Worker:
     def close(self) -> None:
         """The page's socket and every client closed (the tokens go with the process)."""
         self.governing.set()
+        self.sharer.stop()
         self.server.stop()
         self.runtime.close()
         self.client.close()

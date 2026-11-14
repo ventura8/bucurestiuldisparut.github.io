@@ -328,6 +328,18 @@ def test_happy_path_a_claim_names_the_archives_held_and_a_copy_is_sent_before_an
     assert server.calls[0][1]["films"] == ["job-film"]
 
 
+def test_happy_path_a_worker_that_shares_on_its_own_says_so_with_each_claim() -> None:
+    """M20 §22 (2026-11-14): the sharing thread sends the copies; the claim says `shares`. Scenarios: S-P20-HAPPY-ARCHIVE-SHARE"""
+    server = Server()
+    loop, _state, _session = loop_with(server, Runtime())
+    loop.run_once()
+    loop.shares = True
+    loop.run_once()
+
+    assert ["shares" in data for _name, data in server.calls] == [False, True]
+    assert server.calls[1][1]["shares"] is True
+
+
 def test_bad_path_a_run_without_the_sheets_is_reported_returned() -> None:
     """M20 (2026-11-13): no sheets and no copy: the server queues the job again unspent. Scenarios: S-P20-BAD-ARCHIVE-COPY"""
     server, runtime = Server("job-1"), Runtime(RunOutcome.RETURNED)

@@ -20,7 +20,7 @@ import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { omit } from '../api/objects.js';
 import { IMAGERY_WRITER } from '../imagery/records.js';
 import type { Ports } from '../ports/index.js';
-import { copyFor } from './archive-host.js';
+import { archiveHere, copyFor } from './archive-host.js';
 import { diskWordOf, freeSpaceOf, jobStatesOf, releaseOrphan, withDisk, type DiskWord } from './cleanup.js';
 import { activePause, afterCommand, pauseAnswer } from './pause-state.js';
 import { filmHere } from './film-host.js';
@@ -43,8 +43,6 @@ const CLAIM_RULES: readonly ((job: JobDoc, now: Date) => boolean)[] = [
     (job) => job.waitReason !== 'parts',
     // M20 (docs/research/M20-import-local.md §1.3): an archive series waiting for a later day's share; imagery.tick releases it.
     (job) => job.waitReason !== 'daily',
-    // M20 (live report of 2026-11-13): a series waiting for its sheets' copy; the computer with the archive sends it first.
-    (job) => job.waitReason !== 'archive-copy',
     (job, now) => [job.dispatchAt, job.retryAt].every((time) => time === undefined || timestampToDate(time) <= now),
     // Pause (the owner's request of 2026-11-13): a job the owner paused waits for Resume.
     (job) => job.paused === undefined,
@@ -56,6 +54,9 @@ type Runs = readonly string[] | undefined;
 /** The jobs whose stitched film the worker holds (a job waiting for its film goes only to such a worker). */
 type Films = readonly string[] | undefined;
 
+/** The local archives the worker holds whole (a series waiting for its sheets' copy goes only to such a worker). */
+type Archives = readonly string[] | undefined;
+
 /**
  * The worker's call: the types it runs, its films, (W5) its governor's share, its own page's pause command (recorded with the
  * claim), and (cleanup item 6) its disk and what its last "Free space now" freed.
@@ -64,16 +65,23 @@ type Claim = WorkerCall &
     DiskWord & {
         readonly runs: Runs;
         readonly films: Films;
+        readonly archives: Archives;
         readonly share?: WorkerShare;
         readonly pause?: CallableRequest<'worker.claim'>['pause'];
     };
 
-function claimable(job: JobDoc | undefined, now: Date, call: Pick<Claim, 'runs' | 'films'>, jobId: string): job is JobDoc {
+/** True when the worker's pipeline runs `type` (an older worker that named none runs every type). */
+function runsHere(runs: Runs, type: string): boolean {
+    return runs === undefined || runs.includes(type);
+}
+
+function claimable(job: JobDoc | undefined, now: Date, call: Pick<Claim, 'runs' | 'films' | 'archives'>, jobId: string): job is JobDoc {
     return (
         job !== undefined &&
         CLAIM_RULES.every((rule) => rule(job, now)) &&
-        (call.runs === undefined || call.runs.includes(job.type)) &&
-        filmHere(job, jobId, call.films)
+        runsHere(call.runs, job.type) &&
+        filmHere(job, jobId, call.films) &&
+        archiveHere(job, call.archives)
     );
 }
 
@@ -178,6 +186,7 @@ async function workerClaim(
         ...call,
         runs: request.types,
         films: request.films,
+        archives: request.archives,
         ...(request.share === undefined ? {} : { share: request.share }),
         ...(request.pause === undefined ? {} : { pause: request.pause }),
         ...diskWordOf(request),
@@ -194,13 +203,14 @@ async function claimFor(
     deps: ClaimDeps,
     caller: VerifiedCaller,
     claim: Claim,
-    said: Pick<CallableRequest<'worker.claim'>, 'archives' | 'held'>,
+    said: Pick<CallableRequest<'worker.claim'>, 'archives' | 'held' | 'shares'>,
 ): Promise<CallableResponse<'worker.claim'>> {
     const now = deps.clock.now();
     // Pause: the computer's own page's command first, an expired pause dropped (`pause-state.ts`).
     const worker = afterCommand(await requireWorker(deps.documents, claim), claim.pause, now);
     await releaseOrphan(deps, claim, worker, now);
-    const answer = await answerFor(deps, caller, { claim, worker, now }, said.archives);
+    // M20 §22: a worker that shares from its own thread (`shares`) is never asked for a copy with its claim.
+    const answer = await answerFor(deps, caller, { claim, worker, now }, said.shares === true ? undefined : said.archives);
     return { ...answer, ...freeSpaceOf(seen(worker, claim, now)), ...(await jobStatesOf(deps, claim.cityId, said.held)) };
 }
 

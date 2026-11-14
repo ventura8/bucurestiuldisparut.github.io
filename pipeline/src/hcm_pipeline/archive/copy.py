@@ -7,13 +7,16 @@ day), through the signed URLs of `worker.archiveCopy`, then says `done` with the
 not the sheets (`ensure_series`) reads the manifest through `worker.urls`, downloads the sheets, checks every SHA-256 and keeps them
 in its own archive store (`ArchiveStore.merge_copy`, never named as held whole); with no copy yet it raises
 `ArchiveElsewhereError`, and the worker hands the job back without spending an attempt.
+M20 §22 (2026-11-14): the holder shares from a thread of its own (`worker/sharing.py`), also while it runs a job; its `Pacing` is told
+the copy's size, then each sheet sent, and keeps the governor's rate, says the progress, and stops the copy (`ShareStoppedError`)
+when the worker ends. A sheet already in the bucket with the same MD5 is not sent again (`upload_file`), so a copy cut short resumes.
 """
 
 import json
 import tempfile
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Final
+from typing import Final, Protocol
 
 from hcm_pipeline.archive.intake import ArchiveStore, IntakeError
 from hcm_pipeline.archive.probe import sha256_file
@@ -27,6 +30,28 @@ MANIFEST: Final = "manifest.json"
 SHEET_TYPE: Final = "application/octet-stream"
 MANIFEST_TYPE: Final = "application/json"
 ARCHIVE_SERIES: Final = "archive-series"
+
+
+class ShareStoppedError(Exception):
+    """M20 §22: the worker is ending, or the computer paused for good, while a copy was being sent: the copy stops where it is."""
+
+
+class Pacing(Protocol):
+    """How a copy is sent (M20 §22): told its size, then each sheet sent; may wait (the governor's rate) or stop the copy."""
+
+    def start(self, job_id: str, total: int) -> None: ...
+
+    def sent(self, size: int) -> None: ...
+
+
+class NoPacing:
+    """A copy asked by a claim, sent at once between two jobs."""
+
+    def start(self, job_id: str, total: int) -> None:
+        return None
+
+    def sent(self, size: int) -> None:
+        return None
 
 
 def copy_path(city_id: str, job_id: str, name: str) -> str:
@@ -58,24 +83,34 @@ class CopySender:
         self._objects = objects
         self._finish = finish
 
-    def send(self, city_id: str, duty: Mapping[str, object]) -> None:
-        """The copy the claim asked for, or a logged refusal (the job keeps waiting; the next claim asks again)."""
+    def send(self, city_id: str, duty: Mapping[str, object], pacing: Pacing | None = None) -> bool:
+        """The copy asked for, or a logged refusal (the job keeps waiting; the next ask names it again); True when it was sent."""
         job_id, archive_id, series_id = (str(duty.get(key, "")) for key in ("jobId", "archiveId", "seriesId"))
         try:
-            sent = self._send(city_id, job_id, archive_id, series_id)
+            sent = self._send(city_id, (job_id, archive_id, series_id), pacing or NoPacing())
+        except ShareStoppedError:
+            LOG.info("the copy of series %s for job %s stopped: the worker is ending", series_id, job_id)
+            return False
         except (IntakeError, UnsafePathError, ObjectStoreError, OSError) as error:
             LOG.warning("the copy of series %s of %s for job %s was not sent: %s", series_id, archive_id, job_id, error)
-            return
+            return False
         self._finish(job_id, sent)
         LOG.info("series %s of %s copied for job %s: %d bytes through the bucket", series_id, archive_id, job_id, sent)
+        return True
 
-    def _send(self, city_id: str, job_id: str, archive_id: str, series_id: str) -> int:
+    def _send(self, city_id: str, duty: tuple[str, str, str], pacing: Pacing) -> int:
+        job_id, archive_id, series_id = duty
         manifest = manifest_of(self._store, archive_id, series_id)
         objects, root, sent = self._objects(job_id), self._store.files(archive_id), 0
-        for sha, path in {str(row.get("sha256")): str(row.get("path")) for row in _rows(manifest)}.items():
-            local = inside(root, path)
+        sheets = {
+            sha: inside(root, path) for sha, path in {str(row.get("sha256")): str(row.get("path")) for row in _rows(manifest)}.items()
+        }
+        pacing.start(job_id, sum(local.stat().st_size for local in sheets.values()))
+        for sha, local in sheets.items():
             objects.upload_file(local, copy_path(city_id, job_id, sha), SHEET_TYPE)
-            sent += local.stat().st_size
+            size = local.stat().st_size
+            sent += size
+            pacing.sent(size)
         with tempfile.TemporaryDirectory(prefix="hcm-copy-") as folder:
             listed = Path(folder) / MANIFEST
             listed.write_text(json.dumps(manifest), encoding="utf-8")

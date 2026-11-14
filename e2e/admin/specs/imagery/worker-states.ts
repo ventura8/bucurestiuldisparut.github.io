@@ -115,6 +115,11 @@ export const WORKER_STATES = {
         title: 'Jobs: a computer whose disk is almost full: why it takes no new work, Free space now, or make room on it',
         visit: 'specs/imagery/household.spec.ts',
     },
+    // M20 §22 (2026-11-14): a computer sharing its scanned maps with the others, and how far.
+    'worker.household-sharing': {
+        title: 'Jobs: a computer sharing its scanned maps with two other computers, how far the copy got',
+        visit: 'specs/imagery/household.spec.ts',
+    },
     'worker.household-forced': {
         title: 'Jobs: a computer that is off waits to clean up; Disconnect now anyway, then the line that cleans it by hand',
         visit: 'specs/imagery/household.spec.ts',
