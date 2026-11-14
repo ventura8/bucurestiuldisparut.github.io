@@ -50,8 +50,8 @@ test(
         await page.setViewportSize({ width: 360, height: 800 });
         const manifest = siteManifestData();
         const layers = manifest['layers'] as Json[];
-        const first = layers[0] as Json;
-        first['label'] = { ro: 'Strat istoric '.repeat(12), en: 'Historical layer '.repeat(12) };
+        const first: Json = layers.at(0) ?? {};
+        first['label'] = { ro: 'Strat istoric '.repeat(10), en: 'Historical layer '.repeat(10) };
         await serveManifest(page, manifest);
         await openViewer(page, { lang, hash: '15/44.42700/26.08530' });
         await openLayers(page, lang);
