@@ -121,6 +121,16 @@ describe('rights (§7)', () => {
     });
 });
 
+describe('the restitch flag (DECISIONS §216g)', () => {
+    it('happyPath_onlyAnArchiveSeriesJobTakesTheRestitchFlag', () => {
+        const params = { archiveId: 'ar-0123456789abcdef', seriesId: 's-0123456789ab', class: 'pieces', sheets: 60, order: 0 };
+        expect(validate(archiveSeriesParamsSchema, { ...params, restitch: true }).ok).toBe(true);
+        expect(validate(archiveSeriesParamsSchema, { ...params, restitch: false }).ok).toBe(true);
+        expect(validate(archiveSeriesParamsSchema, { ...params, unknownFlag: true }).ok).toBe(false);
+        expect(validate(JOB_PARAMS_SCHEMAS.regeoref, { basedOn: 'v1', restitch: true }).ok).toBe(false);
+    });
+});
+
 describe('the report and the job (§2.4, §4)', () => {
     const report = {
         name: 'harti.zip',
@@ -173,14 +183,6 @@ describe('the report and the job (§2.4, §4)', () => {
         const request = { cityId: 'bucharest', archiveId: 'ar-0123456789abcdef', series: [choice] };
         expect(validate(imageryArchiveImportRequestSchema, request).ok).toBe(true);
         expect(validate(imageryArchiveImportRequestSchema, { ...request, series: [choice, choice] }).ok).toBe(false);
-    });
-
-    it('happyPath_onlyAnArchiveSeriesJobTakesTheRestitchFlag', () => {
-        const params = { archiveId: 'ar-0123456789abcdef', seriesId: 's-0123456789ab', class: 'pieces', sheets: 60, order: 0 };
-        expect(validate(archiveSeriesParamsSchema, { ...params, restitch: true }).ok).toBe(true);
-        expect(validate(archiveSeriesParamsSchema, { ...params, restitch: false }).ok).toBe(true);
-        expect(validate(archiveSeriesParamsSchema, { ...params, unknownFlag: true }).ok).toBe(false);
-        expect(validate(JOB_PARAMS_SCHEMAS.regeoref, { basedOn: 'v1', restitch: true }).ok).toBe(false);
     });
 
     it('happyPath_anArchiveSeriesJobIsLocalOnlyAndCountsWhenReleased', () => {
