@@ -1,12 +1,19 @@
 """`fetch` against the fake USGS: the waits, the refusals, the resumes and the shared deliveries."""
 
+import json
+import logging
+from pathlib import Path
+
 import httpx
 import pytest
 from hcm_pipeline.contract import Errors
-from hcm_pipeline.model import Timestamp
+from hcm_pipeline.documents import Version
+from hcm_pipeline.joblog import JobLog
+from hcm_pipeline.jobs import JobContext, RunFlags
+from hcm_pipeline.model import Job, Timestamp
 from hcm_pipeline.runner import RunOutcome
 from hcm_pipeline.secrets import SecretUnavailableError
-from hcm_pipeline.steps.fetch import _skipping, delivery_name
+from hcm_pipeline.steps.fetch import Checkpoint, _skipping, delivery_name
 
 from tests.fakes.http import Reply
 from tests.fakes.usgs_m2m import FORBIDDEN_PAGE
@@ -204,3 +211,31 @@ def test_happy_path_a_session_finished_before_the_sigterm_is_used_as_is(world: P
 
     assert only(world, "fetch") is RunOutcome.DONE
     assert len([request for request in world.http.requests if request.path.endswith(".tgz")]) == 1
+
+
+def test_bad_path_a_crash_mid_checkpoint_write_leaves_the_old_checkpoint_intact(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    world.seed_import()
+    ctx = JobContext(
+        world.config,
+        world.services(),
+        Job.of(JOB_ID, world.job()),
+        Version.of(JOB_ID, world.version()),
+        tmp_path,
+        RunFlags(),
+        JobLog(world.store, world.job_path(), world.clock, logging.getLogger("test")),
+    )
+    Checkpoint(RAW, "session-1", 1).save(ctx)
+    local = ctx.local("fetch.checkpoint.json")
+
+    def crash(_fd: int) -> None:
+        raise OSError("power cut")
+
+    monkeypatch.setattr("hcm_pipeline.durable.os.fsync", crash)
+    with pytest.raises(OSError, match="power cut"):
+        Checkpoint(RAW, "session-2", 2).save(ctx)
+
+    assert json.loads(local.read_text(encoding="utf-8")) == {"path": RAW, "session": "session-1", "waits": 1}
+    assert [path.name for path in tmp_path.iterdir()] == ["fetch.checkpoint.json"]
+    assert Checkpoint.load(ctx) == Checkpoint(RAW, "session-1", 1)

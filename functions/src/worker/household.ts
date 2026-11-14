@@ -3,14 +3,24 @@
  * next job. A computer paused in the admin's list takes none. A computer whose person is at it, whose other programs are busy,
  * that runs on battery or runs hot (its governor's share, said with each claim: M26) leaves the job to another computer of the
  * city that is calm now: connected, not paused or removed, idle, and at full share. With no calm computer it takes the job
- * anyway, at the governor's quiet pace: a job is never left waiting for a computer that is not there.
+ * anyway, at the governor's quiet pace: a job is never left waiting for a computer that is not there. A computer whose disk is below
+ * the floor its worker said (cleanup item 6) takes none either (`lowDisk`) until there is room.
  */
-import { FIRESTORE_PATHS, timestampToDate, WORKER_FRESH_SECONDS, workerDocSchema, type WorkerDoc, type WorkerShare } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    timestampToDate,
+    WORKER_FRESH_SECONDS,
+    workerDocSchema,
+    type CallableRequest,
+    type WorkerDoc,
+    type WorkerShare,
+} from '@hcm/shared';
 
 import type { Ports } from '../ports/index.js';
+import { diskLow } from './cleanup.js';
 
-/** Why a computer takes no job now: paused in the admin, or left to a calmer computer. */
-export type HoldBack = 'paused' | 'yielded';
+/** Why a computer takes no job now: paused in the admin, its disk below its floor (cleanup item 6), or left to a calmer computer. */
+export type HoldBack = 'paused' | 'lowDisk' | 'yielded';
 
 /** How many idle computers of the city one claim looks at. */
 const PEERS_MAX = 20;
@@ -52,12 +62,15 @@ async function calmPeer(documents: Ports['documents'], cityId: string, workerId:
 /** Why this computer takes no job now, or null when it may take one. */
 export async function holdBack(
     documents: Ports['documents'],
-    call: { readonly cityId: string; readonly workerId: string },
+    call: { readonly cityId: string; readonly workerId: string; readonly disk?: CallableRequest<'worker.claim'>['disk'] },
     worker: WorkerDoc,
     now: Date,
 ): Promise<HoldBack | null> {
     if (worker.pausedAt !== undefined) {
         return 'paused';
+    }
+    if (diskLow(call.disk)) {
+        return 'lowDisk';
     }
     if (!pressed(worker.share)) {
         return null;

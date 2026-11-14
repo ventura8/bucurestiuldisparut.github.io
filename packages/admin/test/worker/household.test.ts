@@ -113,6 +113,60 @@ describe('the city computers', () => {
     });
 });
 
+describe('the disk of each computer', () => {
+    const GB = 1024 ** 3;
+    const disk = { workBytes: 12 * GB, freeBytes: 4 * GB, floorBytes: 10 * GB };
+
+    it('happyPath_theDiskAndWhatFreeSpaceNowFreedAreShown @S-A62-HAPPY-FREE-SPACE', async () => {
+        const world = contentWorld();
+        const seen = before(world, 30);
+        world.store.docs.set(
+            FIRESTORE_PATHS.worker(CITY, WORKER),
+            workerDoc(seen, {
+                disk: { ...disk, at: at(seen) },
+                freeSpaceAskedAt: at(before(world, 600)),
+                freed: { bytes: 3 * GB, at: at(before(world, 60)) },
+            }),
+        );
+        world.store.docs.set(
+            FIRESTORE_PATHS.worker(CITY, 'w-1111111111111111'),
+            workerDoc(seen, { disk: { ...disk, at: at(seen) }, freeSpaceAskedAt: at(before(world, 60)) }),
+        );
+        world.store.docs.set(FIRESTORE_PATHS.worker(CITY, 'w-2222222222222222'), workerDoc(before(world, 20)));
+        const household = householdOf(world);
+        await settle();
+
+        expect(household.state.computers).toMatchObject([
+            { id: 'w-2222222222222222', disk: null, freeing: false, freed: null },
+            { id: WORKER, disk, freeing: false, freed: { bytes: 3 * GB, at: before(world, 60) } },
+            { id: 'w-1111111111111111', disk, freeing: true, freed: null },
+        ]);
+        household.stop();
+    });
+
+    it('badPath_anOlderOutcomeDoesNotAnswerANewerRequest @S-A62-BAD-FREE-SPACE', async () => {
+        const world = contentWorld();
+        world.store.docs.set(
+            FIRESTORE_PATHS.worker(CITY, WORKER),
+            workerDoc(before(world, 30), { freeSpaceAskedAt: at(before(world, 60)), freed: { bytes: 1, at: at(before(world, 600)) } }),
+        );
+        const household = householdOf(world);
+        await settle();
+
+        expect(household.state.computers[0]).toMatchObject({ freeing: true, freed: { bytes: 1 } });
+        household.stop();
+    });
+
+    it('happyPath_freeSpaceNowIsWorkerManage @S-A62-HAPPY-FREE-SPACE', async () => {
+        const world = contentWorld();
+        world.callables.answer('worker.manage', () => ({ changed: true }));
+        const household = householdOf(world);
+
+        await expect(household.intents.freeSpace(WORKER)).resolves.toBe(true);
+        expect(world.callables.calls.map((call) => call.request)).toEqual([{ cityId: CITY, workerId: WORKER, action: 'freeSpace' }]);
+    });
+});
+
 describe('the actions', () => {
     it('happyPath_renamePauseResumeAndRemoveGoThroughWorkerManage @S-A143-HAPPY-MANAGE', async () => {
         const world = contentWorld();

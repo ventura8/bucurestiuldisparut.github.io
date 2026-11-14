@@ -35,6 +35,7 @@ ran on (`machines.download`, `machines.process`).
 """
 
 import enum
+import errno
 import signal
 import tempfile
 from collections.abc import Callable, Iterator, Mapping
@@ -58,6 +59,7 @@ from hcm_pipeline.contract import (
     step_weights,
 )
 from hcm_pipeline.documents import Version
+from hcm_pipeline.intact import output_intact
 from hcm_pipeline.joblog import JobLog, scrub
 from hcm_pipeline.jobs import (
     ArchiveElsewhereError,
@@ -80,6 +82,7 @@ from hcm_pipeline.jobs import (
 from hcm_pipeline.lease import Heartbeat, owned_change, take_lease
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.model import DocumentError, Job, OutdatedJobError, Record, StepRecord, Timestamp, params_of, stamp
+from hcm_pipeline.objects import ObjectInfo
 from hcm_pipeline.store import DELETE
 
 LOG = get_logger("runner")
@@ -99,6 +102,19 @@ class RunOutcome(enum.Enum):
     PAUSED = "paused"
     # This computer was paused: the worker hands the job back (`worker.end` `released`), its attempt given back.
     RELEASED = "released"
+    # P1-6 of the resilience audit: the owner's computer ran out of disk; the worker hands the job back, its attempt given back.
+    DISK_FULL = "disk-full"
+
+
+# What the disk says when it is full, in an OSError's errno or in a message GDAL or a step passed on.
+NO_SPACE: Final = "No space left on device"
+
+
+def disk_full(error: BaseException) -> bool:
+    """True for an error a full disk caused (`ENOSPC`), however a step passed it on."""
+    if isinstance(error, OSError) and error.errno == errno.ENOSPC:
+        return True
+    return NO_SPACE in str(error) or (error.__cause__ is not None and disk_full(error.__cause__))
 
 
 class JobStep(Protocol):
@@ -205,11 +221,17 @@ class JobRunner:
             return self._walk_here(ctx, only)
         except RunStoppedError as stop:
             return self._stopped(ctx, stop)
-        except StepFailedError as error:
-            return self._failed(ctx, error)
         except Exception as error:  # a crash still ends the job with a code, never a silent lapse
-            LOG.exception("job %s crashed in %s", ctx.job.id, ctx.step or "start")
-            return self._fail_job(ctx, StepFailedError(Errors.INTERNAL, f"{type(error).__name__}: {error}"))
+            return self._broke(ctx, error)
+
+    def _broke(self, ctx: JobContext, error: Exception) -> RunOutcome:
+        """A step that failed fails the job, a crash too (with a code), but a full disk on the owner's computer hands it back."""
+        if self._config.execution == "worker" and disk_full(error):
+            return self._disk_full(ctx)
+        if isinstance(error, StepFailedError):
+            return self._failed(ctx, error)
+        LOG.exception("job %s crashed in %s", ctx.job.id, ctx.step or "start")
+        return self._fail_job(ctx, StepFailedError(Errors.INTERNAL, f"{type(error).__name__}: {error}"))
 
     def _stopped(self, ctx: JobContext, stop: RunStoppedError) -> RunOutcome:
         if isinstance(stop, LeaseLostError):
@@ -273,8 +295,19 @@ class JobRunner:
     def _finished(self, record: StepRecord) -> bool:
         if record.status not in ("done", "skipped"):
             return False
-        info = self._services.objects.stat(record.gcs_path) if record.gcs_path else None
-        return record.gcs_path is None or (info is not None and record.generation in (None, info.generation))
+        return record.gcs_path is None or self._output_kept(record, record.gcs_path)
+
+    def _output_kept(self, record: StepRecord, path: str) -> bool:
+        """The recorded output is still there, of its generation, and whole."""
+        info = self._services.objects.stat(path)
+        return info is not None and record.generation in (None, info.generation) and self._intact(record, info)
+
+    def _intact(self, record: StepRecord, info: ObjectInfo) -> bool:
+        """P0-3: a local output a power cut may have torn is checked by its size and first bytes before it is passed over."""
+        if output_intact(self._services.objects, record, info, self._config.execution == "worker"):
+            return True
+        self._log.warn(f"{info.path} is damaged (the computer stopped while writing it?): its step runs again", None)
+        return False
 
     def _consumed(self, ctx: JobContext, name: str) -> bool:
         """True for what feeds `locate` once `locate` is finished, and for the delivery once its segments are out: nothing after
@@ -369,6 +402,18 @@ class JobRunner:
             ctx.update_job(self._pending(ctx, ctx.step))
         self._log.info("this computer was paused; the job goes back to the queue and resumes from this step", ctx.step or None)
         return RunOutcome.RELEASED
+
+    def _disk_full(self, ctx: JobContext) -> RunOutcome:
+        """P1-6: the computer's disk filled up mid-step: the step is `pending` again and the job goes back without using an attempt;
+        the worker takes no job until it has room (`lowDisk`)."""
+        if ctx.step and self._current(ctx.step).status == "running":
+            ctx.update_job(self._pending(ctx, ctx.step))
+        self._log.warn(
+            "this computer's disk is full, so the work stopped; the job goes back to the queue without using a try. "
+            "Free space on the computer (Free space now on its card in Settings, Computers), then it continues from this step",
+            ctx.step or None,
+        )
+        return RunOutcome.DISK_FULL
 
     def _cancel(self, ctx: JobContext) -> RunOutcome:
         now = self._now()

@@ -18,6 +18,7 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * computers with Rename, Pause and Remove (`worker.manage` in the Functions emulator), Add another computer gives the one line for
  * a computer without a screen (its one-time code minted by `worker.pairCode`) or this admin's address for one with a screen, and
  * Remove this computer waits for a computer that is off, with Disconnect now anyway and then the line that cleans it up by hand.
+ * Cleanup item 6 (2026-11-14): a computer's disk below its worker's floor is said with why and the fix, and Free space now asks it.
  */
 test.use({ persona: 'owner', mapOwner: 'owner' });
 
@@ -170,5 +171,34 @@ test(
             'download',
             'hcm-worker-remove.bat',
         );
+    },
+);
+
+test(
+    'A computer whose disk is almost full says so, takes no new work, and Free space now asks it to delete what no map needs',
+    { tag: ['@S-A62-HAPPY-FREE-SPACE', '@S-A62-BAD-LOW-DISK'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const owner = adminWorld.accounts.owner.uid;
+        const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
+        await recordPipeline(imagery);
+        await seedComputers(imagery, owner);
+        const path = `cities/${imagery.city}/workers/${NUC}`;
+        const gb = 1024 ** 3;
+        const disk = { workBytes: 80 * gb, freeBytes: 4 * gb, floorBytes: 10 * gb, at: new Date(NOW.getTime() - 20_000) };
+        await imagery.cityWorld.emulators.updateFields(path, { disk }, ['disk']);
+
+        await page.goto(adminPath(lang, 'jobs'));
+        const nuc = computers(page).locator(`[data-computer="${NUC}"]`);
+        await expect(nuc.locator('[data-low-disk]')).toContainText(text(lang, 'adminWorkerHousehold.lowDisk3'), {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expectStateSound(page, adminVisit('worker.household-low-disk', lang));
+
+        await nuc.getByRole('button', { name: text(lang, 'adminWorkerHousehold.freeSpace') }).click();
+        await expect
+            .poll(async () => (await adminWorld.emulators.document(path))?.['freeSpaceAskedAt'], { timeout: FUNCTIONS_TIMEOUT_MS })
+            .toBeDefined();
+        await expect(nuc.locator('[data-freed]')).toHaveText(text(lang, 'adminWorkerHousehold.freeing'), { timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(nuc.getByRole('button', { name: text(lang, 'adminWorkerHousehold.freeSpace') })).toBeDisabled();
     },
 );

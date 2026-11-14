@@ -36,6 +36,8 @@ export const workerAiSchema = z.strictObject({
     why: z.enum(WORKER_AI_WHYS).optional(),
 });
 
+const byteCount = z.number().int().min(0);
+
 /** A computer's name as its system says it (`hostname`, `%COMPUTERNAME%`), passed on by the starter (household, W5). */
 export const WORKER_HOST_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$/;
 /** The owner's name for a computer in the admin's list (Rename). */
@@ -122,6 +124,15 @@ export const workerDocSchema = z.strictObject({
      * claims nothing, hands its job back without using an attempt and frees the processor, until Resume or `until`.
      */
     paused: pausedSchema.optional(),
+    /**
+     * Cleanup item 6 (2026-11-14): the worker's disk as its last claim said it: what its folder uses, the free bytes of its disk, the
+     * floor under which it takes no job, and when.
+     */
+    disk: z.strictObject({ workBytes: byteCount, freeBytes: byteCount, floorBytes: byteCount, at: timestampSchema }).optional(),
+    /** "Free space now" (`worker.manage` `freeSpace`): when the admin asked; dropped once the worker said it freed space since. */
+    freeSpaceAskedAt: timestampSchema.optional(),
+    /** What the worker's last "Free space now" freed, and when (the worker's word, with a claim). */
+    freed: z.strictObject({ bytes: byteCount, at: timestampSchema }).optional(),
     ...stamp,
 });
 
