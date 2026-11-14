@@ -161,8 +161,8 @@ def not_scanned(world: PipelineWorld, _tmp: Path) -> None:
 
 
 def size_mismatch(world: PipelineWorld, _tmp: Path) -> None:
-    """A delivery larger than announced: the failure's `{bytes}` parameter (a number made both documents unreadable)."""
-    world.offer_download(len(world.delivery) - 1000)
+    """A truncated delivery: the failure's `{bytes}` parameter (a number made both documents unreadable)."""
+    world.offer_download(len(world.delivery) + 1000)
     world.seed_import()
     world.run()
     assert dig(world.version(), "error", "code") == Errors.DOWNLOAD_INCOMPLETE

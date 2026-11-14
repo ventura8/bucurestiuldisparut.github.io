@@ -11780,7 +11780,7 @@
             "area": "pipeline",
             "path": "bad",
             "title": "A step failure's numeric parameters are written as text",
-            "asserts": "a step fails with {min: 6} -> the job's and the version's error params read {min: '6'} (apiErrorParamsSchema takes texts only; a number made both unreadable in the admin); a delivery larger than announced -> the version's {bytes} is text",
+            "asserts": "a step fails with {min: 6} -> the job's and the version's error params read {min: '6'} (apiErrorParamsSchema takes texts only; a number made both unreadable in the admin); a truncated delivery -> the version's {bytes} is text",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Finding 62 of docs/research/manual-test-2026-10-25.md (live test 2026-11-02; DECISIONS-for-review.md §84a). Tests: pipeline/tests/unit/test_runner.py, pipeline/tests/integration/test_written_documents.py (size-mismatch)."
@@ -11813,10 +11813,10 @@
             "area": "pipeline",
             "path": "bad",
             "title": "A short delivery is discarded",
-            "asserts": "the delivered size differs from download-options -> apiError.imagery.downloadIncomplete, the object discarded, fetched again on the next attempt",
+            "asserts": "the body is shorter than the transfer size (the larger of download-options and Content-Length) -> apiError.imagery.downloadIncomplete, the object discarded, fetched again on the next attempt; a Landsat bundle larger than the announced filesize is kept (S-P30-HAPPY-BUNDLE-SIZE)",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_resume.py against the loopback fakes (pipeline-pytest)."
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Tests: pipeline/tests/integration/test_import_resume.py, pipeline/tests/unit/test_steps_fetch.py against the loopback fakes (pipeline-pytest)."
         },
         {
             "id": "S-P01-BAD-DUPLICATE-EXECUTION",
@@ -18615,6 +18615,17 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-HAPPY-BUNDLE-SIZE",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A Landsat Product Bundle larger than download-options announced is kept",
+            "asserts": "download-options lists several products (Bundle under secondaryDownloads with a band-scale filesize, a larger Band File) -> the Product Bundle is requested; Content-Length of the signed address is the full tar and fetch keeps it; a body short of that size is still discarded (S-P01-BAD-SIZE-MISMATCH)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 699 (2026-11-14: every Landsat import failed downloadIncomplete because filesize understated the tar). Tests: pipeline/tests/unit/test_steps_fetch.py, pipeline/tests/unit/test_usgs.py (pipeline-pytest)."
         },
         {
             "id": "S-P30-HAPPY-ETM",

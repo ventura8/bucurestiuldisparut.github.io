@@ -15,11 +15,12 @@ model, §5 the steps, §6 the georeferencing conventions); plan: `docs/research/
 | `geotiff-import` | `inspect` → `reference` → `georef` → `warp` → `export` → `register` (an upload with its own georeference skips `reference` and `georef`) |
 | `regeoref` (new points, or a crop) | `georef` → `warp` → `export` → `register`, on the base version's scan |
 
-- `fetch`: `download-options`, `download-request` labelled `hcm-{job}`, `download-retrieve`; the signed address streamed
-  into a Cloud Storage resumable session in 64 MiB chunks (checkpoint `work/{city}/{job}/fetch.checkpoint.json`); a
-  resume asks the session what it holds and sends `Range`; a 403 or 410 retrieves a fresh address; a redirect is
-  followed only through the address guard; the size must equal
-  `download-options`; SHA-256 read back in-region. Maintenance waits 30 minutes doubling to 12 hours; a rate limit waits
+- `fetch`: `download-options` (Landsat: Product Bundle by name), `download-request` labelled `hcm-{job}`,
+  `download-retrieve`; the signed address streamed into a Cloud Storage resumable session in 64 MiB chunks (checkpoint
+  `work/{city}/{job}/fetch.checkpoint.json`); a resume asks the session what it holds and sends `Range`; a 403 or 410
+  retrieves a fresh address; a redirect is followed only through the address guard; the transfer size is the larger of
+  `download-options` and Content-Length (a Landsat bundle whose announced `filesize` is band-scale is kept; a truncated
+  body is refused); SHA-256 read back in-region. Maintenance waits 30 minutes doubling to 12 hours; a rate limit waits
   its `Retry-After`; a preparing download waits 10 minutes.
 - `extract` keeps the TIFF segments of the `.tgz` (streamed) or `.zip`; `stitch` places them (template matching, coarse
   to fine, exact within 1 px), cuts the film border and records the exposure's columns when a dark gap parts it from a

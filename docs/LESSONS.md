@@ -4107,3 +4107,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: commit `43bbe138` replaced the account menu's language list with `<hcm-language-select>` (a native `<select>`), and `de` is one of `UI_LOCALES`, so `uiLocaleOf('de-DE')` is `de`. The viewer and start-page specs already asserted a combobox; the admin A95 count and A21's unsupported tag were left on the old contract.
     - Fix and pin: `languages.spec.ts` asserts 25 `option`s on the Limbă combobox (no radios); `title.spec.ts` uses `sv-SE` (outside `UI_LOCALES`); rows `S-A95-HAPPY-LANGUAGE-PICKER` and `S-A21-BAD-UNSUPPORTED-LANGUAGE`.
     - **When a control or a locale list changes, update every e2e assertion that names the old shape or an old "unsupported" tag; unsupported means outside `UI_LOCALES`, not "not Romanian or English".**
+
+699. **Every Landsat import failed because the delivery was "larger than USGS announced".**
+    - Seen: 2026-11-14, Collection 2 Level-1 imports (`LC81820292019178LGN00`, datasets `landsat_ot_c2_l1` / TM / ETM+) all failed `fetch` with `apiError.imagery.downloadIncomplete`.
+    - Cause: M2M `download-options` returns several products; the Product Bundle's `filesize` is often band-scale (and may sit under `secondaryDownloads`), while the signed address sends the full tar. `fetch` required an exact match to the announcement.
+    - Fix and pin: `download_option` prefers a product whose name contains "bundle" (flattening `secondaryDownloads`); `transfer_size` takes the larger of the announcement and Content-Length (or a 206's Content-Range total); truncated bodies are still refused (`S-P30-HAPPY-BUNDLE-SIZE`, `S-P01-BAD-SIZE-MISMATCH`).
+    - **When an upstream lists several products, size-check the product actually transferred (Content-Length), not only the catalogue's understated figure.**

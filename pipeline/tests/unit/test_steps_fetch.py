@@ -6,7 +6,7 @@ from hcm_pipeline.contract import Errors
 from hcm_pipeline.model import Timestamp
 from hcm_pipeline.runner import RunOutcome
 from hcm_pipeline.secrets import SecretUnavailableError
-from hcm_pipeline.steps.fetch import _skipping, delivery_name
+from hcm_pipeline.steps.fetch import _skipping, delivery_name, transfer_size
 
 from tests.fakes.http import Reply
 from tests.fakes.usgs_m2m import FORBIDDEN_PAGE
@@ -156,9 +156,19 @@ def test_bad_path_a_delivery_host_error_fails_as_unavailable(world: PipelineWorl
     assert dig(world.job(), "error", "code") == Errors.USGS_UNAVAILABLE
 
 
-def test_bad_path_a_larger_delivery_than_announced_is_discarded(world: PipelineWorld) -> None:
+def test_happy_path_a_landsat_bundle_larger_than_announced_is_kept(world: PipelineWorld) -> None:
+    """Scenarios: S-P30-HAPPY-BUNDLE-SIZE — Landsat announces a band-scale filesize; Content-Length is the full tar."""
     world.seed_import()
     world.offer_download(TEST_CHUNK_BYTES + 10)
+
+    assert fetch(world) is RunOutcome.DONE
+    assert world.gcs.objects[RAW].data == world.delivery
+
+
+def test_bad_path_a_truncated_delivery_is_discarded(world: PipelineWorld) -> None:
+    """Scenarios: S-P01-BAD-SIZE-MISMATCH — short of the transfer size (announcement or Content-Length)."""
+    world.seed_import()
+    world.offer_download(len(world.delivery) + 4096)
 
     assert fetch(world) is RunOutcome.FAILED
     assert dig(world.job(), "error", "code") == Errors.DOWNLOAD_INCOMPLETE
@@ -181,15 +191,35 @@ def test_happy_path_a_stream_without_range_support_is_skipped_to_the_offset() ->
     assert b"".join(_skipping(iter([b"abc", b"de", b"fghij"]), 4)) == b"efghij"
 
 
-def test_bad_path_a_delivery_the_exact_chunk_size_is_kept_and_a_longer_one_discarded(world: PipelineWorld) -> None:
+def test_happy_path_transfer_size_takes_content_length_when_usgs_understates_the_bundle() -> None:
+    """Landsat's Product Bundle filesize is often band-scale; Content-Length is the tar actually requested."""
+    understated = httpx.Response(200, headers={"content-length": "900"}, request=httpx.Request("GET", "https://x/a"))
+    ranged = httpx.Response(
+        206, headers={"content-range": "bytes 10-99/900", "content-length": "90"}, request=httpx.Request("GET", "https://x/a")
+    )
+    plain = httpx.Response(200, request=httpx.Request("GET", "https://x/a"))
+
+    assert transfer_size(100, understated) == 900
+    assert transfer_size(100, ranged) == 900
+    assert transfer_size(100, plain) == 100
+    assert transfer_size(1000, understated) == 1000
+
+
+def test_happy_path_a_delivery_the_exact_chunk_size_is_kept(world: PipelineWorld) -> None:
     world.delivered = world.scene.delivery.read_bytes()[: 2 * TEST_CHUNK_BYTES]
     world.offer_download(2 * TEST_CHUNK_BYTES)
     world.seed_import()
-    assert only(world, "fetch") is RunOutcome.DONE
 
-    world.delivered = None
-    world.gcs.objects.clear()
+    assert only(world, "fetch") is RunOutcome.DONE
+    assert world.gcs.objects[RAW].data == world.delivery
+
+
+def test_bad_path_a_delivery_short_of_its_content_length_is_discarded(world: PipelineWorld) -> None:
+    """The host announces more bytes than it sends (Content-Length / options larger than the body)."""
+    world.delivered = world.scene.delivery.read_bytes()[: 2 * TEST_CHUNK_BYTES]
+    world.offer_download(3 * TEST_CHUNK_BYTES)
     world.seed_import()
+
     assert only(world, "fetch") is RunOutcome.FAILED
     assert error_code(world) == Errors.DOWNLOAD_INCOMPLETE
     assert world.gcs.names("usgs-raw/") == []

@@ -50,8 +50,12 @@ A Landsat version has no georeference; the policy reads its `landsat` report ins
 ## 7. UNVERIFIED (the first real search over Bucharest proves them)
 
 - The M2M `scene-search` answer for Landsat: the top-level `cloudCover` is the scene's (the harvest uses it; `Land Cloud Cover` is in the metadata), and the browse address's shape (`gen-browse?size=rrb&type=refl&product_id=…`).
-- The product bundle is the largest available product of `download-options` (`download_option` takes the largest), a tar whose band files end in `_B{n}.TIF` and `_QA_PIXEL.TIF`.
+- The product bundle is the available product whose `productName` contains "bundle" (else the largest), including under `secondaryDownloads` (`download_option`); a tar whose band files end in `_B{n}.TIF` and `_QA_PIXEL.TIF`.
 - A real scene's shift from Sentinel-2: Collection 2 Level-1 TP products are registered to within about 12 m; one pixel (30 m) is the bar.
+
+### Addendum (2026-11-14): download size
+
+Every Landsat import failed at `fetch` with `apiError.imagery.downloadIncomplete` ("the delivery is larger than USGS announced"). Cause: M2M `download-options` returns several products; the Product Bundle's `filesize` is often a band-scale figure, while the signed address sends the full tar. Fix: prefer the Bundle by name (flattening `secondaryDownloads`), and take the transfer size as the larger of that announcement and the response's Content-Length (or a 206's Content-Range total), so a larger full bundle is kept and a truncated body is still refused (`S-P30-HAPPY-BUNDLE-SIZE`, `S-P01-BAD-SIZE-MISMATCH`; lesson 699).
 
 ## 8. Tests
 

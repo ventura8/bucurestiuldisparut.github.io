@@ -5,6 +5,11 @@ the scene is already scanned and how large the delivery is; `download-request` w
 `hcm-{job}` (a retry reuses the same request) answers the signed address at once, or says it is being prepared;
 `download-retrieve` with the same label returns it once it is ready; `download-order-remove` cleans up. The signed
 address is a secret in practice: it is returned to the caller, never logged (the logger also redacts its query).
+
+Landsat Collection 2 Level-1 (M25): `download-options` returns several products (the Product Bundle, band files,
+LandsatLook images), and the Bundle may sit under `secondaryDownloads`. Prefer a product whose name contains
+"bundle"; otherwise the largest available. Its `filesize` can still understate the tar the signed address sends
+(a band-scale figure): `fetch` takes Content-Length of that transfer as the size of the product actually requested.
 """
 
 from collections.abc import Mapping, Sequence
@@ -16,6 +21,7 @@ from hcm_pipeline.m2m import M2MError
 
 LOG = get_logger("usgs")
 LABEL_PREFIX: Final = "hcm-"
+_BUNDLE: Final = "bundle"
 
 
 class M2MSession(Protocol):
@@ -39,17 +45,44 @@ def _records(value: object) -> list[dict[str, object]]:
     return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
 
 
+def _filesize(value: object) -> int | None:
+    """A positive byte count from `filesize` (int or digit string); bool is not a size."""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    return int(value) if isinstance(value, str) and value.isdigit() and int(value) > 0 else None
+
+
 def _option_of(item: Mapping[str, object]) -> DownloadOption | None:
-    product, size = item.get("id"), item.get("filesize")
-    usable = item.get("available") is True and isinstance(product, str | int) and isinstance(size, int) and size > 0
-    return DownloadOption(str(product), int(str(size))) if usable else None
+    product, size = item.get("id"), _filesize(item.get("filesize"))
+    usable = item.get("available") is True and isinstance(product, str | int) and size is not None
+    return DownloadOption(str(product), size) if usable else None
+
+
+def _products(answer: object) -> list[dict[str, object]]:
+    """Each top-level option and every `secondaryDownloads` child (Landsat nests the Product Bundle there)."""
+    top = _records(answer)
+    return top + [child for item in top for child in _records(item.get("secondaryDownloads"))]
+
+
+def _is_bundle(item: Mapping[str, object]) -> bool:
+    name = item.get("productName")
+    return isinstance(name, str) and _BUNDLE in name.casefold()
+
+
+def _pick(pairs: Sequence[tuple[Mapping[str, object], DownloadOption]]) -> DownloadOption | None:
+    """The Product Bundle when one is available, else the largest; None when nothing is scanned."""
+    bundles = [option for item, option in pairs if _is_bundle(item)]
+    pool = bundles or [option for _, option in pairs]
+    return max(pool, key=lambda option: option.size, default=None)
 
 
 def download_option(m2m: M2MSession, dataset: str, entity_id: str) -> DownloadOption | None:
-    """The scene's available product (the largest when several are), or None when it is not scanned yet."""
+    """The scene's available product (the Bundle when named, else the largest), or None when not scanned yet."""
     answer = m2m.request("download-options", {"datasetName": dataset, "entityIds": [entity_id]})
-    options = [option for option in map(_option_of, _records(answer)) if option is not None]
-    return max(options, key=lambda option: option.size, default=None)
+    pairs = [(item, option) for item in _products(answer) if (option := _option_of(item)) is not None]
+    return _pick(pairs)
 
 
 def _first_url(items: Sequence[Mapping[str, object]]) -> str | None:

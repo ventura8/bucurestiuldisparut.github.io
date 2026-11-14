@@ -2,13 +2,16 @@
 
 `download-options` (scanned? how large?); `download-request` with the label `hcm-{job}` (a retry reuses it); still
 preparing → the job waits (`usgs-preparing`, 10 minutes); `download-retrieve` → the signed address, streamed into a
-Cloud Storage resumable upload in 64 MiB chunks, the checkpoint `{path, session}` in `work/{city}/{job}/
+Cloud Storage resumable upload in 64 MiB chunks, the checkpoint `{path, session, size}` in `work/{city}/{job}/
 fetch.checkpoint.json` after each; a resume asks the session how much it holds and continues with an HTTP Range
 (**UNVERIFIED** that USGS honours it: when it answers the whole file, the bytes already held are skipped); a 403 or
 410 asks `download-retrieve` again; the bytes received are reported as they arrive (`ctx.report_bytes`: the version's
-step line reads `1.2 of 3.4 GB`, finding 55 of 2026-11-01); the delivered size must equal `download-options`; SHA-256 is computed by
-reading the object back in-region; `download-order-remove` cleans up. A delivery another city already fetched
-(same size) is reused. The signed address never reaches a log or a document.
+step line reads `1.2 of 3.4 GB`, finding 55 of 2026-11-01); the transfer size is the larger of `download-options` and
+the response's Content-Length (or Content-Range total): Landsat's Product Bundle often announces a band-scale
+`filesize` while the signed address sends the full tar, so a larger delivery of the requested product is kept;
+a truncated body (short of that size) is still discarded. SHA-256 is computed by reading the object back in-region;
+`download-order-remove` cleans up. A delivery another city already fetched (at least the announced size) is reused.
+The signed address never reaches a log or a document.
 
 USGS maintenance (an HTML 503) makes the job wait `USGS_BACKOFF_MINUTES` (30 minutes, doubling, at most 12 hours;
 the count lives in the checkpoint); a rate limit waits its `Retry-After`.
@@ -39,16 +42,18 @@ URL_ATTEMPTS: Final = 3
 RATE_LIMIT_SECONDS: Final = 15 * 60
 _EXPIRED: Final = frozenset({HTTPStatus.FORBIDDEN, HTTPStatus.GONE})
 _FILENAME = re.compile(r"""filename\*?=(?:UTF-8'')?["']?([^"';]+)""", re.IGNORECASE)
+_RANGE_TOTAL = re.compile(r"/(\d+)\s*$")
 _USGS_CODES: Final[dict[type[M2MError], str]] = {AuthError: Errors.USGS_CREDENTIALS}
 
 
 @dataclass
 class Checkpoint:
-    """`work/{city}/{job}/fetch.checkpoint.json`: the delivery's object path, its upload session and the maintenance waits."""
+    """`work/{city}/{job}/fetch.checkpoint.json`: the delivery's object path, its upload session, size and waits."""
 
     path: str | None = None
     session: str | None = None
     waits: int = 0
+    size: int | None = None
 
     @classmethod
     def load(cls, ctx: JobContext) -> Checkpoint:
@@ -58,7 +63,9 @@ class Checkpoint:
         local = ctx.local(CHECKPOINT)
         ctx.services.objects.download_file(object_path, local)
         record = json.loads(local.read_text(encoding="utf-8"))
-        return cls(record.get("path"), record.get("session"), int(record.get("waits", 0)))
+        raw_size = record.get("size")
+        size = int(raw_size) if isinstance(raw_size, int) and raw_size > 0 else None
+        return cls(record.get("path"), record.get("session"), int(record.get("waits", 0)), size)
 
     def save(self, ctx: JobContext) -> None:
         local = ctx.local(CHECKPOINT)
@@ -66,8 +73,29 @@ class Checkpoint:
         ctx.services.objects.upload_file(local, ctx.work_file(CHECKPOINT), "application/json")
 
     def clear(self, ctx: JobContext) -> None:
-        self.path, self.session = None, None
+        self.path, self.session, self.size = None, None, None
         self.save(ctx)
+
+
+def transfer_size(announced: int, response: httpx.Response) -> int:
+    """Bytes this transfer must deliver: max of the announcement and Content-Length / Content-Range total.
+
+    Landsat understates the Product Bundle's `filesize` (band-scale) while the signed address sends the full tar;
+    Content-Length (or a 206's Content-Range total) is the size of the product actually requested. Taking the max
+    still refuses a truncated body when the announcement was the larger figure.
+    """
+    total = _range_total(response) or _content_length(response)
+    return max(announced, total) if total is not None else announced
+
+
+def _content_length(response: httpx.Response) -> int | None:
+    raw = response.headers.get("content-length")
+    return int(raw) if raw is not None and raw.isdigit() and int(raw) > 0 else None
+
+
+def _range_total(response: httpx.Response) -> int | None:
+    found = _RANGE_TOTAL.search(response.headers.get("content-range", ""))
+    return int(found.group(1)) if found is not None else None
 
 
 def delivery_name(response: httpx.Response, entity_id: str) -> str:
@@ -94,22 +122,26 @@ class _Download:
         self.option = option
         self.checkpoint = checkpoint
         self.chunk_bytes = chunk_bytes
+        self.size = checkpoint.size or option.size
 
     def _offset(self) -> int | ObjectInfo:
         if self.checkpoint.session is None:
             return 0
         try:
-            return self.ctx.services.objects.resumable_offset(self.checkpoint.session, self.option.size)
+            return self.ctx.services.objects.resumable_offset(self.checkpoint.session, self.size)
         except SessionExpiredError:
             self.checkpoint.clear(self.ctx)
+            self.size = self.option.size
             return 0
 
     def _ensure_session(self, response: httpx.Response, entity: UsgsImportParams) -> None:
+        self.size = max(self.size, transfer_size(self.option.size, response))
         if self.checkpoint.session is not None and self.checkpoint.path is not None:
             return
         path = paths.usgs_raw(entity.dataset, entity.entity_id, delivery_name(response, entity.entity_id))
         self.checkpoint.path = path
-        self.checkpoint.session = self.ctx.services.objects.start_resumable(path, self.option.size, DELIVERY_TYPE)
+        self.checkpoint.size = self.size
+        self.checkpoint.session = self.ctx.services.objects.start_resumable(path, self.size, DELIVERY_TYPE)
         self.checkpoint.save(self.ctx)
 
     def stream(self, url: str, entity: UsgsImportParams) -> ObjectInfo | None:
@@ -128,9 +160,9 @@ class _Download:
 
     def _write(self, data: bytes, offset: int) -> int | ObjectInfo:
         session = self.checkpoint.session or ""
-        if offset + len(data) > self.option.size:
+        if offset + len(data) > self.size:
             self._discard("the delivery is larger than USGS announced")
-        result = self.ctx.services.objects.write_chunk(session, offset, data, self.option.size)
+        result = self.ctx.services.objects.write_chunk(session, offset, data, self.size)
         self.ctx.checkpoint()
         return result
 
@@ -138,7 +170,7 @@ class _Download:
         buffer = bytearray()
         for piece in chunks:
             buffer += piece
-            self.ctx.report_bytes(offset + len(buffer), self.option.size)
+            self.ctx.report_bytes(offset + len(buffer), self.size)
             while len(buffer) >= self.chunk_bytes:
                 result = self._write(bytes(buffer[: self.chunk_bytes]), offset)
                 offset, buffer = offset + self.chunk_bytes, buffer[self.chunk_bytes :]
@@ -147,7 +179,7 @@ class _Download:
         return self._finished(self._write(bytes(buffer), offset), b"")
 
     def _finished(self, result: int | ObjectInfo, rest: bytes | bytearray) -> ObjectInfo:
-        """The object, when the delivery ended exactly at the announced size; else it is discarded."""
+        """The object, when the delivery ended exactly at the transfer size; else it is discarded."""
         if isinstance(result, ObjectInfo) and not rest:
             return result
         if isinstance(result, ObjectInfo):
@@ -156,7 +188,7 @@ class _Download:
 
     def _discard(self, why: str) -> NoReturn:
         self.checkpoint.clear(self.ctx)
-        raise StepFailedError(Errors.DOWNLOAD_INCOMPLETE, why, {"bytes": self.option.size})
+        raise StepFailedError(Errors.DOWNLOAD_INCOMPLETE, why, {"bytes": self.size})
 
 
 def _check_delivery(response: httpx.Response) -> None:
@@ -177,9 +209,13 @@ def object_sha256(ctx: JobContext, path: str) -> str:
 
 
 def _delivered(ctx: JobContext, entity: UsgsImportParams, size: int) -> ObjectInfo | None:
-    """A delivery of the scene already in the bucket with the announced size (another city fetched it)."""
+    """A delivery of the scene already in the bucket at least the announced size (another city fetched it).
+
+    Landsat may announce a band-scale `filesize` while the stored object is the full tar; any object that large enough
+    is the same product.
+    """
     prefix = paths.usgs_raw(entity.dataset, entity.entity_id, "x").rsplit("/", 1)[0] + "/"
-    return next((info for info in ctx.services.objects.list(prefix) if info.size == size), None)
+    return next((info for info in ctx.services.objects.list(prefix) if info.size >= size), None)
 
 
 class FetchStep:

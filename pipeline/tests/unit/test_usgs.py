@@ -38,6 +38,33 @@ def test_happy_path_the_largest_available_product_is_chosen() -> None:
     assert session.calls == [("download-options", {"datasetName": "corona2", "entityIds": ["E1"]})]
 
 
+def test_happy_path_a_landsat_product_bundle_is_preferred_over_a_larger_band() -> None:
+    """Landsat's download-options lists several products; the Product Bundle is the one we request (M25)."""
+    session = ScriptedSession(
+        {
+            "download-options": [
+                {
+                    "id": "look",
+                    "available": True,
+                    "filesize": 50,
+                    "productName": "LandsatLook Images",
+                    "secondaryDownloads": [
+                        {
+                            "id": "bundle",
+                            "available": True,
+                            "filesize": "100",
+                            "productName": "Landsat Collection 2 Level-1 Product Bundle",
+                        }
+                    ],
+                },
+                {"id": "band", "available": True, "filesize": 500, "productName": "Landsat Collection 2 Level-1 Band File"},
+            ]
+        }
+    )
+
+    assert download_option(session, "landsat_ot_c2_l1", "LC81820292019178LGN00") == DownloadOption("bundle", 100)
+
+
 def test_bad_path_a_scene_without_an_available_product_is_not_scanned() -> None:
     assert download_option(ScriptedSession({"download-options": [{"id": "p", "available": False, "filesize": 5}]}), "corona2", "E1") is None
     assert download_option(ScriptedSession({"download-options": None}), "corona2", "E1") is None
