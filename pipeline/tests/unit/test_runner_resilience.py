@@ -1,13 +1,14 @@
 """A resume after a power cut (RESILIENCE-AUDIT P0-3) and a disk that fills up mid-step (P1-6), with scripted steps."""
 
 import errno
+import io
 from dataclasses import replace
 from typing import cast
 
 import pytest
 from hcm_pipeline.config import Config
 from hcm_pipeline.contract import Errors
-from hcm_pipeline.intact import output_intact
+from hcm_pipeline.intact import JSON_READ_MAX, output_intact
 from hcm_pipeline.jobs import JobContext, StepFailedError
 from hcm_pipeline.model import StepRecord
 from hcm_pipeline.objects import ObjectInfo, ObjectStore, ObjectStoreError
@@ -125,3 +126,38 @@ def test_bad_path_a_disk_full_passed_on_by_a_step_or_gdal_is_still_a_full_disk()
     assert disk_full(wrapped)
     assert not disk_full(OSError(errno.EACCES, "denied"))
     assert not disk_full(StepFailedError(Errors.PROCESSING_FAILED, "bad pairs"))
+
+
+class Bytes:
+    """An object store whose every object holds `data`."""
+
+    def __init__(self, data: bytes) -> None:
+        self.data = data
+
+    def open_read(self, _path: str) -> io.BytesIO:
+        return io.BytesIO(self.data)
+
+
+@pytest.mark.parametrize(
+    ("path", "data", "whole"),
+    [
+        ("work/c/j/tiles.pmtiles", b"PMTiles\x03rest", True),
+        ("work/c/j/tiles.pmtiles", b"\x00" * 16, False),
+        ("work/c/j/segment.bin", b"\x00" * 16, True),
+        ("work/c/j/scan.tif", b"MM\x00*rest", True),
+    ],
+    ids=["pmtiles", "torn-pmtiles", "other-kind", "big-endian-tiff"],
+)
+def test_happy_path_each_kind_is_checked_by_its_own_first_bytes(path: str, data: bytes, whole: bool) -> None:
+    """Scenarios: S-P04-BAD-RESUME-TORN"""
+    info = ObjectInfo(path, len(data), "1")
+
+    assert output_intact(cast(ObjectStore, Bytes(data)), StepRecord("done"), info, local=True) is whole
+
+
+def test_happy_path_a_json_output_too_large_to_read_is_checked_by_its_size_and_first_bytes() -> None:
+    info = ObjectInfo(FRAME, JSON_READ_MAX + 1, "1")
+
+    assert output_intact(cast(ObjectStore, Bytes(b'{"rows": [')), StepRecord("done"), info, local=True)
+    assert not output_intact(cast(ObjectStore, Bytes(b"{}")), StepRecord("done", bytes=5), info, local=True)
+    assert output_intact(cast(ObjectStore, Bytes(b"")), StepRecord("done"), info, local=False)
