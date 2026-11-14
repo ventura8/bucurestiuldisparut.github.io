@@ -105,6 +105,14 @@ test(
 );
 
 test(
+    'The scroll hint of a timeline longer than its card, opened on the selected year',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V04-HAPPY-SCROLL-HINT'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('timeline-scroll'));
+    },
+);
+
+test(
     'The compass on a turned map and north up again',
     { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V64-HAPPY-TOUR'] },
     async ({ page, context, lang }) => {

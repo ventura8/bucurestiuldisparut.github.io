@@ -76,6 +76,8 @@ export const uk: Messages = {
     'timeline.label': 'Хронологія',
     'timeline.year': 'Рік {year}',
     'timeline.present': 'Сьогодні',
+    'timeline.earlier': 'Раніші роки, до {year}',
+    'timeline.later': 'Пізніші роки, до {year}',
     'timeline.empty': 'На цій мапі немає історичних шарів',
     'timeline.dates': 'Дати {year}',
     'timeline.datesHint': 'кілька дат ({count}), натисніть Enter, щоб їх переглянути',

@@ -536,14 +536,25 @@ export function sidewaysCulprits(scroller: Element): Element[] {
 }
 
 /**
+ * A box made to scroll sideways only: its block axis is hidden or clipped, so it never scrolls in two directions (the
+ * lying timeline of more years than its card, the owner's design of 2026-11-14: one row of years, paged by its edge
+ * buttons). A box that scrolls down and, by accident, sideways (`overflow-y: auto` alone) is still a fault.
+ */
+function scrollsOnlySideways(element: Element): boolean {
+    const overflowY = getComputedStyle(element).overflowY;
+    return overflowY === 'hidden' || overflowY === 'clip';
+}
+
+/**
  * Every drawn box but the page that scrolls sideways: its overflow is auto or scroll on the inline axis (as it becomes
  * when only the block axis was asked to scroll) and its content is wider than it. On a page that reflows (WCAG 1.4.10)
- * nothing scrolls in two directions: the tour found a dialog whose segmented button ran past its edge at 360 px.
+ * nothing scrolls in two directions: the tour found a dialog whose segmented button ran past its edge at 360 px. A row
+ * that scrolls sideways only (`scrollsOnlySideways`) is not two-directional scrolling and is left out.
  */
 function probeSideways(registry: Registry): SidewaysInfo[] {
     const root = new Set<Element>([document.documentElement, document.body]);
     return deepElements()
-        .filter((element) => !root.has(element) && isDrawn(element) && scrollsOn(element, 'x'))
+        .filter((element) => !root.has(element) && isDrawn(element) && scrollsOn(element, 'x') && !scrollsOnlySideways(element))
         .map((element) => ({
             node: idOf(registry, element),
             overflow: element.scrollWidth - element.clientWidth,
@@ -723,6 +734,7 @@ export const LAYOUT_PROBE = [
     cutsContent,
     probeTexts,
     sidewaysCulprits,
+    scrollsOnlySideways,
     probeSideways,
     probeGraphics,
     showsItsFoot,

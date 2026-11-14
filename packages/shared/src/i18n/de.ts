@@ -79,6 +79,8 @@ export const de: Messages = {
     'timeline.label': 'Zeitleiste',
     'timeline.year': 'Jahr {year}',
     'timeline.present': 'Heute',
+    'timeline.earlier': 'Frühere Jahre, bis {year}',
+    'timeline.later': 'Spätere Jahre, bis {year}',
     'timeline.empty': 'Keine historischen Ebenen auf dieser Karte',
     'timeline.dates': 'Datumsangaben in {year}',
     'timeline.datesHint': 'mehrere Daten ({count}), mit „Enter“ werden diese angezeigt',

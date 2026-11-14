@@ -83,6 +83,8 @@ export const fr: Messages = {
     'timeline.label': 'Frise chronologique',
     'timeline.year': 'Année {year}',
     'timeline.present': 'Aujourd’hui',
+    'timeline.earlier': 'Années précédentes, jusqu’à {year}',
+    'timeline.later': 'Années suivantes, jusqu’à {year}',
     'timeline.empty': 'Aucun calque historique sur cette carte',
     'timeline.dates': 'Dates du {year}',
     'timeline.datesHint': 'plusieurs dates ({count}), appuyez sur Entrée pour les afficher',

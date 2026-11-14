@@ -73,6 +73,8 @@ export const hi: Messages = {
     'timeline.label': 'समयरेखा',
     'timeline.year': 'वर्ष {year}',
     'timeline.present': 'आज',
+    'timeline.earlier': 'पहले के वर्ष, {year} तक',
+    'timeline.later': 'बाद के वर्ष, {year} तक',
     'timeline.empty': 'इस मानचित्र में कोई ऐतिहासिक परत नहीं है',
     'timeline.dates': '{year} की तिथियाँ',
     'timeline.datesHint': 'कई तिथियाँ ({count}), एंटर उन्हें दिखाता है',

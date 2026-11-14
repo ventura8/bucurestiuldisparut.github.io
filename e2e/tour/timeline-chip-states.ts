@@ -58,6 +58,26 @@ export const TIMELINE_CHIP_STATES = {
             await expect.poll(async () => (await yearChip(page))?.text).toBe('1977');
         },
     },
+    'timeline-scroll-hint': {
+        title: 'A timeline of ninety-eight years opened on 1954: centred there, a button at each edge with years hidden beyond, naming the furthest',
+        enter: async ({ page, lang }: TimelineChipTour) => {
+            // 1886 is always hidden; today too unless the card is wide enough (a 4K screen) for 1954 to sit near its end.
+            await expect(page.getByRole('button', { name: t(lang, 'timeline.earlier', { year: '1886' }), exact: true })).toBeVisible();
+            await mapIdle(page);
+        },
+    },
+} as const;
+
+/** The scroll hint's journey in e2e/tour/states.ts: ninety-eight years (more than a 4K screen's card holds, within the manifest's hundred layers), opened on 1954. */
+export const TIMELINE_SCROLL_JOURNEY = {
+    title: 'The scroll hint of a timeline longer than its card, opened on the selected year',
+    id: 'timeline-scroll',
+    boot: async ({ page, lang }: TimelineChipTour) => {
+        await serveManifest(page, manyYearsManifest(Array.from({ length: 98 }, (_, at) => 1886 + at)));
+        await openViewer(page, { lang, hash: '16/44.44763/26.13822&layers=e2e-1954' });
+        await openTimelineCard(page);
+    },
+    states: ['timeline-scroll-hint'],
 } as const;
 
 /** The journey of these states in e2e/tour/states.ts. */

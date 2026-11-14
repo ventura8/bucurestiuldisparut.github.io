@@ -14,7 +14,7 @@ import { MY_LOCATION_STATES } from './my-location-states.js';
 import { ZOOM_JOURNEY, ZOOM_STATES } from './zoom-states.js';
 import { COMPASS_JOURNEY, COMPASS_STATES } from './compass-states.js';
 import { TIMELINE_JOURNEY, TIMELINE_STATES } from './timeline-states.js';
-import { TIMELINE_CHIP_JOURNEY, TIMELINE_CHIP_STATES } from './timeline-chip-states.js';
+import { TIMELINE_CHIP_JOURNEY, TIMELINE_CHIP_STATES, TIMELINE_SCROLL_JOURNEY } from './timeline-chip-states.js';
 import { PHOTO_VERSION_JOURNEY, PHOTO_VERSION_STATES } from './photo-version-states.js';
 import { MAP_MENU_JOURNEY, MAP_MENU_STATES } from './map-menu-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
@@ -442,6 +442,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     COMPASS_JOURNEY,
     TIMELINE_JOURNEY,
     TIMELINE_CHIP_JOURNEY,
+    TIMELINE_SCROLL_JOURNEY,
     PHOTO_VERSION_JOURNEY,
     MAP_MENU_JOURNEY,
     THEME_MENU_JOURNEY,

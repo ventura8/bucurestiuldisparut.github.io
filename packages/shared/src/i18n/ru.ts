@@ -80,6 +80,8 @@ export const ru: Messages = {
     'timeline.label': 'Шкала времени',
     'timeline.year': 'Год {year}',
     'timeline.present': 'Сегодня',
+    'timeline.earlier': 'Более ранние годы, до {year}',
+    'timeline.later': 'Более поздние годы, до {year}',
     'timeline.empty': 'На этой карте нет исторических слоёв',
     'timeline.dates': 'Даты за {year}',
     'timeline.datesHint': 'несколько дат ({count}), Enter отображает их',

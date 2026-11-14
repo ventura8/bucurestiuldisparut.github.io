@@ -7,7 +7,7 @@ import { currentHash, hashParam, openTimelineCard, openViewer, serveManifest, t 
 
 /**
  * The timeline's year chip and its finger (behaviour V04; the owner, 2026-11-13, 2026-11-14): every year has its label
- * (56 px apart, the card scrolling), so a mouse shows no chip and a finger scrubbing from the year pill shows the year in
+ * (40 px apart, the card scrolling), so a mouse shows no chip and a finger scrubbing from the year pill shows the year in
  * an M3 plain tooltip above the card; a finger dragged along the track selects each year it enters at once (its layer to the front, V15), the
  * chip naming it clear of the finger, and lifting ends the drag; a fast scrub ends on its last year with no other layer
  * left in front; a swipe that starts on the map pans the map and leaves the timeline alone.

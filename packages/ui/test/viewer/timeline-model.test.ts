@@ -58,15 +58,15 @@ describe('photosNearYear', () => {
 });
 
 describe('timelineDensity', () => {
-    it('happyPath_yearsThatFit56PxApartAreRoomy', () => {
+    it('happyPath_yearsThatFit40PxApartAreRoomy', () => {
         expect(timelineDensity(1000, 0)).toBe('roomy');
-        expect(timelineDensity(560, 10)).toBe('roomy');
-        expect(YEAR_GAP_PX).toBe(56);
+        expect(timelineDensity(400, 10)).toBe('roomy');
+        expect(YEAR_GAP_PX).toBe(40);
     });
 
     it('badPath_yearsLongerThanTheCardScroll', () => {
-        // The owner, 2026-11-14: "too crowded"; the track keeps 56 px per gap and scrolls instead.
-        expect(timelineDensity(559, 10)).toBe('scroll');
+        // The owner, 2026-11-14: "too crowded"; the track keeps 40 px per gap and scrolls instead.
+        expect(timelineDensity(399, 10)).toBe('scroll');
         expect(timelineDensity(-10, 1)).toBe('scroll');
     });
 });

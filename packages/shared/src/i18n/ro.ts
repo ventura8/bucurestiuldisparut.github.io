@@ -78,6 +78,8 @@ export const ro = {
     'timeline.label': 'Cronologie',
     'timeline.year': 'Anul {year}',
     'timeline.present': 'Azi',
+    'timeline.earlier': 'Anii mai vechi, până la {year}',
+    'timeline.later': 'Anii mai noi, până la {year}',
     'timeline.empty': 'Harta nu are straturi istorice',
     'timeline.dates': 'Datele din {year}',
     'timeline.datesHint': 'mai multe date ({count}), Enter le arată',

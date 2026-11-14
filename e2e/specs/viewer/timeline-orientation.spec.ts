@@ -279,7 +279,7 @@ const CARD_SIZES = [
 ] as const;
 
 test(
-    'Twenty-two years each have a label 56 px apart, none clipped or crowded, scrolling where they do not fit, on a phone, a tablet and a desktop',
+    'Twenty-two years each have a label 40 px apart, none clipped or crowded, scrolling where they do not fit, on a phone, a tablet and a desktop',
     { tag: '@S-V04-BAD-MANY-YEARS-FIT' },
     async ({ page, lang }) => {
         // The Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two stops overflowed the card and 1847 showed as "7"; the owner,
@@ -348,7 +348,7 @@ test(
                 await expect(thumb).toHaveAttribute('aria-valuenow', index);
                 const where = `${String(size.width)}x${String(size.height)} after ${key}`;
                 await expect.poll(async () => (await cardView(page)).inView, `${where}: the thumb in view`).toBe(true);
-                await expect.poll(async () => (await cardView(page)).fade[faded], `${where}: the ${faded} fades`).toBe('24px');
+                await expect.poll(async () => (await cardView(page)).fade[faded], `${where}: the ${faded} fades`).toBe('56px');
                 const view = await cardView(page);
                 expect(view.scrolls, `${where}: the card scrolls`).toBe(true);
                 expect(view.touchAction, `${where}: a finger scrolls it`).toBe(pose.touchAction);

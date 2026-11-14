@@ -77,6 +77,8 @@ export const pl: Messages = {
     'timeline.label': 'Oś czasu',
     'timeline.year': 'Rok {year}',
     'timeline.present': 'Dziś',
+    'timeline.earlier': 'Wcześniejsze lata, do {year}',
+    'timeline.later': 'Późniejsze lata, do {year}',
     'timeline.empty': 'Ta mapa nie ma warstw historycznych',
     'timeline.dates': 'Daty z {year}',
     'timeline.datesHint': 'kilka dat ({count}), naciśnij Enter, aby je wyświetlić',

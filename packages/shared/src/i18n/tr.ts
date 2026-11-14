@@ -76,6 +76,8 @@ export const tr: Messages = {
     'timeline.label': 'Zaman çizelgesi',
     'timeline.year': '{year} Yılı',
     'timeline.present': 'Bugün',
+    'timeline.earlier': 'Önceki yıllar, {year} yılına kadar',
+    'timeline.later': 'Sonraki yıllar, {year} yılına kadar',
     'timeline.empty': 'Bu haritada tarihî katman yok',
     'timeline.dates': 'Tarihler ({year})',
     'timeline.datesHint': 'çeşitli tarihler ({count}), Enter bunları listeler',

@@ -73,6 +73,8 @@ export const en: Messages = {
     'timeline.label': 'Timeline',
     'timeline.year': 'Year {year}',
     'timeline.present': 'Today',
+    'timeline.earlier': 'Earlier years, back to {year}',
+    'timeline.later': 'Later years, up to {year}',
     'timeline.empty': 'No historical layers on this map',
     'timeline.dates': 'Dates in {year}',
     'timeline.datesHint': 'several dates ({count}), Enter lists them',

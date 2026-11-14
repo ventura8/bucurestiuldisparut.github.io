@@ -1686,22 +1686,66 @@
             "behaviour": "V04",
             "area": "viewer",
             "path": "happy",
-            "title": "The years that fit stand exactly 56 px apart from the leading edge at every size",
-            "asserts": "with four stops at 768x1024, 1440x900, 2560x1300 (lying) and 360x800 (standing, opened) the card is roomy, every adjacent pair of year labels is 56 px apart (+-1), the first year 44 px in from the card's left (standing: today 24 px below its top) and the pill centred on its year (+-1); unit: packages/ui/test/viewer/hcm-timeline.test.ts",
+            "title": "The years that fit stand exactly 40 px apart from the leading edge at every size",
+            "asserts": "with four stops at 768x1024, 1440x900, 2560x1300 (lying) and 360x800 (standing, opened) the card is roomy, every adjacent pair of year labels is 40 px apart (+-1), the first year 44 px in from the card's left (standing: today 24 px below its top) and the pill centred on its year (+-1); unit: packages/ui/test/viewer/hcm-timeline.test.ts",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-14: \"the spacing is way nuked\", a fixed gap at every width, not stretched nor by date. packages/ui/src/viewer/timeline-model.ts (YEAR_GAP_PX), timeline-styles.ts (.track). Test: e2e/specs/viewer/timeline-spacing.spec.ts."
+            "notes": "The owner, 2026-11-14: \"the spacing is way nuked\", a fixed gap at every width, not stretched nor by date; then 40 px. packages/ui/src/viewer/timeline-model.ts (YEAR_GAP_PX), timeline-styles.ts (.track). Test: e2e/specs/viewer/timeline-spacing.spec.ts."
         },
         {
             "id": "S-V04-BAD-YEAR-GAP-MANY",
             "behaviour": "V04",
             "area": "viewer",
             "path": "bad",
-            "title": "Sixty years keep exactly 56 px apart and scroll at every size",
-            "asserts": "with 63 stops at the same four sizes the card scrolls and every adjacent pair of year labels is still 56 px apart (+-1), the pill centred on its year (+-1)",
+            "title": "Sixty years keep exactly 40 px apart and scroll at every size",
+            "asserts": "with 63 stops at the same four sizes the card scrolls and every adjacent pair of year labels is still 40 px apart (+-1), the pill centred on its year (+-1)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-14. Test: e2e/specs/viewer/timeline-spacing.spec.ts."
+        },
+        {
+            "id": "S-V04-HAPPY-SCROLL-HINT",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A scrolling timeline names its hidden years at each edge and a press there shows the next page",
+            "asserts": "with 63 stops (1924 ... 1984, today) opened on 1954 at 1440x900 (lying) and 360x800 (standing, opened): a button labelled 'Earlier years, back to 1924' showing 1924 and one labelled 'Later years, up to Today' are visible, each at least 48 px; Enter on the earlier one moves the years a page (the selected year more than 100 px further from the centre) and selects nothing; unit: packages/ui/test/viewer/hcm-timeline-edges.test.ts, timeline-edges.test.ts",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14: a clear scroll hint, the edges fade and an arrow names the furthest hidden year. packages/ui/src/viewer/timeline-edges.ts, hcm-timeline.ts, timeline-styles.ts (.edge). Test: e2e/specs/viewer/timeline-scroll-hint.spec.ts."
+        },
+        {
+            "id": "S-V04-BAD-SCROLL-HINT-FITS",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A timeline whose years fit, or that rests as its pill, shows no scroll buttons",
+            "asserts": "the fixture's few years at 1440x900 -> density roomy and no .edge button; 63 stops at 360x800 with the card idle -> the pill (collapsed) and no .edge button",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14. Test: e2e/specs/viewer/timeline-scroll-hint.spec.ts."
+        },
+        {
+            "id": "S-V04-HAPPY-START-AT-YEAR",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The timeline opens on the chosen year, centred, on a desktop and on a phone",
+            "asserts": "with 63 stops and layers=e2e-1954 in the link at 1440x900 and at 360x800 (the card opened from its pill) -> the 1954 stop is centred in the card (+-2 px), not the card's start nor today",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14: the bar started at today instead of the selected year (the card had no size, or rested as its pill, when the year was set). Lesson 722. packages/ui/src/viewer/hcm-timeline.ts (timeline-scroll.ts, TimelineScroll). Test: e2e/specs/viewer/timeline-scroll-hint.spec.ts."
+        },
+        {
+            "id": "S-V04-BAD-START-AT-YEAR-EDGE",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A year at the far end opens in view at its edge, never a blank card or today",
+            "asserts": "with layers=e2e-1924 (the first year) at 1440x900 and 360x800 -> the 1924 stop is inside the card (it cannot be centred) and the button naming today at the other edge is visible",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14. Test: e2e/specs/viewer/timeline-scroll-hint.spec.ts."
         },
         {
             "id": "S-V04-HAPPY-YEAR-CHIP",
@@ -1855,7 +1899,7 @@
             "asserts": "with sixty-two stops (1924 … 1984, today) at 320x568, 568x320 and 768x1024 the card scrolls and takes a finger along the timeline (touch-action pan-y standing, pan-x lying); after Home, End and Home the thumb is inside the card, the edge with more years beyond fades (24 px) and no label meets the pill or another label",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The review of track/yearchip, 2026-11-08 (stops 17 px apart) and the Pixel Tablet, 2026-11-12 (no finger scroll). Below 56 px per gap the stops keep 56 px apart, every one labelled (the owner, 2026-11-14), and the selected one is centred when no drag is on. packages/ui/src/viewer/timeline-model.ts, timeline-styles.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts, timeline-model.test.ts."
+            "notes": "The review of track/yearchip, 2026-11-08 (stops 17 px apart) and the Pixel Tablet, 2026-11-12 (no finger scroll). Below 40 px per gap the stops keep 40 px apart (56 px until the owner's smaller gap, 2026-11-14), every one labelled (the owner, 2026-11-14), and the selected one is centred when no drag is on. packages/ui/src/viewer/timeline-model.ts, timeline-styles.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts, timeline-model.test.ts."
         },
         {
             "id": "S-V04-HAPPY-MOUSE-PAN",
@@ -1917,8 +1961,8 @@
             "behaviour": "V04",
             "area": "viewer",
             "path": "bad",
-            "title": "Twenty-two years each have a label 56 px apart, none clipped or crowded, scrolling where they do not fit, on a phone, a tablet and a desktop",
-            "asserts": "with twenty-two stops (1964 … 1984, today) at 360x800, 568x320, 800x1280, 1280x800 and 1440x900, after Home and after End: the card scrolls exactly when its density is scroll (years under 56 px apart), the thumb is inside the card, no label in view sticks out of the card or meets the pill or another label, and every year but the selected one (named by the pill) has its label; no dots or ticks",
+            "title": "Twenty-two years each have a label 40 px apart, none clipped or crowded, scrolling where they do not fit, on a phone, a tablet and a desktop",
+            "asserts": "with twenty-two stops (1964 … 1984, today) at 360x800, 568x320, 800x1280, 1280x800 and 1440x900, after Home and after End: the card scrolls exactly when its density is scroll (years under 40 px apart), the thumb is inside the card, no label in view sticks out of the card or meets the pill or another label, and every year but the selected one (named by the pill) has its label; lying, a dot per year on the rail",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two stops overflowed the card and 1847 showed as \"7\"; the owner, 2026-11-14: \"too crowded\", only the year labels, no dots. packages/ui/src/viewer/timeline-model.ts (timelineDensity), hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts."

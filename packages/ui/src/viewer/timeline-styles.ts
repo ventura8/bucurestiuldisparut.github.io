@@ -8,10 +8,13 @@
  * the pill's lane, whose stops the phone's height spaces wider than the pill. The list of stops has no margin of its own: the
  * browser's 1em of an `ol` collapsed through the track, made the timeline 100 px tall with a 16 px page font and more
  * with a larger one, and left no room for the open FAB menu above it on a 568 px phone. The card holds a scroller with
- * the padding: the track is exactly 56 px per gap (`--hcm-year-gap`, `YEAR_GAP_PX`) at every width, from the leading
+ * the padding: the track is exactly 40 px per gap (`--hcm-year-gap`, `YEAR_GAP_PX`) at every width, from the leading
  * edge, never stretched to the card (the owner, 2026-11-14: "way nuked"); where it is longer than the card (`density`,
  * `timeline-model.ts`) the card scrolls, under a finger too, behind a mask that fades the edge with more years beyond (`--hcm-fade-start`, `-end`).
- * The years are labels only, no dot or tick (the owner, 2026-11-14); the selected one is the pill.
+ * Each edge with years beyond carries a 48 px button over the fade that pages that way and names the furthest year
+ * (`.edge`, `timeline-edges.ts`). Lying, every year is a label and a dot on the rail (the owner, 2026-11-14), the selected
+ * year's dot bigger, on the pill's lower edge; standing, labels only. The labels are 13 px lying and 14 px (M3 label large)
+ * standing or on a compact window (the owner, 2026-11-14: "bigger year labels"); the selected one is the pill.
  * A year with several dates has a badge on its point (V13); on a phone, idle, the card collapses to its pill (V12).
  * The year chip (`.tip`) is a chip outside the scroller, so the card's mask never clips it. Every chip (the year chip, the
  * pill, the badge) takes theme roles that are light in the light theme and dark in the dark one: a container role on its
@@ -22,6 +25,7 @@ import { css } from 'lit';
 
 import { touchTarget, visuallyHidden } from '../components/styles.js';
 import { baseStyles } from './shared-styles.js';
+import { timelineExtraStyles } from './timeline-extra-styles.js';
 
 export const timelineStyles = [
     baseStyles,
@@ -67,7 +71,9 @@ export const timelineStyles = [
             padding-block: 8px 28px;
             padding-inline: 44px;
             border-radius: inherit;
-            overflow: auto;
+
+            /* One row of years scrolls sideways only (the tour's sideways check leaves such a row out). */
+            overflow: auto hidden;
             scrollbar-width: none;
         }
 
@@ -80,6 +86,7 @@ export const timelineStyles = [
 
             block-size: 100%;
             padding: 24px 8px;
+            overflow: hidden auto;
         }
 
         /* The years are a fixed --hcm-year-gap apart (set with --hcm-gaps by hcm-timeline.ts), whatever the card's size. */
@@ -91,7 +98,7 @@ export const timelineStyles = [
         }
 
         /*
-         * Years longer than the card at 56 px apart (the owner, 2026-11-14: "too crowded"): every one labelled, the card
+         * Years longer than the card at 40 px apart (the owner, 2026-11-14: "too crowded"): every one labelled, the card
          * scrolls; a finger may scroll it along the
          * timeline (it drags the thumb itself), and the edge with more years beyond fades.
          */
@@ -180,7 +187,8 @@ export const timelineStyles = [
 
             /* The label's row begins below the pill (4 to 44 px) and the rail, not beside them (no tick holds it down). */
             padding-block-start: 28px;
-            font-size: var(--md-sys-typescale-label-small-size, 0.6875rem);
+            font-size: 13px;
+            line-height: 16px;
             color: var(--md-sys-color-on-surface-variant, GrayText);
             white-space: nowrap;
         }
@@ -387,4 +395,5 @@ export const timelineStyles = [
             }
         }
     `,
+    timelineExtraStyles,
 ];

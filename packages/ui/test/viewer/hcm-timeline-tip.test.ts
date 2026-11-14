@@ -11,7 +11,7 @@ import { mountElement, recordEvents, shadowQuery, shadowQueryAll } from './doubl
  * names them; in title medium, 40 px tall.
  */
 
-/** Twelve stops, 1964 to 1974 and today: roomy in a 720 px card, every year labelled (56 px apart). */
+/** Twelve stops, 1964 to 1974 and today: roomy in a 720 px card, every year labelled (40 px apart). */
 const MANY = [...Array.from({ length: 11 }, (_, at) => 1964 + at), null];
 /** 1964 has two dates (and 1967 two layers): their stops carry a badge and never a chip. */
 const COUNTS = new Map([

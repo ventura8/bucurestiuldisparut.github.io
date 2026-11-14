@@ -396,6 +396,16 @@ describe('sideways scrolling inside the page', () => {
         expect(sidewaysCulprits(fits)).toEqual([]);
         expect(checksOf(snapshot)).toContain('sideways-scroll');
     });
+
+    test('happyPath_aRowMadeToScrollSidewaysOnlyIsNoFault', () => {
+        // The lying timeline of many years: `overflow: auto hidden`, one row that scrolls sideways and never down.
+        const years = h('div', { style: 'width: 600px; height: 20px;' }, 'Anii');
+        const row = h('div', { style: at(0, 0, 200, 40, 'overflow: auto hidden;') }, years);
+        stage(row);
+        const snapshot = probeLayout(OPTIONS);
+        expect(snapshot.sideways).toEqual([]);
+        expect(checksOf(snapshot)).not.toContain('sideways-scroll');
+    });
 });
 
 describe('edge cases of the probes', () => {

@@ -7,13 +7,13 @@ import { openTimelineCard, openViewer, serveManifest, viewer } from '../../suppo
 
 /**
  * The years' spacing on the timeline (behaviour V04; the owner, 2026-11-14: "the spacing is way nuked"): every year is
- * exactly 56 px from the next (`YEAR_GAP_PX`) at every window size and both ways, never stretched to the card nor spread
+ * exactly 40 px from the next (`YEAR_GAP_PX`) at every window size and both ways, never stretched to the card nor spread
  * by date. Years that fit start at the card's leading edge (44 px in lying, 24 px below the top standing, today first);
- * years that do not fit scroll, still 56 px apart. The pill sits on its own year.
+ * years that do not fit scroll, still 40 px apart. The pill sits on its own year.
  */
 
 const OBOR_VIEW = '16/44.44763/26.13822';
-const GAP_PX = 56;
+const GAP_PX = 40;
 
 /** The fixture's layers plus one per year in `years`, so the timeline has those stops. */
 function manifestOf(years: readonly number[]): Record<string, unknown> {
@@ -71,7 +71,7 @@ const SIZES = [
 ] as const;
 
 test(
-    'The years that fit stand exactly 56 px apart from the leading edge at 768, 1440 and 2560 px and upright at 360 px',
+    'The years that fit stand exactly 40 px apart from the leading edge at 768, 1440 and 2560 px and upright at 360 px',
     { tag: '@S-V04-HAPPY-YEAR-GAP-FIXED' },
     async ({ page, lang }) => {
         await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -90,7 +90,7 @@ test(
 );
 
 test(
-    'Sixty years keep exactly 56 px apart and scroll, never squeezed or stretched, at every size',
+    'Sixty years keep exactly 40 px apart and scroll, never squeezed or stretched, at every size',
     { tag: '@S-V04-BAD-YEAR-GAP-MANY' },
     async ({ page, lang }) => {
         // The live map, 2026-11-14: sixty-two years and today.

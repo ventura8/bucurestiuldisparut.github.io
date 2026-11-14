@@ -77,6 +77,8 @@ export const it: Messages = {
     'timeline.label': 'Linea del tempo',
     'timeline.year': 'Anno {year}',
     'timeline.present': 'Oggi',
+    'timeline.earlier': 'Anni precedenti, fino al {year}',
+    'timeline.later': 'Anni successivi, fino al {year}',
     'timeline.empty': 'Nessun livello storico su questa mappa',
     'timeline.dates': 'Date nel {year}',
     'timeline.datesHint': 'diverse date ({count}), premi Enter per visualizzarle',

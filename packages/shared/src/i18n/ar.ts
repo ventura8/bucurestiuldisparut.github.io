@@ -74,6 +74,8 @@ export const ar: Messages = {
     'timeline.label': 'الخط الزمني',
     'timeline.year': 'عام {year}',
     'timeline.present': 'اليوم',
+    'timeline.earlier': 'سنوات سابقة، حتى {year}',
+    'timeline.later': 'سنوات لاحقة، حتى {year}',
     'timeline.empty': 'لا توجد طبقات تاريخية في هذه الخريطة',
     'timeline.dates': 'تواريخ في {year}',
     'timeline.datesHint': 'عدة تواريخ ({count})، اضغط على "Enter" لعرضها',

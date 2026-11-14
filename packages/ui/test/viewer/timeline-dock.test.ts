@@ -142,7 +142,9 @@ describe('<hcm-map-viewer>: the date picker of a year (V13)', () => {
         const mounted = await mountViewer(readyState(twoDates(), { year: 1966 }), EXPANDED);
         const track = shadowQuery(timelineOf(mounted), '.track');
         const thumb = shadowQuery(timelineOf(mounted), '.thumb').getBoundingClientRect();
-        const at = { clientX: thumb.x + thumb.width / 2, clientY: thumb.y + thumb.height / 2, button: 0, bubbles: true, composed: true };
+        // The year's own stop, not the pill: the pill may still be gliding there from today (its 350 ms spring).
+        const year = shadowQuery(timelineOf(mounted), '.stop.selected').getBoundingClientRect();
+        const at = { clientX: year.x + year.width / 2, clientY: thumb.y + thumb.height / 2, button: 0, bubbles: true, composed: true };
 
         track.dispatchEvent(new PointerEvent('pointerdown', { ...at, cancelable: true }));
         window.dispatchEvent(new PointerEvent('pointerup', at));

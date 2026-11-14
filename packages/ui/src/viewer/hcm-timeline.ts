@@ -6,10 +6,13 @@
  * motion under `prefers-reduced-motion: reduce`. Standing on the leading edge of a phone held upright, lying at the bottom
  * of the map everywhere else; Left and Right follow the thumb on screen (a later year is to the left, right to left).
  * The track fits the card (the Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two years overflowed it and clipped the
- * first; the owner, 2026-11-14: "too crowded" and "way nuked"): every year is a label, no dot or tick, exactly 56 px apart
- * at every width from the card's leading edge (`YEAR_GAP_PX`); where they do not fit the card scrolls, a finger, a mouse's drag or wheel can scroll it, the edge with more years beyond
- * fades, and the selected stop is centred whenever it changes, except while a drag is on (`timeline-model.ts`,
- * `timeline-styles.ts`). There a finger drags the thumb and taps a year; elsewhere it drags anywhere on the track.
+ * first; the owner, 2026-11-14: "too crowded", "way nuked", then a smaller gap with dots): every year is a label exactly
+ * 40 px apart at every width from the card's leading edge (`YEAR_GAP_PX`), lying a dot on the rail too (the selected
+ * year's bigger, under the pill), a label that would touch its neighbour's left out (`crowdedLabels`); where they do not
+ * fit the card scrolls, a finger, a mouse's drag or wheel can scroll it, and each edge with years beyond fades and carries
+ * a button that pages that way and names the furthest year it hides (`timeline-edges.ts`). The selected stop is centred
+ * on load, when the card opens from its pill and whenever the year changes from outside, never after a pointer chose it
+ * (`timeline-model.ts`, `timeline-styles.ts`). There a finger drags the thumb and taps a year; elsewhere it drags anywhere on the track.
  * A new stop fires `hcm-year-change` (`{year}`, null for today). The year chip (`timeline-tip.ts`) names a stop without
  * its own label under the mouse and the stop under a finger, which scrubs along the track and selects on lift
  * (`timeline-scrub.ts`); never a year of several dates, whose date menu names them. V13: selecting a year with several dates (a tap, a click,
@@ -23,9 +26,11 @@ import { classMap } from 'lit/directives/class-map.js';
 
 import { cssProperties } from '../components/css-properties.js';
 import { countOf, dateBadge, datesOpenEvent, datesValueText } from './timeline-dates.js';
+import { edgeButtons, type Edges } from './timeline-edges.js';
 import { stopIndex, YEAR_GAP_PX, timelineDensity, type TimelineDensity, type TimelineStop } from './timeline-model.js';
 import { wheelAlong } from './timeline-pan.js';
 import { TimelinePointer } from './timeline-pointer.js';
+import { TimelineScroll } from './timeline-scroll.js';
 import { DatesPeek, datesPeekEvent, peekDates, peekPlace } from './timeline-peek.js';
 import { YearSends } from './timeline-sends.js';
 import { timelineStyles } from './timeline-styles.js';
@@ -55,21 +60,14 @@ const KEY_STEPS: Readonly<Record<string, number>> = {
 /** The card's padding around the track: 44 px on either side lying, 24 px above and below standing (`timeline-styles.ts`). */
 const LYING_PADDING_PX = 88;
 const STANDING_PADDING_PX = 48;
-/** Standing, a label in the pill's lane needs this far from the selected stop: half the 40 px pill and half a label. */
-const PILL_REACH_PX = 28;
-/** How wide the fade of an edge with more years beyond is. */
-const FADE_PX = '24px';
+/** Standing, a label in the pill's lane needs this far from the selected stop: half the 40 px pill and half a 20 px label. */
+const PILL_REACH_PX = 30;
+/** How wide the fade of an edge with more years beyond is: under its 48 px button. */
+const FADE_PX = '56px';
 
-/** The edges of a scroller with more content beyond them: its scroll's start and end (right to left the offset is negative). */
-function edgesBeyond(scroller: HTMLElement, vertical: boolean): { readonly start: boolean; readonly end: boolean } {
-    const along = vertical ? scroller.scrollTop : Math.abs(scroller.scrollLeft);
-    const extent = vertical ? scroller.scrollHeight - scroller.clientHeight : scroller.scrollWidth - scroller.clientWidth;
-    return { start: along > 1, end: along < extent - 1 };
-}
-
-/** A change that may move the selected year away from the card's centre. */
+/** A change that may move the selected year away from the card's centre (opening from the pill too: lesson 722). */
 function moves(changed: PropertyValues): boolean {
-    return changed.has('value') || changed.has('density') || changed.has('dragging');
+    return changed.has('value') || changed.has('density') || changed.has('dragging') || changed.has('collapsed');
 }
 
 function percentText(percent: number): string {
@@ -85,6 +83,7 @@ export class HcmTimeline extends LitElement {
         dragging: { type: Boolean, reflect: true },
         density: { type: String, reflect: true },
         fade: { state: true },
+        crowded: { state: true },
         collapsed: { type: Boolean, reflect: true },
         dateCounts: { attribute: false },
         tip: { state: true },
@@ -101,7 +100,9 @@ export class HcmTimeline extends LitElement {
     /** How the years fit the card (reflected for the styles), from the card's size and the number of stops. */
     declare density: TimelineDensity;
     /** The edges with more years beyond them: the scroll's start (left, right right to left, top standing) and end. */
-    declare fade: { readonly start: boolean; readonly end: boolean };
+    declare fade: Edges;
+    /** Lying, the stops whose label is left out: it would touch its neighbour's (`crowdedLabels`). */
+    declare crowded: ReadonlySet<number>;
     /** V12: on a phone, idle, the card is only its year's pill (the viewer's `timeline-dock.ts` decides). */
     declare collapsed: boolean;
     /** V13: the years with several dates, and how many (`timeline-dates.ts`): their stops carry a badge. */
@@ -164,8 +165,12 @@ export class HcmTimeline extends LitElement {
             this.dispatchEvent(datesPeekEvent(detail));
         },
     });
+    /** Centring, the edges' fade and buttons, the labels left out (`timeline-scroll.ts`). */
+    readonly #scroll = new TimelineScroll(this);
+    /** A new size (the window turned, the card opened) centres the selected year again. */
     readonly #resize = new ResizeObserver(() => {
         this.#measure();
+        this.#scroll.want();
     });
 
     constructor() {
@@ -177,6 +182,7 @@ export class HcmTimeline extends LitElement {
         this.dragging = false;
         this.density = 'roomy';
         this.fade = { start: false, end: false };
+        this.crowded = new Set();
         this.collapsed = false;
         this.dateCounts = new Map();
         this.tip = null;
@@ -207,9 +213,10 @@ export class HcmTimeline extends LitElement {
 
     protected override updated(changed: PropertyValues<this>): void {
         if (moves(changed) && !this.dragging && this.value !== this.#pointerStop) {
-            this.#reveal();
+            this.#scroll.want();
         }
-        this.#fadeEdges();
+        this.#scroll.fadeEdges();
+        this.#scroll.crowd();
         this.#placeTip();
         this.#markTipping();
     }
@@ -246,7 +253,7 @@ export class HcmTimeline extends LitElement {
         tip.style.top = `${String(place.top)}px`;
     }
 
-    /** The density for the card's size now: whether the years, 56 px apart, fit the room along its track. */
+    /** The density for the card's size now: whether the years, 40 px apart, fit the room along its track. */
     #measure(): void {
         const vertical = this.orientation === 'vertical';
         const room = vertical ? this.clientHeight - STANDING_PADDING_PX : this.clientWidth - LYING_PADDING_PX;
@@ -254,39 +261,11 @@ export class HcmTimeline extends LitElement {
     }
 
     #scroller(): HTMLElement | null {
-        return this.renderRoot.querySelector<HTMLElement>('.scroller');
-    }
-
-    /** Centres the selected stop in a scrolling card (the scroller only: the page never moves). */
-    #reveal(): void {
-        const scroller = this.#scroller();
-        const stop = this.renderRoot.querySelector('.stop.selected');
-        if (scroller === null || stop === null || this.density !== 'scroll') {
-            return;
-        }
-        const view = scroller.getBoundingClientRect();
-        const box = stop.getBoundingClientRect();
-        if (this.orientation === 'vertical') {
-            scroller.scrollBy({ top: box.top + box.height / 2 - (view.top + view.height / 2) });
-        } else {
-            scroller.scrollBy({ left: box.left + box.width / 2 - (view.left + view.width / 2) });
-        }
-    }
-
-    /** Which edges have more years beyond them. */
-    #fadeEdges(): void {
-        const scroller = this.#scroller();
-        if (scroller === null) {
-            return;
-        }
-        const fade = edgesBeyond(scroller, this.orientation === 'vertical');
-        if (fade.start !== this.fade.start || fade.end !== this.fade.end) {
-            this.fade = fade;
-        }
+        return this.#scroll.scroller();
     }
 
     readonly #onScroll = (): void => {
-        this.#fadeEdges();
+        this.#scroll.fadeEdges();
     };
 
     /** A wheel over a lying scrolling card scrolls the years sideways (`timeline-pan.ts`). */
@@ -306,6 +285,14 @@ export class HcmTimeline extends LitElement {
         return html`<div class="scroller" ${cssProperties(fade)} @scroll=${this.#onScroll} @wheel=${this.#onWheel}>
                 ${this.#track(index, position)}
             </div>
+            ${edgeButtons({
+                edges: this.fade,
+                stops: this.stops,
+                vertical: this.orientation === 'vertical',
+                locale: this.locale,
+                collapsed: this.collapsed,
+                onPage: this.#scroll.page,
+            })}
             ${this.tip === null || this.collapsed ? nothing : this.#tipChip(this.tip)}<span class="visually-hidden" aria-live="polite"
                 >${this.said}</span
             >`;
@@ -334,7 +321,7 @@ export class HcmTimeline extends LitElement {
     /** Whether a stop's year is on the track: its label, or the pill for the selected one whatever the density. */
     #named(index: number): boolean {
         const selected = stopIndex(this.stops, this.value);
-        return index === selected || this.#labelled(index, selected);
+        return index === selected || (this.#labelled(index, selected) && !this.crowded.has(index));
     }
 
     #hideHint(): void {
@@ -346,7 +333,9 @@ export class HcmTimeline extends LitElement {
     /** A keyboard's focus centres the selected year (a mouse's, after a pan, leaves the years where the visitor put them). */
     readonly #onFocus = (): void => {
         if (this.renderRoot.querySelector('.thumb:focus-visible') !== null) {
-            this.#reveal();
+            if (!this.#scroll.handing) {
+                this.#scroll.want();
+            }
             this.#hintAt(stopIndex(this.stops, this.value));
         }
     };
@@ -391,7 +380,7 @@ export class HcmTimeline extends LitElement {
     }
 
     #stop(stop: TimelineStop, stopAt: number, selected: number): TemplateResult {
-        const classes = { stop: true, selected: stopAt === selected, minor: !this.#labelled(stopAt, selected) };
+        const classes = { stop: true, selected: stopAt === selected, minor: !this.#labelled(stopAt, selected) || this.crowded.has(stopAt) };
         return html`<li class=${classMap(classes)} ${cssProperties({ '--hcm-stop': percentText(this.#percent(stopAt)) })}>
             <span class="label">${this.#shortLabel(stop)}</span>
             ${stopAt === selected ? '' : this.#badge(stop)}
