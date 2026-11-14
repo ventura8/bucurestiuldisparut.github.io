@@ -91,6 +91,21 @@ def test_bad_path_an_output_that_cannot_be_read_or_parsed_is_damaged(world: Pipe
     assert output_intact(cast(ObjectStore, Unreadable()), StepRecord("done"), ObjectInfo("versions/v/x.tif", 1, "1"), local=True)
 
 
+def test_bad_path_a_tile_archive_is_whole_only_with_its_header_and_any_other_kind_by_its_size(world: PipelineWorld) -> None:
+    objects = world.services().objects
+    tiles = "work/bucharest/job-regeoref-9/tiles.pmtiles"
+    other = "work/bucharest/job-regeoref-9/notes.bin"
+    world.gcs.put(tiles, b"PMTiles\x03" + b"\x00" * 8)
+    world.gcs.put(other, b"\x00" * 16)
+
+    assert output_intact(objects, StepRecord("done"), ObjectInfo(tiles, 16, "1"), local=True)
+    world.gcs.put(tiles, b"\x00" * 16)
+    assert not output_intact(objects, StepRecord("done"), ObjectInfo(tiles, 16, "1"), local=True)
+    assert output_intact(objects, StepRecord("done"), ObjectInfo(other, 16, "1"), local=True)
+    # Cloud Run's run (not on the owner's computer): a work file is trusted by its generation too.
+    assert output_intact(cast(ObjectStore, Unreadable()), StepRecord("done"), ObjectInfo(WARPED, 4, "1"), local=False)
+
+
 def full_disk(_ctx: JobContext) -> None:
     raise OSError(errno.ENOSPC, "No space left on device")
 

@@ -17,7 +17,7 @@ import { POI_CATEGORY_EDITS } from './poi-categories.js';
 import { STORY_EDITS } from './stories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
 
-export { newPoiCategory, poiCategoryDoc } from './poi-categories.js';
+export { poiCategoryDoc } from './poi-categories.js';
 
 /** The bounds every test city gets: photo locations must fall within them (±0.5°). */
 export const CITY_BOUNDS = { west: 25.9, south: 44.3, east: 26.3, north: 44.6 } as const;
