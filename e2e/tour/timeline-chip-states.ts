@@ -2,8 +2,8 @@ import type { Locale } from '@hcm/shared';
 import { expect, type Page } from '@playwright/test';
 
 import { mapIdle } from '../support/map.js';
-import { fingers, manyYearsManifest, stopCentre, touch, yearChip } from '../support/timeline.js';
-import { openTimelineCard, openViewer, serveManifest, t } from '../support/viewer.js';
+import { fingers, manyYearsManifest, pillOn, stopCentre, touch, yearChip } from '../support/timeline.js';
+import { openTimelineCard, openViewer, serveManifest, t, viewer } from '../support/viewer.js';
 
 /**
  * The timeline's states in the tour's inventory: a historical year and a keyboard step (visited by the journey `year`
@@ -19,6 +19,17 @@ export interface TimelineChipTour {
 }
 
 const YEARS = Array.from({ length: 20 }, (_, at) => 1965 + at);
+
+/** The first year stop without its own label (`minor`, not the selected one), or null when every year is labelled. */
+async function unlabelledStop(page: Page): Promise<number | null> {
+    return viewer(page)
+        .locator('hcm-timeline')
+        .evaluate((element) => {
+            const stops = [...(element.shadowRoot?.querySelectorAll('.stop') ?? [])];
+            const at = stops.findIndex((stop, index) => index < stops.length - 1 && stop.matches('.minor:not(.selected)'));
+            return at < 0 ? null : at;
+        });
+}
 
 export const TIMELINE_CHIP_STATES = {
     year: {
@@ -40,11 +51,15 @@ export const TIMELINE_CHIP_STATES = {
         },
     },
     'timeline-chip-hover': {
-        title: 'A mouse over a year without its label: the year chip above the timeline (beside it standing)',
+        title: 'A mouse over a year: the year chip beside a standing timeline when the year has no label, none over a labelled one',
         enter: async ({ page }: TimelineChipTour) => {
-            const stop = await stopCentre(page, 9);
+            // Lying, every year is a label since the fixed gap (58ef989b): the chip names only a year without one, which a
+            // standing timeline has under its pill. The state hovers such a year when the card has one, else a labelled year.
+            const unlabelled = await unlabelledStop(page);
+            const stop = await stopCentre(page, unlabelled ?? 9);
             await page.mouse.move(stop.x, stop.y);
-            await expect.poll(async () => (await yearChip(page))?.text).toBe('1974');
+            const expected = unlabelled === null ? undefined : String(YEARS[unlabelled]);
+            await expect.poll(async () => (await yearChip(page))?.text).toBe(expected);
         },
     },
     'timeline-chip-finger': {
@@ -52,7 +67,8 @@ export const TIMELINE_CHIP_STATES = {
         enter: async ({ page, lang }: TimelineChipTour) => {
             await page.mouse.move(0, 0);
             const cdp = await fingers(page);
-            await touch(cdp, await stopCentre(page, 10), [await stopCentre(page, 11), await stopCentre(page, 12)], false);
+            // A scrolling card (every year labelled, 40 px apart) scrubs only from the year pill; elsewhere a finger scrolls it.
+            await touch(cdp, await pillOn(page, lang, 10), [await stopCentre(page, 11), await stopCentre(page, 12)], false);
             const slider = page.getByRole('slider', { name: t(lang, 'timeline.label'), exact: true });
             await expect(slider).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1977' }));
             await expect.poll(async () => (await yearChip(page))?.text).toBe('1977');

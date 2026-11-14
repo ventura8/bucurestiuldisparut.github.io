@@ -18054,8 +18054,8 @@
             "behaviour": "V03",
             "area": "viewer",
             "path": "bad",
-            "title": "A long layer name ellipsizes and rows without a date show nothing extra",
-            "asserts": "a 200-character layer name stays on one line, cut with an ellipsis, in a row as tall as Photos; Photos and the Places rows have no date line",
+            "title": "A long layer name wraps whole and rows without a date show nothing extra",
+            "asserts": "a 200-character layer name wraps over several lines with nothing cut (no ellipsis), its row taller than Photos; Photos and the Places rows have no date line",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Owner 2026-11-14. Unit: packages/ui/test/components/overlay-list.test.ts, packages/ui/test/viewer/hcm-layer-panel.test.ts. Test: e2e/specs/viewer/layers-date.spec.ts."

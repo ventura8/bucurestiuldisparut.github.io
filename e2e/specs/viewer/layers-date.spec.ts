@@ -47,23 +47,20 @@ for (const size of WIDTHS) {
     );
 }
 
-test(
-    'A long layer name ellipsizes on one line and Photos and Places show no date',
-    { tag: '@S-V03-BAD-LAYER-NO-DATE' },
-    async ({ page, lang }) => {
-        await page.setViewportSize({ width: 360, height: 800 });
-        const manifest = siteManifestData();
-        const layers = manifest['layers'] as Json[];
-        const first: Json = layers.at(0) ?? {};
-        first['label'] = { ro: 'Strat istoric '.repeat(10), en: 'Historical layer '.repeat(10) };
-        await serveManifest(page, manifest);
-        await openViewer(page, { lang, hash: '15/44.42700/26.08530' });
-        await openLayers(page, lang);
-        const long = row(page, String(first['id']));
-        const label = long.locator('.label');
-        expect(await label.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
-        expect(await height(long)).toBeCloseTo(await height(row(page, 'photos')), 1);
-        await expect(row(page, 'photos').locator('.detail')).toHaveCount(0);
-        await expect(viewer(page).locator('hcm-overlay-list li[data-overlay]:not([data-overlay^="e2e-"]) .detail')).toHaveCount(0);
-    },
-);
+test('A long layer name wraps whole and Photos and Places show no date', { tag: '@S-V03-BAD-LAYER-NO-DATE' }, async ({ page, lang }) => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    const manifest = siteManifestData();
+    const layers = manifest['layers'] as Json[];
+    const first: Json = layers.at(0) ?? {};
+    first['label'] = { ro: 'Strat istoric '.repeat(10), en: 'Historical layer '.repeat(10) };
+    await serveManifest(page, manifest);
+    await openViewer(page, { lang, hash: '15/44.42700/26.08530' });
+    await openLayers(page, lang);
+    const long = row(page, String(first['id']));
+    const label = long.locator('.label');
+    // Wrapped, never cut: an ellipsis hid the layer's name under WCAG 1.4.12's text spacing (docs/LESSONS.md).
+    expect(await label.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    expect(await height(long)).toBeGreaterThan(await height(row(page, 'photos')));
+    await expect(row(page, 'photos').locator('.detail')).toHaveCount(0);
+    await expect(viewer(page).locator('hcm-overlay-list li[data-overlay]:not([data-overlay^="e2e-"]) .detail')).toHaveCount(0);
+});

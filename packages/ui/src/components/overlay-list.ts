@@ -29,7 +29,7 @@ export interface OverlayListItem {
     readonly toggleable?: boolean;
     /**
      * A secondary line below the name, in smaller supporting text (the viewer's historical layer: its date or year). The
-     * two lines fit the row's 48 px: the name ellipsizes on one line, so a dated row is no taller than an undated one.
+     * two lines fit the row's 48 px when the name fits its line; a longer name wraps and the row grows (never cut).
      */
     readonly detail?: string;
 }
@@ -144,13 +144,11 @@ export class HcmOverlayList extends LitElement {
                 flex-direction: column;
             }
 
-            .name.dated > span {
-                overflow: hidden;
-                white-space: nowrap;
-                text-overflow: ellipsis;
-            }
-
-            /* Two lines in the row's 48 px: 20 + 16 px, the name a touch tighter than body-large's 24 px. */
+            /*
+             * Two lines in the row's 48 px: 20 + 16 px, the name a touch tighter than body-large's 24 px. A name longer than
+             * its line wraps and the row grows, never an ellipsis: a cut name hides the layer's year under WCAG 1.4.12's text
+             * spacing (the tour's clipped-text check, "Fotografie aeriană 1980" at 4K in a 211 px column).
+             */
             .name.dated > .label {
                 line-height: 20px;
             }
@@ -277,7 +275,7 @@ export class HcmOverlayList extends LitElement {
         </li>`;
     }
 
-    /** The name, with its date below when the row has one (the name then ellipsizes, keeping the row's height). */
+    /** The name, with its date below when the row has one (a name that fits keeps the row's 48 px; a longer one wraps). */
     private renderName(item: OverlayListItem): TemplateResult {
         if (item.detail === undefined) {
             return html`<span class="name body-large">${item.label}</span>`;

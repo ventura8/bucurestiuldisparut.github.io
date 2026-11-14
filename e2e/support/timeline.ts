@@ -1,8 +1,9 @@
-import type { CDPSession, Page } from '@playwright/test';
+import type { Locale } from '@hcm/shared';
+import { expect, type CDPSession, type Page } from '@playwright/test';
 
 import { siteManifestData } from '../fixtures/manifest.js';
 import { E2E_XYZ_LAYER } from '../fixtures/world.js';
-import { viewer } from './viewer.js';
+import { t, viewer } from './viewer.js';
 
 /**
  * The timeline under a mouse and a finger (the year chip, the owner 2026-11-13): a city of many layer years, where each
@@ -48,6 +49,22 @@ export async function stopCentre(page: Page, index: number): Promise<Point> {
             const vertical = element.getAttribute('orientation') === 'vertical';
             return vertical ? { x: box.left + 26, y: box.top + box.height / 2 } : { x: box.left + box.width / 2, y: box.top + 4 };
         }, index);
+}
+
+/**
+ * Puts the year pill on stop `index` with the keyboard and gives its centre: on a scrolling card a finger scrubs only
+ * from the pill (elsewhere it scrolls the card or taps a year).
+ */
+export async function pillOn(page: Page, lang: Locale, index: number): Promise<Point> {
+    const slider = page.getByRole('slider', { name: t(lang, 'timeline.label'), exact: true });
+    await slider.focus();
+    await page.keyboard.press('Home');
+    for (let step = 0; step < index; step += 1) {
+        await page.keyboard.press('ArrowRight');
+    }
+    await expect(slider).toHaveAttribute('aria-valuenow', String(index));
+    const box = await viewer(page).locator('hcm-timeline .thumb').boundingBox();
+    return { x: (box?.x ?? 0) + (box?.width ?? 0) / 2, y: (box?.y ?? 0) + (box?.height ?? 0) / 2 };
 }
 
 /** The chip's text and box, or null when none is shown. */

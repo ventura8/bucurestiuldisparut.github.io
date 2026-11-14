@@ -224,8 +224,7 @@ describe('<hcm-overlay-list> dates', () => {
     afterEach(cleanup);
 
     it('happyPath_dateBelowTheNameWithoutATallerRow', async () => {
-        const long = 'Ortofoto '.repeat(20);
-        const dated = ITEMS.map((item, index) => (index === 0 ? { ...item, label: long, detail: '12 aprilie 1966' } : item));
+        const dated = ITEMS.map((item, index) => (index === 0 ? { ...item, detail: '12 aprilie 1966' } : item));
         const plain = await list('ro');
         const before = shadowPart(plain, '[data-overlay="ortofoto-1945"]').getBoundingClientRect().height;
         cleanup();
@@ -233,8 +232,18 @@ describe('<hcm-overlay-list> dates', () => {
         const row = shadowPart(element, '[data-overlay="ortofoto-1945"]');
         expect(shadowPart(element, '[data-overlay="ortofoto-1945"] .detail').textContent).toBe('12 aprilie 1966');
         expect(row.getBoundingClientRect().height).toBe(before);
+    });
+
+    it('badPath_longNameWrapsWholeInATallerRow', async () => {
+        const long = 'Ortofoto '.repeat(20);
+        const dated = ITEMS.map((item, index) => (index === 0 ? { ...item, label: long, detail: '12 aprilie 1966' } : item));
+        const plain = await list('ro');
+        const before = shadowPart(plain, '[data-overlay="ortofoto-1945"]').getBoundingClientRect().height;
+        cleanup();
+        const element = await list('ro', dated);
         const label = shadowPart(element, '[data-overlay="ortofoto-1945"] .label');
-        expect(label.scrollWidth).toBeGreaterThan(label.clientWidth);
+        expect(label.scrollWidth).toBeLessThanOrEqual(label.clientWidth);
+        expect(shadowPart(element, '[data-overlay="ortofoto-1945"]').getBoundingClientRect().height).toBeGreaterThan(before);
     });
 
     it('badPath_rowWithoutDateShowsNoSecondLine', async () => {

@@ -2,7 +2,18 @@ import type { Locale } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../../support/test.js';
-import { fingers, lift, manyYearsManifest, meet, stopCentre, timelineCard, touch, yearChip, type Rect } from '../../support/timeline.js';
+import {
+    fingers,
+    lift,
+    manyYearsManifest,
+    meet,
+    pillOn,
+    stopCentre,
+    timelineCard,
+    touch,
+    yearChip,
+    type Rect,
+} from '../../support/timeline.js';
 import { currentHash, hashParam, openTimelineCard, openViewer, serveManifest, t } from '../../support/viewer.js';
 
 /**
@@ -49,21 +60,6 @@ async function expectChipClear(page: Page, chip: Rect): Promise<void> {
         (await controlBoxes(page)).filter((box) => meet(box, chip)),
         'no control under the chip',
     ).toEqual([]);
-}
-
-/**
- * Puts the year pill on stop `index` with the keyboard and gives its centre: on a scrolling card a finger scrubs only
- * from the pill (elsewhere it scrolls the card or taps a year).
- */
-async function pillOn(page: Page, lang: Locale, index: number): Promise<{ readonly x: number; readonly y: number }> {
-    await slider(page, lang).focus();
-    await page.keyboard.press('Home');
-    for (let step = 0; step < index; step += 1) {
-        await page.keyboard.press('ArrowRight');
-    }
-    await expect(slider(page, lang)).toHaveAttribute('aria-valuenow', String(index));
-    const box = await page.locator('hcm-timeline .thumb').boundingBox();
-    return { x: (box?.x ?? 0) + (box?.width ?? 0) / 2, y: (box?.y ?? 0) + (box?.height ?? 0) / 2 };
 }
 
 async function openYears(page: Page, lang: Locale, size: { readonly width: number; readonly height: number }): Promise<void> {
