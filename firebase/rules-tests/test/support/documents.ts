@@ -13,8 +13,11 @@ import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection } 
 
 import { archiveJobFields } from './archive-fields.js';
 import { derivative, reviewedFields, versionEdits, versionFields } from './photo-fields.js';
+import { POI_CATEGORY_EDITS } from './poi-categories.js';
 import { STORY_EDITS } from './stories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
+
+export { newPoiCategory, poiCategoryDoc } from './poi-categories.js';
 
 /** The bounds every test city gets: photo locations must fall within them (±0.5°). */
 export const CITY_BOUNDS = { west: 25.9, south: 44.3, east: 26.3, north: 44.6 } as const;
@@ -245,36 +248,6 @@ export function newPoi(uid: string): Data {
         credit: 'Ion Mureșan',
         createdAt: serverTime(),
         createdBy: uid,
-        ...stampedBy(uid),
-    };
-}
-
-export function poiCategoryDoc(): Data {
-    return {
-        label: { ro: 'Clădiri', en: 'Buildings' },
-        icon: 'church',
-        color: '#875329',
-        defaultOpacity: 0.8,
-        order: 1,
-        defaultVisible: true,
-        pinned: false,
-        attribution: 'Data © OpenStreetMap contributors, ODbL 1.0.',
-        createdAt: past(),
-        ...systemStamp('bootstrap'),
-    };
-}
-
-export function newPoiCategory(uid: string): Data {
-    return {
-        label: { ro: 'Străzi dispărute' },
-        icon: 'add_road',
-        color: '#3366AA',
-        defaultOpacity: 1,
-        order: 2,
-        defaultVisible: true,
-        pinned: true,
-        attribution: 'Data © OpenStreetMap contributors, ODbL 1.0.',
-        createdAt: serverTime(),
         ...stampedBy(uid),
     };
 }
@@ -688,16 +661,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         photoIds: Array.from({ length: 20 }, (_, index) => `p${String(index)}`),
         ...{ published: false, credit: 'Maria Popescu', sourceLayer: 'plan-1911' },
     },
-    poiCategory: {
-        label: { ro: 'Biserici', en: 'Churches' },
-        icon: 'mosque',
-        color: '#aa00ff',
-        defaultOpacity: 0,
-        order: -1,
-        defaultVisible: false,
-        pinned: true,
-        attribution: 'Our own scans.',
-    },
+    poiCategory: POI_CATEGORY_EDITS,
     story: STORY_EDITS,
     job: { cancelRequested: true, placingPoints: true },
     usgsScene: { status: 'rejected', note: 'Nori peste oraș.' },
