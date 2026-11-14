@@ -24,7 +24,7 @@ exit /b
 $Project = $env:HCM_PROJECT
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-$StarterVersion = 'c99ce4a91e15'
+$StarterVersion = 'e0afe8c32568'
 $City = $env:HCM_CITY
 $Action = $env:HCM_ACTION
 $Name = 'hcm-worker'

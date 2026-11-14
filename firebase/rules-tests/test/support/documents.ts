@@ -256,6 +256,9 @@ export function poiCategoryDoc(): Data {
         color: '#875329',
         defaultOpacity: 0.8,
         order: 1,
+        defaultVisible: true,
+        pinned: false,
+        attribution: 'Data © OpenStreetMap contributors, ODbL 1.0.',
         createdAt: past(),
         ...systemStamp('bootstrap'),
     };

@@ -32,7 +32,7 @@ set -u
 
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-STARTER_VERSION=c99ce4a91e15
+STARTER_VERSION=e0afe8c32568
 
 HCM_PROJECT='__HCM_PROJECT__'
 HCM_CITY='__HCM_CITY__'
