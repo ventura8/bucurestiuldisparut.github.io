@@ -65,6 +65,10 @@ export function poiYearsText(poi: PoiSpan, locale: ViewerLocale): string | null 
     if (yearStart !== undefined) {
         return translate(locale, 'poi.yearStart', { yearStart: String(yearStart) });
     }
+    return openEndOrSeen(yearEnd, yearSeen, locale);
+}
+
+function openEndOrSeen(yearEnd: number | undefined, yearSeen: number | undefined, locale: ViewerLocale): string | null {
     if (yearEnd !== undefined) {
         return translate(locale, 'poi.yearEnd', { yearEnd: String(yearEnd) });
     }
