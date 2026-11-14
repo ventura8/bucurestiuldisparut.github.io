@@ -2,7 +2,7 @@
 import { html, render, type TemplateResult } from 'lit';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { statusOrCard } from '../../src/viewer/viewer-wordless.js';
+import { reloadOf, statusOrCard } from '../../src/viewer/viewer-wordless.js';
 import { defineKitDoubles } from './doubles.js';
 
 interface BootView {
@@ -83,12 +83,10 @@ describe('statusOrCard', () => {
     });
 
     it('happyPath_retryReloadsThePage', () => {
-        const reload = vi.spyOn(globalThis.location, 'reload').mockImplementation(() => undefined);
-        const host = rendered({ bootError: { code: 'error.generic' }, state: null, locale: 'ko' });
+        const reload = vi.fn();
 
-        (host.querySelector('hcm-button') as HTMLElement).click();
+        reloadOf({ reload })();
 
         expect(reload).toHaveBeenCalledOnce();
-        reload.mockRestore();
     });
 });

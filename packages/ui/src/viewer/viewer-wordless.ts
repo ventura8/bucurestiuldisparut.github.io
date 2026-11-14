@@ -21,9 +21,7 @@ export function statusOrCard(view: BootView, status: () => TemplateResult): Temp
 
 /** The card, in Romanian and English; its button reloads the page, the one retry every boot has. */
 function catalogueDown(): TemplateResult {
-    const reload = (): void => {
-        globalThis.location.reload();
-    };
+    const reload = reloadOf(globalThis.location);
     return html`<div class="status">
         <div class="catalogue-down" role="alert">
             <p lang="ro">Harta nu s-a putut încărca.</p>
@@ -33,4 +31,11 @@ function catalogueDown(): TemplateResult {
             >
         </div>
     </div>`;
+}
+
+/** The button's handler: reloads the given location (the page's; a test passes its own, as the page's cannot be spied on). */
+export function reloadOf(location: Pick<Location, 'reload'>): () => void {
+    return () => {
+        location.reload();
+    };
 }
