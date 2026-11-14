@@ -41,16 +41,17 @@ export function photosNearYear<T extends Pick<Photo, 'year' | 'yearEnd'>>(
 
 /**
  * How the timeline fits its years (the Pixel Tablet, 2026-11-12: twenty-two stops 30 px apart overflowed the card and
- * clipped 1847 to "7"; the owner, 2026-11-14: "too crowded", only the years, no dots): `roomy` fits the card with every
- * year at least `SCROLL_GAP_PX` apart, `scroll` keeps exactly that gap, scrolls (a finger, a mouse's drag or wheel) and
- * fades the edge it hides. Every year is labelled in both; the track has no dots or ticks.
+ * clipped 1847 to "7"; the owner, 2026-11-14: "too crowded", only the years, no dots; then "the spacing is way nuked":
+ * a fixed gap, the same at every width, never stretched to the card nor proportional to time). The years are always
+ * exactly `YEAR_GAP_PX` apart from the card's leading edge: `roomy` when they fit the card, the rest of it empty past
+ * "today"; `scroll` when they do not, the card scrolling (a finger, a mouse's drag or wheel) and fading the edge it hides.
  */
 export type TimelineDensity = 'roomy' | 'scroll';
 
-/** Px between two stops: a comfortable gap between two four-digit labels, the minimum the track keeps. */
-export const SCROLL_GAP_PX = 56;
+/** Px between two stops, at every width and both ways (a design token: two four-digit labels with room between them). */
+export const YEAR_GAP_PX = 56;
 
-/** The density of a track `gapPx` apart between stops (`Infinity` with a single stop). */
-export function timelineDensity(gapPx: number): TimelineDensity {
-    return gapPx >= SCROLL_GAP_PX ? 'roomy' : 'scroll';
+/** The density of a card with `roomPx` along its track for `gaps` gaps between stops. */
+export function timelineDensity(roomPx: number, gaps: number): TimelineDensity {
+    return gaps * YEAR_GAP_PX <= roomPx ? 'roomy' : 'scroll';
 }

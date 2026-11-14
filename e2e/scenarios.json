@@ -1682,6 +1682,28 @@
             "notes": "The owner, 2026-11-14. packages/ui/src/viewer/dock-styles.ts (.frame[data-timeline='vertical'] .dock.timeline)."
         },
         {
+            "id": "S-V04-HAPPY-YEAR-GAP-FIXED",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The years that fit stand exactly 56 px apart from the leading edge at every size",
+            "asserts": "with four stops at 768x1024, 1440x900, 2560x1300 (lying) and 360x800 (standing, opened) the card is roomy, every adjacent pair of year labels is 56 px apart (+-1), the first year 44 px in from the card's left (standing: today 24 px below its top) and the pill centred on its year (+-1); unit: packages/ui/test/viewer/hcm-timeline.test.ts",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14: \"the spacing is way nuked\", a fixed gap at every width, not stretched nor by date. packages/ui/src/viewer/timeline-model.ts (YEAR_GAP_PX), timeline-styles.ts (.track). Test: e2e/specs/viewer/timeline-spacing.spec.ts."
+        },
+        {
+            "id": "S-V04-BAD-YEAR-GAP-MANY",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Sixty years keep exactly 56 px apart and scroll at every size",
+            "asserts": "with 63 stops at the same four sizes the card scrolls and every adjacent pair of year labels is still 56 px apart (+-1), the pill centred on its year (+-1)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14. Test: e2e/specs/viewer/timeline-spacing.spec.ts."
+        },
+        {
             "id": "S-V04-HAPPY-YEAR-CHIP",
             "behaviour": "V04",
             "area": "viewer",

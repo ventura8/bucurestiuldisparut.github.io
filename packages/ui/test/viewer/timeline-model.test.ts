@@ -1,7 +1,7 @@
 import { PHOTO_YEAR_WINDOW } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { photosNearYear, stopIndex, timelineDensity, timelineStops } from '../../src/viewer/timeline-model.js';
+import { photosNearYear, stopIndex, timelineDensity, timelineStops, YEAR_GAP_PX } from '../../src/viewer/timeline-model.js';
 
 describe('timelineStops', () => {
     it('happyPath_layerYearsAscendingWithoutDuplicatesThenToday', () => {
@@ -58,14 +58,15 @@ describe('photosNearYear', () => {
 });
 
 describe('timelineDensity', () => {
-    it('happyPath_yearsAtLeast56PxApartFitTheCard', () => {
-        expect(timelineDensity(Number.POSITIVE_INFINITY)).toBe('roomy');
-        expect(timelineDensity(56)).toBe('roomy');
+    it('happyPath_yearsThatFit56PxApartAreRoomy', () => {
+        expect(timelineDensity(1000, 0)).toBe('roomy');
+        expect(timelineDensity(560, 10)).toBe('roomy');
+        expect(YEAR_GAP_PX).toBe(56);
     });
 
-    it('badPath_yearsCloserThan56PxScroll', () => {
+    it('badPath_yearsLongerThanTheCardScroll', () => {
         // The owner, 2026-11-14: "too crowded"; the track keeps 56 px per gap and scrolls instead.
-        expect(timelineDensity(55.9)).toBe('scroll');
-        expect(timelineDensity(14)).toBe('scroll');
+        expect(timelineDensity(559, 10)).toBe('scroll');
+        expect(timelineDensity(-10, 1)).toBe('scroll');
     });
 });

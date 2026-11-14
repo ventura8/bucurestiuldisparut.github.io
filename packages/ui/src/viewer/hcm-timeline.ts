@@ -6,8 +6,8 @@
  * motion under `prefers-reduced-motion: reduce`. Standing on the leading edge of a phone held upright, lying at the bottom
  * of the map everywhere else; Left and Right follow the thumb on screen (a later year is to the left, right to left).
  * The track fits the card (the Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two years overflowed it and clipped the
- * first; the owner, 2026-11-14: "too crowded"): every year is a label, no dot or tick, at least 56 px apart; below that
- * the track keeps 56 px per gap and scrolls, a finger, a mouse's drag or wheel can scroll it, the edge with more years beyond
+ * first; the owner, 2026-11-14: "too crowded" and "way nuked"): every year is a label, no dot or tick, exactly 56 px apart
+ * at every width from the card's leading edge (`YEAR_GAP_PX`); where they do not fit the card scrolls, a finger, a mouse's drag or wheel can scroll it, the edge with more years beyond
  * fades, and the selected stop is centred whenever it changes, except while a drag is on (`timeline-model.ts`,
  * `timeline-styles.ts`). There a finger drags the thumb and taps a year; elsewhere it drags anywhere on the track.
  * A new stop fires `hcm-year-change` (`{year}`, null for today). The year chip (`timeline-tip.ts`) names a stop without
@@ -23,7 +23,7 @@ import { classMap } from 'lit/directives/class-map.js';
 
 import { cssProperties } from '../components/css-properties.js';
 import { countOf, dateBadge, datesOpenEvent, datesValueText } from './timeline-dates.js';
-import { SCROLL_GAP_PX, stopIndex, timelineDensity, type TimelineDensity, type TimelineStop } from './timeline-model.js';
+import { stopIndex, YEAR_GAP_PX, timelineDensity, type TimelineDensity, type TimelineStop } from './timeline-model.js';
 import { wheelAlong } from './timeline-pan.js';
 import { TimelinePointer } from './timeline-pointer.js';
 import { DatesPeek, datesPeekEvent, peekDates, peekPlace } from './timeline-peek.js';
@@ -84,7 +84,6 @@ export class HcmTimeline extends LitElement {
         orientation: { type: String, reflect: true },
         dragging: { type: Boolean, reflect: true },
         density: { type: String, reflect: true },
-        gapPx: { state: true },
         fade: { state: true },
         collapsed: { type: Boolean, reflect: true },
         dateCounts: { attribute: false },
@@ -101,8 +100,6 @@ export class HcmTimeline extends LitElement {
     declare dragging: boolean;
     /** How the years fit the card (reflected for the styles), from the card's size and the number of stops. */
     declare density: TimelineDensity;
-    /** Px between two stops if the track fitted the card. */
-    declare gapPx: number;
     /** The edges with more years beyond them: the scroll's start (left, right right to left, top standing) and end. */
     declare fade: { readonly start: boolean; readonly end: boolean };
     /** V12: on a phone, idle, the card is only its year's pill (the viewer's `timeline-dock.ts` decides). */
@@ -179,7 +176,6 @@ export class HcmTimeline extends LitElement {
         this.orientation = 'horizontal';
         this.dragging = false;
         this.density = 'roomy';
-        this.gapPx = Number.POSITIVE_INFINITY;
         this.fade = { start: false, end: false };
         this.collapsed = false;
         this.dateCounts = new Map();
@@ -250,13 +246,11 @@ export class HcmTimeline extends LitElement {
         tip.style.top = `${String(place.top)}px`;
     }
 
-    /** The density for the card's size now: what the track would leave between two stops if it fitted the card. */
+    /** The density for the card's size now: whether the years, 56 px apart, fit the room along its track. */
     #measure(): void {
         const vertical = this.orientation === 'vertical';
         const room = vertical ? this.clientHeight - STANDING_PADDING_PX : this.clientWidth - LYING_PADDING_PX;
-        const gaps = this.stops.length - 1;
-        this.gapPx = gaps > 0 && room > 0 ? room / gaps : Number.POSITIVE_INFINITY;
-        this.density = timelineDensity(this.gapPx);
+        this.density = timelineDensity(room, this.stops.length - 1);
     }
 
     #scroller(): HTMLElement | null {
@@ -364,7 +358,7 @@ export class HcmTimeline extends LitElement {
     #track(index: number, position: Readonly<Record<string, string>>): TemplateResult {
         return html`<div
             class="track"
-            ${cssProperties({ '--hcm-gaps': String(this.stops.length - 1) })}
+            ${cssProperties({ '--hcm-gaps': String(this.stops.length - 1), '--hcm-year-gap': `${String(YEAR_GAP_PX)}px` })}
             @pointerdown=${this.#pointer.onDown}
             @pointermove=${this.#pointer.onHover}
             @pointerleave=${this.#pointer.onLeave}
@@ -435,8 +429,7 @@ export class HcmTimeline extends LitElement {
 
     /** Whether a stop shows its year: every one lying; standing, not under the pill (the pill names the selected year). */
     #labelled(stopAt: number, selected: number): boolean {
-        const gap = this.density === 'scroll' ? SCROLL_GAP_PX : this.gapPx;
-        return this.orientation !== 'vertical' || stopAt === selected || Math.abs(stopAt - selected) * gap >= PILL_REACH_PX;
+        return this.orientation !== 'vertical' || stopAt === selected || Math.abs(stopAt - selected) * YEAR_GAP_PX >= PILL_REACH_PX;
     }
 
     #percent(index: number): number {

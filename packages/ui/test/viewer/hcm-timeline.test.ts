@@ -300,6 +300,14 @@ function scrolls(element: HcmTimeline): boolean {
     return box.scrollWidth > box.clientWidth || box.scrollHeight > box.clientHeight;
 }
 
+/** The centres of the stops' labels along the timeline, in stop order (all of them, a hidden one's box included). */
+function labelCentres(element: HcmTimeline, orientation: 'horizontal' | 'vertical'): number[] {
+    return shadowQueryAll(element, '.stop .label').map((label) => {
+        const box = label.getBoundingClientRect();
+        return orientation === 'vertical' ? box.top + box.height / 2 : box.left + box.width / 2;
+    });
+}
+
 function stillThumb(element: HcmTimeline): void {
     for (const part of shadowQueryAll(element, '.thumb, .active')) {
         part.style.transition = 'none';
@@ -320,6 +328,23 @@ describe('<hcm-timeline> many years', () => {
         expect(crowdedLabels(element)).toEqual([]);
     });
 
+    it.each(['horizontal', 'vertical'] as const)('happyPath_%s_aWideCardKeepsTheYears56PxApartFromItsLeadingEdge', async (orientation) => {
+        // The owner, 2026-11-14: "the spacing is way nuked"; a fixed gap at every size, never stretched to the card.
+        const element = await timeline({ stops: [1964, 1966, 1968, null], value: 1964, orientation }, { inline: 1300, block: 700 });
+        stillThumb(element);
+
+        expect(element.getAttribute('density')).toBe('roomy');
+        expect(scrolls(element)).toBe(false);
+        const centres = labelCentres(element, orientation);
+        const gaps = centres.slice(1).map((centre, at) => Math.abs(centre - (centres[at] ?? 0)));
+        expect(Math.min(...gaps)).toBeGreaterThanOrEqual(55);
+        expect(Math.max(...gaps)).toBeLessThanOrEqual(57);
+        // Lying, the first year sits 44 px in from the card's leading edge; standing, today 24 px below its top.
+        const card = element.getBoundingClientRect();
+        const first = orientation === 'vertical' ? (centres.at(-1) ?? 0) - card.top : (centres[0] ?? 0) - card.left;
+        expect(Math.abs(first - (orientation === 'vertical' ? 24 : 44))).toBeLessThanOrEqual(1);
+    });
+
     it.each(['horizontal', 'vertical'] as const)('badPath_%s_twentyTwoYearsScrollEveryYearLabelled56PxApart', async (orientation) => {
         // The owner, 2026-11-14: "too crowded"; no dots, every year a label, a comfortable gap, the card scrolls instead.
         const element = await timeline({ stops: MANY, value: 1964, orientation }, { inline: 420, block: 380 });
@@ -329,12 +354,10 @@ describe('<hcm-timeline> many years', () => {
         expect(scrolls(element)).toBe(true);
         expect(shadowQueryAll(element, '.tick')).toEqual([]);
         expect(shadowQueryAll(element, '.stop.minor')).toEqual([]);
-        const centres = shadowQueryAll(element, '.stop .label').map((label) => {
-            const box = label.getBoundingClientRect();
-            return orientation === 'vertical' ? box.top + box.height / 2 : box.left + box.width / 2;
-        });
+        const centres = labelCentres(element, orientation);
         const gaps = centres.slice(1).map((centre, at) => Math.abs(centre - (centres[at] ?? 0)));
-        expect(Math.min(...gaps)).toBeGreaterThanOrEqual(55.5);
+        expect(Math.min(...gaps)).toBeGreaterThanOrEqual(55);
+        expect(Math.max(...gaps)).toBeLessThanOrEqual(57);
         expect(crowdedLabels(element)).toEqual([]);
         // The live site, 2026-11-14: without a tick above it the label sat on the rail (lying; standing it interrupts the rail).
         const rail = shadowQuery(element, '.rail').getBoundingClientRect();

@@ -252,8 +252,9 @@ async function cardView(page: Page): Promise<CardView> {
             return {
                 inView: inside(thumb, view),
                 crowded: crowded.map(({ text }) => text),
-                // A scrolling card hides what lies beyond its edges on purpose: only the labels in view count there.
-                clipped: shown.filter(({ box }) => meets(box, scrollerBox) && !inside(box, view)).map(({ text }) => text),
+                // A scrolling card hides what lies beyond its edges on purpose, behind its fade (a label may straddle it):
+                // only a card that fits can clip a label (the Pixel Tablet's "7").
+                clipped: scrolls ? [] : shown.filter(({ box }) => meets(box, scrollerBox) && !inside(box, view)).map(({ text }) => text),
                 labelled: shown.length,
                 scrolls,
                 density: element.getAttribute('density') ?? '',

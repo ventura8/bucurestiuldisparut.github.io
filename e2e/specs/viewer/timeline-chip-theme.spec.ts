@@ -3,7 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 
 import { chipColours, chipContrast, isDark, type ChipRoles } from '../../support/chip-colours.js';
 import { expect, test } from '../../support/test.js';
-import { manyYearsManifest, stopCentre, yearChip } from '../../support/timeline.js';
+import { fingers, lift, manyYearsManifest, stopCentre, touch, yearChip } from '../../support/timeline.js';
 import { callController, openTimelineCard, openViewer, serveManifest, t, viewer } from '../../support/viewer.js';
 
 /**
@@ -13,7 +13,7 @@ import { callController, openTimelineCard, openViewer, serveManifest, t, viewer 
  */
 
 const OBOR_VIEW = '16/44.44763/26.13822';
-/** Twenty-one layer years, 1964 (two dates) to 1984, and today: every other year unlabelled. */
+/** Twenty-one layer years, 1964 (two dates) to 1984, and today. */
 const YEARS = Array.from({ length: 21 }, (_, at) => 1964 + at);
 
 const PILL: ChipRoles = { fill: 'primary-container', text: 'on-primary-container' };
@@ -58,12 +58,15 @@ async function expectEveryChip(page: Page, lang: Locale, scheme: 'light' | 'dark
     await page.keyboard.press('Escape');
     await expect(menu).toBeHidden();
 
+    // Every year has its label (the owner, 2026-11-14), so a mouse shows no chip: a finger scrubbing from the pill does.
     await openTimelineCard(page);
-    const unlabelled = await stopCentre(page, 1);
-    await page.mouse.move(unlabelled.x, unlabelled.y);
-    await page.mouse.move(unlabelled.x + 1, unlabelled.y);
+    const pill = await timeline.locator('.thumb').boundingBox();
+    const cdp = await fingers(page);
+    const from = { x: (pill?.x ?? 0) + (pill?.width ?? 0) / 2, y: (pill?.y ?? 0) + (pill?.height ?? 0) / 2 };
+    await touch(cdp, from, [await stopCentre(page, 1)], false);
     await expect.poll(async () => (await yearChip(page))?.text).toBe('1965');
     await expectThemed(timeline.locator('.tip'), YEAR_CHIP, 'the year chip', scheme);
+    await lift(cdp);
 }
 
 test(

@@ -8,8 +8,9 @@
  * the pill's lane, whose stops the phone's height spaces wider than the pill. The list of stops has no margin of its own: the
  * browser's 1em of an `ol` collapsed through the track, made the timeline 100 px tall with a 16 px page font and more
  * with a larger one, and left no room for the open FAB menu above it on a 568 px phone. The card holds a scroller with
- * the padding: the track fits it unless the years are closer than 56 px (`density`, `timeline-model.ts`), and only then
- * scrolls, under a finger too, behind a mask that fades the edge with more years beyond (`--hcm-fade-start`, `-end`).
+ * the padding: the track is exactly 56 px per gap (`--hcm-year-gap`, `YEAR_GAP_PX`) at every width, from the leading
+ * edge, never stretched to the card (the owner, 2026-11-14: "way nuked"); where it is longer than the card (`density`,
+ * `timeline-model.ts`) the card scrolls, under a finger too, behind a mask that fades the edge with more years beyond (`--hcm-fade-start`, `-end`).
  * The years are labels only, no dot or tick (the owner, 2026-11-14); the selected one is the pill.
  * A year with several dates has a badge on its point (V13); on a phone, idle, the card collapses to its pill (V12).
  * The year chip (`.tip`) is a chip outside the scroller, so the card's mask never clips it. Every chip (the year chip, the
@@ -81,15 +82,17 @@ export const timelineStyles = [
             padding: 24px 8px;
         }
 
+        /* The years are a fixed --hcm-year-gap apart (set with --hcm-gaps by hcm-timeline.ts), whatever the card's size. */
         .track {
             position: relative;
+            inline-size: calc(var(--hcm-gaps) * var(--hcm-year-gap));
             block-size: 48px;
             cursor: pointer;
         }
 
         /*
-         * Years closer than 56 px (the owner, 2026-11-14: "too crowded"): the stops keep 56 px apart, every one labelled,
-         * and the card scrolls; a finger may scroll it along the
+         * Years longer than the card at 56 px apart (the owner, 2026-11-14: "too crowded"): every one labelled, the card
+         * scrolls; a finger may scroll it along the
          * timeline (it drags the thumb itself), and the edge with more years beyond fades.
          */
         :host([density='scroll']) {
@@ -125,10 +128,6 @@ export const timelineStyles = [
             --hcm-fade-to: to left;
         }
 
-        :host([density='scroll']) .track {
-            min-inline-size: calc(var(--hcm-gaps) * 56px);
-        }
-
         /* No margin, padding or marker: the stops are placed on the track, the list only holds them. */
         .stops {
             all: unset;
@@ -136,12 +135,7 @@ export const timelineStyles = [
 
         :host([orientation='vertical']) .track {
             inline-size: 52px;
-            min-inline-size: 0;
-            block-size: 100%;
-        }
-
-        :host([density='scroll'][orientation='vertical']) .track {
-            min-block-size: calc(var(--hcm-gaps) * 56px);
+            block-size: calc(var(--hcm-gaps) * var(--hcm-year-gap));
         }
 
         .rail,
