@@ -64,7 +64,7 @@ export async function installApp(win: Pick<AppWindow, 'HistoricCityMapApp'>): Pr
 }
 
 /** What `installGivesAccent` reads of the browser (`navigator.userAgentData`, Chromium's only). */
-export interface AccentNavigator {
+interface AccentNavigator {
     readonly userAgentData?: { readonly mobile?: boolean };
 }
 
