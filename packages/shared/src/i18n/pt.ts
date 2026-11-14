@@ -199,10 +199,10 @@ export const pt: Messages = {
     'accent.label': 'Cores',
     'accent.device': 'Cor de destaque do dispositivo',
     'accent.map': 'Cores do mapa',
-    'accent.hidden':
-        'Este navegador não partilha a cor de destaque do seu dispositivo, por isso o mapa mostra as suas próprias cores. O Firefox num computador partilha-a: abra o mapa lá para ver a cor do seu dispositivo.',
-    'accent.grey':
-        'A cor de destaque do seu dispositivo é cinzenta e não tem tom para dar, por isso o mapa mostra as suas próprias cores. Escolha um destaque colorido nas definições do dispositivo para o ver aqui.',
+    'accent.hidden': 'Este navegador não partilha a cor de destaque do dispositivo, por isso o mapa usa as suas cores.',
+    'accent.hiddenFix': 'O Firefox num computador partilha-a: abra o mapa lá para ver a cor do seu dispositivo.',
+    'accent.grey': 'A cor de destaque do dispositivo é cinzenta, sem tom, por isso o mapa mostra as suas próprias cores.',
+    'accent.greyFix': 'Escolha um destaque colorido nas definições do dispositivo para o ver aqui.',
     'settings.title': 'Configurações',
     'language.label': 'Idioma',
     'language.unavailable': 'Não foi possível carregar este idioma.',

@@ -203,10 +203,10 @@ export const de: Messages = {
     'accent.label': 'Farben',
     'accent.device': 'Akzentfarbe des Geräts',
     'accent.map': 'Farben der Karte',
-    'accent.hidden':
-        'Dieser Browser gibt die Akzentfarbe Ihres Geräts nicht weiter, daher zeigt die Karte ihre eigenen Farben. Firefox auf einem Computer gibt sie weiter: Öffnen Sie die Karte dort, um die Farbe Ihres Geräts zu sehen.',
-    'accent.grey':
-        'Die Akzentfarbe Ihres Geräts ist Grau und hat keinen Farbton, daher zeigt die Karte ihre eigenen Farben. Wählen Sie in den Einstellungen Ihres Geräts einen farbigen Akzent, um ihn hier zu sehen.',
+    'accent.hidden': 'Dieser Browser gibt die Akzentfarbe Ihres Geräts nicht weiter, daher zeigt die Karte ihre Farben.',
+    'accent.hiddenFix': 'Firefox auf einem Computer gibt sie weiter: Öffnen Sie die Karte dort, um Ihre Gerätefarbe zu sehen.',
+    'accent.grey': 'Die Akzentfarbe Ihres Geräts ist Grau, ohne Farbton, daher zeigt die Karte ihre eigenen Farben.',
+    'accent.greyFix': 'Wählen Sie in den Geräteeinstellungen einen farbigen Akzent, um ihn hier zu sehen.',
     'settings.title': 'Einstellungen',
     'language.label': 'Sprache',
     'language.unavailable': 'Diese Sprache konnte nicht geladen werden.',

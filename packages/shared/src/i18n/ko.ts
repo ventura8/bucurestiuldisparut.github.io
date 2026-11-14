@@ -200,10 +200,10 @@ export const ko: Messages = {
     'accent.label': '색상',
     'accent.device': '기기 강조 색상',
     'accent.map': '지도 색상',
-    'accent.hidden':
-        '이 브라우저는 기기의 강조 색상을 공유하지 않아 지도가 자체 색상으로 표시됩니다. 컴퓨터의 Firefox는 공유합니다. 기기 색상을 보려면 그곳에서 지도를 여세요.',
-    'accent.grey':
-        '기기의 강조 색상이 회색이라 줄 색조가 없어 지도가 자체 색상으로 표시됩니다. 여기에서 보려면 기기 설정에서 색이 있는 강조 색상을 고르세요.',
+    'accent.hidden': '이 브라우저는 기기의 강조 색상을 공유하지 않아 지도가 자체 색상으로 표시됩니다.',
+    'accent.hiddenFix': '컴퓨터의 Firefox는 공유합니다. 기기 색상을 보려면 그곳에서 지도를 여세요.',
+    'accent.grey': '기기의 강조 색상이 회색이라 색조가 없어 지도가 자체 색상으로 표시됩니다.',
+    'accent.greyFix': '여기에서 보려면 기기 설정에서 색이 있는 강조 색상을 고르세요.',
     'settings.title': '설정',
     'language.label': '언어',
     'language.unavailable': '이 언어를 불러올 수 없습니다.',

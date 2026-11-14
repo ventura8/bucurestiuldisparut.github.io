@@ -38,7 +38,10 @@ function accentOptions(locale: UiLocale): SegmentOption[] {
 }
 
 /** Why Device accent cannot show here (`deviceAccentState`), per state. */
-const ACCENT_NOTES = { hidden: 'accent.hidden', grey: 'accent.grey' } as const;
+const ACCENT_NOTES = {
+    hidden: ['accent.hidden', 'accent.hiddenFix'],
+    grey: ['accent.grey', 'accent.greyFix'],
+} as const;
 
 export class HcmAccountMenu extends LitElement {
     static override readonly properties = {
@@ -223,7 +226,9 @@ export class HcmAccountMenu extends LitElement {
     /** Device accent where it cannot show (`deviceAccentState`): why the city's colours show, and what would bring the device's. */
     #accentNote(state: AdminStatePort): TemplateResult {
         const shown = (state.theme.accent ?? 'device') === 'device' ? deviceAccentState(this.ownerDocument) : 'shared';
-        return shown === 'shared' ? EMPTY : html`<p class="group-label accent-note">${translate(state.locale, ACCENT_NOTES[shown])}</p>`;
+        return shown === 'shared'
+            ? EMPTY
+            : html`<p class="group-label accent-note">${ACCENT_NOTES[shown].map((key) => translate(state.locale, key)).join(' ')}</p>`;
     }
 
     /** The analytics consent, shown only when GA4 is configured. */

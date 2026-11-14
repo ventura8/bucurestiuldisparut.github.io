@@ -199,10 +199,10 @@ export const tr: Messages = {
     'accent.label': 'Renkler',
     'accent.device': 'Cihaz vurgu rengi',
     'accent.map': 'Harita renkleri',
-    'accent.hidden':
-        'Bu tarayıcı cihazınızın vurgu rengini paylaşmıyor, bu yüzden harita kendi renklerini gösteriyor. Bilgisayardaki Firefox paylaşıyor: cihazınızın rengini görmek için haritayı orada açın.',
-    'accent.grey':
-        'Cihazınızın vurgu rengi gri ve verecek bir tonu yok, bu yüzden harita kendi renklerini gösteriyor. Burada görmek için cihazınızın ayarlarında renkli bir vurgu seçin.',
+    'accent.hidden': 'Bu tarayıcı cihazınızın vurgu rengini paylaşmıyor, bu yüzden harita kendi renklerini gösteriyor.',
+    'accent.hiddenFix': 'Bilgisayardaki Firefox paylaşıyor: cihazınızın rengini görmek için haritayı orada açın.',
+    'accent.grey': 'Cihazınızın vurgu rengi gri ve tonsuz, bu yüzden harita kendi renklerini gösteriyor.',
+    'accent.greyFix': 'Burada görmek için cihaz ayarlarınızda renkli bir vurgu seçin.',
     'settings.title': 'Ayarlar',
     'language.label': 'Dil',
     'language.unavailable': 'Bu dil şu anda yüklenemiyor.',

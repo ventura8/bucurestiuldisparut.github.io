@@ -138,6 +138,7 @@ test(
         await chooseMenuItem(page, lang, t(lang, 'settings.title'));
         const settings = viewer(page).locator('hcm-about-dialog');
         await expect(settings.getByText(t(lang, 'accent.hidden'))).toBeVisible();
+        await expect(settings.getByText(t(lang, 'accent.hiddenFix'))).toBeVisible();
 
         await emulateDeviceAccent(page, '#808080');
         await page.reload();

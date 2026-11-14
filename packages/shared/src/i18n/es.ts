@@ -200,10 +200,10 @@ export const es: Messages = {
     'accent.label': 'Colores',
     'accent.device': 'Acento del dispositivo',
     'accent.map': 'Colores del mapa',
-    'accent.hidden':
-        'Este navegador no comparte el color de énfasis de su dispositivo, así que el mapa muestra sus propios colores. Firefox en un ordenador sí lo comparte: abra allí el mapa para ver el color de su dispositivo.',
-    'accent.grey':
-        'El color de énfasis de su dispositivo es gris y no tiene tono que dar, así que el mapa muestra sus propios colores. Elija un énfasis de color en los ajustes de su dispositivo para verlo aquí.',
+    'accent.hidden': 'Este navegador no comparte el color de énfasis de su dispositivo, así que el mapa usa sus colores.',
+    'accent.hiddenFix': 'Firefox en un ordenador sí lo comparte: abra allí el mapa para ver el color de su dispositivo.',
+    'accent.grey': 'El color de énfasis de su dispositivo es gris, sin tono, así que el mapa muestra sus propios colores.',
+    'accent.greyFix': 'Elija un énfasis de color en los ajustes de su dispositivo para verlo aquí.',
     'settings.title': 'Ajustes',
     'language.label': 'Idioma',
     'language.unavailable': 'No se pudo cargar el idioma.',

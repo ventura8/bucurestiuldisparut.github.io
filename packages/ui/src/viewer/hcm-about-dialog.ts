@@ -62,7 +62,10 @@ const LANGUAGE_OPTIONS = Object.entries(LANGUAGE_NAMES).map(([value, label]) => 
 
 const THEME_ICONS: Readonly<Record<ThemeMode, string>> = { system: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' };
 /** Why Device accent cannot show here (`deviceAccentState`), per state. */
-const ACCENT_NOTES = { hidden: 'accent.hidden', grey: 'accent.grey' } as const;
+const ACCENT_NOTES = {
+    hidden: ['accent.hidden', 'accent.hiddenFix'],
+    grey: ['accent.grey', 'accent.greyFix'],
+} as const;
 
 const ACCENT_ICONS: Readonly<Record<AccentChoice, string>> = { device: 'palette', map: 'map' };
 
@@ -298,7 +301,9 @@ export class HcmAboutDialog extends LitElement {
     /** Device accent where it cannot show (`deviceAccentState`): why the map's colours show, and what would bring the device's. */
     #accentNote(): TemplateResult {
         const state = this.accent === 'device' ? deviceAccentState(this.ownerDocument) : 'shared';
-        return state === 'shared' ? EMPTY : html`<p class="supporting accent-note">${translate(this.locale, ACCENT_NOTES[state])}</p>`;
+        return state === 'shared'
+            ? EMPTY
+            : html`<p class="supporting accent-note">${ACCENT_NOTES[state].map((key) => translate(this.locale, key)).join(' ')}</p>`;
     }
 
     #emit(type: string, detail: object): void {
