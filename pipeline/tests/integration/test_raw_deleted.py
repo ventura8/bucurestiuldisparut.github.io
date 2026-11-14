@@ -1,6 +1,7 @@
 """The raw USGS delivery is deleted once the city crop exists (M7, docs/research/M7-local-worker.md §5)."""
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -122,3 +123,15 @@ def test_bad_path_an_unproved_frame_too_wide_is_cut_to_fit_and_keeps_the_deliver
     assert world.gcs.names("usgs-raw/") == [RAW]
     assert any(line.startswith("not proved") for line in world.log_lines())
     assert world.version()["state"] == "needs_gcps"
+
+
+def test_bad_path_on_a_worker_an_unproved_crop_keeps_the_delivery(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P01-BAD-WEAK-GUESS-KEEPS-RAW"""
+    world.http.serve("/s2/visual.tif", write_sentinel2(render_world(99), tmp_path / "elsewhere.tif").read_bytes())
+    world.http.route("POST", OVERPASS_PATH, lambda _request: Reply.json(json.dumps(overpass_answer(render_world(99)))))
+    world.seed_import()
+
+    assert world.runner(replace(world.config, execution="worker")).run() is RunOutcome.WAITING
+
+    assert world.gcs.names("usgs-raw/") == [RAW]
+    assert DELETED not in world.log_lines()

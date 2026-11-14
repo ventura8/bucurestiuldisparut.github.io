@@ -1092,8 +1092,9 @@ held 113 GB, `work/` 81 GB of 100 jobs mostly published, `usgs-raw/` 24 GB, and 
    goes when its job is `succeeded`, `failed`, `cancelled` or `gone` and nothing in it was written for 48 hours; a job the server
    lists in any other state (queued for points, awaiting approval: its stitched film is there) is never deleted, however old; a
    folder the server said nothing about ages out after 14 days as before; the claimed job's folder is never touched.
-2. **Raw deliveries.** `locate` deletes the job's `usgs-raw/` delivery on every branch on a worker (proved, not proved, whole frame)
-   and `recrop` once rough points are cut at full resolution; an unreferenced delivery still goes after 7 days. Deleting an object
+2. **Raw deliveries.** `locate` deletes the job's `usgs-raw/` delivery only after a proved full-resolution crop, and `recrop` once
+   rough points are cut at full resolution; a frame nothing proved (a bounded guess or a whole frame shrunk) keeps it, on a worker
+   too (live 2026-11-14, DS1111: lesson 710); an unreferenced delivery still goes after 7 days. Deleting an object
    removes the folders it leaves empty.
 3. **The disk floor and Free space now.** Each claim says `disk` (`workBytes`, measured every 10 minutes; `freeBytes`;
    `floorBytes`, 15 GB): under the floor the server answers `lowDisk` and gives no job, and the worker sweeps finished jobs without

@@ -11755,6 +11755,17 @@
             "notes": "docs/research/M9-calibration.md §6 replaces the review of 2026-11-06. Tests: pipeline/tests/integration/test_raw_deleted.py, pipeline/tests/unit/test_corners.py."
         },
         {
+            "id": "S-P01-BAD-WEAK-GUESS-KEEPS-RAW",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "On a worker, a frame nothing proved keeps its delivery",
+            "asserts": "a worker's run whose frame nothing proves -> the bounded crop is recorded and the USGS delivery stays; no line says it is deleted",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-14 (DS1111-1020AF035); docs/LESSONS.md, docs/research/M7-local-worker.md §5. Tests: pipeline/tests/integration/test_raw_deleted.py."
+        },
+        {
             "id": "S-P01-BAD-CITY-OFF-FRAME",
             "behaviour": "P01",
             "area": "pipeline",
@@ -19750,6 +19761,17 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-BAD-WHOLE-STRIP-KEEPS-RAW",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "On a worker, a strip offered whole keeps its delivery",
+            "asserts": "a worker's run whose strip is offered whole, shrunk -> the USGS delivery stays for the full-resolution cut after the owner's points; only a proved crop or the recrop deletes it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-14 (DS1111-1020AF035); docs/LESSONS.md, docs/research/M7-local-worker.md §5. Tests: pipeline/tests/integration/test_whole_frame.py."
         },
         {
             "id": "S-P06-HAPPY-ROUGH-POINTS-CROP",

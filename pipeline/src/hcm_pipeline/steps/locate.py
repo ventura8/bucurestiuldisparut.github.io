@@ -160,7 +160,9 @@ def _copy_rows(ctx: JobContext, placement: Placement, part: tuple[int, int, int,
 
 
 def delete_delivery(ctx: JobContext) -> None:
-    """The job's USGS delivery deleted once the city crop and the version's scan are recorded (M7 §5): only a
+    """The job's USGS delivery deleted once a full-resolution city crop is recorded (M7 §5): after a proved crop, or after `recrop` cut
+    the film around the owner's points. Never after a guess or a whole frame shrunk, on a worker or not (live 2026-11-14, DS1111: a
+    shrunk whole strip deleted it, and only a new fetch could cut the city at full resolution if the segments were lost). Only a
     `usgs-raw/` object, a missing one is fine (a retry of `locate`, or another city's job deleted it first)."""
     delivery = ctx.job.step(DELIVERY_STEP).gcs_path
     if delivery is None or not delivery.startswith(USGS_RAW_PREFIX):
@@ -304,8 +306,6 @@ class LocateStep:
         scan = publish_scan(ctx, mark(write_geotiff(ctx.local("scan.tif"), GeoTiff([pixels])), whole), pixels)
         ctx.update_version({"scan": scan.as_record(), "georef": DELETE, "calibration": _refusal_record(found, 0)})
         ctx.log.warn(f"{_why_not(found)} in any part of the frame: {_whole_line(whole, scan.width, scan.height)}", self.name)
-        if ctx.config.execution == "worker":
-            delete_delivery(ctx)
         return Done(ctx.services.objects.stat(scan.path), scan.sha256)
 
     def _say(self, ctx: JobContext) -> Callable[[str], None]:
@@ -367,8 +367,6 @@ class LocateStep:
         record = _refusal_record(found, cut)
         ctx.update_version({"scan": scan.as_record(), "georef": georef.as_record(), "calibration": record})
         ctx.log.warn(_not_proved_line(found, located), self.name)
-        if ctx.config.execution == "worker":
-            delete_delivery(ctx)
         return Done(ctx.services.objects.stat(scan.path), scan.sha256)
 
 

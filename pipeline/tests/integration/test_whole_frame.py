@@ -178,3 +178,23 @@ def test_bad_path_on_a_worker_a_film_not_stored_here_hands_the_job_back(parked: 
     assert outcome is RunOutcome.RETURNED
     assert dig(parked.job(), "status") != "failed"
     assert any("goes back for the computer that has the files" in line for line in parked.log_lines())
+
+
+def test_bad_path_on_a_worker_a_strip_offered_whole_keeps_its_delivery(
+    strip_scene: Scene, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P06-BAD-WHOLE-STRIP-KEEPS-RAW"""
+    # Live 2026-11-14 (DS1111-1020AF035): a worker deleted the delivery after a shrunk whole strip; only a proved or recropped
+    # full-resolution crop may delete it.
+    other = render_world(99)
+    monkeypatch.setattr(strip, "STRIP_MARGIN_GROUND_M", 500.0)
+    monkeypatch.setattr(whole, "WHOLE_MAX_PX", BUDGET_PX)
+    with PipelineWorld(strip_scene) as world:
+        world.http.serve("/s2/visual.tif", write_sentinel2(other, tmp_path / "elsewhere.tif").read_bytes())
+        world.http.route("POST", OVERPASS_PATH, lambda _request: Reply.json(json.dumps(overpass_answer(other))))
+        world.seed_import()
+
+        assert world.runner(replace(world.config, execution="worker")).run() is RunOutcome.WAITING
+
+        assert world.gcs.names("usgs-raw/") != []
+        assert not any("is deleted: the city crop is recorded" in line for line in world.log_lines())
