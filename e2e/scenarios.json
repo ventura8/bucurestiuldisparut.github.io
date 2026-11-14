@@ -1649,6 +1649,39 @@
             "notes": "The owner, 2026-11-08. packages/ui/src/viewer/viewer-styles.ts (.dock.chip)."
         },
         {
+            "id": "S-V04-HAPPY-TIMELINE-FULL-WIDTH",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The lying timeline spans the map's width at 768, 1440 and 2560 px",
+            "asserts": "the horizontal timeline begins at the map pane's leading gutter and ends at the trailing gutter plus the menu button's 72 px column, at 768x1024, 1440x900 and 2560x900, never a narrower centred bar",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14: the bar was capped at 640 px and centred. packages/ui/src/viewer/dock-styles.ts (.dock.timeline)."
+        },
+        {
+            "id": "S-V04-BAD-TIMELINE-UNDER-PANE",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "With the Layers pane docked the lying timeline spans the narrower map, never under the pane",
+            "asserts": "at 1440x900 with Layers docked the timeline still runs gutter to the menu column of the narrower map pane and does not overlap the docked pane",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14. packages/ui/src/viewer/dock-styles.ts."
+        },
+        {
+            "id": "S-V04-HAPPY-TIMELINE-FULL-HEIGHT",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The standing timeline, open, spans the map's height at 360 x 800",
+            "asserts": "on a phone held upright, the card opened, the vertical timeline begins at the top gutter and fills its dock down to the chip's row above the menu button",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14. packages/ui/src/viewer/dock-styles.ts (.frame[data-timeline='vertical'] .dock.timeline)."
+        },
+        {
             "id": "S-V04-HAPPY-YEAR-CHIP",
             "behaviour": "V04",
             "area": "viewer",

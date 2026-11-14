@@ -20,7 +20,7 @@ import { fakeServices, setBox, COMPACT, EXTRA_LARGE, LANDSCAPE_PHONE, MEDIUM, ty
  */
 const MAPBOX_STRIP_PX = 10 + 24 + 8;
 const TARGET_GAP_PX = 8;
-/** A large window: the photos sheet docked on the trailing side leaves a map wider than the timeline's 640 px. */
+/** A large window: the photos sheet docked on the trailing side leaves a map pane the lying timeline spans gutter to menu column. */
 const LARGE: Box = { width: 1280, height: 900 };
 
 async function viewer(store: FakeStore): Promise<HcmMapViewer> {

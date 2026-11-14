@@ -22,9 +22,7 @@ export const timelineDockStyles = css`
     }
 
     .frame[data-compact-height][data-timeline-collapsed] .dock.timeline {
-        inset-inline: auto max(var(--hcm-gutter), 50% - 356px);
-        max-inline-size: none;
-        margin-inline: 0;
+        inset-inline: auto var(--hcm-gutter);
     }
 
     /*

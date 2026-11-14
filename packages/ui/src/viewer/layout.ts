@@ -5,7 +5,7 @@
  * - compact: full-bleed map, a vertical timeline on the leading edge (the owner, 2026-11-08), FAB menu; layers, photo
  *   and POI details in modal bottom sheets; About as a full-screen dialog;
  * - compact height (landscape phones, any width): the timeline lies at the bottom, too short to stand; modal side sheets;
- * - medium: floating timeline bottom-centre; layers and details in modal side sheets, docked from 760 px wide (`dockable`:
+ * - medium: floating timeline across the foot of the map; layers and details in modal side sheets, docked from 760 px wide (`dockable`:
  *   the Pixel Tablet upright, 800 px, 2026-11-12: the side sheets covered the timeline, Menu and zoom; the map shrinks);
  * - expanded and large: one docked supporting pane (standard side sheet, 360 / 412 px) for layers or details;
  * - extra-large: up to three panes, the layers panel always docked on the leading side.

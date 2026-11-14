@@ -390,3 +390,83 @@ for (const size of [
         },
     );
 }
+
+/**
+ * The lying timeline takes the map's whole foot (the owner, 2026-11-14): from the leading gutter to the trailing column of
+ * the menu button and the zoom group, never a narrower centred bar. Measured against the dock's containing block, the map
+ * pane, so a docked pane narrows it with the map.
+ */
+async function expectTimelineFillsTheMap(page: Page): Promise<void> {
+    const gaps = await viewer(page)
+        .locator('.dock.timeline')
+        .evaluate((dock) => {
+            const pane = (dock as HTMLElement).offsetParent?.getBoundingClientRect();
+            const card = dock.querySelector('hcm-timeline')?.getBoundingClientRect();
+            const gutter = Number.parseFloat(getComputedStyle(dock).getPropertyValue('--hcm-gutter'));
+            return pane && card ? { start: card.left - pane.left, end: pane.right - card.right, gutter } : undefined;
+        });
+    expect(gaps, 'the timeline and its map pane are measured').toBeDefined();
+    expect(Math.abs((gaps?.start ?? 0) - (gaps?.gutter ?? 0)), 'from the leading gutter').toBeLessThanOrEqual(1);
+    expect(Math.abs((gaps?.end ?? 0) - (gaps?.gutter ?? 0) - 72), "to the menu button's column").toBeLessThanOrEqual(1);
+}
+
+for (const width of [768, 1440, 2560]) {
+    test(
+        `The lying timeline spans the map's width at ${String(width)} px`,
+        { tag: '@S-V04-HAPPY-TIMELINE-FULL-WIDTH' },
+        async ({ page, lang }) => {
+            await page.setViewportSize({ width, height: width === 768 ? 1024 : 900 });
+            await openViewer(page, { lang, hash: OBOR_VIEW });
+            await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('orientation', 'horizontal');
+            await expect(async () => {
+                await expectTimelineFillsTheMap(page);
+            }).toPass();
+        },
+    );
+}
+
+test(
+    'With the Layers pane docked the lying timeline spans the narrower map, never under the pane',
+    { tag: '@S-V04-BAD-TIMELINE-UNDER-PANE' },
+    async ({ page, lang }) => {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await openViewer(page, { lang, hash: OBOR_VIEW });
+        await openLayers(page, lang);
+        await expect(async () => {
+            await expectTimelineFillsTheMap(page);
+        }).toPass();
+        const pane = page.getByRole('region', { name: t(lang, 'layers.title') });
+        const timeline = (await viewer(page).locator('hcm-timeline').boundingBox()) ?? EMPTY_BOX;
+        const paneBox = (await pane.boundingBox()) ?? EMPTY_BOX;
+        const apart = timeline.x + timeline.width <= paneBox.x + 1 || paneBox.x + paneBox.width <= timeline.x + 1;
+        expect(apart, 'clear of the docked pane').toBe(true);
+    },
+);
+
+/**
+ * Standing and open (a phone held upright), the timeline takes the map's whole height from the top gutter down to the
+ * chip's row above the menu button (the owner, 2026-11-14): the card fills its dock, which begins at the gutter.
+ */
+test(
+    "The standing timeline, open, spans the map's height at 360 x 800",
+    { tag: '@S-V04-HAPPY-TIMELINE-FULL-HEIGHT' },
+    async ({ page, lang }) => {
+        await page.setViewportSize({ width: 360, height: 800 });
+        await openViewer(page, { lang, hash: OBOR_VIEW });
+        await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('orientation', 'vertical');
+        await openTimelineCard(page);
+        await expect(async () => {
+            const gaps = await viewer(page)
+                .locator('.dock.timeline')
+                .evaluate((dock) => {
+                    const pane = (dock as HTMLElement).offsetParent?.getBoundingClientRect();
+                    const box = dock.getBoundingClientRect();
+                    const card = dock.querySelector('hcm-timeline')?.getBoundingClientRect();
+                    const gutter = Number.parseFloat(getComputedStyle(dock).getPropertyValue('--hcm-gutter'));
+                    return pane && card ? { top: card.top - pane.top, slack: box.height - card.height, gutter } : undefined;
+                });
+            expect(Math.abs((gaps?.top ?? -1) - (gaps?.gutter ?? 0)), 'from the top gutter').toBeLessThanOrEqual(1);
+            expect(Math.abs(gaps?.slack ?? -1), 'down to the chip row').toBeLessThanOrEqual(1);
+        }).toPass();
+    },
+);

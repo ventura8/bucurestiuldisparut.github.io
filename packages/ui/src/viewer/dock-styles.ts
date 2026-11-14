@@ -19,14 +19,13 @@ export const dockStyles = css`
     }
 
     /*
-     * Lying (from 600 px, and on a short window of any width) the timeline is centred at the foot of the map, at most
-     * 640 px wide, with a column free on either side for the menu button.
+     * Lying (from 600 px, and on a short window of any width) the timeline takes the whole foot of the map, gutter to
+     * gutter, less the trailing column of the menu button and the zoom group (the owner, 2026-11-14: a narrower centred
+     * bar wasted the width; at 2560 px it was 640 of 2392 px).
      */
     .dock.timeline {
-        inset-inline: calc(var(--hcm-gutter) + 72px);
+        inset-inline: var(--hcm-gutter) calc(var(--hcm-gutter) + 72px);
         inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
-        max-inline-size: 640px;
-        margin-inline: auto;
     }
 
     /*
@@ -89,11 +88,11 @@ export const dockStyles = css`
     }
 
     /*
-     * On the lying card's leading edge, 8 px above it (the owner's screenshot of 2026-11-08: 72 px in from the map's
-     * edge it was aligned to nothing beside the centred card); 50 % is half the map pane, the containing block of both.
+     * On the lying card's leading edge, 8 px above it (the owner's screenshot of 2026-11-08: the chip aligned to nothing
+     * beside the card); the card begins at the gutter.
      */
     .dock.chip {
-        inset-inline-start: max(var(--hcm-gutter) + 72px, 50% - 320px);
+        inset-inline-start: var(--hcm-gutter);
         inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
     }
 
@@ -212,16 +211,15 @@ export const dockStyles = css`
     }
 
     /*
-     * The menu button is on the leading side only, so the lying card takes the trailing column too, and the chip its
-     * trailing edge: 50 % - 356 px is where the centred 640 px card ends (the review at 568 x 320: 72 px in, the chip
-     * sat on the map's centre point; it now ends at the gutter, with 9 px to spare in Romanian).
+     * The menu button is on the leading side only, so the lying card takes the trailing column instead, and the chip its
+     * trailing edge, at the gutter (the review at 568 x 320: 72 px in, the chip sat on the map's centre point).
      */
     .frame[data-compact-height] .dock.timeline {
-        inset-inline-end: var(--hcm-gutter);
+        inset-inline: calc(var(--hcm-gutter) + 72px) var(--hcm-gutter);
     }
 
     .frame[data-compact-height] .dock.chip {
-        inset-inline: auto max(var(--hcm-gutter), 50% - 356px);
+        inset-inline: auto var(--hcm-gutter);
     }
 
     /*
