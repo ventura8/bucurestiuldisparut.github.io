@@ -16,6 +16,7 @@ import {
     type MessageKey,
     type ViewerLocale,
 } from '@hcm/shared';
+import { accentOf } from '@hcm/ui';
 import type { FlyOptions, MapEventMap, Unsubscribe } from '@hcm/ui/map';
 
 import { loadManifest, type Result } from '../config/load.js';
@@ -101,7 +102,8 @@ export class Boot {
         const stored = exactLocale(this.#host.preferences.get(config.cityId, 'lang'));
         const theme = themeOf(this.#host.preferences.get(config.cityId, 'theme'));
         const state = initialState(this.#urlLocale ?? stored ?? this.defaultLocale, theme, telemetry.consent);
-        return { ...state, systemDark: this.#host.deps.colorScheme?.dark() === true };
+        const accent = accentOf(this.#host.preferences.get(config.cityId, 'accent'));
+        return { ...state, accent, systemDark: this.#host.deps.colorScheme?.dark() === true };
     }
 
     async load(): Promise<void> {
@@ -203,13 +205,14 @@ export class Boot {
         }
     }
 
-    /** The city's stored language (unless the URL named one) and theme. */
+    /** The city's stored language (unless the URL named one), theme and accent. */
     #withCityPreferences(state: ViewerState, cityId: string): ViewerState {
         const stored = exactLocale(this.#host.preferences.get(cityId, 'lang'));
         const theme = this.#host.preferences.get(cityId, 'theme');
         const locale = this.#urlLocale ?? stored ?? state.locale;
         const shortcuts = this.#host.preferences.get(cityId, 'shortcuts') !== 'off';
-        return { ...state, locale, shortcuts, theme: theme === null ? state.theme : themeOf(theme) };
+        const accent = accentOf(this.#host.preferences.get(cityId, 'accent'));
+        return { ...state, locale, shortcuts, accent, theme: theme === null ? state.theme : themeOf(theme) };
     }
 
     async #mount(id: number, manifest: Manifest): Promise<void> {

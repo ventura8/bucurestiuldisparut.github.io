@@ -1,4 +1,4 @@
-import { registerCatalogue, translate, translateAdminContent, translateAdminShell, UI_LANGUAGE_NAMES, type UiLocale } from '@hcm/shared';
+import { registerCatalogue, translate, translateAdminContent, translateAdminShell, type UiLocale } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
 import { expectStateSound } from '../../../support/state-check.js';
@@ -8,13 +8,18 @@ import type { ContentWorld } from '../../support/content.js';
 import { photosText, seedPhotosCity } from '../../support/photos.js';
 
 /**
- * The admin in the interface's 25 languages (docs/I18N.md; behaviour A95): the account menu lists them all, a language beyond
- * Romanian and English is fetched from `/admin/i18n/<locale>.json` before the shell shows it and stays chosen after a reload,
- * Arabic, Persian and Urdu turn the page right to left, a key the language's file lacks shows in English, and a file that cannot
- * be fetched keeps the language and says so.
+ * The admin in the interface's 25 languages (docs/I18N.md; behaviour A95): the account menu's language dropdown lists them all,
+ * a language beyond Romanian and English is fetched from `/admin/i18n/<locale>.json` before the shell shows it and stays chosen
+ * after a reload, Arabic, Persian and Urdu turn the page right to left, a key the language's file lacks shows in English, and a
+ * file that cannot be fetched keeps the language and says so.
  */
 
 const AT = new Date('2026-10-17T09:00:00.000Z');
+
+/** The account menu's language dropdown (`<hcm-language-select>`: a native `<select>`, not a radiogroup). */
+function languageList(page: Page, current: UiLocale): ReturnType<Page['getByRole']> {
+    return page.getByRole('combobox', { name: translate(current, 'language.label'), exact: true });
+}
 
 /** Picks `locale` in the account menu (every language by its own name) and closes the menu. */
 async function chooseLanguage(page: Page, current: UiLocale, locale: UiLocale): Promise<void> {
@@ -22,7 +27,7 @@ async function chooseLanguage(page: Page, current: UiLocale, locale: UiLocale): 
         .getByRole('button', { name: translateAdminShell(current, 'adminShell.account.label') })
         .filter({ visible: true })
         .click();
-    await page.getByRole('radio', { name: UI_LANGUAGE_NAMES[locale], exact: true }).click();
+    await languageList(page, current).selectOption(locale);
     await page.keyboard.press('Escape');
 }
 
@@ -43,7 +48,12 @@ test(
             .getByRole('button', { name: translateAdminShell(lang, 'adminShell.account.label') })
             .filter({ visible: true })
             .click();
-        await expect(page.getByRole('radiogroup', { name: translate(lang, 'language.label') }).getByRole('radio')).toHaveCount(25);
+        // One dropdown named Limbă / Language, not a long list of radios (the owner, 2026-11-14).
+        const list = languageList(page, lang);
+        await expect(list).toBeVisible();
+        await expect(list.locator('option')).toHaveCount(25);
+        await expect(list.getByRole('radio')).toHaveCount(0);
+        await expect(list).toHaveValue(lang);
         await page.keyboard.press('Escape');
 
         // The French texts as the page fetches them (`/admin/i18n/fr.json`), registered here so the test reads the same.

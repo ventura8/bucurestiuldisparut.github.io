@@ -444,11 +444,12 @@ function provisionDueLine(input: InstallStatusInput): TemplateResult {
 
 /**
  * A build of any target is queued or at work, or a click on one is on its way (Update the map's click starts them all).
- * A build only a record says is at work counts too, until a look settles it (the review of 6858f8a: Update the map beside
- * it skipped that target, so Provision's record could go in before the server's build settled, the race of finding 71).
+ * A build only a record says is at work does not hide Update the map (2026-11-14: the pipeline's record of 23:20 hid it with no
+ * word why, until the owner found Check again on another card); the click looks at such builds first with its own token and
+ * goes on only once none is at work (`updateMap`), so Provision's record still waits for the server (the race of finding 71).
  */
 function building(slice: InstallSliceView): boolean {
-    return [slice.server, slice.pipeline, slice.site].some((target) => installRunning(target) || target.busy);
+    return [slice.server, slice.pipeline, slice.site].some((target) => (installRunning(target) && !unconfirmed(target)) || target.busy);
 }
 
 /**

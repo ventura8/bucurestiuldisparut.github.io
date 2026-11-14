@@ -99,6 +99,7 @@ export class FakeAdminApp implements AdminAppPort {
             refreshCities: record('refreshCities'),
             setLocale: sync('setLocale'),
             setTheme: sync('setTheme'),
+            setAccent: sync('setAccent'),
             setConsent: sync('setConsent'),
             dismissNotice: sync('dismissNotice'),
             setWindowClass: sync('setWindowClass'),

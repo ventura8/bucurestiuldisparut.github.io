@@ -7,7 +7,19 @@ import { AREA, POINT } from './world.js';
 
 function item(id: string, title: { ro: string; en?: string }, published: boolean, category = 'biserici'): PoiItem {
     const value = { category, geometry: POINT, title, links: [], photoIds: [], published };
-    return { id, version: 'v', category, title, yearStart: null, yearEnd: null, shape: 'point', published, geometry: POINT, value };
+    return {
+        id,
+        version: 'v',
+        category,
+        title,
+        yearStart: null,
+        yearEnd: null,
+        yearSeen: null,
+        shape: 'point',
+        published,
+        geometry: POINT,
+        value,
+    };
 }
 
 const ITEMS = [item('a', { ro: 'Biserica Albă', en: 'White Church' }, true), item('b', { ro: 'Parcul' }, false, 'parcuri')];

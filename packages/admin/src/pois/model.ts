@@ -29,6 +29,7 @@ export const POI_EDITABLE = [
     'description',
     'yearStart',
     'yearEnd',
+    'yearSeen',
     'links',
     'photoIds',
     'published',
@@ -60,6 +61,8 @@ export interface PoiValue {
     readonly description?: PoiText;
     readonly yearStart?: number;
     readonly yearEnd?: number;
+    /** M27: plan year when start/end are unknown (traced on that year's map). */
+    readonly yearSeen?: number;
     readonly links: readonly PoiLink[];
     readonly photoIds: readonly string[];
     readonly published: boolean;
@@ -77,6 +80,7 @@ export interface PoiItem {
     readonly title: PoiText;
     readonly yearStart: number | null;
     readonly yearEnd: number | null;
+    readonly yearSeen: number | null;
     readonly shape: PoiShape;
     readonly published: boolean;
     readonly geometry: Geometry;
@@ -125,6 +129,7 @@ export function valueOf(doc: PoiDoc): PoiValue {
         ...optional('description', doc.description === undefined ? undefined : textOf(doc.description)),
         ...optional('yearStart', doc.yearStart),
         ...optional('yearEnd', doc.yearEnd),
+        ...optional('yearSeen', doc.yearSeen),
         links: doc.links ?? [],
         photoIds: doc.photoIds ?? [],
         published: doc.published,
@@ -149,8 +154,12 @@ function cleanDescription(text: PoiText | undefined): Readonly<Record<string, Po
     return cleaned === null || (cleaned.ro === '' && cleaned.en === undefined) ? {} : { description: cleaned };
 }
 
-function optionalYears(value: PoiValue): Readonly<Partial<Record<'yearStart' | 'yearEnd', number>>> {
-    return { ...optional('yearStart', value.yearStart), ...optional('yearEnd', value.yearEnd) };
+function optionalYears(value: PoiValue): Readonly<Partial<Record<'yearStart' | 'yearEnd' | 'yearSeen', number>>> {
+    return {
+        ...optional('yearStart', value.yearStart),
+        ...optional('yearEnd', value.yearEnd),
+        ...optional('yearSeen', value.yearSeen),
+    };
 }
 
 /** The Firestore fields of a place (without the stamp): the geometry without nested arrays, empty texts left out. */
@@ -173,7 +182,7 @@ export function poiItemOf(doc: Stored<PoiDoc>): PoiItem {
     const geometry = geometryFromDoc(doc.data.geometry);
     return {
         ...{ id: doc.id, version: doc.version, category: value.category, title: value.title },
-        ...{ yearStart: value.yearStart ?? null, yearEnd: value.yearEnd ?? null },
+        ...{ yearStart: value.yearStart ?? null, yearEnd: value.yearEnd ?? null, yearSeen: value.yearSeen ?? null },
         ...{ shape: shapeOf(geometry), published: value.published, geometry, value },
     };
 }

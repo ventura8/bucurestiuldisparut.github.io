@@ -5,7 +5,7 @@
  */
 import type { Logger } from '@hcm/shared';
 
-export type PreferenceName = 'lang' | 'theme' | 'consent' | 'shortcuts';
+export type PreferenceName = 'lang' | 'theme' | 'accent' | 'consent' | 'shortcuts';
 
 export type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 

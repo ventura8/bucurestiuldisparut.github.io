@@ -425,7 +425,7 @@ export function shellStateAccess(overrides: Partial<ShellState> = {}): ShellStat
         projectOwner: false,
         setupReady: null,
         locale: 'en',
-        theme: { mode: 'system', city: null, preview: null },
+        theme: { mode: 'system', accent: 'device', city: null, preview: null },
         consent: 'unknown',
         analytics: false,
         windowClass: 'compact',

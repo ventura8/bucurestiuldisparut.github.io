@@ -19,6 +19,7 @@ import type { ConsentDecision } from '../../components/consent-banner.js';
 import { WindowClassController, type WindowSize } from '../../layout/window-class.js';
 import { applyTheme, type ThemeMode } from '../../theme/apply.js';
 import { BASELINE_THEME } from '../../theme/baseline.js';
+import { accentTokens, type AccentChoice } from '../../theme/device-accent.js';
 import type { WindowClass } from '../../theme/tokens.js';
 import type { AdminAppPort, AdminAuthStatePort, AdminRouteIdPort, AdminStatePort } from '../admin-port.js';
 import { welcomeName, welcomeOf } from '../auth/hcm-sign-in.js';
@@ -94,6 +95,15 @@ export function themeTokensOf(state: AdminStatePort): ThemeTokens {
     return state.theme.preview ?? state.theme.city ?? BASELINE_THEME;
 }
 
+/**
+ * The tokens the shell wears: `themeTokensOf` in the device's accent unless the admin chose the map's colours
+ * (`theme/device-accent.ts`, the viewer's rule); Settings' live preview always shows the seed's own colours.
+ */
+export function shownTokens(state: AdminStatePort, doc: Document): ThemeTokens {
+    const tokens = themeTokensOf(state);
+    return state.theme.preview === null ? accentTokens(tokens, state.theme.accent ?? 'device', doc) : tokens;
+}
+
 /** The open page's name: its navigation label (the top bar's title, or the hidden heading without a top bar). */
 function pageName(state: AdminStatePort): TemplateResult {
     const key: AdminShellKey = `adminShell.nav.${state.route.id}`;
@@ -116,7 +126,7 @@ export class HcmAdminShell extends LitElement {
         },
     });
     #subscribed: { readonly app: AdminAppPort; readonly stop: () => void } | null = null;
-    #theme: { readonly tokens: ThemeTokens; readonly mode: ThemeMode } | null = null;
+    #theme: { readonly source: ThemeTokens; readonly accent: AccentChoice | undefined; readonly mode: ThemeMode } | null = null;
     /** The chrome the current page asked for, and for which route (a page that is gone cannot ask back). */
     #chrome: { readonly chrome: PageChrome; readonly route: AdminRouteIdPort } | null = null;
     /**
@@ -231,13 +241,14 @@ export class HcmAdminShell extends LitElement {
     }
 
     #applyTheme(state: AdminStatePort): void {
-        const theme = { tokens: themeTokensOf(state), mode: state.theme.mode };
+        const theme = { source: themeTokensOf(state), accent: state.theme.accent, mode: state.theme.mode };
         const last = this.#theme;
-        if (last?.tokens !== theme.tokens || last.mode !== theme.mode) {
+        if (last?.source !== theme.source || last.accent !== theme.accent || last.mode !== theme.mode) {
             this.#theme = theme;
-            applyTheme(this, theme.tokens, theme.mode, false);
+            const tokens = shownTokens(state, this.ownerDocument);
+            applyTheme(this, tokens, theme.mode, false);
             // M6 (finding 22): the page's root under the shell has the same surface, so no band of another colour shows.
-            paintRoot(this.ownerDocument, theme.tokens, theme.mode);
+            paintRoot(this.ownerDocument, tokens, theme.mode);
         }
     }
 

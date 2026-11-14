@@ -109,7 +109,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # The editor areas (packages/admin/src/pages/<area>.ts: the page's elements and the store's module).
     "photos": 25,
     "pois": 25,
-    "settings": 20,
+    # 21 since 2026-11-13 (§222, under the owner's §215 raise): 20.2 KB after the 25 languages' merge.
+    "settings": 21,
     "layers": 10,
     "history": 8,
     "admins": 6,
@@ -223,7 +224,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # (`@hcm/shared/admin-worker`), 5.5 KB measured on 2026-11-02 plus about 20 %, rounded up; 5.7 KB since finding 72
     # moved the command into `worker-local`.
     # 8 since 2026-11-13 (§215, the owner's raise): 7.3 KB with W5's computers list.
-    "worker": 8,
+    # 9 since 2026-11-13 (§222, under §215): 8.7 KB after the merge of the stitched films' wait (§217).
+    "worker": 9,
     # Finding 72 of 2026-11-02 ("Use this computer": `packages/admin/src/worker/worker-local.ts`, the feed's one dynamic
     # import): the starter file, the auto-pair, Stop using this computer, the command behind Advanced, `<hcm-worker-local>`
     # and its texts (`@hcm/shared/admin-worker-local`), fetched when the worker's panel first shows the computer's part:
@@ -249,7 +251,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # 18.0 of 18 and is at 16.2 with the own tiles' map and Work's pictures in it: 3.5 KB measured on 2026-11-07 plus about 20 %, rounded
     # up. Mapbox's compute units, Studio steps and choices (`mapbox-choices.ts`), which a city on its own bucket, the default, never
     # fetches: 1.3 KB measured then. The total stays within its 650 KB and no row rose.
-    "approval-map": 5,
+    # 6 since 2026-11-13 (§222, under §215): just over 5.0 KB after the merge of origin's changes.
+    "approval-map": 6,
     # M17 (docs/research/M17-stories.md §6): the stories area (`packages/admin/src/pages/stories.ts`: the store, `<hcm-stories-page>`),
     # fetched when its route first opens; its texts are the admin's catalogues in the entry. 4.3 KB measured on 2026-11-08 plus about 20 %,
     # rounded up; the total stays within its 650 KB (DECISIONS-for-review.md §102a).
@@ -307,7 +310,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # an admin waits for.
 # 750 since 2026-11-12, the owner's decision (§168d): the georeferencer's panes and its sharper scan's tiles (`georef-panes`,
 # `scan-tiles`) took the total to 701.8 KB; both load only with the georeferencer, and the entry's 450 KB is unchanged.
-ADMIN_TOTAL_KB = 760  # §215 (the owner's raise, 2026-11-13): 754.8 KB with W5
+# 770 since 2026-11-13 (§222, under the owner's §215 raise): 764.6 KB with the device accent (about 1.5 KB) and the merge.
+ADMIN_TOTAL_KB = 770
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k

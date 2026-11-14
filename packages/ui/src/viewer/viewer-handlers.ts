@@ -162,7 +162,13 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
             store.setLocale(event.detail.locale);
         }),
         onThemeChange: on((store, event) => {
-            store.setTheme(event.detail.theme);
+            const { theme, accent } = event.detail;
+            if (theme !== undefined) {
+                store.setTheme(theme);
+            }
+            if (accent !== undefined) {
+                store.setAccent(accent);
+            }
         }),
         onConsent: on((store, event) => {
             store.setConsent(event.detail.decision);
