@@ -112,7 +112,7 @@ export function setupLabel(locale: UiLocale, key: AdminSetupKey, params?: Readon
 /** The `Intl` tags where the bare code would not do (British English); any other language formats by its code. */
 const INTL_LOCALES: Partial<Readonly<Record<UiLocale, string>>> = { ro: 'ro-RO', en: 'en-GB' };
 
-function intlLocale(locale: UiLocale): string {
+export function intlLocale(locale: UiLocale): string {
     return INTL_LOCALES[locale] ?? locale;
 }
 
@@ -129,13 +129,13 @@ export function formatDateTime(locale: UiLocale, iso: string): string {
 }
 
 /** A US-dollar amount as the cost lines write it after "USD" (up to two decimals: 0.5, 35). */
-export function formatUsd(locale: Locale, amount: number): string {
-    return new Intl.NumberFormat(INTL_LOCALES[locale], { maximumFractionDigits: 2 }).format(amount);
+export function formatUsd(locale: UiLocale, amount: number): string {
+    return new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 2 }).format(amount);
 }
 
 /** A day (`2026-11-13`) written out in the page's language. */
-export function formatDay(locale: Locale, day: string): string {
-    return new Intl.DateTimeFormat(INTL_LOCALES[locale], { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
+export function formatDay(locale: UiLocale, day: string): string {
+    return new Intl.DateTimeFormat(intlLocale(locale), { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
 }
 
 /** "5 USD" / "US$5": the budget in its currency, whole units. */

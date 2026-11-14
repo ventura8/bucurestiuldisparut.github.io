@@ -290,6 +290,7 @@ export function createHarness(): Harness {
     const sources: Fake<SetupSourcesPort> = {
         read: vi.fn<SetupSourcesPort['read']>().mockResolvedValue({}),
         save: vi.fn<SetupSourcesPort['save']>().mockResolvedValue(undefined),
+        country: vi.fn<SetupSourcesPort['country']>().mockResolvedValue(null),
     };
     const host: Fake<SetupHost> = {
         projectId: PROJECT_ID,

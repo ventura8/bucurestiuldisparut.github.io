@@ -1,4 +1,5 @@
 import { SITE_PUBLISH_TRANSFER_MB, SITE_PUBLISH_TRANSFER_TRIMMED_MB } from '@hcm/shared';
+import { COUNTRY_SEEDS } from '@hcm/shared/sources';
 import { MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import type { Locator, Page, Request } from '@playwright/test';
 
@@ -281,6 +282,23 @@ async function connectMapbox({ page, lang, setup, setupBudget, upstream, console
     expect(JSON.stringify([city, await emulators.document('setup/status')])).not.toContain(MAPBOX_TOKENS.trial);
 }
 
+/** M28 §10: Romania's list as `ops.tick` writes it once the city is placed (the tick does not run in the e2e world). */
+async function seedCountryList(emulators: EmulatorWorld): Promise<void> {
+    const at = STEPS_AT;
+    const seed = COUNTRY_SEEDS['RO'];
+    await emulators.setDocument('countrySources/RO', {
+        country: 'RO',
+        language: 'ro',
+        cities: [E2E_CITY_ID],
+        places: (seed?.places ?? []).map((place) => ({ ...place, reachable: true })),
+        origin: 'curated',
+        factsCheckedOn: seed?.factsCheckedOn,
+        refreshedAt: at,
+        updatedBy: 'system:ops',
+        updatedAt: at,
+    });
+}
+
 /**
  * 5b. M28: the app's platform (read from the steps before it, no input) and the map's sources: after Mapbox the Sources card
  * opens with the suggested switches and the month's estimate; Save my choice (one input) writes the city's `sources` and
@@ -296,6 +314,9 @@ async function chooseSources({ page, lang, setup, setupBudget, emulators }: Jour
         'true',
     );
     await expect(sources.getByText(startOf(sourcesText(lang, 'adminSources.summary.total')))).toBeVisible();
+    // M28 §10–§11: the free translation options and the country's archives, libraries and sellers (the list ops.tick wrote).
+    await expect(sources.locator('[data-translation]')).toHaveCount(6);
+    await expect(sources.locator('[data-finder="ready"] [data-place]')).toHaveCount(COUNTRY_SEEDS['RO']?.places.length ?? 0);
     await checkpoint(page, lang, '06c-sources', 'setup-sources');
     await setupBudget.inputs('sources').click(sources.getByRole('button', { name: sourcesText(lang, 'adminSources.save') }));
     await setup.expectState('sources', 'ok');
@@ -493,6 +514,8 @@ test(
             '@S-A31-BAD-ALERTS',
             '@S-A180-HAPPY-SAVE-DEFAULTS',
             '@S-A181-HAPPY-PLATFORM',
+            '@S-A183-HAPPY-FINDER',
+            '@S-A184-HAPPY-TRANSLATIONS',
         ],
     },
     async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment, consoleErrors, adminWorld }) => {
@@ -520,6 +543,7 @@ test(
         await serveInstallBundle(page, { startUp: true });
         await followSiteRelease(page, upstream);
         const startUp = backendRequests(page);
+        await seedCountryList(emulators);
         await page.goto(adminPath(lang));
 
         await signInInStartUpMode(journey);

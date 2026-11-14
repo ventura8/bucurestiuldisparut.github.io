@@ -33,7 +33,9 @@ import { EMPTY } from '../shell/empty.js';
 import { SetupBody, defineSetupBodyParts } from './setup-body.js';
 import type { SetupViewState } from './setup-port.js';
 import { setupTextStyles } from './setup-styles.js';
-import { formatDay, formatMoney, formatUsd } from './setup-text.js';
+import { formatDate, formatDay, formatMoney, formatUsd, intlLocale } from './setup-text.js';
+import { countryFinder, type FinderContext } from './sources-finder.js';
+import { translationOptions } from './sources-translations.js';
 import { accountChip, accountStatus, actionLink, providerLinks, sourceDetails, sourcesKey, sourcesStyles } from './sources-parts.js';
 
 const HCM_SETUP_SOURCES_TAG = 'hcm-setup-sources';
@@ -74,13 +76,34 @@ export class HcmSetupSources extends SetupBody {
         const { choices } = state.sources;
         return html`<div class="body">
             <p>${this.s('adminSources.intro')}</p>
-            ${this.renderSummary(state, choices)} ${GROUPS.map((group) => this.renderGroup(state, group))} ${this.renderGuided()}
-            ${this.renderNotUsable()} ${this.renderSave(state)}
+            ${this.renderSummary(state, choices)} ${GROUPS.map((group) => this.renderGroup(state, group))}
+            ${translationOptions(
+                this.sTr(),
+                (count) => new Intl.NumberFormat(intlLocale(this.locale)).format(count),
+                (day) => this.day(day),
+            )}
+            ${countryFinder(this.finderContext(), state.sources.finder)} ${this.renderGuided()} ${this.renderNotUsable()}
+            ${this.renderSave(state)}
         </div>`;
     }
 
     private s(key: AdminSourcesKey, params?: Readonly<Record<string, string>>): string {
         return translateAdminSources(this.locale, key, params);
+    }
+
+    /** A day (`2026-11-14`) or an instant (ISO), in the page's language. */
+    private day(value: string): string {
+        return value.length === 10 ? formatDay(this.locale, value) : formatDate(this.locale, value);
+    }
+
+    private finderContext(): FinderContext {
+        const regions = new Intl.DisplayNames([intlLocale(this.locale)], { type: 'region' });
+        return {
+            t: this.sTr(),
+            pick: (text) => (this.locale === 'ro' ? text.ro : text.en),
+            day: (value) => this.day(value),
+            countryName: (code) => regions.of(code) ?? code,
+        };
     }
 
     private usd(amount: number): string {

@@ -137,7 +137,9 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             this.#feeds.start(this.#cell.state.filters.freeOnly);
         }
         const replaceLayer = replaceOf(params);
-        this.#cell.update(replaceLayer === null ? { replaceLayer } : { replaceLayer, tab: 'upload' });
+        // M28: `#/imagery/upload` (the Sources step's "bring it into the app") opens the Upload tab.
+        const upload = replaceLayer !== null || params[0] === 'upload';
+        this.#cell.update(upload ? { replaceLayer, tab: 'upload' } : { replaceLayer });
         this.#select(detailOf(params));
     }
 

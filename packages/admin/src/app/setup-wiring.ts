@@ -20,6 +20,7 @@ import { createSetupCloud } from '../provision/setup-cloud.js';
 import { createSetupModule, type SetupModule, type SetupModuleOptions } from '../setup/module.js';
 import type { SetupLegacyImport, SetupSourcesPort } from '../setup/ports.js';
 import type { FirebaseWebConfig } from './config.js';
+import { readCountryList } from './country-wiring.js';
 import { legacyFixStore, legacyPhotoStore, legacyReprocess } from './legacy-photos.js';
 import type { Clock } from './ports.js';
 
@@ -135,6 +136,7 @@ export function setupSourcesPort(firebase: Pick<FirebasePorts, 'documents'>, cit
                 { sources: { ...sources }, updatedBy: uid(), updatedAt: firebase.documents.serverTimestamp() },
                 { merge: true },
             ),
+        country: () => readCountryList(firebase.documents, cityId),
     };
 }
 

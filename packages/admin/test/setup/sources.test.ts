@@ -1,9 +1,10 @@
 // M28 (docs/research/M28-sources.md §4): the Sources step's flow, the USGS step it leaves out and the platform card's state.
-import { DEFAULT_SOURCES } from '@hcm/shared/sources';
+import { COUNTRY_SEEDS, DEFAULT_SOURCES } from '@hcm/shared/sources';
 import { describe, expect, it } from 'vitest';
 
 import { createSetupController } from '../../src/setup/controller.js';
 import { withChoice } from '../../src/setup/sources.js';
+import { NO_FINDER } from '../../src/setup/sources-state.js';
 import { initialSetupState, refreshDerived, withStep, type SetupState } from '../../src/setup/state.js';
 import { createHarness, provisionedItems, statusView } from './harness.js';
 
@@ -33,7 +34,7 @@ describe('the Sources step', () => {
 
         await controller.start('normal', null);
         expect(controller.getState().steps.sources.state).toBe('missing');
-        expect(controller.getState().sources).toEqual({ choices: DEFAULT_SOURCES, saved: null });
+        expect(controller.getState().sources).toMatchObject({ choices: DEFAULT_SOURCES, saved: null });
 
         await controller.intents.saveSources();
 
@@ -147,7 +148,7 @@ describe('ready without USGS', () => {
         const base = initialSetupState(createHarness().host, 'normal');
         const chosen = refreshDerived({
             ...base,
-            sources: { choices: DEFAULT_SOURCES, saved: { ...DEFAULT_SOURCES, usgs: false, landsat: false } },
+            sources: { ...base.sources, choices: DEFAULT_SOURCES, saved: { ...DEFAULT_SOURCES, usgs: false, landsat: false } },
         });
         const done = withDone(chosen, 'billing', 'provision', 'mapbox');
 
@@ -159,5 +160,49 @@ describe('ready without USGS', () => {
         const done = withDone(initialSetupState(createHarness().host, 'normal'), 'billing', 'provision', 'mapbox');
 
         expect(done.ready).toBe(false);
+    });
+});
+
+// M28 §10: the country finder beside the switches.
+describe('the country finder', () => {
+    const LIST = {
+        country: 'RO',
+        language: 'ro',
+        origin: 'curated' as const,
+        factsCheckedOn: '2026-11-14',
+        refreshedAt: '2026-11-14T10:00:00.000Z',
+        places: COUNTRY_SEEDS['RO']?.places ?? [],
+        cityName: 'București',
+    };
+
+    it('happyPath_theCitysCountryListIsReadWithTheChoice @S-A183-HAPPY-FINDER', async () => {
+        const { controller } = started((h) => {
+            h.sources.country.mockResolvedValue(LIST);
+        });
+
+        await controller.start('normal', null);
+
+        expect(controller.getState().sources.finder).toEqual({ ...LIST, state: 'ready' });
+    });
+
+    it('badPath_aCityNotPlacedYetSaysTheListComesLater @S-A183-BAD-NOT-YET', async () => {
+        const { controller } = started();
+
+        await controller.start('normal', null);
+
+        expect(controller.getState().sources.finder).toEqual({ ...NO_FINDER, state: 'none' });
+        expect(controller.getState().steps.sources.state).toBe('ok');
+    });
+
+    it('badPath_anUnreadableListIsSaidInTheFinderOnlyAndLogged', async () => {
+        const { harness, controller } = started((h) => {
+            h.sources.country.mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' }));
+        });
+
+        await controller.start('normal', null);
+
+        expect(controller.getState().sources.finder.state).toBe('failed');
+        expect(controller.getState().steps.sources.state).toBe('ok');
+        expect(JSON.stringify(harness.logs.records)).toContain('setup.sources.finderFailed');
     });
 });

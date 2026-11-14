@@ -1254,6 +1254,20 @@
             "name": "Uploaders and the sources: photos and open data allowed through Contribute and review, the satellite sources kept for the owner and the editors",
             "milestone": "post-M8",
             "source": "the owner's request of 2026-11-13 (beta.1, Setup's Sources and Platform steps); docs/research/M28-sources.md; DECISIONS-for-review.md §225"
+        },
+        {
+            "id": "A183",
+            "area": "admin",
+            "name": "Setup's Sources step: the country finder lists where the city's country keeps old maps, air photos and satellite images, online and in person, with a guided setup, a visit guide and a ready request; ops.tick researches, caches and refreshes the lists",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-14 (finish Setup's Sources: free translation sources and a per-country finder); docs/research/M28-sources.md §10–§11; DECISIONS-for-review.md §225"
+        },
+        {
+            "id": "A184",
+            "area": "admin",
+            "name": "Setup's Sources step: free translation options, each with its quality, monthly limit, privacy and sign-up wizard",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-14 (finish Setup's Sources: free translation sources and a per-country finder); docs/research/M28-sources.md §10–§11; DECISIONS-for-review.md §225"
         }
     ],
     "scenarios": [
@@ -21540,6 +21554,83 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "Unit: packages/ui/test/admin/contribute/contribute-page.test.ts; the callable's access in packages/shared/src/api/registry.ts."
+        },
+        {
+            "id": "S-A183-HAPPY-FINDER",
+            "behaviour": "A183",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Sources card lists Romania's archives, libraries and sellers with a visit guide and a ready request",
+            "asserts": "the city placed in Romania -> each place shows its kind, online or in person, cost with the published figures, years, what to ask for and its website; the visit guide opens Google Maps with the address as the destination, calls the number, and writes the request email filled in with the city's name; the online guide shows the account, key, site status and the import; the generic checkers pass",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "journey.spec.ts step 5b (the list seeded as ops.tick writes it). Unit: packages/ui/test/admin/setup/sources-finder.test.ts, packages/admin/test/setup/sources.test.ts, packages/admin/test/app/setup-wiring.test.ts."
+        },
+        {
+            "id": "S-A183-BAD-NOT-YET",
+            "behaviour": "A183",
+            "area": "admin",
+            "path": "bad",
+            "title": "Before ops.tick has placed the city, the finder says the list comes within the hour; an unreadable list says what to do",
+            "asserts": "no list names the city -> the finder says the app looks it up at its next regular check; a refused read -> Check again, then Admins; the step's state stays as it was",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/sources-finder.test.ts, packages/admin/test/setup/sources.test.ts."
+        },
+        {
+            "id": "S-A183-BAD-NO-EMAIL",
+            "behaviour": "A183",
+            "area": "admin",
+            "path": "bad",
+            "title": "A place that publishes no email offers printing the request, and a site that did not answer is said so",
+            "asserts": "ANCPI has no email -> Print the letter prints it; a website that did not answer at the last refresh -> a plain line says it may be down for a while",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/sources-finder.test.ts."
+        },
+        {
+            "id": "S-A183-HAPPY-REFRESH",
+            "behaviour": "A183",
+            "area": "admin",
+            "path": "happy",
+            "title": "ops.tick places a city in its country, writes the curated list with every website checked, and refreshes it monthly",
+            "asserts": "a Romanian city -> countrySources/RO with the curated places, each reachable or not; a second city joins without a refresh; a list a month old is refreshed; a country without a curated list gets Wikidata's national archives, library and mapping agency, unverified",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "functions/test/ops/country-sources.test.ts; the rules: firebase/rules-tests/test/matrix.test.ts (countrySources read by staff, written by nobody)."
+        },
+        {
+            "id": "S-A183-BAD-REFRESH",
+            "behaviour": "A183",
+            "area": "admin",
+            "path": "bad",
+            "title": "No country, no city or Wikidata down writes nothing wrong",
+            "asserts": "Nominatim finds no country -> nothing written; no city -> no lookup; Wikidata down or unreadable -> no places, the list says found automatically",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "functions/test/ops/country-sources.test.ts."
+        },
+        {
+            "id": "S-A184-HAPPY-TRANSLATIONS",
+            "behaviour": "A184",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Sources card shows six free translation options with quality, limit, privacy and a sign-up wizard",
+            "asserts": "local models (with the mandatory check), DeepL API Free, Google Cloud Translation, Azure Translator F0, LibreTranslate, MyMemory -> each its quality, free limit and what happens past it, card or not, what happens to the texts, numbered sign-up steps with the provider's page one press away; what is planned says so",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "journey.spec.ts step 5b. Unit: packages/ui/test/admin/setup/sources-finder.test.ts, packages/shared/test/schemas/country-sources.test.ts."
+        },
+        {
+            "id": "S-A184-BAD-UNSTATED",
+            "behaviour": "A184",
+            "area": "admin",
+            "path": "bad",
+            "title": "A limit or a privacy rule the provider does not state is said to be unstated, never guessed",
+            "asserts": "MyMemory states no over-limit rule nor what it keeps -> the card says the provider does not say; Google bills past its free amount -> said",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/sources-finder.test.ts."
         }
     ]
 }

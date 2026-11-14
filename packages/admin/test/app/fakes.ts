@@ -357,8 +357,17 @@ export class FakeDocuments implements DocumentsPort {
         return Promise.resolve();
     }
 
-    query(): Promise<readonly { readonly id: string; readonly data: DocumentData }[]> {
-        return Promise.resolve([]);
+    /** The documents directly in `collectionPath` whose fields equal `equals`. */
+    query(
+        collectionPath: string,
+        equals: readonly (readonly [string, unknown])[] = [],
+    ): Promise<readonly { readonly id: string; readonly data: DocumentData }[]> {
+        const prefix = `${collectionPath}/`;
+        const rows = [...this.data.entries()]
+            .filter(([path]) => path.startsWith(prefix) && !path.slice(prefix.length).includes('/'))
+            .filter(([, data]) => equals.every(([field, value]) => data[field] === value))
+            .map(([path, data]) => ({ id: path.slice(prefix.length), data }));
+        return Promise.resolve(rows);
     }
 
     serverTimestamp(): unknown {

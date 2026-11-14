@@ -4,9 +4,38 @@
  * that set the platform up. Kept beside `state.ts`, which reads them in `refreshDerived`.
  */
 import { usgsReadiness, type ServiceState } from '@hcm/shared';
-import { DEFAULT_SOURCES, needsUsgsAccount, type SourceChoices } from '@hcm/shared/sources';
+import { DEFAULT_SOURCES, needsUsgsAccount, type CountryPlace, type SourceChoices } from '@hcm/shared/sources';
 
 import type { SetupStepId } from './steps.js';
+
+/**
+ * M28 §10: where the city's country keeps its old maps and images (`countrySources/{country}`, written by `ops.tick`): still
+ * reading, ready, not looked up yet (the tick places the city within the hour), or unreadable.
+ */
+export interface CountryFinder {
+    readonly state: 'loading' | 'ready' | 'none' | 'failed';
+    readonly country: string | null;
+    readonly language: string;
+    readonly origin: 'curated' | 'researched';
+    readonly factsCheckedOn: string | null;
+    readonly refreshedAt: string | null;
+    readonly places: readonly CountryPlace[];
+    readonly cityName: string | null;
+}
+
+/** A country's list as the Sources port reads it. */
+export type CountryList = Omit<CountryFinder, 'state'>;
+
+export const NO_FINDER: CountryFinder = {
+    state: 'loading',
+    country: null,
+    language: 'en',
+    origin: 'curated',
+    factsCheckedOn: null,
+    refreshedAt: null,
+    places: [],
+    cityName: null,
+};
 
 /** The Sources step's switches and what the city holds. */
 export interface SourcesSlice {
@@ -14,10 +43,12 @@ export interface SourcesSlice {
     readonly choices: SourceChoices;
     /** What the city holds (`cities/{city}.sources`, defaults filled in); null: not chosen yet. */
     readonly saved: SourceChoices | null;
+    /** M28 §10: the country's archives, libraries and sellers. */
+    readonly finder: CountryFinder;
 }
 
 /** Before the city's choice is read: the defaults on the switches, nothing saved. */
-export const NO_SOURCES: SourcesSlice = { choices: DEFAULT_SOURCES, saved: null };
+export const NO_SOURCES: SourcesSlice = { choices: DEFAULT_SOURCES, saved: null, finder: NO_FINDER };
 
 /** Whether the map's sources need a USGS account (the declassified frames or Landsat), as the city holds them; before a choice, the defaults. */
 export function usgsChosen(state: { readonly sources: SourcesSlice }): boolean {

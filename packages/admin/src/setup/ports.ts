@@ -32,6 +32,8 @@ import type {
 } from '@hcm/shared';
 import type { CitySources } from '@hcm/shared/sources';
 
+import type { CountryList } from './sources-state.js';
+
 import type { GoogleScope } from '../google/scopes.js';
 import type { InstallerPort } from '../install/ports.js';
 import type { MessageParams, SetupMessageKey } from './messages.js';
@@ -251,6 +253,8 @@ export interface SetupSourcesPort {
     /** The city's stored choice, or undefined when none was made yet; rejects with Firestore's code when it cannot be read. */
     read(): Promise<CitySources | undefined>;
     save(sources: CitySources): Promise<void>;
+    /** M28 §10: the list of the city's country, or null while `ops.tick` has not placed the city; rejects when unreadable. */
+    country(): Promise<CountryList | null>;
 }
 
 export interface SetupDeps {

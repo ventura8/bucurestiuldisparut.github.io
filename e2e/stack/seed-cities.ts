@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
 import { citiesCreateRequestSchema, createLogger, poiCategoryDocSchema, poiDocSchema } from '@hcm/shared';
+import { COUNTRY_SEEDS, countrySourcesDocSchema } from '@hcm/shared/sources';
 import type { APIRequestContext } from '@playwright/test';
 
 import type { EmulatorWorld, SignedInAccount } from '../admin/support/emulators.js';
@@ -100,6 +101,25 @@ async function seedContent(emulators: EmulatorWorld, owner: SignedInAccount): Pr
             ...stamp,
         });
     }
+}
+
+/**
+ * M28 §10: Romania's list of archives, libraries and sellers for both cities, as `ops.tick`'s `sources` step writes it (the
+ * stack's tick does not reach the internet), every website marked as answering.
+ */
+export async function seedCountryList(emulators: EmulatorWorld, cities: readonly string[]): Promise<void> {
+    const seed = COUNTRY_SEEDS['RO'];
+    await write(emulators, 'countrySources/RO', countrySourcesDocSchema, {
+        country: 'RO',
+        language: 'ro',
+        cities,
+        places: (seed?.places ?? []).map((place) => ({ ...place, reachable: true })),
+        origin: 'curated',
+        factsCheckedOn: seed?.factsCheckedOn,
+        refreshedAt: SEEDED_AT,
+        updatedBy: 'system:ops',
+        updatedAt: SEEDED_AT,
+    });
 }
 
 /** Bacău through `cities.create`, then its content; a failure is logged and the stack comes up without it. */

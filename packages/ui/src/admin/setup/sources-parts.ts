@@ -229,6 +229,42 @@ export const sourcesStyles = css`
         color: var(--md-sys-color-on-surface-variant);
     }
 
+    .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0;
+    }
+
+    .chips .tag {
+        padding: 4px 12px;
+        border-radius: var(--md-sys-shape-corner-small);
+        background: var(--md-sys-color-surface-container-high);
+    }
+
+    h5 {
+        margin: 0;
+    }
+
+    .letter {
+        margin: 0;
+        padding: 12px 16px;
+        border-inline-start: 4px solid var(--md-sys-color-outline-variant);
+        background: var(--md-sys-color-surface-container);
+    }
+
+    .letter-body {
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+    }
+
+    button.action {
+        border: 0;
+        background: none;
+        font: inherit;
+        padding: 0;
+    }
+
     @media (forced-colors: active) {
         .source,
         .summary,

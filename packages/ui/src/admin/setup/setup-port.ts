@@ -19,7 +19,7 @@ import type {
     TransientDeployReason,
     UsgsRole,
 } from '@hcm/shared';
-import type { SourceChoices, SourceToggle } from '@hcm/shared/sources';
+import type { CountryPlace, SourceChoices, SourceToggle } from '@hcm/shared/sources';
 
 // [section install] owner: installer (M6, CR-M6-6): the imagery pipeline (d3) and Publish the map (i) join the steps.
 export type SetupStepId =
@@ -213,7 +213,7 @@ export interface SetupViewState {
         readonly credits?: boolean;
     };
     /** M28: the Sources step's switches and what the city holds (null: not chosen yet). */
-    readonly sources: { readonly choices: SourceChoices; readonly saved: SourceChoices | null };
+    readonly sources: { readonly choices: SourceChoices; readonly saved: SourceChoices | null; readonly finder: CountryFinderView };
     /** The last self-test's checks (Check again in normal mode), each with its state and a failure's reason. */
     readonly selfTest: {
         readonly checks: readonly {
@@ -336,4 +336,23 @@ export interface SetupPort {
     getState(): SetupViewState;
     subscribe(listener: (state: SetupViewState) => void): () => void;
     readonly intents: SetupIntentsPort;
+}
+
+/**
+ * M28 (`docs/research/M28-sources.md` §10): where the city's country keeps its old maps and images, as `ops.tick` last wrote
+ * `countrySources/{country}`: still reading, ready, not looked up yet, or unreadable.
+ */
+export interface CountryFinderView {
+    readonly state: 'loading' | 'ready' | 'none' | 'failed';
+    /** ISO 3166-1 alpha-2 (`RO`); null until the list is read. */
+    readonly country: string | null;
+    /** The institutions' language, which the ready requests are written in. */
+    readonly language: string;
+    readonly origin: 'curated' | 'researched';
+    readonly factsCheckedOn: string | null;
+    /** When the websites were last checked (ISO). */
+    readonly refreshedAt: string | null;
+    readonly places: readonly CountryPlace[];
+    /** The city's name, in the institutions' language when it has one: what a request's `{city}` becomes. */
+    readonly cityName: string | null;
 }

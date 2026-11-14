@@ -9,7 +9,7 @@ import { page } from 'vitest/browser';
 import { defineHcmSetupPlatform, sectionReady, type HcmSetupPlatform } from '../../../src/admin/setup/hcm-setup-platform.js';
 import { choiceReason, defineHcmSetupSources, type HcmSetupSources } from '../../../src/admin/setup/hcm-setup-sources.js';
 import { cleanup, fixture, shadowPart } from '../../helpers.js';
-import { FakeSetupPort, setupView, type ViewChanges } from './fixtures.js';
+import { FakeSetupPort, FINDER_NONE, setupView, type ViewChanges } from './fixtures.js';
 
 defineHcmSetupSources();
 defineHcmSetupPlatform();
@@ -66,7 +66,7 @@ describe('<hcm-setup-sources>', () => {
 
     it('happyPath_aSwitchCallsTheIntent_andPaidScansShowTheirOneOffPrice', async () => {
         const { port, element } = await sources({
-            sources: { choices: { ...DEFAULT_SOURCES, usgsOrders: true, cloudAi: true }, saved: DEFAULT_SOURCES },
+            sources: { choices: { ...DEFAULT_SOURCES, usgsOrders: true, cloudAi: true }, saved: DEFAULT_SOURCES, finder: FINDER_NONE },
         });
 
         expect(text(element)).toContain('Each scan you order: USD 35 for one frame');
@@ -90,7 +90,7 @@ describe('<hcm-setup-sources>', () => {
 
         const signedIn = await sources({
             steps: { usgs: { state: 'ok' }, billing: { state: 'ok' } },
-            sources: { choices: { ...DEFAULT_SOURCES, cloudAi: true }, saved: null },
+            sources: { choices: { ...DEFAULT_SOURCES, cloudAi: true }, saved: null, finder: FINDER_NONE },
         });
         expect(text(signedIn.element)).toContain('Signed in');
         expect(text(signedIn.element)).not.toContain('Account needed');
@@ -99,7 +99,7 @@ describe('<hcm-setup-sources>', () => {
     it('badPath_cloudAiWithoutBillingSendsToTheBillingStep', async () => {
         const { element } = await sources({
             steps: { billing: { state: 'missing' } },
-            sources: { choices: { ...DEFAULT_SOURCES, cloudAi: true }, saved: null },
+            sources: { choices: { ...DEFAULT_SOURCES, cloudAi: true }, saved: null, finder: FINDER_NONE },
         });
 
         const link = [...(element.shadowRoot?.querySelectorAll<HTMLAnchorElement>('a.action') ?? [])].find(
@@ -110,7 +110,7 @@ describe('<hcm-setup-sources>', () => {
 
     it('badPath_paidScansWaitForTheDeclassifiedFrames_andTheUsgsStepIsLeftOut @S-A180-BAD-USGS-OFF', async () => {
         const off = { ...DEFAULT_SOURCES, usgs: false, landsat: false };
-        const { element } = await sources({ sources: { choices: off, saved: off } }, 'ro');
+        const { element } = await sources({ sources: { choices: off, saved: off, finder: FINDER_NONE } }, 'ro');
 
         expect(text(element)).toContain('Porniți întâi fotografiile declasificate');
         expect(text(element)).toContain('pasul contului USGS este lăsat deoparte');

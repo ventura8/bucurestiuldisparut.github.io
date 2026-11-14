@@ -600,6 +600,11 @@ service cloud.firestore {
 
         // ---- end of M4 notifications and assists --------------------------------------------------------------------
 
+        // M28: where each country keeps its old maps and images, written by ops.tick only; Setup's Sources step reads it.
+        match /countrySources/{country} {
+            allow read: if isStaff();
+        }
+
         // setup/status (non-secret health: secrets live in Secret Manager, never here) and setup/owner.
         match /setup/{doc} {
             allow read: if isStaff();

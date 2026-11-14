@@ -8,10 +8,12 @@ import { timestampFromDate } from '@hcm/shared';
 import { createMemorySecretStore } from '../../src/adapters/secret-store-memory.js';
 import type { AuthAdmin, AuthUser } from '../../src/ports/auth-admin.js';
 import type { ErrorReporter } from '../../src/ports/error-reporter.js';
+import type { Geocoder } from '../../src/ports/geocoder.js';
 import type { MapboxApi } from '../../src/ports/mapbox-api.js';
 import type { SecretStore } from '../../src/ports/secret-store.js';
 import type { UsgsApi } from '../../src/ports/usgs-api.js';
 import { contentDeps, type ContentDeps } from '../publish/fakes.js';
+import { createFakeRemoteFiles } from '../support/imagery-fakes.js';
 import { PortRecorder } from '../support/recorder.js';
 import { createFakeErrorReporter } from '../support/services.js';
 
@@ -128,17 +130,36 @@ export interface OpsTestDeps extends ContentDeps {
     readonly errors: ReturnType<typeof createFakeErrorReporter>['errors'];
     readonly errorsRecorder: ReturnType<typeof createFakeErrorReporter>['recorder'];
     readonly crashGroups: CrashGroup[];
+    /** M28: the websites and Wikidata the country lists read (`serve` an address to make it answer), and Nominatim's country. */
+    readonly remote: ReturnType<typeof createFakeRemoteFiles>['remote'];
+    readonly sites: ReturnType<typeof createFakeRemoteFiles>;
+    readonly geocoder: Geocoder;
+    /** The country Nominatim answers for every place (`RO` by default; undefined: none). */
+    country: string | undefined;
 }
 
 export function opsDeps(now: string, options: { users?: readonly AuthUser[]; permissions?: readonly string[] } = {}): OpsTestDeps {
-    return {
+    const sites = createFakeRemoteFiles();
+    const deps: OpsTestDeps = {
         ...contentDeps(now),
         auth: fakeAuth(options.users ?? []),
         secrets: createMemorySecretStore(),
         mapbox: fakeMapbox(),
         usgs: fakeUsgs(options.permissions ?? ['search', 'download']),
         ...crashReporting(),
+        remote: sites.remote,
+        sites,
+        country: 'RO',
+        geocoder: {
+            reverse: () => Promise.resolve({ licence: 'Data © OpenStreetMap contributors, ODbL 1.0', ...countryOf(deps.country) }),
+            search: () => Promise.reject(new Error('not used by ops.tick')),
+        },
     };
+    return deps;
+}
+
+function countryOf(country: string | undefined): { readonly countryCode?: string } {
+    return country === undefined ? {} : { countryCode: country };
 }
 
 /** An Error Reporting whose groups a test sets (`crashGroups`), for the crash-spike check. */

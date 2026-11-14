@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 
+import { timestampFromDate } from '@hcm/shared';
 import { createFakeFetch, E2E_PROJECT_CONFIG, jsonResponse } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
@@ -13,6 +14,7 @@ import {
     wiringHelpers,
     type SetupWiringDeps,
 } from '../../src/app/setup-wiring.js';
+import { readCountryList } from '../../src/app/country-wiring.js';
 import { InstallBundleError } from '../../src/install/bundle.js';
 import type { ProjectConfig } from '../../src/provision/project-config.js';
 import { E2E_WEB_CONFIG, FakeAuth, FakeCallables, FakeClock, FakeDocuments, NO_STORAGE, OWNER, testLog } from './fakes.js';
@@ -141,6 +143,50 @@ describe('the sources wiring', () => {
         await documents.set('cities/bucharest', { sources: { usgs: 'yes' } });
 
         await expect(setupSourcesPort({ documents }, 'bucharest', () => null).read()).resolves.toBeUndefined();
+    });
+});
+
+// M28 §10: the city's country list.
+describe('the country list wiring', () => {
+    const list = (cities: readonly string[], language = 'ro') => ({
+        country: 'RO',
+        language,
+        cities,
+        places: [],
+        origin: 'curated',
+        refreshedAt: timestampFromDate(new Date('2026-11-14T10:00:00.000Z')),
+        updatedBy: 'system:ops',
+        updatedAt: timestampFromDate(new Date('2026-11-14T10:00:00.000Z')),
+    });
+
+    it('happyPath_theListNamingTheCityIsReadWithTheCitysNameInItsLanguage', async () => {
+        const documents = new FakeDocuments();
+        await documents.set('countrySources/MD', { ...list(['chisinau']), country: 'MD' });
+        await documents.set('countrySources/RO', list(['bucharest']));
+        await documents.set('cities/bucharest', { name: { ro: 'București', en: 'Bucharest' } });
+
+        await expect(readCountryList(documents, 'bucharest')).resolves.toEqual({
+            country: 'RO',
+            language: 'ro',
+            origin: 'curated',
+            factsCheckedOn: null,
+            refreshedAt: '2026-11-14T10:00:00.000Z',
+            places: [],
+            cityName: 'București',
+        });
+        await documents.set('countrySources/RO', list(['bucharest'], 'en'));
+        await expect(readCountryList(documents, 'bucharest')).resolves.toMatchObject({ cityName: 'Bucharest' });
+        await documents.set('cities/bucharest', { name: { ro: 'București' } });
+        await expect(readCountryList(documents, 'bucharest')).resolves.toMatchObject({ cityName: 'București' });
+    });
+
+    it('badPath_noListNamesTheCityOrItsListIsRefused_andANamelessCityHasNoName', async () => {
+        const documents = new FakeDocuments();
+        await expect(readCountryList(documents, 'bucharest')).resolves.toBeNull();
+        await documents.set('countrySources/RO', { ...list(['bucharest']), origin: 'guessed' });
+        await expect(readCountryList(documents, 'bucharest')).resolves.toBeNull();
+        await documents.set('countrySources/RO', list(['bucharest']));
+        await expect(readCountryList(documents, 'bucharest')).resolves.toMatchObject({ cityName: null });
     });
 });
 

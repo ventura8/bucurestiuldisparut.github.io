@@ -8,6 +8,7 @@
 import { needsUsgsAccount, sourcesOf, type SourceChoices, type SourceToggle } from '@hcm/shared/sources';
 
 import type { SetupContext } from './context.js';
+import { NO_FINDER, type CountryFinder } from './sources-state.js';
 import { apiFailure, setupMessage, type StepFailure } from './messages.js';
 
 export interface SourcesFlow {
@@ -37,12 +38,26 @@ class Sources implements SourcesFlow {
         try {
             const stored = await this.ctx.deps.sources.read();
             const saved = stored === undefined ? null : sourcesOf(stored);
-            this.ctx.update((state) => ({ ...state, sources: { choices: saved ?? state.sources.choices, saved } }));
+            this.ctx.update((state) => ({ ...state, sources: { ...state.sources, choices: saved ?? state.sources.choices, saved } }));
             this.ctx.patchStep('sources', { state: saved === null ? 'missing' : 'ok', detail: null, checkedAt: this.ctx.nowIso() });
         } catch (error) {
             this.ctx.deps.log.warn('setup.sources.readFailed', { code: codeOf(error) });
             this.ctx.fail('sources', storeFailure('adminSetup.sources.readFailed'));
         }
+        await this.readFinder();
+    }
+
+    /** The country's list: its own failure leaves the step as it is and says so in the finder only. */
+    private async readFinder(): Promise<void> {
+        let finder: CountryFinder;
+        try {
+            const list = await this.ctx.deps.sources.country();
+            finder = list === null ? { ...NO_FINDER, state: 'none' } : { ...list, state: 'ready' };
+        } catch (error) {
+            this.ctx.deps.log.warn('setup.sources.finderFailed', { code: codeOf(error) });
+            finder = { ...NO_FINDER, state: 'failed' };
+        }
+        this.ctx.update((state) => ({ ...state, sources: { ...state.sources, finder } }));
     }
 
     choose(id: SourceToggle, on: boolean): void {
@@ -63,7 +78,7 @@ class Sources implements SourcesFlow {
         }
         this.ctx.deps.log.info('setup.sources.saved', { ...choices });
         await this.leaveUsgs(choices);
-        this.ctx.update((state) => ({ ...state, sources: { choices, saved: choices } }));
+        this.ctx.update((state) => ({ ...state, sources: { ...state.sources, choices, saved: choices } }));
         this.ctx.patchStep('sources', { state: 'ok', busy: false, detail: null, checkedAt: this.ctx.nowIso() });
     }
 

@@ -3,7 +3,14 @@
 import { PROVISION_ITEMS, type ServiceState } from '@hcm/shared';
 import { DEFAULT_SOURCES } from '@hcm/shared/sources';
 
-import type { SetupIntentsPort, SetupPort, SetupStepId, SetupStepView, SetupViewState } from '../../../src/admin/setup/setup-port.js';
+import type {
+    CountryFinderView,
+    SetupIntentsPort,
+    SetupPort,
+    SetupStepId,
+    SetupStepView,
+    SetupViewState,
+} from '../../../src/admin/setup/setup-port.js';
 import { installSliceView } from './install-fixtures.js';
 
 export const STEP_IDS: readonly SetupStepId[] = [
@@ -60,6 +67,18 @@ export function stepView(id: SetupStepId, changes: Partial<SetupStepView> = {}):
         ...changes,
     };
 }
+
+/** M28 §10: no list for the city's country yet (`ops.tick` has not placed the city). */
+export const FINDER_NONE: CountryFinderView = {
+    state: 'none',
+    country: null,
+    language: 'en',
+    origin: 'curated',
+    factsCheckedOn: null,
+    refreshedAt: null,
+    places: [],
+    cityName: null,
+};
 
 export type ViewChanges = Partial<Omit<SetupViewState, 'steps'>> & {
     readonly steps?: Partial<Record<SetupStepId, Partial<SetupStepView>>>;
@@ -137,7 +156,7 @@ export function setupView(changes: ViewChanges = {}): SetupViewState {
         analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: false, reports: null },
         crashes: { loaded: false, busy: false, groups: [], error: null, disabledApi: null, lastReportAt: null },
         legacyImport: { done: 0, total: 45, failed: [], running: false },
-        sources: { choices: DEFAULT_SOURCES, saved: null },
+        sources: { choices: DEFAULT_SOURCES, saved: null, finder: FINDER_NONE },
         selfTest: { checks: [] },
         install: installSliceView(),
         ...rest,
