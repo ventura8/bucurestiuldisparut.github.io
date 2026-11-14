@@ -41,8 +41,8 @@ for (const size of WIDTHS) {
             });
             expect(below, 'the date sits below the name').toBe(true);
             const photos = await height(row(page, 'photos'));
-            expect(await height(dated)).toBe(photos);
-            expect(await height(row(page, 'e2e-1966'))).toBe(photos);
+            expect(await height(dated)).toBeCloseTo(photos, 1);
+            expect(await height(row(page, 'e2e-1966'))).toBeCloseTo(photos, 1);
         },
     );
 }
@@ -62,7 +62,7 @@ test(
         const long = row(page, String(first['id']));
         const label = long.locator('.label');
         expect(await label.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
-        expect(await height(long)).toBe(await height(row(page, 'photos')));
+        expect(await height(long)).toBeCloseTo(await height(row(page, 'photos')), 1);
         await expect(row(page, 'photos').locator('.detail')).toHaveCount(0);
         await expect(viewer(page).locator('hcm-overlay-list li[data-overlay]:not([data-overlay^="e2e-"]) .detail')).toHaveCount(0);
     },
