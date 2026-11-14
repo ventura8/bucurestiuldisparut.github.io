@@ -20,6 +20,7 @@ export {
     translate,
 } from '@hcm/shared';
 export { cssProperties } from '../components/css-properties.js';
+export { deviceAccentState } from '../theme/device-accent.js';
 export { tabbableElements, trapTab } from '../components/focus.js';
 export { logicalKey } from '../components/internal.js';
 export { EMPTY } from './empty.js';
