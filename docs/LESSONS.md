@@ -4097,13 +4097,6 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: when `setup/status.install.pipeline.image` is known (`WorkerFeed` → `LocalComputer`), compare the worker's reported digest with it; fall back to the flag only when the installed digest is unknown (`packages/admin/src/worker/machine.ts`, `packages/admin/test/worker/machine.test.ts`, S-A142).
     - **A status flag that updates only on the next poll is late for the UI: compare the facts the UI already has.**
 
-<<<<<<< HEAD
-697. **The phone's year pill was wider than the card the chip was centred under.**
-    - Seen: 2026-11-13, track/green: the timeline specs at fn-c360 (and the `orientation` spec at every viewer project) failed: the photos chip stood 14 px off the standing timeline's axis, and the open menu showed two floating boxes, not three.
-    - Cause: V67 collapsed the upright card to a 96 px pill, but the chip kept the 14 px inset that centres it under the 68 px card; and a press on the menu button collapses the open card (V12), whose pill then steps aside while the menu is open, so the spec's count of three was stale.
-    - Fix: under the collapsed pill the chip is 28 px in (`timeline-dock-styles.ts`); the orientation spec expects the menu and the chip only.
-    - **When a component changes its size in one state, re-check everything docked relative to it in that state.**
-=======
 697. **A build only a record said was at work hid Update the map, with no word why.**
     - Seen: 2026-11-13 23:45, the live admin: step d offered the server's update but showed no button; step d3's pipeline was recorded "installing" at 23:20 and nothing had looked since (no Google token on the page).
     - Cause: `building()` counted a recorded, unconfirmed build as at work to close finding 71's race, so the way out (the look) needed a click the owner could not guess (Check again on d3).
@@ -4114,4 +4107,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: commit `43bbe138` replaced the account menu's language list with `<hcm-language-select>` (a native `<select>`), and `de` is one of `UI_LOCALES`, so `uiLocaleOf('de-DE')` is `de`. The viewer and start-page specs already asserted a combobox; the admin A95 count and A21's unsupported tag were left on the old contract.
     - Fix and pin: `languages.spec.ts` asserts 25 `option`s on the Limbă combobox (no radios); `title.spec.ts` uses `sv-SE` (outside `UI_LOCALES`); rows `S-A95-HAPPY-LANGUAGE-PICKER` and `S-A21-BAD-UNSUPPORTED-LANGUAGE`.
     - **When a control or a locale list changes, update every e2e assertion that names the old shape or an old "unsupported" tag; unsupported means outside `UI_LOCALES`, not "not Romanian or English".**
->>>>>>> origin/feat/engine-rewrite
+699. **The phone's year pill was wider than the card the chip was centred under.**
+    - Seen: 2026-11-13, track/green: the timeline specs at fn-c360 (and the `orientation` spec at every viewer project) failed: the photos chip stood 14 px off the standing timeline's axis, and the open menu showed two floating boxes, not three.
+    - Cause: V67 collapsed the upright card to a 96 px pill, but the chip kept the 14 px inset that centres it under the 68 px card; and a press on the menu button collapses the open card (V12), whose pill then steps aside while the menu is open, so the spec's count of three was stale.
+    - Fix: under the collapsed pill the chip is 28 px in (`timeline-dock-styles.ts`); the orientation spec expects the menu and the chip only.
+    - **When a component changes its size in one state, re-check everything docked relative to it in that state.**

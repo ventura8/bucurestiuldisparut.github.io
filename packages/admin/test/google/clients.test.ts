@@ -210,12 +210,8 @@ describe('the deployment', () => {
         // M16: `imagery.recalibrate`. M17: the stories' `history.onStoryWrite` and `publish.onStoryWrite`. M20: the local
         // archive's `worker.archiveReport`, `imagery.archiveImport` and `imagery.confirmRights`;
         // `imagery.deleteVersion`. The tab icon's `cities.setIcon`. M20 §19.10: the tile wizard's `imagery.saveLayout` and
-<<<<<<< HEAD
-        // `imagery.acceptLayout`. The owner's not-useful mark `imagery.markScene`. M20 (2026-11-13): `worker.archiveCopy`. W5: `worker.manage`. Pause: `imagery.pause`.
-=======
         // `imagery.acceptLayout`. The owner's not-useful mark `imagery.markScene`. M20 (2026-11-13): `worker.archiveCopy`.
         // Household computers' `worker.manage`; Pause's `imagery.pause` (2026-11-13).
->>>>>>> origin/feat/engine-rewrite
         expect(expected).toHaveLength(104);
         expect(expected).toEqual(
             expect.arrayContaining([
