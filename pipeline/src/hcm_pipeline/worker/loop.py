@@ -98,6 +98,12 @@ class Ending:
 
     outcome: str
     error: dict[str, str] | None = None
+    # P1-6: a `released` that a full disk caused, said to the server (`diskFull`) so the attempt is given back.
+    disk_full: bool = False
+
+    def wire(self) -> dict[str, object]:
+        """The ending's fields of `worker.end` beyond its outcome."""
+        return {**({"error": self.error} if self.error else {}), **({"diskFull": True} if self.disk_full else {})}
 
     @classmethod
     def crashed(cls, error: Exception) -> Ending:
@@ -111,7 +117,13 @@ RETURNED: Final = Ending("returned")
 # Pause this computer: the run stopped at a checkpoint; the server queues the job again without spending an attempt.
 RELEASED: Final = Ending("released")
 # The run's outcomes that end otherwise than `done`.
-ENDINGS: Final[dict[RunOutcome, Ending]] = {RunOutcome.RETURNED: RETURNED, RunOutcome.RELEASED: RELEASED}
+# P1-6 of the resilience audit: the disk filled up mid-run: handed back, its attempt given back; no claim until there is room.
+DISK_FULL: Final = Ending("released", disk_full=True)
+ENDINGS: Final[dict[RunOutcome, Ending]] = {
+    RunOutcome.RETURNED: RETURNED,
+    RunOutcome.RELEASED: RELEASED,
+    RunOutcome.DISK_FULL: DISK_FULL,
+}
 # The most local archives a claim names (`WORKER_ARCHIVES_MAX` on the server).
 CLAIM_ARCHIVES_MAX: Final = 200
 
@@ -143,6 +155,10 @@ class WorkerLoop:
         self.no_session_seconds = NO_SESSION_SECONDS
         # What each pass with a session does to the work folder, told the job it just claimed (`WorkerRuntime.sweep`).
         self.sweep: Callable[[str | None], None] = lambda _claimed: None
+        # The resilience work of 2026-11-14 (`housekeeping.py`): what each claim says of this computer's disk and scratch
+        # (`disk`, `held`, `freed`), and what it does with the answer (`jobStates`, `freeSpace`, `lowDisk`).
+        self.claim_extra: Callable[[], Mapping[str, object]] = dict
+        self.on_claim_answer: Callable[[Mapping[str, object]], None] = lambda _answer: None
         # M20 (2026-11-13): the local archives this computer holds whole (`ArchiveStore.held`): it sends their series' copies.
         self.archives: Callable[[], list[str]] = list
         # 2026-11-13: the jobs whose stitched film is in this work folder (`held_films`): a job waiting for its film comes here.
@@ -258,6 +274,7 @@ class WorkerLoop:
             self._refused(error)
             return None, None
         self.pausing.answered(sent, answer)
+        self.on_claim_answer(answer)
         removal = Removal.of(answer)
         if removal is not None:
             self._remove(removal)
@@ -271,6 +288,7 @@ class WorkerLoop:
         said: dict[str, object] = {} if share is None else {"share": share}
         claim: dict[str, object] = {**self._ids, "types": list(RUN_JOB_TYPES), "archives": self.archives()[:CLAIM_ARCHIVES_MAX], **said}
         claim["films"] = self.films()[:CLAIM_ARCHIVES_MAX]
+        claim.update(self.claim_extra())
         return claim if sent is None else {**claim, "pause": sent.wire()}
 
     def _asked_to_release(self) -> bool:
@@ -346,7 +364,7 @@ class WorkerLoop:
             return
         report: dict[str, object] = {**self._ids, "jobId": job_id, "outcome": ending.outcome}
         sent = self.pausing.pending()
-        extra = {**({"error": ending.error} if ending.error else {}), **({"pause": sent.wire()} if sent else {})}
+        extra = {**ending.wire(), **({"pause": sent.wire()} if sent else {})}
         try:
             self._api.call(END, {**report, **extra})
             self.pausing.delivered(sent)

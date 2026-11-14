@@ -161,7 +161,7 @@ describe('POI fields', () => {
 /** A place stored before every place needed a year (the owner's request of 2026-11-12). */
 async function seedUndated(): Promise<string> {
     const path = FIRESTORE_PATHS.poi(CITY_ID, nextId());
-    await world.seed(path, withChanges(poiDoc(world.uid('admin')), { yearStart: deleted(), yearEnd: deleted() }));
+    await world.seed(path, withChanges(poiDoc(world.uid('admin')), { yearStart: deleted(), yearEnd: deleted(), yearSeen: deleted() }));
     return path;
 }
 
@@ -180,18 +180,20 @@ describe('POI years @S-A32-HAPPY-PLACE-YEAR @S-A32-BAD-PLACE-YEAR', () => {
         ['one year', { yearEnd: deleted() }],
         ['an end year only', { yearStart: deleted() }],
         ['a span', {}],
+        ['only the plan year seen (M27)', { yearStart: deleted(), yearEnd: deleted(), yearSeen: 1939 }],
     ])('happyPath_aPlaceIsCreatedWith_%s', async (_label, changes) => {
         expect(await createPoi(changes)).toBe('allow');
     });
 
-    it('badPath_aPlaceWithoutAYearIsNotCreated', async () => {
-        expect(await createPoi({ yearStart: deleted(), yearEnd: deleted() })).toBe('deny');
+    it('badPath_aPlaceWithoutAYearAndWithoutYearSeenIsNotCreated', async () => {
+        expect(await createPoi({ yearStart: deleted(), yearEnd: deleted(), yearSeen: deleted() })).toBe('deny');
     });
 
     // 2100 is a stored year (`isYear`) but after next year until 2099: refused by the server's clock, not the test's.
     it.each([
         ['starting', { yearStart: 2100, yearEnd: deleted() }],
         ['ending', { yearStart: deleted(), yearEnd: 2100 }],
+        ['seen', { yearStart: deleted(), yearEnd: deleted(), yearSeen: 2100 }],
     ])('badPath_aPlace_%s_afterNextYearIsNotCreated', async (_label, changes) => {
         expect(await createPoi(changes)).toBe('deny');
     });
@@ -213,7 +215,7 @@ describe('POI years @S-A32-HAPPY-PLACE-YEAR @S-A32-BAD-PLACE-YEAR', () => {
     });
 
     it('badPath_aDatedPlaceCannotLoseItsYears', async () => {
-        expect(await editPoi({ yearStart: deleted(), yearEnd: deleted() })).toBe('deny');
+        expect(await editPoi({ yearStart: deleted(), yearEnd: deleted(), yearSeen: deleted() })).toBe('deny');
     });
 
     it('happyPath_aStoredPlaceWithoutAYearStillReads', async () => {

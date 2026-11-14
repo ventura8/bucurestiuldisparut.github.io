@@ -1,6 +1,7 @@
-/** The POI categories' documents for the rules tests: a seeded category, a new one, and the editor's update (M27's fields included). */
+/** POI categories for the rules tests: the server's complete document, a client's new one, and the editor's update (with M27's fields). */
 import { past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
 
+/** A category with every field its schema has. */
 export function poiCategoryDoc(): Data {
     return {
         label: { ro: 'Clădiri', en: 'Buildings' },
@@ -10,12 +11,13 @@ export function poiCategoryDoc(): Data {
         order: 1,
         defaultVisible: true,
         pinned: false,
-        attribution: 'OpenHistoricalMap (CC0)',
+        attribution: 'Data © OpenStreetMap contributors, ODbL 1.0.',
         createdAt: past(),
         ...systemStamp('bootstrap'),
     };
 }
 
+/** A client's new category, exactly `CLIENT_WRITES.poiCategory.create`. */
 export function newPoiCategory(uid: string): Data {
     return {
         label: { ro: 'Străzi dispărute' },
@@ -25,13 +27,12 @@ export function newPoiCategory(uid: string): Data {
         order: 2,
         defaultVisible: true,
         pinned: true,
-        attribution: 'OpenHistoricalMap (CC0)',
+        attribution: 'Data © OpenStreetMap contributors, ODbL 1.0.',
         createdAt: serverTime(),
         ...stampedBy(uid),
     };
 }
-
-/** One valid new value for every field a client may update on a category (the stamp aside). */
+/** Every field of `CLIENT_WRITES.poiCategory.update` (`EDITS.poiCategory`). */
 export const POI_CATEGORY_EDITS: Readonly<Data> = {
     label: { ro: 'Biserici', en: 'Churches' },
     icon: 'mosque',
@@ -40,5 +41,5 @@ export const POI_CATEGORY_EDITS: Readonly<Data> = {
     order: -1,
     defaultVisible: false,
     pinned: true,
-    attribution: 'OpenStreetMap (ODbL)',
+    attribution: 'Our own scans.',
 };

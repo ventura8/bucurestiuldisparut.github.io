@@ -138,6 +138,7 @@ export const uk: Messages = {
     'poi.years': 'З {yearStart} до {yearEnd}',
     'poi.yearStart': 'З {yearStart}',
     'poi.yearEnd': 'До {yearEnd}',
+    'poi.yearSeen': 'Видно на карті {year} року',
     'poi.links': 'Посилання',
     'poi.sources': 'Джерела',
     'poi.sourceLayer': 'Зображено на: {layer}',

@@ -80,11 +80,13 @@ const POI_EDITABLE = [
     'description',
     'yearStart',
     'yearEnd',
+    /** M27: plan year when start/end are unknown (traced streets). */
+    'yearSeen',
     'links',
     'photoIds',
     /** M13: the optional credit name. */
     'credit',
-    /** M27: the layer a disappeared street was traced on. */
+    /** M27: the layer the place was traced on. */
     'sourceLayer',
     'published',
     ...STAMP,
@@ -93,7 +95,7 @@ const POI_EDITABLE = [
 /** M17 (`docs/research/M17-stories.md` §1). */
 const STORY_EDITABLE = ['title', 'body', 'yearStart', 'yearEnd', 'photoIds', 'poiIds', 'credit', 'published', ...STAMP] as const;
 
-/** M27: a category may start hidden, be pinned and carry its data's credit. */
+// M27: the manifest's `defaultVisible`, `pinned` and `attribution` are the editors' too (firestore.rules allows them).
 const POI_CATEGORY_EDITABLE = [
     'label',
     'icon',

@@ -17,7 +17,7 @@ const MAX_TEXT = 200;
 const PERCENT_FIELDS = new Set(['opacity', 'defaultOpacity']);
 
 /** Fields holding a year, shown without a thousands separator (1980, never "1,980"). */
-const YEAR_FIELDS = new Set(['year', 'yearEnd', 'yearStart']);
+const YEAR_FIELDS = new Set(['year', 'yearEnd', 'yearStart', 'yearSeen']);
 
 /** A geometry's type in the admin's words (the place editor's shape names); an unknown type as stored. */
 const SHAPE_KEYS: Readonly<Record<string, Parameters<typeof contentText>[1]>> = {

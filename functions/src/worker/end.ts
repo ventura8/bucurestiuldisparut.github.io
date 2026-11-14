@@ -134,7 +134,8 @@ function askedBack(job: JobDoc, worker: WorkerDoc, now: Date): boolean {
  * Pause this computer (2026-11-13): the paused computer's run stopped at a checkpoint and hands the job back, queued where it stopped.
  * The attempt its claim counted is given back only while the computer is paused or its job was asked back (a Resume that came
  * between the checkpoint and this call keeps it counted): a hand-back is never a way round the attempts. Only a job the worker still
- * holds unfinished.
+ * holds unfinished. A run stopped by a full disk (`diskFull`, P1-6 of the resilience audit) also gets its attempt back: the job did
+ * nothing wrong, and the worker takes no job until its disk has room again (`lowDisk` of `worker.claim`).
  */
 async function release(deps: EndDeps, ended: Ended, request: Request): Promise<void> {
     const { call, worker, now } = ended;
@@ -144,11 +145,16 @@ async function release(deps: EndDeps, ended: Ended, request: Request): Promise<v
         if (job === undefined || !stillRunning(job, call, now)) {
             return false;
         }
-        await transaction.set(path, jobDocSchema, releasedJob(job, PIPELINE_WRITER, now, askedBack(job, worker, now)));
+        await transaction.set(
+            path,
+            jobDocSchema,
+            releasedJob(job, PIPELINE_WRITER, now, request.diskFull === true || askedBack(job, worker, now)),
+        );
         return true;
     });
     if (released) {
-        deps.log.info('a paused computer handed its job back', { cityId: call.cityId, workerId: call.workerId, jobId: request.jobId });
+        const why = request.diskFull === true ? 'its disk is full' : 'it is paused';
+        deps.log.info(`a computer handed its job back: ${why}`, { cityId: call.cityId, workerId: call.workerId, jobId: request.jobId });
     }
 }
 

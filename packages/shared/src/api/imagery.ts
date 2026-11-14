@@ -44,6 +44,12 @@ export const RUNNING_JOBS_MAX = 2;
  */
 export const JOB_MAX_ATTEMPTS = 3;
 /**
+ * P0-1 (resilience audit, 2026-11-14): a local run lost because its computer stopped (a power cut or a crash: its lease lapsed or its
+ * heartbeat stopped, with no `worker.end`) gives its attempt back this many times per job (`JobDoc.lostRuns`); a job that keeps
+ * stopping its computer then counts its attempts again, so it cannot loop for ever.
+ */
+export const LOST_RUN_REFUNDS = 5;
+/**
  * A publish is started at most this many times in all (every delivery of a start task, Cloud Tasks' own retries and the
  * admin's Retry included): each start may stream the COG to Mapbox again, so a publish that keeps failing ends
  * `apiError.imagery.attemptsExhausted` instead of looping (security review of M3, findings 2 and 9).

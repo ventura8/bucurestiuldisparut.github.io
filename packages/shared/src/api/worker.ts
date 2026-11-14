@@ -78,7 +78,7 @@ export const WORKER_STARTER_TEMPLATES = { posix: 'hcm-worker.sh', windows: 'hcm-
  * build hold equal to the templates' own lines and to the pipeline's `STARTER_VERSION`). The worker's `/state` says the version of
  * the starter that runs it; the admin's "This computer" says whether it is this release's.
  */
-export const WORKER_STARTER_VERSION = 'c99ce4a91e15';
+export const WORKER_STARTER_VERSION = 'e0afe8c32568';
 /** The release's list of the starter files on Hosting, `<admin>/starter.json`: the version and each template's SHA-256. */
 export const WORKER_STARTER_LIST_FILE = 'starter.json';
 /** What an installed starter's last look for a newer one said (`HCM_STARTER_UPDATE`, the worker's `/state` `starter.update`). */

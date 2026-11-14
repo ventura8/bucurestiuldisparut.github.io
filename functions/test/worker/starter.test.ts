@@ -51,12 +51,13 @@ describe('worker.starter', () => {
             expect(text).toContain(os === 'windows' ? 'set "HCM_PROJECT=demo-hcm"' : "HCM_PROJECT='demo-hcm'");
             expect(text).toContain(os === 'windows' ? 'set "HCM_CITY=bucharest"' : "HCM_CITY='bucharest'");
             expect(text).toContain(os === 'windows' ? `set "HCM_ACTION=${action}"` : `HCM_ACTION='${action}'`);
-            // The supervisor asks the server for the installed image, runs it on the loopback only and restarts it itself.
+            // The supervisor asks the server for the installed image, runs it on the loopback only and restarts it itself (Docker's
+            // restart policy only brings it back after a reboot before the supervisor runs: RESILIENCE-AUDIT P1-1).
             expect(text).toContain('.cloudfunctions.net/worker-image');
             expect(text).toContain('--supervised');
             expect(text).toContain('127.0.0.1:');
             expect(text).toContain(String(WORKER_OUTDATED_EXIT));
-            expect(text).not.toMatch(/--pair|--restart|docker\.sock/);
+            expect(text).not.toMatch(/--pair|--restart always|docker\.sock/);
         },
     );
 
@@ -173,12 +174,13 @@ async function supervise(
     code: number,
     environment: Readonly<Record<string, string>> = {},
     extra: Readonly<Record<string, string>> = {},
-): Promise<{ readonly output: string; readonly log: readonly string[]; readonly runs: readonly string[] }> {
+): Promise<{ readonly output: string; readonly log: readonly string[]; readonly runs: readonly string[]; readonly folder: string }> {
     const folder = mkdtempSync(join(tmpdir(), 'hcm-supervisor-'));
     const bin = join(folder, 'bin');
     const log = join(folder, 'calls.log');
     const runs = join(folder, 'runs.log');
     mkdirSync(bin);
+    writeFileSync(runs, '');
     const tools: Readonly<Record<string, string>> = {
         curl: `printf '%s' '{"result":{"image":"us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline@sha256:${DIGEST}"}}'`,
         // Docker says it has 8 GB; each worker's `run` is kept with its arguments.
@@ -204,6 +206,7 @@ async function supervise(
         output: run.stdout,
         log: readFileSync(log, 'utf8').trim().split('\n'),
         runs: started.filter((line) => line.includes(' worker ')),
+        folder,
     };
 }
 
@@ -220,7 +223,7 @@ describe('the supervisor (finding 74 of 2026-11-03)', () => {
 
         // 60 % of the 8 GB Docker has, with no swap beyond it: an out-of-memory run ends the job, not the desktop.
         expect(runs[0]).toContain(
-            '--rm --name hcm-worker --cpu-shares 256 --memory 4800000000 --memory-swap 4800000000 -p 127.0.0.1:8765:8765',
+            '--restart unless-stopped --name hcm-worker --cpu-shares 256 --memory 4800000000 --memory-swap 4800000000 -p 127.0.0.1:8765:8765',
         );
         expect(runs[0]).not.toContain('GDAL_NUM_THREADS');
         expect(runs[0]).toContain(`worker --city ${CITY} --project demo-hcm --supervised --image sha256:${DIGEST}`);
@@ -260,5 +263,42 @@ describe('the supervisor (finding 74 of 2026-11-03)', () => {
 
         expect(output).not.toContain('update the map');
         expect(log).toEqual(['run', 'sleep 0', 'run', 'sleep 0', 'run', 'sleep 0', 'run', 'sleep 0']);
+    });
+});
+
+/** The cleanup brief of 2026-11-14 and RESILIENCE-AUDIT P1-1: what the supervisor does with Docker around each run of the worker. */
+describe('the supervisor keeps Docker tidy and the worker restartable', () => {
+    const PIPELINE = 'us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline@sha256:';
+    const PREVIOUS = `${PIPELINE}${'a1'.repeat(32)}`;
+    const OLDER = `${PIPELINE}${'b2'.repeat(32)}`;
+    const FOREIGN = `docker.io/library/postgres@sha256:${'c3'.repeat(32)}`;
+
+    /** A Docker that lists `images` (newest first, as `docker images` does) and says every other call on the supervisor's output. */
+    function docker(images: readonly string[]): Record<string, string> {
+        const listed = images.map((image) => `'${image}'`).join(' ');
+        const run = `[ "$1" = run ] && exit ${String(WORKER_OUTDATED_EXIT)}`;
+        return {
+            docker: `[ "$1" = info ] && { echo 8000000000; exit 0; }\n[ "$1" = images ] && { printf '%s\\n' ${listed}; exit 0; }\n${run}\necho "docker $*" >>"$HOME/docker.log"\nexit 0`,
+        };
+    }
+
+    it('happyPath_onlyPipelineImagesOlderThanTheCurrentAndThePreviousOneGoAndTheContainerIsRemovedAfterItsRun @S-P04-HAPPY-OLD-IMAGES', async () => {
+        const { folder } = await supervise(WORKER_OUTDATED_EXIT, {}, docker([`${PIPELINE}${DIGEST}`, PREVIOUS, OLDER, FOREIGN]));
+        const output = readFileSync(join(folder, 'docker.log'), 'utf8');
+
+        expect(output).toContain(`docker image rm ${OLDER}`);
+        expect(output).not.toContain(`docker image rm ${PREVIOUS}`);
+        expect(output).not.toContain(`docker image rm ${PIPELINE}${DIGEST}`);
+        expect(output).not.toContain(FOREIGN);
+        expect(output).toContain('docker image prune -f --filter label=org.historiccitymap.worker');
+        expect(output.match(/docker rm -f hcm-worker/g)?.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('badPath_noOtherPipelineImageMeansNothingIsRemovedAndAnotherAppsImageIsNeverTouched @S-P04-BAD-OLD-IMAGES', async () => {
+        const { folder } = await supervise(WORKER_OUTDATED_EXIT, {}, docker([`${PIPELINE}${DIGEST}`, FOREIGN]));
+        const output = readFileSync(join(folder, 'docker.log'), 'utf8');
+
+        expect(output).not.toContain('docker image rm');
+        expect(output).not.toContain(FOREIGN);
     });
 });

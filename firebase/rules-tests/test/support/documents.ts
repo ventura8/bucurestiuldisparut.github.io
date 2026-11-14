@@ -15,10 +15,9 @@ import { archiveJobFields } from './archive-fields.js';
 import { derivative, reviewedFields, versionEdits, versionFields } from './photo-fields.js';
 import { POI_CATEGORY_EDITS } from './poi-categories.js';
 import { STORY_EDITS } from './stories.js';
-
-/** Re-exported for the tests that import every seeded document from here. */
-export { poiCategoryDoc } from './poi-categories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
+
+export { newPoiCategory, poiCategoryDoc } from './poi-categories.js';
 
 /** The bounds every test city gets: photo locations must fall within them (±0.5°). */
 export const CITY_BOUNDS = { west: 25.9, south: 44.3, east: 26.3, north: 44.6 } as const;
@@ -220,6 +219,8 @@ function poiText(): Data {
         description: { ro: 'Demolată în **1977**.', en: 'Demolished in **1977**.' },
         yearStart: 1850,
         yearEnd: 1977,
+        yearSeen: 1939,
+        sourceLayer: 'plan-1911',
         links: links(2),
         photoIds: ['p1', 'p2'],
     };
@@ -232,7 +233,6 @@ export function poiDoc(creator: string): Data {
         published: true,
         ...reviewedFields(creator),
         credit: 'Ion Mureșan',
-        sourceLayer: 'plan-1911',
         createdAt: past(),
         createdBy: creator,
         updatedBy: creator,
@@ -246,7 +246,6 @@ export function newPoi(uid: string): Data {
         geometry: { type: 'Point', point: { lat: 44.4355, lng: 26.1003 } },
         published: false,
         credit: 'Ion Mureșan',
-        sourceLayer: 'plan-1911',
         createdAt: serverTime(),
         createdBy: uid,
         ...stampedBy(uid),
@@ -269,6 +268,7 @@ export function jobDoc(creator: string, status = 'running'): Data {
         executionName: 'projects/demo-hcm/locations/us-central1/jobs/raster-std/executions/raster-std-abc',
         machine: 'std',
         attempt: 1,
+        lostRuns: 1,
         publishAttempts: 1,
         lease: { owner: 'raster-std-abc', until: later() },
         steps: { fetch: { status: 'running', gcsPath: 'usgs-raw/rules/frame.tgz', generation: '1700000000000000', sha256: SHA } },
@@ -656,13 +656,10 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         geometry: { type: 'LineString', points: line(500) },
         title: { ro: 'Strada Sfinților' },
         description: { ro: 'O [sursă](https://example.org).' },
-        yearStart: 1900,
-        yearEnd: 1980,
+        ...{ yearStart: 1900, yearEnd: 1980, yearSeen: 1939 },
         links: links(5),
         photoIds: Array.from({ length: 20 }, (_, index) => `p${String(index)}`),
-        published: false,
-        credit: 'Maria Popescu',
-        sourceLayer: 'plan-1846',
+        ...{ published: false, credit: 'Maria Popescu', sourceLayer: 'plan-1911' },
     },
     poiCategory: POI_CATEGORY_EDITS,
     story: STORY_EDITS,

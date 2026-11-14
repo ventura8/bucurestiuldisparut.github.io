@@ -16,9 +16,10 @@ from hcm_pipeline.jobs import StepFailedError
 from hcm_pipeline.objects import ObjectInfo, ObjectStoreError, PreconditionFailedError, SessionExpiredError
 from hcm_pipeline.worker.api import WorkerApi
 from hcm_pipeline.worker.documents import JobIds
-from hcm_pipeline.worker.local_store import DAY_SECONDS, ROOM_FACTOR, LocalObjectStore
+from hcm_pipeline.worker.local_store import ROOM_FACTOR, LocalObjectStore
 from hcm_pipeline.worker.routed import RoutedObjectStore
 from hcm_pipeline.worker.signed_store import SignedObjectStore
+from hcm_pipeline.worker.sweep import DAY_SECONDS
 
 IDS = JobIds("bucharest", "w-0123456789abcdef", "job-1")
 RAW = "usgs-raw/corona2/E1/E1.tgz"
@@ -221,7 +222,7 @@ def test_bad_path_a_disk_that_refuses_the_sweep_does_not_stop_the_loop(tmp_path:
     def refused(_path: Path) -> float:
         raise PermissionError("no")
 
-    monkeypatch.setattr("hcm_pipeline.worker.local_store._last_written", refused)
+    monkeypatch.setattr("hcm_pipeline.worker.sweep.last_written", refused)
     LocalObjectStore(tmp_path).sweep(NOW, None)
     assert stubborn.exists()
 
@@ -455,3 +456,34 @@ def test_bad_path_an_object_of_no_known_prefix_has_no_store(tmp_path: Path) -> N
 
     with pytest.raises(ObjectStoreError, match="no store"):
         store.stat("usgs-browse/corona2/E1.jpg")
+
+
+class HashingServer(SignedServer):
+    """Cloud Storage's `x-goog-hash` on each PUT: the MD5 of what arrived, taken from `said` in turn (a damaged body says another)."""
+
+    def __init__(self, said: list[str]) -> None:
+        super().__init__()
+        self.said = said
+
+    def _put(self, path: str, body: bytes) -> httpx.Response:
+        answer = super()._put(path, body)
+        return httpx.Response(200, headers={**answer.headers, "x-goog-hash": f"crc32c=AAAAAA==, md5={self.said.pop(0)}"})
+
+
+def test_happy_path_an_upload_that_arrived_damaged_is_sent_once_more(tmp_path: Path) -> None:
+    """Scenarios: S-P04-HAPPY-UPLOAD-VERIFIED
+    RESILIENCE-AUDIT P0-4: a PUT is whole or absent in Cloud Storage; one whose MD5 differs is sent again, never recorded."""
+    server = HashingServer([md5(b"damaged"), md5(b"scan bytes")])
+
+    info = signed_store(server).upload_file(file_with(tmp_path, "scan.tif", b"scan bytes"), SCAN, "image/tiff")
+
+    assert info.md5 == md5(b"scan bytes")
+    assert [request.method for request in server.sent].count("PUT") == 2
+
+
+def test_bad_path_an_upload_damaged_twice_fails_so_its_step_is_never_recorded_done(tmp_path: Path) -> None:
+    """Scenarios: S-P04-BAD-UPLOAD-DAMAGED"""
+    server = HashingServer([md5(b"damaged"), md5(b"damaged again")])
+
+    with pytest.raises(ObjectStoreError, match="arrived different from the file, twice"):
+        signed_store(server).upload_file(file_with(tmp_path, "scan.tif", b"scan bytes"), SCAN, "image/tiff")

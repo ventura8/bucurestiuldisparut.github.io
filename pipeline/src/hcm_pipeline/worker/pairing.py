@@ -20,7 +20,6 @@ the id and the session then live in memory.
 import contextlib
 import hashlib
 import json
-import os
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -30,6 +29,7 @@ from typing import Final, Protocol
 import httpx
 
 from hcm_pipeline.contract import Errors
+from hcm_pipeline.durable import write_atomic
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.worker.api import PAIR, REFUSED, REVOKED, WorkerApi, WorkerApiError
 from hcm_pipeline.worker.args import Endpoints
@@ -92,14 +92,8 @@ class SessionFile:
     def save(self, kept: Kept) -> None:
         """Written to a new file of mode 600, then moved over the old one (never readable by others, never half written).
         A work folder that refuses it costs the next restart a new code, not this run."""
-        partial = self.path.with_suffix(".partial")
         try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            descriptor = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, FILE_MODE)
-            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-                json.dump(kept.record(), stream)
-            os.chmod(partial, FILE_MODE)
-            os.replace(partial, self.path)
+            write_atomic(self.path, json.dumps(kept.record()), FILE_MODE)
         except OSError as error:
             LOG.warning("the session cannot be kept in the work folder (%s): the next start needs a new code", type(error).__name__)
 
@@ -120,8 +114,7 @@ class SessionFile:
             return kept
         worker_id = new()
         try:
-            self.id_path.parent.mkdir(parents=True, exist_ok=True)
-            self.id_path.write_text(worker_id, "utf-8")
+            write_atomic(self.id_path, worker_id)
         except OSError as error:
             LOG.warning("the worker id cannot be kept in the work folder (%s): a restart makes a new one", type(error).__name__)
         return worker_id

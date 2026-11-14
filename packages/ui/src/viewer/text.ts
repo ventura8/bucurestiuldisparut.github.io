@@ -45,7 +45,7 @@ export function photoSourceText(source: NonNullable<Photo['source']>): string {
     return source.label ?? (isHttpsUrl(source.url) ? new URL(source.url).hostname : source.url);
 }
 
-type PoiSpan = Pick<Poi, 'yearStart' | 'yearEnd'>;
+type PoiSpan = Pick<Poi, 'yearStart' | 'yearEnd' | 'yearSeen'>;
 
 function closedSpan(start: number, end: number, locale: ViewerLocale): string {
     return start === end
@@ -53,16 +53,26 @@ function closedSpan(start: number, end: number, locale: ViewerLocale): string {
         : translate(locale, 'poi.years', { yearStart: String(start), yearEnd: String(end) });
 }
 
-/** The years of a POI (`Între 1900 și 1986`, `Din 1890`, `Până în 1984`), or null when it has none. */
+/**
+ * The years of a POI (`Între 1900 și 1986`, `Din 1890`, `Până în 1984`, or `Văzută pe harta din 1939` when only
+ * `yearSeen` is set), or null when it has none.
+ */
 export function poiYearsText(poi: PoiSpan, locale: ViewerLocale): string | null {
-    const { yearStart, yearEnd } = poi;
+    const { yearStart, yearEnd, yearSeen } = poi;
     if (yearStart !== undefined && yearEnd !== undefined) {
         return closedSpan(yearStart, yearEnd, locale);
     }
     if (yearStart !== undefined) {
         return translate(locale, 'poi.yearStart', { yearStart: String(yearStart) });
     }
-    return yearEnd === undefined ? null : translate(locale, 'poi.yearEnd', { yearEnd: String(yearEnd) });
+    return openEndOrSeen(yearEnd, yearSeen, locale);
+}
+
+function openEndOrSeen(yearEnd: number | undefined, yearSeen: number | undefined, locale: ViewerLocale): string | null {
+    if (yearEnd !== undefined) {
+        return translate(locale, 'poi.yearEnd', { yearEnd: String(yearEnd) });
+    }
+    return yearSeen === undefined ? null : translate(locale, 'poi.yearSeen', { year: String(yearSeen) });
 }
 
 /**

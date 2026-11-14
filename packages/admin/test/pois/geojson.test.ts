@@ -47,9 +47,10 @@ const CATEGORIES: CategoryItem[] = [
     { id: 'parcuri', label: { ro: 'Parcuri' }, icon: 'park', color: '#1f6f43', defaultOpacity: 0.9, order: 2 },
 ];
 
-/** A feature; one whose properties name neither year gets a start year, as every place needs one. */
+/** A feature; one whose properties name no year (start, end or seen) gets a start year, as every place needs one. */
 function feature(properties: Record<string, unknown>, geometry: unknown = POINT, id?: string): Record<string, unknown> {
-    const dated = 'yearStart' in properties || 'yearEnd' in properties ? properties : { yearStart: 1890, ...properties };
+    const hasYear = 'yearStart' in properties || 'yearEnd' in properties || 'yearSeen' in properties;
+    const dated = hasYear ? properties : { yearStart: 1890, ...properties };
     return { type: 'Feature', ...(id === undefined ? {} : { id }), geometry, properties: dated };
 }
 
@@ -198,7 +199,21 @@ describe('GeoJSON import: the plan', () => {
 });
 
 describe('GeoJSON import: the years', () => {
-    it('badPath_aFeatureWithoutAYearIsRefusedAtItsStartYear', () => {
+    it('happyPath_aFeatureWithOnlyYearSeenIsAccepted', () => {
+        const plan = planImport(
+            [feature({ category: 'biserici', title: 'Strada Rozelor', yearSeen: 1939, sourceLayer: 'harta-bucuresti-1939' })],
+            CONTEXT,
+        );
+        const [place] = plan.created;
+
+        expect(plan.refused).toEqual([]);
+        expect(place?.value.yearSeen).toBe(1939);
+        expect(place?.value.sourceLayer).toBe('harta-bucuresti-1939');
+        expect(place?.value.yearStart).toBeUndefined();
+        expect(place?.value.yearEnd).toBeUndefined();
+    });
+
+    it('badPath_aFeatureWithoutAYearAndWithoutYearSeenIsRefusedAtItsStartYear', () => {
         const plan = planImport(
             [feature({ category: 'biserici', title: 'Fără an', yearStart: 'demult' }), feature({ category: 'biserici', title: 'Cu an' })],
             CONTEXT,

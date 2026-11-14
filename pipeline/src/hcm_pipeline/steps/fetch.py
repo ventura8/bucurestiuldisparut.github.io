@@ -26,6 +26,7 @@ import httpx
 
 from hcm_pipeline import paths
 from hcm_pipeline.contract import USGS_BACKOFF_MINUTES, USGS_PREPARING_MINUTES, Errors
+from hcm_pipeline.durable import write_json_atomic
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult, Waiting
 from hcm_pipeline.m2m import AuthError, M2MError, MaintenanceError, RateLimitError
 from hcm_pipeline.model import UsgsImportParams
@@ -62,7 +63,7 @@ class Checkpoint:
 
     def save(self, ctx: JobContext) -> None:
         local = ctx.local(CHECKPOINT)
-        local.write_text(json.dumps(asdict(self)), encoding="utf-8")
+        write_json_atomic(local, asdict(self))
         ctx.services.objects.upload_file(local, ctx.work_file(CHECKPOINT), "application/json")
 
     def clear(self, ctx: JobContext) -> None:

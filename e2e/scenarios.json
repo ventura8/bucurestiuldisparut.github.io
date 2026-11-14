@@ -12121,10 +12121,120 @@
             "area": "admin",
             "path": "bad",
             "title": "A worker that stops is noticed and its job waits again",
-            "asserts": "a running local job whose lease lapsed -> imagery.tick puts it back to queued waiting for a worker with an apiError.imagery.workerLost log line; Cloud Run is never asked about it",
+            "asserts": "a running or starting local job whose lease lapsed, or whose heartbeat is three beats late (the worker's heartbeat rewrites the job every minute) -> imagery.tick puts it back to queued waiting for a worker with a log line saying the computer stopped; a run whose lease is live and whose heartbeat is on time is left alone however old its start; Cloud Run is never asked about it",
             "tier": "functions",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/tick-local.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-LOST-REFUND",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A run lost because the computer stopped does not use up a try",
+            "asserts": "a local run whose lease lapsed or whose heartbeat stopped (a power cut or a crash, no end from the worker) -> queued again waiting for a worker, the attempt its claim counted given back and the loss counted (lostRuns), with the log line that the computer stopped and this try does not count",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Resilience audit P0-1 and P1-3 (2026-11-14; docs/research/M7-local-worker.md §3). Test: functions/test/imagery/tick-local.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-LOST-REFUND-CAP",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A job that keeps stopping its computer counts its tries again",
+            "asserts": "a lost local run of a job whose earlier lost runs already got LOST_RUN_REFUNDS (5) tries back -> queued again with its attempt kept (it fails at JOB_MAX_ATTEMPTS like any other run), with the log line that the computer stopped again and this try counts",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Resilience audit P0-1 and P1-3 (2026-11-14; docs/research/M7-local-worker.md §3). Test: functions/test/imagery/tick-local.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-OWN-ORPHAN",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A computer back from a power cut releases the job it was running at its first claim",
+            "asserts": "the worker's document says busy with a job still starting or running and claimed by that same worker -> its next worker.claim (a worker claims only when it runs nothing) queues the job again at once with its attempt given back and the log line, then claims as usual (it may take the same job back), without waiting for the lease or imagery.tick",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Resilience audit P0-1 and P1-3 (2026-11-14; docs/research/M7-local-worker.md §3). Test: functions/test/worker/cleanup.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-OWN-ORPHAN",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A claim never releases another worker's job or one that moved on",
+            "asserts": "the worker's document names a job another worker claimed, one that ended, one waiting for points, or one that no longer exists -> the job is left as it was, no log line, and the claim goes on",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Resilience audit P0-1 and P1-3 (2026-11-14; docs/research/M7-local-worker.md §3). Test: functions/test/worker/cleanup.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-JOB-STATES",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A worker learns what became of each job whose work folder it keeps",
+            "asserts": "worker.claim with held (the jobs whose scratch folder is on the computer, at most 200, at most once an hour) -> jobStates names each job's status now, gone for one that no longer exists, so the worker deletes only folders no job needs",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Worker cleanup brief items 1 and 6 (2026-11-14; docs/research/M7-local-worker.md). Test: functions/test/worker/cleanup.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-JOB-STATES",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A claim without held jobs reads no job and says no states",
+            "asserts": "worker.claim without held -> no jobStates and no job read; held empty -> an empty jobStates; more than 200 held jobs -> the request is refused as invalid",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Worker cleanup brief items 1 and 6 (2026-11-14; docs/research/M7-local-worker.md). Test: functions/test/worker/cleanup.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-LOW-DISK",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A worker's disk is recorded with each claim and work goes on while there is room",
+            "asserts": "worker.claim with disk (the worker's use, the free bytes of its disk, its floor) above the floor -> a job is claimed and the worker's document records the disk with when",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Worker cleanup brief items 1 and 6 (2026-11-14; docs/research/M7-local-worker.md). Test: functions/test/worker/cleanup.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-LOW-DISK",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A computer whose disk is almost full takes no new work and the list says why and the fix",
+            "asserts": "worker.claim with free bytes below the floor -> no job, lowDisk, the worker still seen and its disk recorded (a paused computer is still answered paused); the computers' list shows the disk line and a warning that the disk is almost full, that it takes no new map work until it has the floor free, and to press Free space now or make room on that computer",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Worker cleanup brief items 1 and 6 (2026-11-14; docs/research/M7-local-worker.md). Tests: functions/test/worker/cleanup.test.ts, e2e/admin/specs/imagery/household.spec.ts (tour state worker.household-low-disk), packages/ui/test/admin/worker/household-disk.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-FREE-SPACE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "Free space now asks the computer to delete what no map needs, then says what it freed",
+            "asserts": "Free space now on a computer of the list -> worker.manage freeSpace records when it was asked; the card says it frees space at its next check and the button waits; the worker's next claim is answered freeSpace until a claim says what it freed since (freed), which clears the request and the card says how many GB it freed and when (or that nothing was left to delete)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Worker cleanup brief items 1 and 6 (2026-11-14; docs/research/M7-local-worker.md). Tests: functions/test/worker/cleanup.test.ts, e2e/admin/specs/imagery/household.spec.ts, packages/admin/test/worker/household.test.ts, packages/ui/test/admin/worker/household-disk.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-FREE-SPACE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "Free space now is not asked of a computer that cannot answer",
+            "asserts": "worker.manage freeSpace for an unknown or disconnected computer -> changed false, nothing recorded; an older freed than the request does not answer it; the list shows no disk line nor Free space now for a worker that never said its disk, one being removed or one disconnected",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Worker cleanup brief items 1 and 6 (2026-11-14; docs/research/M7-local-worker.md). Tests: functions/test/worker/cleanup.test.ts, packages/admin/test/worker/household.test.ts, packages/ui/test/admin/worker/household-disk.test.ts."
         },
         {
             "id": "S-A62-HAPPY-PAIR",
@@ -12780,11 +12890,11 @@
             "behaviour": "P04",
             "area": "pipeline",
             "path": "happy",
-            "title": "The worker removes what old imports left on the owner's disk",
-            "asserts": "a pass without a job -> job folders with nothing written for 14 days, scene deliveries and unfinished downloads for 7 are gone; younger ones, the reference cache and the session stay",
+            "title": "The worker removes what no job needs any more from the owner's disk",
+            "asserts": "a pass with the server's job states -> folders of succeeded, failed, cancelled or gone jobs unwritten for 48 hours go, unknown ones after 14 days, scene deliveries and unfinished downloads after 7, and a deleted delivery takes its empty folders",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_worker_run.py and pipeline/tests/unit/test_worker_objects.py."
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_worker_run.py and pipeline/tests/unit/test_worker_objects.py. Also pipeline/tests/unit/test_worker_cleanup.py."
         },
         {
             "id": "S-P04-BAD-SWEEP-KEEPS-CLAIMED",
@@ -12792,10 +12902,10 @@
             "area": "pipeline",
             "path": "bad",
             "title": "The sweep never touches the job just claimed",
-            "asserts": "a pass that claims a job with old scratch -> its folder and every delivery stay while another job's old folder goes; a disk that refuses the sweep does not stop the loop",
+            "asserts": "a pass that claims a job with old scratch -> its folder and every delivery stay while another job's old folder goes; a disk that refuses the sweep does not stop the loop; a job the server still lists as queued, awaiting points or approval is never deleted however old, nor a finished one within its 48 hours",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_worker_run.py and pipeline/tests/unit/test_worker_objects.py."
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_worker_run.py and pipeline/tests/unit/test_worker_objects.py. Also pipeline/tests/unit/test_worker_cleanup.py."
         },
         {
             "id": "S-P04-BAD-NO-FREE-SPACE",
@@ -12807,6 +12917,171 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_worker_run.py and pipeline/tests/unit/test_worker_objects.py."
+        },
+        {
+            "id": "S-P04-HAPPY-DURABLE-WRITE",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "What the worker keeps is written to the disk before its name",
+            "asserts": "a durable write -> the bytes and the folder are fsynced, the mode is set before the first byte, and each chunk of a delivery session is fsynced before the next",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_durable.py."
+        },
+        {
+            "id": "S-P04-BAD-DURABLE-WRITE-CUT",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A power cut mid-write leaves the old file whole",
+            "asserts": "the power goes at the fsync of a write, a copy or an upload to the work folder -> the old file is unchanged and no leftover lies beside it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_durable.py."
+        },
+        {
+            "id": "S-P04-HAPPY-RESUME-VERIFIED",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A resume passes over a step whose local output is whole",
+            "asserts": "a worker resumes a job whose step is done and whose output has its recorded size and a TIFF header -> the step does not run again",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_runner_resilience.py."
+        },
+        {
+            "id": "S-P04-BAD-RESUME-TORN",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A resume runs again a step whose output a power cut tore",
+            "asserts": "the output is zeros of the right size, truncated or empty -> the job's log says it is damaged and the step runs again in the same run, without an attempt",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_runner_resilience.py."
+        },
+        {
+            "id": "S-P04-HAPPY-DISK-FULL",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A full disk on the owner's computer hands the job back without using a try",
+            "asserts": "ENOSPC in a step on a worker -> the run ends disk-full, the step is pending, the log says to free space; worker.end released with diskFull queues the job with its attempt given back",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_runner_resilience.py and functions/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-P04-BAD-DISK-FULL-CLOUD",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A full disk in Cloud Run still fails the job",
+            "asserts": "ENOSPC in a step of a Cloud Run execution -> the job fails with apiError.internal as any crash; a full disk passed on through GDAL or a step's error is still recognised",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_runner_resilience.py."
+        },
+        {
+            "id": "S-P04-HAPPY-UPLOAD-VERIFIED",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An upload that arrived damaged is sent once more",
+            "asserts": "the signed PUT's x-goog-hash names another MD5 than the file's -> the file is sent again and recorded only when the MD5 matches",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_worker_objects.py."
+        },
+        {
+            "id": "S-P04-BAD-UPLOAD-DAMAGED",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An upload damaged twice fails its step",
+            "asserts": "both PUTs arrive different from the file -> an ObjectStoreError, so the step is never recorded done on a damaged object",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_worker_objects.py."
+        },
+        {
+            "id": "S-P04-HAPPY-LEFTOVERS",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An interrupted write's leftovers go after an hour",
+            "asserts": "files ending .tmp or .part not written for an hour go on start and on each pass; a live write and a resumable session's partial file stay",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_worker_cleanup.py."
+        },
+        {
+            "id": "S-P04-HAPPY-DISK-REPORTED",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Each claim says the worker's disk and once an hour the jobs it holds",
+            "asserts": "worker.claim carries disk (workBytes, freeBytes, floorBytes) every time and held at most once an hour",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_worker_cleanup.py."
+        },
+        {
+            "id": "S-P04-HAPPY-FREE-SPACE-NOW",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Free space now deletes finished jobs at once and says what it freed",
+            "asserts": "freeSpace in the claim's answer with fresh job states -> finished jobs' folders go without their grace, running ones stay, and the next claim says freed with its bytes and time",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_worker_cleanup.py."
+        },
+        {
+            "id": "S-P04-BAD-FREE-SPACE-STALE",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Free space now with old job states asks again before deleting",
+            "asserts": "states older than 10 minutes -> nothing is deleted, the next claim names the held jobs, and a job the owner retried since keeps its folder",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_worker_cleanup.py."
+        },
+        {
+            "id": "S-P04-HAPPY-LOW-DISK",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A disk under its floor frees finished jobs without being asked",
+            "asserts": "free bytes under 15 GB and lowDisk in the answer -> the log says no new job until there is room and finished jobs go without their grace",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_worker_cleanup.py."
+        },
+        {
+            "id": "S-P04-HAPPY-OLD-IMAGES",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The supervisor keeps two pipeline images and restarts the worker after a reboot",
+            "asserts": "before each run older pipeline images go, the current and the previous stay, dangling labelled images are pruned; the worker runs with --restart unless-stopped and is removed after each run",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: functions/test/worker/starter.test.ts and starter-windows.test.ts."
+        },
+        {
+            "id": "S-P04-BAD-OLD-IMAGES",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Another program's image is never removed",
+            "asserts": "only the current pipeline image and another app's image on the computer -> no image is removed",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: functions/test/worker/starter.test.ts."
         },
         {
             "id": "S-P04-BAD-REVOKED-ID-REPAIRS",

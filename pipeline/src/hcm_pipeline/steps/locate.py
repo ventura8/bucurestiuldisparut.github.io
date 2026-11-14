@@ -304,6 +304,8 @@ class LocateStep:
         scan = publish_scan(ctx, mark(write_geotiff(ctx.local("scan.tif"), GeoTiff([pixels])), whole), pixels)
         ctx.update_version({"scan": scan.as_record(), "georef": DELETE, "calibration": _refusal_record(found, 0)})
         ctx.log.warn(f"{_why_not(found)} in any part of the frame: {_whole_line(whole, scan.width, scan.height)}", self.name)
+        if ctx.config.execution == "worker":
+            delete_delivery(ctx)
         return Done(ctx.services.objects.stat(scan.path), scan.sha256)
 
     def _say(self, ctx: JobContext) -> Callable[[str], None]:
@@ -365,6 +367,8 @@ class LocateStep:
         record = _refusal_record(found, cut)
         ctx.update_version({"scan": scan.as_record(), "georef": georef.as_record(), "calibration": record})
         ctx.log.warn(_not_proved_line(found, located), self.name)
+        if ctx.config.execution == "worker":
+            delete_delivery(ctx)
         return Done(ctx.services.objects.stat(scan.path), scan.sha256)
 
 

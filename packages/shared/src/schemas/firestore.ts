@@ -345,6 +345,8 @@ export const poiDocSchema = z
         description: localizedMarkdownPartial(5000).optional(),
         yearStart: yearSchema.optional(),
         yearEnd: yearSchema.optional(),
+        /** M27: plan year when the place has no known start/end (traced on that year's map). */
+        yearSeen: yearSchema.optional(),
         links: z.array(linkSchema).max(MAX_LINKS).optional(),
         photoIds: z.array(idSchema).max(MAX_POI_PHOTOS).optional(),
         /** M27: the layer the place was traced on (the manifest drops it when that layer is not listed). */

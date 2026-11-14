@@ -17,6 +17,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final
 
+from hcm_pipeline.durable import write_json_atomic
 from hcm_pipeline.governor.actuate import Actuators, apply_budget
 from hcm_pipeline.governor.backends import IMAGES, Backend, Matcher, choose
 from hcm_pipeline.governor.budget import Budget, budget_for, thermal_share
@@ -186,7 +187,7 @@ class Governor:
     def _set(self, choice: Choice) -> None:
         with self._lock:
             self._choice = choice
-        (self._volume / CHOICE_FILE).write_text(json.dumps(_kept(choice)), encoding="utf-8")
+        write_json_atomic(self._volume / CHOICE_FILE, _kept(choice))
 
     def _capped(self, signals: Signals) -> Signals:
         """The cores within the quota the container started with (the slot of a shared machine, a `--cpus` the owner set): the starter's
