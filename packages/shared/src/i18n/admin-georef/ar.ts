@@ -75,8 +75,7 @@ export const ar: Readonly<Partial<Record<AdminGeorefKey, string>>> = {
     'adminContent.georef.suggestions.level.low': 'منخفض',
     'adminContent.georef.suggestions.residual': '{metres} مترًا من نقطة التوافق الحالية',
     'adminContent.georef.suggestions.noResidual': 'لا توجد مقارنة يمكن استخدامها حتى الآن',
-    'adminContent.georef.suggestions.noMatch':
-        'تم العثور على أزواج موثوقة تلقائيًا: {pairs}، ولكن هذا العدد قليل جدًا لإجراء عملية التوفيق.',
+    'adminContent.georef.suggestions.noMatch': 'تم العثور على أزواج موثوقة تلقائيًا: {pairs}، ولكن هذا العدد قليل جدًا لإجراء عملية التوفيق.',
     'adminContent.georef.suggestions.noSpread':
         'تم العثور على أزواج موثوقة تلقائيًا: {pairs}، ولكنها تقريبًا على خط مستقيم: أضف أزواجًا موزعة.',
     'adminContent.georef.suggestions.none': 'لا يوجد أي زوج يمكن اقتراحه: أضف أزواجًا يدويًا.',

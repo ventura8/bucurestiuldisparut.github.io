@@ -55,8 +55,7 @@ export const ar: Readonly<Partial<Record<StartKey, string>>> = {
     'start.plan.projectName': 'اسم المشروع',
     'start.plan.projectId': 'معرّف المشروع',
     'start.plan.projectIdHelp': 'فريد من نوعه على مستوى خدمات Google ولا يمكن تغييره: سيكون عنوانه https://{projectId}.web.app',
-    'start.plan.projectIdInvalid':
-        'معرّف: يجب أن يتكون من 6 إلى 30 حرفًا صغيرًا أو رقمًا أو شرطة؛ يجب أن يبدأ بحرف، ولا يجب أن ينتهي بشرطة.',
+    'start.plan.projectIdInvalid': 'معرّف: يجب أن يتكون من 6 إلى 30 حرفًا صغيرًا أو رقمًا أو شرطة؛ يجب أن يبدأ بحرف، ولا يجب أن ينتهي بشرطة.',
     'start.plan.pick': 'اختر المشروع',
     'start.plan.pickNone': 'لم يتم العثور على أي مشروع خاص بك. قم بإنشاء مشروع جديد.',
     'start.plan.pickWarning': 'النشر سيحل محل المحتوى الحالي على خدمة Firebase Hosting في هذا المشروع.',
