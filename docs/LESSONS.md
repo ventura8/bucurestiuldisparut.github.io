@@ -4118,7 +4118,12 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix: under the collapsed pill the chip is 28 px in (`timeline-dock-styles.ts`); the orientation spec expects the menu and the chip only.
     - **When a component changes its size in one state, re-check everything docked relative to it in that state.**
 
-699. **Every Landsat import failed because the delivery was "larger than USGS announced".**
+701. **Locate again for overview-hole restitching failed: `params has unknown keys: restitch`.**
+    - Seen: 2026-11-14, an archive series re-queued by Locate again (`functions/src/imagery/restitch.ts`: `params.restitch: true`) failed as soon as the local worker started the job.
+    - Cause: `archiveSeriesParamsSchema` and its Python twin (`_ARCHIVE_SERIES_KEYS` in `pipeline/src/hcm_pipeline/model.py`) were strict and never listed `restitch`, so `params_of` refused the flag the callable wrote.
+    - Fix and pin: `restitch` is an optional boolean on `archive-series` only (shared zod + Python allow-list); other job types still reject it. Happy and bad pins in `packages/shared/test/schemas/imagery-archive.test.ts` and `pipeline/tests/unit/test_model.py` (S-A122-HAPPY-RESTITCH, S-P20-HAPPY-RESTITCH).
+    - **A new job param a callable writes must land in that type's `JOB_PARAMS_SCHEMAS` entry and its Python twin in the same change, or the worker fails the job on start.**
+702. **Every Landsat import failed because the delivery was "larger than USGS announced".**
     - Seen: 2026-11-14, Collection 2 Level-1 imports (`LC81820292019178LGN00`, datasets `landsat_ot_c2_l1` / TM / ETM+) all failed `fetch` with `apiError.imagery.downloadIncomplete`.
     - Cause: M2M `download-options` returns several products; the Product Bundle's `filesize` is often band-scale (and may sit under `secondaryDownloads`), while the signed address sends the full tar. `fetch` required an exact match to the announcement.
     - Fix and pin: `download_option` prefers a product whose name contains "bundle" (flattening `secondaryDownloads`); `transfer_size` takes the larger of the announcement and Content-Length (or a 206's Content-Range total); truncated bodies are still refused (`S-P30-HAPPY-BUNDLE-SIZE`, `S-P01-BAD-SIZE-MISMATCH`).

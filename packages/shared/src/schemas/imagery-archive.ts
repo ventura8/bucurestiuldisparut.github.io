@@ -212,6 +212,11 @@ export const archiveSeriesParamsSchema = z.strictObject({
     paperTransparent: z.boolean().optional(),
     /** The deepest zoom the report estimated (the owner's own cap included): the placement renders no deeper. */
     maxzoom: z.number().int().min(0).max(22).optional(),
+    /**
+     * Locate again on a published archive series with pieces left out of its overview mosaic (`functions/src/imagery/restitch.ts`,
+     * DECISIONS §216e): the pipeline lays it on the overview again (`placing/restitch.py`). Only this job type may carry it.
+     */
+    restitch: z.boolean().optional(),
 });
 
 export type ArchiveSeriesParams = z.infer<typeof archiveSeriesParamsSchema>;

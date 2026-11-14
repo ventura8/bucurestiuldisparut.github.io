@@ -332,6 +332,8 @@ _ARCHIVE_SERIES_KEYS: Final = frozenset(
         "scaleDenominator",
         "paperTransparent",
         "maxzoom",
+        # Locate again for overview-hole restitching (`placing/restitch.py`, DECISIONS §216e); only this job type.
+        "restitch",
     }
 )
 

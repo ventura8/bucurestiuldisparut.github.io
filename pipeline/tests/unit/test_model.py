@@ -167,6 +167,18 @@ def test_happy_path_jobs_read_their_steps_lease_and_params() -> None:
             {"archiveId": "ar-0123456789abcdef", "seriesId": "s-0123456789ab", "class": "grid", "sheets": 4, "order": 1},
             ArchiveSeriesParams("ar-0123456789abcdef", "s-0123456789ab"),
         ),
+        (
+            "archive-series",
+            {
+                "archiveId": "ar-0123456789abcdef",
+                "seriesId": "s-0123456789ab",
+                "class": "pieces",
+                "sheets": 60,
+                "order": 0,
+                "restitch": True,
+            },
+            ArchiveSeriesParams("ar-0123456789abcdef", "s-0123456789ab"),
+        ),
     ],
 )
 def test_happy_path_each_type_reads_its_own_params(job_type: str, params: dict[str, object], expected: object) -> None:
@@ -191,7 +203,9 @@ def test_happy_path_each_type_reads_its_own_params(job_type: str, params: dict[s
         ("layer-join", {"parts": ["v", "w"], "sensor": "KH-9-pan"}, "a part must be a record"),
         ("layer-join", {"parts": [{"versionId": "v", "layerId": "l"}] * 2, "sensor": "KH-6"}, "sensor must be one of"),
         ("archive-series", {"archiveId": "ar-1", "seriesId": "s-1", "sheetz": 1}, "unknown keys: sheetz"),
+        ("archive-series", {"archiveId": "ar-1", "seriesId": "s-1", "restitch": True, "extra": 1}, "unknown keys: extra"),
         ("archive-series", {"archiveId": "../ar", "seriesId": "s-1"}, "archiveId must be an id"),
+        ("regeoref", {"basedOn": "v-1", "restitch": True}, "unknown keys: restitch"),
     ],
 )
 def test_bad_path_malformed_params_are_refused(job_type: str, params: dict[str, object], problem: str) -> None:
