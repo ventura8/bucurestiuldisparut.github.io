@@ -93,7 +93,7 @@ export function pipelineImageDigest(image: string): string | null {
 }
 
 /** The `firebase-tools` the server and site builds install from the bundle's lock (the repository's own pin). */
-export const FIREBASE_TOOLS_VERSION = '15.34.2';
+export const FIREBASE_TOOLS_VERSION = '15.36.0';
 
 /**
  * Google's Docker builder of the imagery pipeline's build, as the deps gate tracks it: its version tag and the digest of

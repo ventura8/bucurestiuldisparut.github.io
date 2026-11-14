@@ -36,7 +36,7 @@ const resumeDeploy = (dir = 'cluj'): string => `${NPX_COMMAND} deploy ${dir} --p
 function newAccount(changes: Readonly<Record<string, readonly Answer[]>> = {}, missing: readonly string[] = []): FakeRunner {
     return new FakeRunner(
         {
-            'firebase --version': [ok('15.34.2\n')],
+            'firebase --version': [ok('15.36.0\n')],
             'gcloud --version': [ok('Google Cloud SDK 550.0.0\n')],
             'firebase login:list': [NO_ACCOUNT],
             'firebase login:list --json': [TOKENS],
@@ -216,7 +216,7 @@ describe('self-host: stopping', () => {
 
         expect(runner.lines()).toEqual(['firebase --version']);
         expect(opener.opened).toEqual([]);
-        expect(terminal.lines).toContain(ro('cli.tools.noFirebase', { version: '15.34.2' }));
+        expect(terminal.lines).toContain(ro('cli.tools.noFirebase', { version: '15.36.0' }));
     });
 
     it('badPath_billingNeverLinkedStopsWithThePageAndTheResumeCommand', async () => {

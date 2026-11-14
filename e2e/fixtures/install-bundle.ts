@@ -47,7 +47,7 @@ export function installManifestText(
             legacy: file('legacy.tgz', 'e'),
         },
         functions: ['admin-session'],
-        tools: { firebaseTools: '15.34.2', node: NODE_IMAGE, docker: docker ? DOCKER_BUILDER_IMAGE : null },
+        tools: { firebaseTools: '15.36.0', node: NODE_IMAGE, docker: docker ? DOCKER_BUILDER_IMAGE : null },
         estimates: { server: { buildMinutes: 85 }, pipeline: { buildMinutes: 20 }, site: { buildMinutes: 5 } },
     };
     return `${JSON.stringify(manifest, null, 4)}\n`;

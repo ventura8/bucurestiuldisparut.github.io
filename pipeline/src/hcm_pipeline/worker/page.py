@@ -3,7 +3,7 @@
 Static HTML, script and style, no template engine: the only values written into the page are the project id, the city
 id and the per-process CSRF token (and, under `--emulators`, the Auth emulator's loopback host), each checked against
 its pattern first and written as JSON into a `<script type="application/json">` element with `<`, `>` and `&` escaped.
-The script loads the Firebase JS SDK 13.1.0 (the admin's version: a test keeps them equal) from `www.gstatic.com`, the
+The script loads the Firebase JS SDK 13.3.0 (the admin's version: a test keeps them equal) from `www.gstatic.com`, the
 project's web configuration from the worker (`GET /config`, which the worker read from the project's Hosting), signs in
 with Google in a popup (the SDK keeps nothing: in-memory persistence, signed out once the worker holds the tokens),
 posts `{idToken, refreshToken}` to `POST /session` with the CSRF token, polls `GET /state` and has Sign out. Its words
@@ -30,7 +30,7 @@ from typing import Final
 from hcm_pipeline.paths import CITY_ID
 from hcm_pipeline.worker.args import EMULATOR_HOST, PROJECT_ID
 
-FIREBASE_SDK_VERSION: Final = "13.1.0"
+FIREBASE_SDK_VERSION: Final = "13.3.0"
 # How long the fallback Google sign-in may take before the page gives up and points at the admin's command (finding 69).
 SIGN_IN_TIMEOUT_MS: Final = 90_000
 SDK_ORIGIN: Final = "https://www.gstatic.com"
