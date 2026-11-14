@@ -3,13 +3,14 @@
  * dialog (`docs/research/M2b-interfaces.md` §1.2): who is signed in, the language (any of `docs/I18N.md`'s: switching keeps
  * every form's state), the theme (follow my device, light, dark), the colours (device accent, map colours), the analytics
  * consent (withdrawable at any time, when GA4 is
- * configured) and Sign out. A rotation of a phone moves it between the top bar and the rail: the shell then gives the
+ * configured), **Install app** while the browser offers it (`../../app-install.ts`) and Sign out. A rotation of a phone moves it between the top bar and the rail: the shell then gives the
  * new one's button the focus the old one held (`active`, `focusButton`).
  */
 import { isUiLocale, translate, type UiLocale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 import { live } from 'lit/directives/live.js';
 
+import { installApp, installGivesAccent, watchInstall } from '../../app-install.js';
 import { UI_LANGUAGE_OPTIONS } from '../../components/language-options.js';
 
 import type { SegmentOption } from '../../components/segmented-button.js';
@@ -50,6 +51,7 @@ export class HcmAccountMenu extends LitElement {
         /** M5: the city switcher sits here (a compact window, or a phone held sideways: no top bar to hold it). */
         cities: { type: Boolean },
         open: { state: true },
+        installable: { state: true },
     };
 
     static override readonly styles = [
@@ -95,6 +97,9 @@ export class HcmAccountMenu extends LitElement {
     declare state: AdminStatePort | null;
     declare cities: boolean;
     declare open: boolean;
+    /** The browser's install prompt waits (`app-install.ts`): the menu offers **Install app**. */
+    declare installable: boolean;
+    #stopInstall: (() => void) | null = null;
 
     constructor() {
         super();
@@ -102,9 +107,23 @@ export class HcmAccountMenu extends LitElement {
         this.state = null;
         this.cities = false;
         this.open = false;
+        this.installable = false;
         this.addEventListener('hcm-city-chosen', () => {
             this.open = false;
         });
+    }
+
+    override connectedCallback(): void {
+        super.connectedCallback();
+        this.#stopInstall = watchInstall(window, (installable) => {
+            this.installable = installable;
+        });
+    }
+
+    override disconnectedCallback(): void {
+        super.disconnectedCallback();
+        this.#stopInstall?.();
+        this.#stopInstall = null;
     }
 
     /** The dialog is open, or the focus is on the button or in the dialog. */
@@ -146,7 +165,7 @@ export class HcmAccountMenu extends LitElement {
             >
                 <div class="content">
                     ${this.#who(state)} ${this.#city(state)} ${this.#language(state)} ${this.#theme(state)} ${this.#accent(state)}
-                    ${this.#consent(state)} ${this.#signOut(state)}
+                    ${this.#install(state)} ${this.#consent(state)} ${this.#signOut(state)}
                 </div>
             </hcm-dialog>`;
     }
@@ -226,9 +245,47 @@ export class HcmAccountMenu extends LitElement {
     /** Device accent where it cannot show (`deviceAccentState`): why the city's colours show, and what would bring the device's. */
     #accentNote(state: AdminStatePort): TemplateResult {
         const shown = (state.theme.accent ?? 'device') === 'device' ? deviceAccentState(this.ownerDocument) : 'shared';
-        return shown === 'shared'
-            ? EMPTY
-            : html`<p class="group-label accent-note">${ACCENT_NOTES[shown].map((key) => translate(state.locale, key)).join(' ')}</p>`;
+        if (shown === 'shared') {
+            return EMPTY;
+        }
+        return this.#installBringsAccent(shown)
+            ? this.#installNote(state)
+            : this.#note(ACCENT_NOTES[shown].map((key) => translate(state.locale, key)));
+    }
+
+    /** Chrome or Edge on a computer gives the device's colour to an installed app (lesson 711): the note offers the install. */
+    #installBringsAccent(shown: 'hidden' | 'grey'): boolean {
+        return shown === 'hidden' && this.installable && installGivesAccent(navigator);
+    }
+
+    #installNote(state: AdminStatePort): TemplateResult {
+        const texts = [translate(state.locale, 'accent.hidden'), shellText(state.locale, 'adminShell.account.installFix')];
+        return html`${this.#note(texts)} ${this.#installButton(state)}`;
+    }
+
+    #note(texts: readonly string[]): TemplateResult {
+        return html`<p class="group-label accent-note">${texts.join(' ')}</p>`;
+    }
+
+    /** **Install app** (docs/ENGINE_API.md → *Installable app*), only while the browser's install prompt waits. */
+    #install(state: AdminStatePort): TemplateResult {
+        if (!this.installable) {
+            return EMPTY;
+        }
+        return html`<div class="group">
+            <span class="group-label">${translate(state.locale, 'app.title')}</span>
+            <p class="group-label accent-note">${shellText(state.locale, 'adminShell.account.installHint')}</p>
+            ${this.#installButton(state)}
+        </div>`;
+    }
+
+    #installButton(state: AdminStatePort): TemplateResult {
+        const install = (): void => {
+            void installApp(window);
+        };
+        return html`<hcm-button variant="outlined" icon="download" @click=${install}
+            >${translate(state.locale, 'app.install')}</hcm-button
+        >`;
     }
 
     /** The analytics consent, shown only when GA4 is configured. */

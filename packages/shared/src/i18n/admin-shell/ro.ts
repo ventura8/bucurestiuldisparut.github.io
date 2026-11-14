@@ -77,6 +77,8 @@ export const ro = {
     'adminShell.auth.signedInAs': 'Conectat ca {email}',
     'adminShell.account.label': 'Contul și preferințele',
     'adminShell.account.close': 'Închide',
+    'adminShell.account.installHint': 'Deschideți administrarea în fereastra ei, din ecranul principal sau din lista de aplicații.',
+    'adminShell.account.installFix': 'Instalați administrarea ca aplicație ca să folosiți culoarea dispozitivului.',
     'adminShell.account.analytics': 'Statistici anonime de utilizare și performanță ale administrării (Google Analytics)',
     'adminShell.account.analyticsVisitor': 'Statistici anonime de utilizare și performanță ale paginii Contribuie (Google Analytics)',
     'adminShell.notice.close': 'Închide mesajul',

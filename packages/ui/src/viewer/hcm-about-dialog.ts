@@ -29,6 +29,7 @@ import {
 import { LitElement, css, html, type PropertyValues, type TemplateResult } from 'lit';
 import { live } from 'lit/directives/live.js';
 
+import { installApp, installGivesAccent, watchInstall } from '../app-install.js';
 import { tabbableElements } from '../components/focus.js';
 import { deviceAccentState } from '../theme/device-accent.js';
 import { EMPTY } from './empty.js';
@@ -96,6 +97,7 @@ export class HcmAboutDialog extends LitElement {
         fullscreen: { type: Boolean },
         theme: { type: String },
         accent: { type: String },
+        installable: { state: true },
     };
 
     static override readonly styles = [
@@ -138,6 +140,9 @@ export class HcmAboutDialog extends LitElement {
     declare fullscreen: boolean;
     declare theme: ThemeMode;
     declare accent: AccentChoice;
+    /** The browser's install prompt waits (`app-install.ts`): Settings offers **Install app**. */
+    declare installable: boolean;
+    #stopInstall: (() => void) | null = null;
 
     constructor() {
         super();
@@ -152,6 +157,20 @@ export class HcmAboutDialog extends LitElement {
         this.fullscreen = false;
         this.theme = 'system';
         this.accent = 'device';
+        this.installable = false;
+    }
+
+    override connectedCallback(): void {
+        super.connectedCallback();
+        this.#stopInstall = watchInstall(window, (installable) => {
+            this.installable = installable;
+        });
+    }
+
+    override disconnectedCallback(): void {
+        super.disconnectedCallback();
+        this.#stopInstall?.();
+        this.#stopInstall = null;
     }
 
     override render(): TemplateResult {
@@ -270,8 +289,25 @@ export class HcmAboutDialog extends LitElement {
                 .label=${translate(locale, 'theme.label')}
                 @hcm-change=${onTheme}
             ></hcm-segmented-button>
-            ${this.#accent(icons)}
+            ${this.#accent(icons)} ${this.#app()}
         </section>`;
+    }
+
+    /** **Install app** (docs/ENGINE_API.md → *Installable app*), only while the browser's install prompt waits. */
+    #app(): TemplateResult {
+        if (!this.installable) {
+            return EMPTY;
+        }
+        return html`<h3>${translate(this.locale, 'app.title')}</h3>
+            <p class="supporting">${translate(this.locale, 'app.installHint')}</p>
+            ${this.#installButton()}`;
+    }
+
+    #installButton(): TemplateResult {
+        const install = (): void => {
+            void installApp(window);
+        };
+        return html`<hcm-button variant="outlined" icon="download" @click=${install}>${translate(this.locale, 'app.install')}</hcm-button>`;
     }
 
     /** The colours: the device's accent (the default) or the map's own. */
@@ -301,9 +337,25 @@ export class HcmAboutDialog extends LitElement {
     /** Device accent where it cannot show (`deviceAccentState`): why the map's colours show, and what would bring the device's. */
     #accentNote(): TemplateResult {
         const state = this.accent === 'device' ? deviceAccentState(this.ownerDocument) : 'shared';
-        return state === 'shared'
-            ? EMPTY
-            : html`<p class="supporting accent-note">${ACCENT_NOTES[state].map((key) => translate(this.locale, key)).join(' ')}</p>`;
+        if (state === 'shared') {
+            return EMPTY;
+        }
+        return this.#installBringsAccent(state) ? this.#installNote() : this.#note(ACCENT_NOTES[state]);
+    }
+
+    /** Chrome or Edge on a computer gives the device's colour to an installed app (lesson 711): the note offers the install. */
+    #installBringsAccent(state: 'hidden' | 'grey'): boolean {
+        return state === 'hidden' && this.installable && installGivesAccent(navigator);
+    }
+
+    #installNote(): TemplateResult {
+        return html`${this.#note(['accent.hidden', 'accent.installFix'])} ${this.#installButton()}`;
+    }
+
+    #note(
+        keys: readonly ('accent.hidden' | 'accent.hiddenFix' | 'accent.grey' | 'accent.greyFix' | 'accent.installFix')[],
+    ): TemplateResult {
+        return html`<p class="supporting accent-note">${keys.map((key) => translate(this.locale, key)).join(' ')}</p>`;
     }
 
     #emit(type: string, detail: object): void {

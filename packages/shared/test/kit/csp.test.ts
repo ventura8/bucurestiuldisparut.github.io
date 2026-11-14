@@ -40,7 +40,7 @@ describe('contentSecurityPolicy', () => {
         ]);
         expect(directive(policy, 'style-src')).toEqual([SELF_SOURCE, 'https://api.mapbox.com/mapbox-gl-js/']);
         expect(directive(policy, 'font-src')).toEqual([SELF_SOURCE]);
-        expect(directive(policy, 'worker-src')).toEqual(['blob:']);
+        expect(directive(policy, 'worker-src')).toEqual(['blob:', "'self'"]);
         expect(directive(policy, 'object-src')).toEqual(["'none'"]);
     });
 

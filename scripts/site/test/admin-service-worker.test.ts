@@ -139,7 +139,9 @@ describe('the worker file', () => {
 
         buildAdminSite({ outDir: 'dist/admin' }, files);
 
-        expect(files.readText(`dist/admin/${PUSH_SERVICE_WORKER_FILE}`)).toBe(PUSH_SERVICE_WORKER_SOURCE);
+        // The push worker, with the installable app's lines that keep nothing (`src/admin/app.ts`).
+        expect(files.readText(`dist/admin/${PUSH_SERVICE_WORKER_FILE}`).startsWith(PUSH_SERVICE_WORKER_SOURCE)).toBe(true);
+        expect(files.readText(`dist/admin/${PUSH_SERVICE_WORKER_FILE}`)).toContain('"offline":false');
         cleanup();
     });
 

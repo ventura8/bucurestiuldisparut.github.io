@@ -33,7 +33,10 @@ describe('renderAdminPage', () => {
         expect([...html.matchAll(/<(?:script|link) [^>]*>/g)].map(([tag]) => tag)).toEqual([
             `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)" href="${DEFAULT_TAB_ICONS.light}">`,
             `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: dark)" href="${DEFAULT_TAB_ICONS.dark}">`,
+            '<link rel="manifest" href="app.webmanifest">',
+            '<link rel="apple-touch-icon" href="app-icon-192.png">',
             `<link rel="stylesheet" href="${ADMIN_STYLESHEET_FILE}">`,
+            '<script src="app.js" defer>',
             `<script type="module" src="${ADMIN_SCRIPT_FILE}">`,
         ]);
         expect(html).toContain(`<${ADMIN_SHELL_ELEMENT}></${ADMIN_SHELL_ELEMENT}>`);

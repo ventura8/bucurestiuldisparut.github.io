@@ -42,7 +42,8 @@ describe('buildAdminSite', () => {
             warnings: 1,
             fonts: 4,
             // The legacy bundle's corrections.json (the old site's later directions) included.
-            files: 69,
+            // The installable app's manifest, three icons and page script (`src/admin/app.ts`) included.
+            files: 74,
         });
         const integrity = subresourceIntegrity(files.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js'));
         expect(files.readText(`${OUT}/index.html`)).toBe(renderAdminPage(undefined, { mapboxGlIntegrity: integrity }));

@@ -4180,3 +4180,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `timeline-pointer.ts` sent every non-touch press to the select-drag; the card scrolls natively only for a finger (`touch-action: pan-x`) and a horizontal scroller ignores a vertical wheel.
     - Fix and pin: a mouse on a scrolling track pans it past 4 px (`timeline-pan.ts`, grab/grabbing cursor) and a press within that is a click that selects and only then focuses the thumb (focusing it after a pan scrolled the card straight back, found by the unit test); the vertical and shift-wheel scroll a lying card; keyboard focus centres the selected year. `hcm-timeline-pan.test.ts`, S-V04-HAPPY-MOUSE-PAN, S-V04-BAD-MOUSE-PAN-CLICK.
     - **Every scrolling surface needs a mouse path as well as a finger's: drag with a threshold that keeps a click a click, and the wheel.**
+713. **The admin's push registration would have unregistered the public map's new app worker.**
+    - Seen: 2026-11-14, while making the map installable (`docs/ENGINE_API.md` → *Installable app*): the map's `sw.js` registers with the Hosting root as its scope, and on a project whose admin still lives under the map's `/admin/` (no admin site), turning notifications on ran `retireRootWorker`, which unregistered every registration of the root scope.
+    - Found by: reading the M6 code that owns the root scope before giving it a worker; no test knew of a second worker there.
+    - Cause: M6 retired "the root's worker" by scope alone, since the only worker that could ever be there was a pre-M6 admin's push worker.
+    - Fix and pin: `retireRootWorker` unregisters a root registration only when one of its workers is `firebase-messaging-sw.js`; `badPath_thePublicMapsOwnAppWorkerAtTheRootStays` in `packages/admin/test/firebase/messaging.test.ts`.
+    - **A cleanup that removes "whatever is at" a shared address names what it removes; the next feature may put something legitimate there.**

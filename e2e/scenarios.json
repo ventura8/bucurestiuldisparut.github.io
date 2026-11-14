@@ -1268,6 +1268,20 @@
             "name": "Setup's Sources step: free translation options, each with its quality, monthly limit, privacy and sign-up wizard",
             "milestone": "post-M8",
             "source": "the owner's request of 2026-11-14 (finish Setup's Sources: free translation sources and a per-country finder); docs/research/M28-sources.md §10–§11; DECISIONS-for-review.md §225"
+        },
+        {
+            "id": "V72",
+            "area": "viewer",
+            "name": "The city map is an installable app: its web app manifest and icons, a service worker that goes to the network first and never keeps the data or Mapbox, and Install app in Settings (also offered by Device accent on a computer) while the browser offers it",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-14 (make Follow my device's accent work: Chrome and Edge give the device's accent only to an installed web app, docs/LESSONS.md 711); docs/ENGINE_API.md → Installable app"
+        },
+        {
+            "id": "A185",
+            "area": "admin",
+            "name": "The admin is an installable app at its own folder: its manifest and icons, the push worker as its service worker keeping nothing, and Install app in the account menu (also offered by Device accent on a computer) while the browser offers it",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-14 (make Follow my device's accent work: Chrome and Edge give the device's accent only to an installed web app, docs/LESSONS.md 711); docs/ENGINE_API.md → Installable app"
         }
     ],
     "scenarios": [
@@ -22093,6 +22107,61 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "Unit: packages/ui/test/admin/setup/sources-finder.test.ts."
+        },
+        {
+            "id": "S-V72-HAPPY-INSTALLABLE",
+            "behaviour": "V72",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The city map is an installable app with Install app in Settings, and the last page seen opens offline",
+            "asserts": "the site's worker controls /bucharest/ with that folder as scope; Chrome reads app.webmanifest without an error (standalone, start, scope and id ./); nothing pops up on a visit; once the browser offers the install, Settings shows App with Install app and, on a computer, Device accent says installing brings the device's colour with its own Install app; a click shows the browser's prompt once and Install app goes; offline, a reload opens the last page seen",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "docs/ENGINE_API.md → Installable app; DECISIONS-for-review.md §226. Unit: packages/shared/test/kit/app-worker.test.ts, packages/shared/test/kit/app-page.test.ts, packages/shared/test/kit/web-app-manifest.test.ts, scripts/site/test/app.test.ts, packages/ui/test/app-install.test.ts, packages/ui/test/viewer/hcm-about-dialog.test.ts. Test: e2e/specs/viewer/app.spec.ts."
+        },
+        {
+            "id": "S-V72-BAD-NO-PROMPT",
+            "behaviour": "V72",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without the browser's install prompt Settings offers no install and Device accent keeps its own advice",
+            "asserts": "no beforeinstallprompt (a browser that cannot install, an installed app's window) -> no Install app in Settings, and Device accent says this browser does not share the device's colour, never the install",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "docs/ENGINE_API.md → Installable app; DECISIONS-for-review.md §226. Unit: packages/shared/test/kit/app-worker.test.ts, packages/shared/test/kit/app-page.test.ts, packages/shared/test/kit/web-app-manifest.test.ts, scripts/site/test/app.test.ts, packages/ui/test/app-install.test.ts, packages/ui/test/viewer/hcm-about-dialog.test.ts. Test: e2e/specs/viewer/app.spec.ts."
+        },
+        {
+            "id": "S-V72-BAD-NEVER-STALE",
+            "behaviour": "V72",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The worker never serves an old release nor keeps the data, the app manifest or Mapbox",
+            "asserts": "after two loads the caches hold only the page and its own scripts, styles and fonts under the city's folder (no manifest.json, no data/, no app.webmanifest, no other origin); a changed site.css on the server shows on the next load through the worker",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "docs/ENGINE_API.md → Installable app; DECISIONS-for-review.md §226. Unit: packages/shared/test/kit/app-worker.test.ts, packages/shared/test/kit/app-page.test.ts, packages/shared/test/kit/web-app-manifest.test.ts, scripts/site/test/app.test.ts, packages/ui/test/app-install.test.ts, packages/ui/test/viewer/hcm-about-dialog.test.ts. Test: e2e/specs/viewer/app.spec.ts."
+        },
+        {
+            "id": "S-A185-HAPPY-INSTALLABLE",
+            "behaviour": "A185",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin is an installable app at /admin/ and the account menu offers Install app",
+            "asserts": "the worker's scope is /admin/; Chrome reads /admin/app.webmanifest without an error (standalone, scope and id ./); once the browser offers the install the account menu shows App with Install app and, on a computer, Device accent says installing brings the device's colour; a click shows the prompt once and Install app goes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "docs/ENGINE_API.md → Installable app; DECISIONS-for-review.md §226. Unit: scripts/site/test/app.test.ts, packages/ui/test/admin/shell/nav-and-menu.test.ts, packages/admin/test/firebase/messaging.test.ts. Test: e2e/admin/specs/shell/app.spec.ts."
+        },
+        {
+            "id": "S-A185-BAD-NOTHING-KEPT",
+            "behaviour": "A185",
+            "area": "admin",
+            "path": "bad",
+            "title": "The admin's worker keeps nothing, and without the browser's prompt the menu offers no install",
+            "asserts": "the push worker controls the admin and the page's caches are empty after two loads (admin.mjs and runtime.json always come from the network); no beforeinstallprompt -> no Install app, Device accent's note says the browser does not share the colour",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "docs/ENGINE_API.md → Installable app; DECISIONS-for-review.md §226. Unit: scripts/site/test/app.test.ts, packages/ui/test/admin/shell/nav-and-menu.test.ts, packages/admin/test/firebase/messaging.test.ts. Test: e2e/admin/specs/shell/app.spec.ts."
         }
     ]
 }

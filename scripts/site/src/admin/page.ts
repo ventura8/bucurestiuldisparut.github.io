@@ -1,3 +1,5 @@
+import { APP_ICON_FILES, WEB_APP_MANIFEST_FILE } from '@hcm/shared/app';
+
 import { element, renderDocument, type HtmlElement } from '../html.js';
 import { iconLinks } from '../icons.js';
 
@@ -18,6 +20,8 @@ export const ADMIN_SHELL_ELEMENT = 'hcm-admin-shell';
 
 /** The two files of the Vite build the page loads (packages/admin/vite.config.ts writes them into `dist/`). */
 export const ADMIN_SCRIPT_FILE = 'admin.mjs';
+/** The installable app's page script (`app.ts`), before the admin's entry. */
+export const ADMIN_APP_SCRIPT_FILE = 'app.js';
 export const ADMIN_STYLESHEET_FILE = 'admin.css';
 
 export interface AdminPageSpec {
@@ -63,7 +67,12 @@ function head(spec: AdminPageSpec): HtmlElement {
         element('title', {}, [spec.title]),
         // The admin's own tab keeps the default: it serves many cities (docs/research/DECISIONS-for-review.md).
         ...iconLinks(),
+        // The installable app (docs/ENGINE_API.md → Installable app; `app.ts`): its manifest, and the script that registers
+        // its worker and keeps the install prompt, before the admin's entry.
+        element('link', { rel: 'manifest', href: WEB_APP_MANIFEST_FILE }),
+        element('link', { rel: 'apple-touch-icon', href: APP_ICON_FILES.small }),
         element('link', { rel: 'stylesheet', href: ADMIN_STYLESHEET_FILE }),
+        element('script', { src: ADMIN_APP_SCRIPT_FILE, defer: true }),
         element('script', { type: 'module', src: ADMIN_SCRIPT_FILE }),
     ]);
 }

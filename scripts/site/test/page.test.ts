@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { contentSecurityPolicy } from '../src/csp.js';
-import { MAPBOX_GL_SCRIPT, MAPBOX_GL_VERSION, renderSitePage } from '../src/page.js';
+import { MAPBOX_GL_SCRIPT, MAPBOX_GL_VERSION, RELATIVE_ASSETS, renderSitePage } from '../src/page.js';
 import { parseSiteSpec } from '../src/site-spec.js';
 import { subresourceIntegrity } from '../src/sri.js';
 import { ROOT, htmlValidateMessages } from './support.js';
@@ -51,6 +51,19 @@ describe('renderSitePage', () => {
         ]);
         expect(html).toContain('<link rel="stylesheet" href="engine/engine.css">');
         expect(html).toContain('<meta name="referrer" content="strict-origin-when-cross-origin">');
+    });
+
+    it('happyPath_aPageWithAnAppLinksItsManifestAndItsIconForIos', () => {
+        const html = renderSitePage({
+            spec: parseSiteSpec(readFileSync(join(ROOT, 'sites/bucharest/site.json'), 'utf8')),
+            csp: "default-src 'none'",
+            mapboxGlIntegrity: { script: 'sha384-script' },
+            assets: { ...RELATIVE_ASSETS, manifest: 'app.webmanifest' },
+        });
+
+        expect(html).toContain('<link rel="manifest" href="app.webmanifest">');
+        expect(html).toContain('<link rel="apple-touch-icon" href="app-icon-192.png">');
+        expect(bucharestPage()).not.toContain('rel="manifest"');
     });
 
     it('happyPath_hasTheMountPointAndABilingualNoScriptNote', () => {

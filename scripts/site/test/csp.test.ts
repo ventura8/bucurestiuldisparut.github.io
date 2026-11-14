@@ -48,7 +48,7 @@ describe('contentSecurityPolicy', () => {
             'https://*.tiles.mapbox.com',
             ...ANALYTICS_CONNECT_SOURCES,
         ]);
-        expect(directive(policy, 'worker-src')).toEqual(['blob:']);
+        expect(directive(policy, 'worker-src')).toEqual(['blob:', "'self'"]);
         for (const name of ['base-uri', 'form-action', 'object-src']) {
             expect(directive(policy, name)).toEqual(["'none'"]);
         }

@@ -79,8 +79,9 @@ function directives(extra: ExtraSources, engine: string, analytics: boolean): re
         ['connect-src', [SELF_SOURCE, engine, ...MAPBOX_CONNECT_SOURCES, ...telemetry.connect, ...extra.connect]],
         // The engine's self-hosted fonts (FontFace from `engineBase`, the folder of its script).
         ['font-src', [engine]],
-        // Mapbox GL runs its workers from blob: URLs; child-src covers browsers without worker-src (Safari < 15.5).
-        ['worker-src', ['blob:']],
+        // Mapbox GL runs its workers from blob: URLs; child-src covers browsers without worker-src (Safari < 15.5). 'self':
+        // the installable app's service worker beside the page (`sw.js`, docs/ENGINE_API.md → Installable app).
+        ['worker-src', ['blob:', SELF_SOURCE]],
         ['child-src', ['blob:']],
         ['manifest-src', [SELF_SOURCE]],
         ['base-uri', ["'none'"]],

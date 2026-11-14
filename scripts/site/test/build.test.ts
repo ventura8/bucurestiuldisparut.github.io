@@ -16,6 +16,9 @@ import { ROOT, cleanup, htmlValidateMessages, repositoryWithTemporaryDist, tempo
 const TOKEN = 'pk.e2e-fake-token';
 const ENGINE_FILES = ['engine.css', 'engine.iife.js', 'engine.mjs', 'fonts/symbols.woff2'];
 
+/** The installable app's files beside every page: app.webmanifest, its three icons and sw.js (`src/app.ts`). */
+const APP_FILES = 5;
+
 function fakeEngine(files: SiteFileSystem, dir: string): void {
     for (const name of ENGINE_FILES) {
         files.write(`${dir}/${name}`, `/* ${name} */\n`);
@@ -61,7 +64,8 @@ describe('buildSite (the committed sites)', () => {
             outDir: 'dist/site/bucharest',
             cityId: 'bucharest',
             photos: photoCount,
-            files: 5 + photoCount * 2 + ENGINE_FILES.length,
+            // The page's five and the installable app's five (its manifest, three icons and sw.js).
+            files: 5 + APP_FILES + photoCount * 2 + ENGINE_FILES.length,
         });
         const out = dist.listFiles('dist/site/bucharest');
         expect(out).toEqual(
@@ -132,7 +136,7 @@ describe('buildSite (bad inputs)', () => {
     it('happyPath_aSyntheticSiteBuilds', () => {
         const { files, options } = syntheticRoot();
 
-        expect(buildSite(options, files).files).toBe(5 + 4 + ENGINE_FILES.length);
+        expect(buildSite(options, files).files).toBe(5 + APP_FILES + 4 + ENGINE_FILES.length);
         expect(files.readText('dist/site/starter-kit/data/media/mihai-voda-1978/thumb.webp')).toBe('thumb mihai-voda-1978');
     });
 
@@ -272,7 +276,7 @@ describe('buildSite (the manifest the admin publishes, DECISIONS-for-review.md �
             manifestUrl: `https://storage.googleapis.com/${BUCKET}/cities/bucharest/manifest.json`,
         });
         expect(dist.listFiles('dist/site/bucharest').filter((name) => name.startsWith('data/'))).toEqual([]);
-        expect(report).toMatchObject({ cityId: 'bucharest', photos: 0, files: 4 + ENGINE_FILES.length });
+        expect(report).toMatchObject({ cityId: 'bucharest', photos: 0, files: 4 + APP_FILES + ENGINE_FILES.length });
         const html = dist.readText('dist/site/bucharest/index.html');
         expect(html).toMatch(
             /connect-src [^;]*https:\/\/storage\.googleapis\.com[^;]*https:\/\/us-central1-bucurestiul-disparut\.cloudfunctions\.net/,
@@ -290,6 +294,15 @@ describe('buildSite (the manifest the admin publishes, DECISIONS-for-review.md �
         const script = dist.readText('dist/site/bucharest/tab-icon.js');
         expect(script).toContain('hcm-map-viewer');
         expect(script).toContain(`(window, "https://storage.googleapis.com/${BUCKET}/cities/");`);
+        // The installable app (docs/ENGINE_API.md → Installable app): the manifest the page links, its icons, the worker the
+        // page script registers for the page's folder, which keeps no data and nothing of another origin.
+        expect(html).toContain('<link rel="manifest" href="app.webmanifest">');
+        expect(script).toContain('(window, {"worker":"sw.js","scope":"./"});');
+        expect(JSON.parse(dist.readText('dist/site/bucharest/app.webmanifest'))).toMatchObject({ name: 'București dispărut', scope: './' });
+        expect(dist.listFiles('dist/site/bucharest')).toEqual(
+            expect.arrayContaining(['app-icon-192.png', 'app-icon-512.png', 'app-icon-maskable-512.png', 'sw.js']),
+        );
+        expect(dist.readText('dist/site/bucharest/sw.js')).toContain('"offline":true');
     });
 
     it('badPath_withoutABucketOrWithoutTheSitesConsentTheSnapshotIsBundled', () => {
@@ -365,7 +378,7 @@ describe('buildSite (a city without a seed manifest, M5-interfaces §1.10)', () 
 
         const report = buildSite({ ...options, publicBucket: BUCKET }, files);
 
-        expect(report).toMatchObject({ cityId: 'exemplu', photos: 0, files: 4 + ENGINE_FILES.length });
+        expect(report).toMatchObject({ cityId: 'exemplu', photos: 0, files: 4 + APP_FILES + ENGINE_FILES.length });
         expect(readConfigJs(files.readText('dist/site/starter-kit/config.js')).manifestUrl).toBe(
             `https://storage.googleapis.com/${BUCKET}/cities/exemplu/manifest.json`,
         );

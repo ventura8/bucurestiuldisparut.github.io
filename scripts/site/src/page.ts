@@ -1,3 +1,5 @@
+import { APP_ICON_FILES } from '@hcm/shared/app';
+
 import { element, renderDocument, type HtmlElement } from './html.js';
 import { iconLinks } from './icons.js';
 import type { SiteSpec } from './site-spec.js';
@@ -54,6 +56,8 @@ export interface PageAssets {
      * `hosting/city-page.ts`), after `config.js`. None when the page's `config.js` ends with it (the generic city page).
      */
     readonly tabIcon?: string;
+    /** The installable app's web app manifest beside the page (`app.webmanifest`, docs/ENGINE_API.md → Installable app). */
+    readonly manifest?: string;
 }
 
 /** A city site's own files, next to its page. */
@@ -89,6 +93,16 @@ function redirectScript(assets: PageAssets): HtmlElement[] {
     return assets.redirect === undefined ? [] : [element('script', { src: assets.redirect })];
 }
 
+/** The installable app's manifest, and its large icon for iOS's home screen (which reads no manifest icon). */
+function manifestLinks(assets: PageAssets): HtmlElement[] {
+    return assets.manifest === undefined
+        ? []
+        : [
+              element('link', { rel: 'manifest', href: assets.manifest }),
+              element('link', { rel: 'apple-touch-icon', href: APP_ICON_FILES.small }),
+          ];
+}
+
 /** After `config.js`, whose city it reads; deferred, so it runs before the engine's module. */
 function tabIconScript(assets: PageAssets): HtmlElement[] {
     return assets.tabIcon === undefined ? [] : [element('script', { src: assets.tabIcon, defer: true })];
@@ -109,6 +123,7 @@ function head(inputs: PageInputs): HtmlElement {
         element('meta', { name: 'theme-color', content: spec.themeColor }),
         element('title', {}, [spec.title]),
         ...iconLinks(),
+        ...manifestLinks(assets),
         ...redirectScript(assets),
         element('link', { rel: 'stylesheet', href: `${assets.engineFolder}${ENGINE_STYLESHEET_FILE}` }),
         element('link', { rel: 'stylesheet', href: assets.stylesheet }),

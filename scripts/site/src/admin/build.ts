@@ -1,3 +1,5 @@
+import type { AppFile } from '../app.js';
+import { ADMIN_APP_FILES } from './app.js';
 import { SiteBuildError } from '../errors.js';
 import type { SiteFileSystem } from '../files.js';
 import { DEFAULT_SEED_DIR, LEGACY_FOLDER, planLegacyBundle, type AdminFile } from './legacy.js';
@@ -5,7 +7,6 @@ import { subresourceIntegrity } from '../sri.js';
 import { ADMIN_SCRIPT_FILE, ADMIN_STYLESHEET_FILE, renderAdminPage } from './page.js';
 import { DEFAULT_PROJECT_FILE, planProjectFile } from './project.js';
 import { planRuntimeFile, type BuildEnvironment } from './runtime.js';
-import { PUSH_SERVICE_WORKER_FILE, PUSH_SERVICE_WORKER_SOURCE } from './service-worker.js';
 import { planStarterList } from './starter.js';
 
 /**
@@ -17,7 +18,10 @@ import { planStarterList } from './starter.js';
  * <outDir>/index.html                    generated (page.ts), naming the digest of the pinned mapbox-gl.js
  * <outDir>/runtime.json                  the release and, for a start-up deploy, `startUp` (runtime.ts)
  * <outDir>/project.json                  the committed infra/project.json, checked (project.ts, CR-M2b-26)
- * <outDir>/firebase-messaging-sw.js      M4's web push service worker (service-worker.ts)
+ * <outDir>/firebase-messaging-sw.js      M4's web push service worker (service-worker.ts), also the installable app's
+ *                                        worker, which keeps nothing (app.ts)
+ * <outDir>/app.webmanifest, app.js, …    the installable app's manifest, icons and the page script that registers the
+ *                                        worker and keeps the install prompt (app.ts)
  * <outDir>/starter.json                  the release's list of the starter files: their version and SHA-256 (starter.ts), which
  *                                        an installed starter checks a newer file against before it replaces itself
  * <outDir>/fonts/…                       the kit's self-hosted fonts and their licences (packages/ui/fonts), which the
@@ -101,7 +105,7 @@ function fontFiles(files: SiteFileSystem, fontsDir: string): AdminFile[] {
     return [...fonts, 'LICENSES.md'].map((name) => ({ from: `${fontsDir}/${name}`, to: `${FONTS_FOLDER}/${name}` }));
 }
 
-function write(files: SiteFileSystem, outDir: string, file: AdminFile): void {
+function write(files: SiteFileSystem, outDir: string, file: AdminFile | AppFile): void {
     const target = `${outDir}/${file.to}`;
     if ('content' in file) {
         files.write(target, file.content);
@@ -146,13 +150,12 @@ export function buildAdminSite(options: AdminBuildOptions, files: SiteFileSystem
     const project = planProjectFile(files, inputs.projectFile);
     const runtime = planRuntimeFile(files, inputs.env);
     const page = renderAdminPage(undefined, { mapboxGlIntegrity: mapboxGlIntegrity(files, inputs.mapboxGlDir) });
-    const worker: AdminFile = { to: PUSH_SERVICE_WORKER_FILE, content: PUSH_SERVICE_WORKER_SOURCE };
     const starter = planStarterList(files);
-    const planned: AdminFile[] = [
+    const planned: (AdminFile | AppFile)[] = [
         { to: 'index.html', content: page },
         runtime.file,
         project.file,
-        worker,
+        ...ADMIN_APP_FILES,
         starter,
         ...fonts,
         ...legacy.files,

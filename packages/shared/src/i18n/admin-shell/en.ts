@@ -74,6 +74,8 @@ export const en: AdminShellMessages = {
     'adminShell.auth.signedInAs': 'Signed in as {email}',
     'adminShell.account.label': 'Account and preferences',
     'adminShell.account.close': 'Close',
+    'adminShell.account.installHint': 'Open the administration in its own window, from your home screen or your list of apps.',
+    'adminShell.account.installFix': "Install the administration as an app to use your device's colour.",
     'adminShell.account.analytics': 'Anonymous usage and performance statistics of the administration (Google Analytics)',
     'adminShell.account.analyticsVisitor': 'Anonymous usage and performance statistics of the Contribute page (Google Analytics)',
     'adminShell.notice.close': 'Close the message',

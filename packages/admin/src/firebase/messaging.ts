@@ -14,8 +14,8 @@
  *
  * M6 (`docs/research/M6-interfaces.md` §2.3, S-A58-BAD-OLD-SERVICE-WORKER): the admin moved from the Hosting site's root to
  * `/admin/`, so its worker's scope is `/admin/` now. A pre-M6 admin registered it with the scope `/`, which is the public
- * map's since M6: before registering its own, each registrar unregisters a registration of the site's root
- * (`retireRootWorker`), so no admin worker controls the viewer, and the device's new registration is sent to the server
+ * map's since M6: before registering its own, each registrar unregisters a push worker registered at the site's root
+ * (`retireRootWorker`; the public map's own app worker there stays), so no admin worker controls the viewer, and the device's new registration is sent to the server
  * as any registration is. The stand-in registers the real worker too where the browser lets it (the e2e projects block
  * service workers unless a spec allows them) and hands out its fixed token either way.
  *
@@ -44,10 +44,24 @@ import { messageOf, PushFailure, pushFailureOf } from '../inbox/push-failure.js'
 /** The service worker's file, next to the admin's page; its scope is the page's folder. */
 export const PUSH_SERVICE_WORKER = 'firebase-messaging-sw.js';
 
+/** A service worker as far as the root's retirement reads it. */
+interface WorkerScript {
+    readonly scriptURL: string;
+}
+
 /** A service worker registration as far as the root's retirement reads it. */
 interface WorkerRegistration {
     readonly scope: string;
+    readonly active?: WorkerScript | null;
+    readonly waiting?: WorkerScript | null;
+    readonly installing?: WorkerScript | null;
     unregister(): Promise<boolean>;
+}
+
+/** Whether a worker of `registration` is the push worker (a pre-M6 admin's), not the public map's own app worker (`sw.js`). */
+function isPushWorker(registration: WorkerRegistration): boolean {
+    const scripts = [registration.active, registration.waiting, registration.installing];
+    return scripts.some((worker) => worker?.scriptURL.endsWith(`/${PUSH_SERVICE_WORKER}`) === true);
 }
 
 /** What the registrar needs of the browser (the node tests pass a plain object). */
@@ -68,8 +82,8 @@ export interface PushScope {
 }
 
 /**
- * Unregisters every service worker of the site's root scope (`<origin>/`): the push worker a pre-M6 admin registered there,
- * now the public map's scope. Best effort: a browser without the API, or a refusal, leaves things as they are. Returns how
+ * Unregisters the push worker of the site's root scope (`<origin>/`) that a pre-M6 admin registered there, now the public
+ * map's scope; the public map's own installable app worker there (`sw.js`, docs/ENGINE_API.md → *Installable app*) stays. Best effort: a browser without the API, or a refusal, leaves things as they are. Returns how
  * many it unregistered.
  */
 export async function retireRootWorker(scope: PushScope): Promise<number> {
@@ -82,7 +96,7 @@ export async function retireRootWorker(scope: PushScope): Promise<number> {
     const registrations = await worker.getRegistrations().catch(() => []);
     const retired = await Promise.all(
         registrations
-            .filter((registration) => registration.scope === root)
+            .filter((registration) => registration.scope === root && isPushWorker(registration))
             .map((registration) => registration.unregister().catch(() => false)),
     );
     return retired.filter(Boolean).length;

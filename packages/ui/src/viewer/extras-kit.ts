@@ -19,6 +19,7 @@ export {
     streetViewUrl,
     translate,
 } from '@hcm/shared';
+export { installApp, installGivesAccent, watchInstall } from '../app-install.js';
 export { cssProperties } from '../components/css-properties.js';
 export { deviceAccentState } from '../theme/device-accent.js';
 export { tabbableElements, trapTab } from '../components/focus.js';

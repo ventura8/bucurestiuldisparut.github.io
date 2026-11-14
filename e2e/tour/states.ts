@@ -390,7 +390,17 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
             await expectFrame(tour, true);
             await expectMapboxControls(tour);
         },
-        states: ['skip-link', 'home', 'menu-open', 'share-toast', 'locate-toast', 'my-location', 'settings', 'language'],
+        states: [
+            'skip-link',
+            'home',
+            'menu-open',
+            'share-toast',
+            'locate-toast',
+            'my-location',
+            'settings',
+            'settings-install',
+            'language',
+        ],
     },
     {
         title: 'A historical year, the timeline and the Layers panel',
@@ -590,6 +600,10 @@ const ADMIN_STATES = {
     claim: { title: 'The claim panel: the map has no owner yet', visit: 'smoke.spec.ts, the owner' },
     'setup-billing': { title: 'Setup after the claim, open at billing (normal mode)', visit: 'smoke.spec.ts, the owner' },
     'account-menu': { title: 'The account menu (a dialog): language, theme, analytics, sign out', visit: 'smoke.spec.ts, the owner' },
+    'account-menu-install': {
+        title: "The account menu once the browser offers the install: App with Install app, and Device accent's note offering it",
+        visit: 'shell/app.spec.ts, S-A185-HAPPY-INSTALLABLE',
+    },
     'unknown-route': { title: 'An unknown address: Setup with the "page not found" snackbar', visit: 'smoke.spec.ts, the owner' },
     blocked: { title: 'A stranger: the "not an admin" panel', visit: 'smoke.spec.ts, the stranger' },
     'setup-self-test': {

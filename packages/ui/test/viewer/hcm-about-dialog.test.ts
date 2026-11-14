@@ -279,3 +279,53 @@ describe('<hcm-about-dialog>: the device accent note', () => {
         expect(shadowQuery(element, '.accent-note').textContent).toContain("Your device's accent colour is grey");
     });
 });
+
+describe('<hcm-about-dialog>: Install app (docs/ENGINE_API.md → Installable app)', () => {
+    /** What the page script leaves on `window` (`startAppPage`): the prompt waits, and each install is recorded. */
+    function offerInstall(): string[] {
+        const asked: string[] = [];
+        window.HistoricCityMapApp = {
+            installable: true,
+            install: () => {
+                asked.push('install');
+                return Promise.resolve('accepted');
+            },
+        };
+        window.dispatchEvent(new Event('hcm-install-available'));
+        return asked;
+    }
+
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmAboutDialog();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+        Reflect.deleteProperty(window, 'HistoricCityMapApp');
+    });
+
+    it('happyPath_settingsOffersTheInstallAndTheAccentNoteSaysItBringsTheDevicesColour', async () => {
+        const element = await about({ mode: 'settings', locale: 'en' });
+        const asked = offerInstall();
+        await element.updateComplete;
+
+        expect(shadowText(element)).toContain('Open the map in its own window');
+        expect(shadowQuery(element, '.accent-note').textContent).toContain("Install the map as an app to use your device's colour.");
+        const buttons = shadowQueryAll(element, 'hcm-button').filter((button) => button.textContent.includes('Install app'));
+        expect(buttons).toHaveLength(2);
+        buttons[0]?.click();
+        expect(asked).toEqual(['install']);
+    });
+
+    it('badPath_noInstallPromptNoInstallAndTheOldNote', async () => {
+        const element = await about({ mode: 'settings', locale: 'en' });
+
+        expect(shadowText(element)).not.toContain('Install app');
+        expect(shadowQuery(element, '.accent-note').textContent).toContain('Firefox on a computer shares it');
+        element.remove();
+        offerInstall();
+        // Detached, the dialog no longer listens.
+        expect(element.installable).toBe(false);
+    });
+});

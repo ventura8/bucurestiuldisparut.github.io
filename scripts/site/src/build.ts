@@ -1,6 +1,8 @@
 import type { EngineConfig } from '@hcm/shared';
+import { WEB_APP_MANIFEST_FILE } from '@hcm/shared/app';
 
 import { joinAdditions } from './additions.js';
+import { SITE_APP_LINES, appFiles, appRelease, siteWorkerFile } from './app.js';
 import { readConfigJs } from './config-js.js';
 import { contentSecurityPolicy, type ExtraSources } from './csp.js';
 import { SiteBuildError } from './errors.js';
@@ -35,6 +37,9 @@ import { subresourceIntegrity } from './sri.js';
  *                              renamed to config.js's when the source names the site's `legacyCityId`
  * <outDir>/data/media/<id>/…   the photo derivatives
  * <outDir>/engine/…            packages/engine/dist (engine.mjs, its chunks, engine.iife.js, engine.css, source maps)
+ * <outDir>/app.webmanifest     the installable app (`app.ts`, docs/ENGINE_API.md → Installable app), which the page links,
+ * <outDir>/app-icon-*.png      with its three icons; `tab-icon.js` registers its worker and keeps the install prompt
+ * <outDir>/sw.js               the app's worker: network first, a copy of the page and its shell only for a visit offline
  * ```
  *
  * A site whose `site.json` has `publicManifest: true`, built with the public bucket named (`publicBucket`, from
@@ -85,7 +90,7 @@ const DEFAULT_ENGINE_DIR = 'packages/engine/dist';
 const DEFAULT_MAPBOX_GL_DIR = 'node_modules/mapbox-gl/dist';
 
 /** One output file, relative to `outDir`: generated text, or a copy of a repository file. */
-type PlannedFile = { readonly to: string; readonly content: string } | { readonly to: string; readonly from: string };
+type PlannedFile = { readonly to: string; readonly content: string | Uint8Array } | { readonly to: string; readonly from: string };
 
 function readJson(files: SiteFileSystem, path: string): unknown {
     try {
@@ -222,13 +227,17 @@ function redirectPlan(options: SiteBuildOptions): { readonly assets: PageAssets;
 function pageFiles(options: SiteBuildOptions, parts: PageParts, files: SiteFileSystem): PlannedFile[] {
     const integrityOf = integrity(files, options.mapboxGlDir ?? DEFAULT_MAPBOX_GL_DIR);
     const redirect = redirectPlan(options);
-    const page = renderSitePage({ spec: parts.spec, csp: parts.csp, mapboxGlIntegrity: integrityOf, assets: redirect.assets });
+    const assets = { ...redirect.assets, manifest: WEB_APP_MANIFEST_FILE };
+    const page = renderSitePage({ spec: parts.spec, csp: parts.csp, mapboxGlIntegrity: integrityOf, assets });
+    const app = { title: parts.spec.title, lang: parts.spec.lang, themeColor: parts.spec.themeColor };
     return [
         { to: 'index.html', content: page },
         { to: 'config.js', content: parts.configSource },
-        { to: TAB_ICON_FILE, content: tabIconSource(parts.bucket) },
+        { to: TAB_ICON_FILE, content: `${tabIconSource(parts.bucket)}${SITE_APP_LINES}` },
         { to: 'site.css', from: requireFile(files, `${options.siteDir}/site.css`, 'every site has its page styles') },
         ...redirect.files,
+        ...appFiles(app),
+        siteWorkerFile(appRelease(page, parts.configSource)),
     ];
 }
 

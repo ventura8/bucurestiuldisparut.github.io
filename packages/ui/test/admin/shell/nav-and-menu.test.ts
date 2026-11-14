@@ -197,6 +197,34 @@ describe('<hcm-account-menu>', () => {
         expect(menu.open).toBe(false);
     });
 
+    it('happyPath_installAppWhileTheBrowserOffersIt_andTheAccentNoteSaysItBringsTheDevicesColour', async () => {
+        const asked: string[] = [];
+        window.HistoricCityMapApp = {
+            installable: true,
+            install: () => {
+                asked.push('install');
+                return Promise.resolve('accepted');
+            },
+        };
+        try {
+            const menu = await opened(new FakeAdminApp(adminState({ locale: 'en' })));
+
+            expect(deepText(menu)).toContain('Open the administration in its own window');
+            expect(deepText(menu)).toContain("Install the administration as an app to use your device's colour.");
+            const installs = deepAll(menu, 'hcm-button').filter((button) => button.textContent.includes('Install app'));
+            expect(installs).toHaveLength(2);
+            installs[0]?.click();
+            expect(asked).toEqual(['install']);
+            window.HistoricCityMapApp = { installable: false };
+            window.dispatchEvent(new Event('hcm-install-available'));
+            await updated(menu);
+            expect(deepText(menu)).not.toContain('Install app');
+            expect(deepText(menu)).toContain('Firefox on a computer shares it');
+        } finally {
+            Reflect.deleteProperty(window, 'HistoricCityMapApp');
+        }
+    });
+
     it('badPath_withoutStateOrAppItDoesNothing', async () => {
         const empty = await mount<HcmAccountMenu>(html`<hcm-account-menu></hcm-account-menu>`);
         const orphan = await mount<HcmAccountMenu>(html`<hcm-account-menu .state=${adminState({ analytics: true })}></hcm-account-menu>`);

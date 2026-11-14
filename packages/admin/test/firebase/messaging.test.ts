@@ -192,6 +192,7 @@ describe('retireRootWorker (M6: the admin moved to /admin/)', () => {
         const unregistered: string[] = [];
         const registrations = scopes.map((registrationScope) => ({
             scope: registrationScope,
+            active: { scriptURL: `${registrationScope}${PUSH_SERVICE_WORKER}` },
             unregister: () => {
                 unregistered.push(registrationScope);
                 return refuse ? Promise.reject(new Error('refused')) : Promise.resolve(true);
@@ -239,6 +240,28 @@ describe('retireRootWorker (M6: the admin moved to /admin/)', () => {
         };
         await expect(retireRootWorker(failing)).resolves.toBe(0);
         await expect(retireRootWorker(withRegistrations(['https://demo-hcm.web.app/admin/']).browser)).resolves.toBe(0);
+    });
+
+    it('badPath_thePublicMapsOwnAppWorkerAtTheRootStays', async () => {
+        const unregistered: string[] = [];
+        const appWorker = {
+            scope: 'https://demo-hcm.web.app/',
+            active: { scriptURL: 'https://demo-hcm.web.app/sw.js' },
+            waiting: null,
+            unregister: () => {
+                unregistered.push('sw.js');
+                return Promise.resolve(true);
+            },
+        };
+        const browser: PushScope = {
+            navigator: {
+                serviceWorker: { register: () => Promise.resolve(REGISTRATION), getRegistrations: () => Promise.resolve([appWorker]) },
+            },
+            location: { origin: 'https://demo-hcm.web.app' },
+        };
+
+        await expect(retireRootWorker(browser)).resolves.toBe(0);
+        expect(unregistered).toEqual([]);
     });
 });
 

@@ -32,6 +32,20 @@ async function chooseOtherTheme(page: Page, lang: Locale): Promise<void> {
     await page.keyboard.press('Escape');
 }
 
+/** Fires Chrome's install prompt as Chrome does once the page is installable (headless Chromium never does), then opens Settings. */
+async function openSettingsOfferingInstall(page: Page, lang: Locale): Promise<void> {
+    await page.evaluate(() => {
+        const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+            prompt: () => Promise.resolve(),
+            userChoice: Promise.resolve({ outcome: 'dismissed' }),
+        });
+        window.dispatchEvent(event);
+    });
+    await chooseMenuItem(page, lang, t(lang, 'settings.title'));
+    const dialog = viewer(page).locator('hcm-about-dialog');
+    await expect(dialog.getByRole('button', { name: t(lang, 'app.install') }).first()).toBeVisible();
+}
+
 /** Resizes the window, waits for the viewer's compact-height layout and opens the FAB menu. */
 async function openMenuAt(page: Page, lang: Locale, size: { readonly width: number; readonly height: number }): Promise<void> {
     await page.setViewportSize(size);
@@ -61,6 +75,11 @@ export const SETTINGS_STATES = {
             await expect(page.getByRole('dialog', { name: t(lang, 'settings.title') })).toBeVisible();
             await expect(dialog.getByRole('radiogroup', { name: t(lang, 'theme.label') })).toBeVisible();
         },
+        escape: ({ lang }: SettingsTour) => ({ opener: t(lang, 'action.menu') }),
+    },
+    'settings-install': {
+        title: "Settings once the browser offers the install: App with Install app, and Device accent's note offering it on a computer",
+        enter: ({ page, lang }: SettingsTour) => openSettingsOfferingInstall(page, lang),
         escape: ({ lang }: SettingsTour) => ({ opener: t(lang, 'action.menu') }),
     },
     'other-theme-menu': {

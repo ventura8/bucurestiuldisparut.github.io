@@ -47,6 +47,10 @@
             "types": "./src/overlays/credits.ts",
             "default": "./src/overlays/credits.ts"
         },
+        "./app": {
+            "types": "./src/kit/app.ts",
+            "default": "./src/kit/app.ts"
+        },
         "./tab-icon": {
             "types": "./src/kit/tab-icon.ts",
             "default": "./src/kit/tab-icon.ts"
