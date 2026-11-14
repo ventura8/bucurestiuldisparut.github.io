@@ -1,11 +1,13 @@
 /**
- * The pointers on `<hcm-timeline>`'s track. A mouse or a pen: a press selects the stop under it and a drag goes on
+ * The pointers on `<hcm-timeline>`'s track. A mouse on a scrolling track pans it (a click selects, `timeline-pan.ts`). A
+ * mouse elsewhere or a pen: a press selects the stop under it and a drag goes on
  * selecting until release; hovering shows the year chip on a stop without its own label (`timeline-tip.ts`). A finger
  * scrubs along the track, each year it enters selected at once, the chip naming it (`timeline-scrub.ts`); on a scrolling
  * track a finger elsewhere than on the thumb may scroll the card, so it selects only as a tap, the chip shown while down.
  * Selections during a press are live (`select`, coalesced by the timeline to one event per frame); its end `settle`s them,
  * and only a press the visitor lifted (not a cancelled one) may open the date menu of a year with several dates (V13).
  */
+import { startPan } from './timeline-pan.js';
 import { startScrub, type PeekPlace } from './timeline-scrub.js';
 
 /** Px a finger may move on a scrolling track and still tap a year (beyond it the browser scrolls). */
@@ -33,6 +35,8 @@ export interface TimelinePointerHost {
     readonly rtl: () => boolean;
     /** The track scrolls in its card (`density` `scroll`). */
     readonly scrolls: () => boolean;
+    /** The card's scroller, which a mouse drag pans on a scrolling track (`timeline-pan.ts`). */
+    readonly scroller: () => HTMLElement | null;
     /** The number of stops. */
     readonly count: () => number;
     /** Selects a stop during a press (live: the timeline sends at most one event per frame). */
@@ -74,8 +78,33 @@ export class TimelinePointer {
             return;
         }
         event.preventDefault();
-        this.#drag(track, event);
+        const scroller = this.#panning(event);
+        if (scroller === null) {
+            this.#drag(track, event);
+        } else {
+            this.#pan(track, scroller, event);
+        }
     };
+
+    /** The scroller a mouse press pans: on a scrolling track, off the thumb; none otherwise. */
+    #panning(event: PointerEvent): HTMLElement | null {
+        const pans = event.pointerType === 'mouse' && this.#host.scrolls() && !onThumb(event);
+        return pans ? this.#host.scroller() : null;
+    }
+
+    /** A mouse on a scrolling track: a drag pans the years, a click without a drag selects the one under it. */
+    #pan(track: HTMLElement, scroller: HTMLElement, down: PointerEvent): void {
+        this.#stop = startPan(scroller, down, {
+            vertical: this.#host.vertical(),
+            onClick: (event) => {
+                this.#host.select(this.#indexAt(track, event));
+                this.#host.focus();
+            },
+            onEnd: (released) => {
+                this.end(released);
+            },
+        });
+    }
 
     /** A finger: a tap on a scrolling track elsewhere than on the thumb (the card may scroll), else a scrub. */
     #touch(track: HTMLElement, event: PointerEvent): void {

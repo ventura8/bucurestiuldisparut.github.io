@@ -99,6 +99,17 @@ export const timelineStyles = [
             touch-action: pan-y;
         }
 
+        /* A mouse drags the years along a scrolling card (timeline-pan.ts); a finger keeps scrolling it natively. */
+        @media (pointer: fine) {
+            :host([density='scroll']) .track {
+                cursor: grab;
+            }
+
+            :host([density='scroll']) .scroller[data-panning] .track {
+                cursor: grabbing;
+            }
+        }
+
         :host([density='scroll']) .scroller {
             mask-image: linear-gradient(
                 var(--hcm-fade-to),

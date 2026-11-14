@@ -1789,6 +1789,28 @@
             "notes": "The review of track/yearchip, 2026-11-08 (stops 17 px apart) and the Pixel Tablet, 2026-11-12 (no finger scroll). Below 14 px per gap the stops keep 16 px apart, every other one labelled, and the selected one is centred when no drag is on. packages/ui/src/viewer/timeline-model.ts, timeline-styles.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts, timeline-model.test.ts."
         },
         {
+            "id": "S-V04-HAPPY-MOUSE-PAN",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A mouse drag on a timeline that scrolls pans the years and selects none",
+            "asserts": "with sixty-two stops at 768x1024 (density scroll) a mouse drag of 160 px along the track scrolls the card more than 100 px and leaves the selected year as it was; a vertical wheel then scrolls the card back",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14: a finger could scroll a long timeline, a mouse could not. Past 4 px a mouse press pans (grab/grabbing cursor), a click within it selects; a lying card takes the vertical and the shift-wheel sideways; focus centres the selected year. packages/ui/src/viewer/timeline-pan.ts, timeline-pointer.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline-pan.test.ts."
+        },
+        {
+            "id": "S-V04-BAD-MOUSE-PAN-CLICK",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A mouse click on a timeline that scrolls still selects the year under it",
+            "asserts": "with sixty-two stops at 768x1024, Home selected, a mouse press that moves 2 px (under the 4 px threshold) and lifts selects the year under it: the slider's value is no longer 0",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The drag threshold keeps a click a click (timeline-pan.ts PAN_SLOP_PX); unit tests in packages/ui/test/viewer/hcm-timeline-pan.test.ts."
+        },
+        {
             "id": "S-V04-BAD-MANY-YEARS-FIT",
             "behaviour": "V04",
             "area": "viewer",

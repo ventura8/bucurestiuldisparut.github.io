@@ -24,6 +24,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { cssProperties } from '../components/css-properties.js';
 import { countOf, dateBadge, datesOpenEvent, datesValueText } from './timeline-dates.js';
 import { labelShown, SCROLL_GAP_PX, stopIndex, timelineDensity, type TimelineDensity, type TimelineStop } from './timeline-model.js';
+import { wheelAlong } from './timeline-pan.js';
 import { TimelinePointer } from './timeline-pointer.js';
 import { DatesPeek, datesPeekEvent, peekDates, peekPlace } from './timeline-peek.js';
 import { YearSends } from './timeline-sends.js';
@@ -118,6 +119,7 @@ export class HcmTimeline extends LitElement {
         vertical: () => this.orientation === 'vertical',
         rtl: () => this.#rtl(),
         scrolls: () => this.density === 'scroll',
+        scroller: () => this.#scroller(),
         count: () => this.stops.length,
         select: (index) => {
             this.#select(index, true);
@@ -285,6 +287,11 @@ export class HcmTimeline extends LitElement {
         this.#fadeEdges();
     };
 
+    /** A wheel over a lying scrolling card scrolls the years sideways (`timeline-pan.ts`). */
+    readonly #onWheel = (event: WheelEvent): void => {
+        wheelAlong(event, this.density === 'scroll' && this.orientation !== 'vertical');
+    };
+
     /** Moves keyboard focus to the thumb (the viewer's "skip to timeline" link). */
     override focus(options?: FocusOptions): void {
         this.renderRoot.querySelector<HTMLElement>('[role="slider"]')?.focus(options);
@@ -294,7 +301,9 @@ export class HcmTimeline extends LitElement {
         const index = stopIndex(this.stops, this.value);
         const position = { '--hcm-position': percentText(this.#percent(index)) };
         const fade = { '--hcm-fade-start': this.fade.start ? FADE_PX : '0px', '--hcm-fade-end': this.fade.end ? FADE_PX : '0px' };
-        return html`<div class="scroller" ${cssProperties(fade)} @scroll=${this.#onScroll}>${this.#track(index, position)}</div>
+        return html`<div class="scroller" ${cssProperties(fade)} @scroll=${this.#onScroll} @wheel=${this.#onWheel}>
+                ${this.#track(index, position)}
+            </div>
             ${this.tip === null || this.collapsed ? nothing : this.#tipChip(this.tip)}<span class="visually-hidden" aria-live="polite"
                 >${this.said}</span
             >`;
@@ -332,8 +341,10 @@ export class HcmTimeline extends LitElement {
         }
     }
 
+    /** A keyboard's focus centres the selected year (a mouse's, after a pan, leaves the years where the visitor put them). */
     readonly #onFocus = (): void => {
         if (this.renderRoot.querySelector('.thumb:focus-visible') !== null) {
+            this.#reveal();
             this.#hintAt(stopIndex(this.stops, this.value));
         }
     };
