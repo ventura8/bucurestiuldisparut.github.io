@@ -19,6 +19,7 @@ import { PHOTO_VERSION_JOURNEY, PHOTO_VERSION_STATES } from './photo-version-sta
 import { MAP_MENU_JOURNEY, MAP_MENU_STATES } from './map-menu-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
 import { SETTINGS_STATES, SHORT_LANDSCAPE_JOURNEY, THEME_MENU_JOURNEY } from './settings-states.js';
+import { UPDATE_JOURNEY, UPDATE_STATES } from './update-states.js';
 import { hasBottomSheets, scrollToEnd, toDetent } from './sheets.js';
 import { notFound, withoutWebGl } from './faults.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
@@ -119,6 +120,7 @@ const VIEWER_STATES = {
     ...PHOTO_VERSION_STATES,
     ...MAP_MENU_STATES,
     ...SETTINGS_STATES,
+    ...UPDATE_STATES,
     'skip-link': {
         title: 'The first Tab: the skip link shows over the map with a focus ring',
         enter: async ({ page, lang }) => {
@@ -471,6 +473,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         },
         states: ['toast'],
     },
+    UPDATE_JOURNEY,
     { title: 'Loading', id: 'loading', boot: openWithManifestHeld, states: ['loading'] },
 ];
 

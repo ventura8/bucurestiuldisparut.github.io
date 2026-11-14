@@ -208,6 +208,8 @@ export const zh: Messages = {
     'app.title': '应用',
     'app.install': '安装应用',
     'app.installHint': '从主屏幕或应用列表在单独的窗口中打开地图。',
+    'app.updateReady': '地图的新版本已就绪。重新加载即可使用；地图会在您当前的位置打开。',
+    'app.reload': '重新加载',
     'settings.title': '设置',
     'language.label': '语言',
     'language.unavailable': '无法加载该语言。',

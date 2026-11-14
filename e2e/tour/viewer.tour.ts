@@ -269,6 +269,14 @@ test(
 );
 
 test(
+    'A new version of the map is ready',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V72-HAPPY-SELF-UPDATE'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('update'));
+    },
+);
+
+test(
     'Loading',
     { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE'] },
     async ({ page, context, lang }) => {

@@ -28,6 +28,7 @@ export class HcmSnackbar extends LitElement {
         actionLabel: { type: String, attribute: 'action-label' },
         closeLabel: { type: String, attribute: 'close-label' },
         timeoutMs: { type: Number, attribute: 'timeout-ms' },
+        stacked: { type: Boolean, reflect: true },
         dismissed: { state: true },
         announcement: { state: true },
     };
@@ -76,6 +77,18 @@ export class HcmSnackbar extends LitElement {
                 padding-block: 14px;
             }
 
+            /* M3's longer action: the message on its own line, the action and Close under it (a narrow dock, text spacing). */
+            :host([stacked]) .snackbar {
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                padding-block-end: 4px;
+            }
+
+            :host([stacked]) .message {
+                flex-basis: 100%;
+                padding-block-end: 4px;
+            }
+
             /* The action keeps its label whole and its 48 px target (an editor's Undo on a phone, CR-M2c-17). */
             .action {
                 flex: none;
@@ -100,6 +113,8 @@ export class HcmSnackbar extends LitElement {
     declare actionLabel: string;
     declare closeLabel: string;
     declare timeoutMs: number;
+    /** The message on a line of its own, the action and Close under it (M3's layout for a longer action). */
+    declare stacked: boolean;
     declare dismissed: boolean;
     /** The live region's text: empty until `ANNOUNCE_DELAY_MS` after a message shows, and again once it is dismissed. */
     declare announcement: string;
@@ -113,6 +128,7 @@ export class HcmSnackbar extends LitElement {
         this.actionLabel = '';
         this.closeLabel = '';
         this.timeoutMs = 6000;
+        this.stacked = false;
         this.dismissed = false;
         this.announcement = '';
     }

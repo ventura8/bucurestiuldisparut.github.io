@@ -215,6 +215,8 @@ export const fr: Messages = {
     'app.title': 'Application',
     'app.install': "Installer l'application",
     'app.installHint': "Ouvrez la carte dans sa propre fenêtre, depuis l'écran d'accueil ou la liste de vos applications.",
+    'app.updateReady': 'Une nouvelle version de la carte est prête. Rechargez pour l’utiliser ; la carte s’ouvre là où vous êtes.',
+    'app.reload': 'Recharger',
     'settings.title': 'Paramètres',
     'language.label': 'Langue',
     'language.unavailable': 'Impossible de charger cette langue.',

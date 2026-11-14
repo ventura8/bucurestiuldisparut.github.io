@@ -205,6 +205,8 @@ export const ar: Messages = {
     'app.title': 'التطبيق',
     'app.install': 'تثبيت التطبيق',
     'app.installHint': 'افتح الخريطة في نافذتها الخاصة من الشاشة الرئيسية أو من قائمة تطبيقاتك.',
+    'app.updateReady': 'نسخة جديدة من الخريطة جاهزة. أعد التحميل لاستخدامها؛ ستُفتح الخريطة حيث أنت.',
+    'app.reload': 'إعادة التحميل',
     'settings.title': 'الإعدادات',
     'language.label': 'اللغة',
     'language.unavailable': 'تعذّر تحميل هذه اللغة.',

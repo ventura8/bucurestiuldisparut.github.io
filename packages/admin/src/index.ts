@@ -18,6 +18,7 @@ import type { Clock, HashLocation, KeyValueStore } from './app/ports.js';
 import type { AdminRuntime, FirebaseWebConfig } from './app/config.js';
 import { errorEndpointFor, installErrorHooks, AdminErrorReporter, routeOfHash } from './app/errors.js';
 import type { AdminApp, AdminDeps, TelemetryView } from './app/mount.js';
+import { watchActivity } from './app/activity.js';
 import { watchRelease, type ReleaseWatch } from './app/release-watch.js';
 import type { AdminProject, SetupModuleSpec } from './app/services.js';
 import { setupModuleFor } from './app/setup-wiring.js';
@@ -323,6 +324,7 @@ export function browserDeps(parts: BrowserParts): BootEnvironment<EntrySetup, En
         const releases = watchRelease({ fetch: fetcher, clock, visibility, release: runtime.release, log: log.child('release') });
         return {
             ...{ project: project ?? projectOf(config), firebase, fetch: fetcher, clock, log, releases },
+            idle: watchActivity(win, clock),
             google: createGoogleAuth(popupFor(win, handles, e2e, clock), { fetch: fetcher, clock, log }),
             ...{ session: parts.session, local: parts.local, location: parts.location, visibility },
             languages: win.navigator.languages,

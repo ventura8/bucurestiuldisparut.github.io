@@ -207,6 +207,8 @@ export const tr: Messages = {
     'app.title': 'Uygulama',
     'app.install': 'Uygulamayı yükle',
     'app.installHint': 'Haritayı ana ekrandan veya uygulama listenizden kendi penceresinde açın.',
+    'app.updateReady': 'Haritanın yeni sürümü hazır. Kullanmak için yeniden yükleyin; harita bulunduğunuz yerde açılır.',
+    'app.reload': 'Yeniden yükle',
     'settings.title': 'Ayarlar',
     'language.label': 'Dil',
     'language.unavailable': 'Bu dil şu anda yüklenemiyor.',

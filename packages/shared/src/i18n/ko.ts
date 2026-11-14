@@ -208,6 +208,8 @@ export const ko: Messages = {
     'app.title': '앱',
     'app.install': '앱 설치',
     'app.installHint': '홈 화면이나 앱 목록에서 지도를 별도의 창으로 엽니다.',
+    'app.updateReady': '지도의 새 버전이 준비되었습니다. 새로고침하면 사용할 수 있으며, 지도는 지금 보던 위치에서 열립니다.',
+    'app.reload': '새로고침',
     'settings.title': '설정',
     'language.label': '언어',
     'language.unavailable': '이 언어를 불러올 수 없습니다.',

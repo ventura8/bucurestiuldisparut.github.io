@@ -36,6 +36,10 @@ export interface ShellWatchSources {
     /** The address: the release's reload, and (M13 §3) the Contribute page's welcome while it is open. */
     readonly location: ReleaseFollowDeps['location'] & HashLocation;
     readonly unsaved: ReleaseFollowDeps['unsaved'];
+    /** The installed app updates itself (2026-11-14): whether nobody uses the tab (`./activity.ts`); none: never idle. */
+    readonly idle?: ReleaseFollowDeps['idle'];
+    /** The tab's `sessionStorage`: the release it reloaded for, so a reload never loops. */
+    readonly session?: ReleaseFollowDeps['session'];
     /** Finding 72: the shell's state, the areas' stores, the pages and the log, for this computer's worker. */
     readonly states: ShellStates;
     readonly stores: JobsStores;

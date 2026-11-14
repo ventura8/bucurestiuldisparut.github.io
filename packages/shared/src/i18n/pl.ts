@@ -208,6 +208,8 @@ export const pl: Messages = {
     'app.title': 'Aplikacja',
     'app.install': 'Zainstaluj aplikację',
     'app.installHint': 'Otwieraj mapę we własnym oknie, z ekranu głównego lub z listy aplikacji.',
+    'app.updateReady': 'Nowa wersja mapy jest gotowa. Załaduj ponownie, aby jej użyć; mapa otworzy się tam, gdzie jesteś.',
+    'app.reload': 'Załaduj ponownie',
     'settings.title': 'Ustawienia',
     'language.label': 'Język',
     'language.unavailable': 'Nie udało się wczytać tego języka.',

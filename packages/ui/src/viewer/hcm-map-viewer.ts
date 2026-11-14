@@ -34,6 +34,7 @@ import { isViewerKey, shortcutOf } from './viewer-keyboard.js';
 import { modalOpen } from './viewer-legal.js';
 import { renderViewer, type OverlayOpacityDetail, type ViewerHandlers } from './viewer-render.js';
 import { viewerStyles } from './viewer-styles.js';
+import { ViewerUpdates } from './viewer-update.js';
 import type { MapSize } from './viewer-zoom.js';
 
 export const HCM_MAP_VIEWER_TAG = 'hcm-map-viewer';
@@ -143,6 +144,8 @@ export class HcmMapViewer extends LitElement {
         },
     );
     readonly #tracker = new OverlayChangeTracker();
+    /** A newer deploy: the page script's reload held while something is open, else the Reload snackbar (`viewer-update.ts`). */
+    readonly #updates = new ViewerUpdates(this);
     /** The timeline's pill on a phone (V12) and its date picker (V13). */
     readonly #dock = new TimelineDock(this);
     readonly #openers: Record<Opener, Element | null> = { sheet: null, lightbox: null };
@@ -346,6 +349,7 @@ export class HcmMapViewer extends LitElement {
             finePointer: this.finePointer,
             dock: this.#dock,
             gameConsole: isGameConsole(navigator.userAgent),
+            update: this.#updates.offer(),
         };
         return renderViewer(view, this.#handlers);
     }

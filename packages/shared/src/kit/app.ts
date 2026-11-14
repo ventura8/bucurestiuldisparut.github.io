@@ -4,5 +4,6 @@
  * never imports it.
  */
 export * from './app-page.js';
+export * from './app-update.js';
 export * from './app-worker.js';
 export * from './web-app-manifest.js';

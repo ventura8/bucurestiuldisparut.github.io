@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PageVisibility } from '../../src/app/ports.js';
-import { followReleases, RETURN_WINDOW_MS } from '../../src/app/release-reload.js';
+import { followReleases, RELOAD_RETRY_MS, RELOADED_FOR_KEY, RETURN_WINDOW_MS } from '../../src/app/release-reload.js';
 import type { ShellStateAccess } from '../../src/state/state.js';
 import { FakeClock, testLog } from './fakes.js';
 
@@ -32,11 +32,35 @@ class SwitchedVisibility implements PageVisibility {
     }
 }
 
-function world(options: { shown?: boolean; unsaved?: boolean } = {}) {
+interface WorldOptions {
+    shown?: boolean;
+    unsaved?: boolean;
+    /** Whether nobody uses the tab; absent: no activity watch. */
+    idle?: boolean;
+    /** The tab's storage: absent, one that remembers, or one that forgets every write. */
+    session?: 'remembers' | 'forgets';
+}
+
+function sessionOf(kind: WorldOptions['session'], stored: Map<string, string>) {
+    if (kind === undefined) {
+        return undefined;
+    }
+    return {
+        get: (key: string) => stored.get(key) ?? null,
+        set: (key: string, value: string) => {
+            if (kind === 'remembers') {
+                stored.set(key, value);
+            }
+        },
+    };
+}
+
+function world(options: WorldOptions = {}) {
     const clock = new FakeClock();
     const visibility = new SwitchedVisibility();
     visibility.shown = options.shown ?? true;
-    const state = { unsaved: options.unsaved ?? false, reloads: 0, banner: null as string | null };
+    const state = { unsaved: options.unsaved ?? false, idle: options.idle ?? false, reloads: 0, banner: null as string | null };
+    const stored = new Map<string, string>();
     const heard: { listener?: (release: string) => void } = {};
     const stopNewer = vi.fn();
     const releases = {
@@ -61,13 +85,15 @@ function world(options: { shown?: boolean; unsaved?: boolean } = {}) {
                 },
             },
             unsaved: () => state.unsaved,
+            idle: options.idle === undefined ? undefined : () => state.idle,
+            session: sessionOf(options.session, stored),
         },
         shell,
     );
     const serve = (): void => {
         heard.listener?.(NEWER);
     };
-    return { clock, visibility, state, serve, stop, releases, stopNewer, recording };
+    return { clock, visibility, state, serve, stop, releases, stopNewer, recording, stored };
 }
 
 describe('followReleases: a reload by itself', () => {
@@ -145,5 +171,64 @@ describe('followReleases: the Reload banner instead', () => {
         expect(() => {
             stop();
         }).not.toThrow();
+    });
+});
+
+describe('followReleases: the installed app updates itself (2026-11-14)', () => {
+    it('happyPath_aVisibleTabNobodyUsesReloadsAtOnce_andRemembersTheRelease', () => {
+        const w = world({ idle: true, session: 'remembers' });
+        w.clock.advance(RETURN_WINDOW_MS + 1);
+        w.serve();
+        expect(w.state.reloads).toBe(1);
+        expect(w.state.banner).toBeNull();
+        expect(w.stored.get(RELOADED_FOR_KEY)).toBe(NEWER);
+    });
+
+    it('happyPath_aTabInUseShowsTheBanner_thenReloadsOnceNobodyUsesIt', () => {
+        const w = world({ idle: false, session: 'remembers' });
+        w.clock.advance(RETURN_WINDOW_MS + 1);
+        w.serve();
+        expect(w.state.banner).toBe(NEWER);
+        w.clock.advance(RELOAD_RETRY_MS);
+        expect(w.state.reloads).toBe(0);
+        w.state.idle = true;
+        w.clock.advance(RELOAD_RETRY_MS);
+        expect(w.state.reloads).toBe(1);
+    });
+
+    it('badPath_anUnsavedEditHoldsTheRetriesToo', () => {
+        const w = world({ idle: true, unsaved: true });
+        w.serve();
+        w.clock.advance(10 * RELOAD_RETRY_MS);
+        expect(w.state.reloads).toBe(0);
+        expect(w.state.banner).toBe(NEWER);
+    });
+
+    it('badPath_aTabStillOlderAfterItsReloadNeverReloadsAgain_onlyTheBanner', () => {
+        const w = world({ shown: false, session: 'remembers' });
+        w.stored.set(RELOADED_FOR_KEY, NEWER);
+        w.serve();
+        w.visibility.set(true);
+        w.clock.advance(10 * RELOAD_RETRY_MS);
+        expect(w.state.reloads).toBe(0);
+        expect(w.state.banner).toBe(NEWER);
+        expect(w.recording.records.at(-1)).toMatchObject({ level: 'info', data: { release: NEWER } });
+    });
+
+    it('badPath_aTabThatCannotRememberNeverReloadsByItself', () => {
+        const w = world({ shown: false, session: 'forgets' });
+        w.serve();
+        expect(w.state.reloads).toBe(0);
+        expect(w.state.banner).toBe(NEWER);
+    });
+
+    it('happyPath_stoppingCancelsAWaitingRetry', () => {
+        const w = world({ idle: false });
+        w.clock.advance(RETURN_WINDOW_MS + 1);
+        w.serve();
+        w.stop();
+        w.state.idle = true;
+        w.clock.advance(RELOAD_RETRY_MS);
+        expect(w.state.reloads).toBe(0);
     });
 });

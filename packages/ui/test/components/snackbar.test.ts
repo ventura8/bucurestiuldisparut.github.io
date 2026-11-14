@@ -42,6 +42,20 @@ describe('<hcm-snackbar>', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
+    it('happyPath_stackedPutsTheActionAndCloseUnderTheMessageInANarrowBox', async () => {
+        const element = await snackbar(0, 'Reîncărcați');
+        element.style.width = '240px';
+        element.stacked = true;
+        await element.updateComplete;
+        const message = shadowPart(element, '.message').getBoundingClientRect();
+        const action = shadowPart(element, '.action').getBoundingClientRect();
+        const box = shadowPart(element, '.snackbar').getBoundingClientRect();
+
+        expect(element.hasAttribute('stacked')).toBe(true);
+        expect(action.top).toBeGreaterThanOrEqual(message.bottom - 1);
+        expect(action.right).toBeLessThanOrEqual(box.right);
+    });
+
     it('badPath_aSnackbarClosedBeforeItsAnnouncementIsNotAnnounced', async () => {
         vi.useFakeTimers();
         const element = await snackbar(0, '');

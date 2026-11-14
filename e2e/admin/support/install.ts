@@ -67,6 +67,20 @@ export async function setTabVisibility(page: Page, state: 'hidden' | 'visible'):
     }, state);
 }
 
+/**
+ * The owner keeps working on the visible tab through the five-minute look at `runtime.json`: a key every 30 s of the
+ * page's clock, and one at the end. A tab untouched for a minute reloads into a newer admin by itself (the installed app
+ * updates itself, 2026-11-14, `packages/admin/src/app/activity.ts`); one in use gets the Reload banner, with a minute of
+ * headroom before the next quiet retry.
+ */
+export async function workThroughTheLook(page: Page): Promise<void> {
+    for (let step = 0; step < 11; step += 1) {
+        await page.keyboard.press('Shift');
+        await page.clock.fastForward(30_000);
+    }
+    await page.keyboard.press('Shift');
+}
+
 /** The shell's banner that a newer admin is ready, with Reload (finding 29). */
 export function newAdminBanner(page: Page): Locator {
     return page.locator('hcm-admin-shell').locator('.banner.release');

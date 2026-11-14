@@ -2,7 +2,7 @@ import type { EngineConfig } from '@hcm/shared';
 import { WEB_APP_MANIFEST_FILE } from '@hcm/shared/app';
 
 import { joinAdditions } from './additions.js';
-import { SITE_APP_LINES, appFiles, appRelease, siteWorkerFile } from './app.js';
+import { appFiles, appRelease, siteAppLines, siteBuildFile, siteWorkerFile } from './app.js';
 import { readConfigJs } from './config-js.js';
 import { contentSecurityPolicy, type ExtraSources } from './csp.js';
 import { SiteBuildError } from './errors.js';
@@ -40,6 +40,8 @@ import { subresourceIntegrity } from './sri.js';
  * <outDir>/app.webmanifest     the installable app (`app.ts`, docs/ENGINE_API.md → Installable app), which the page links,
  * <outDir>/app-icon-*.png      with its three icons; `tab-icon.js` registers its worker and keeps the install prompt
  * <outDir>/sw.js               the app's worker: network first, a copy of the page and its shell only for a visit offline
+ * <outDir>/app-build.json      the build (a digest of every file but the data), which an open page compares with its own
+ *                              to reload into a new deploy (`tab-icon.js`, `app-update.ts` of `@hcm/shared/app`)
  * ```
  *
  * A site whose `site.json` has `publicManifest: true`, built with the public bucket named (`publicBucket`, from
@@ -208,8 +210,6 @@ interface PageParts {
     readonly spec: SiteSpec;
     readonly csp: string;
     readonly configSource: string;
-    /** The public bucket a page reads its city from (its city's own tab icon is there too: `tabIconSource`), or none. */
-    readonly bucket: string | undefined;
 }
 
 /** The root of the Hosting site's first script and its file (M6, §2.7); nothing for any other site. */
@@ -233,18 +233,29 @@ function pageFiles(options: SiteBuildOptions, parts: PageParts, files: SiteFileS
     return [
         { to: 'index.html', content: page },
         { to: 'config.js', content: parts.configSource },
-        { to: TAB_ICON_FILE, content: `${tabIconSource(parts.bucket)}${SITE_APP_LINES}` },
         { to: 'site.css', from: requireFile(files, `${options.siteDir}/site.css`, 'every site has its page styles') },
         ...redirect.files,
         ...appFiles(app),
-        siteWorkerFile(appRelease(page, parts.configSource)),
     ];
+}
+
+/**
+ * The page's script, its worker and `app-build.json`, all named after the build: a digest of every file the visitor
+ * runs (the page, its configuration, styles, engine and app files; not the data, which is never kept and always read
+ * again). A deploy that changes any of them is a new build, which the installed app reloads into (`app-update.ts`).
+ */
+function buildFiles(planned: readonly PlannedFile[], bucket: string | undefined, files: SiteFileSystem): PlannedFile[] {
+    const shell = planned.filter((file) => !file.to.startsWith('data/'));
+    const build = appRelease(...shell.map((file) => ('content' in file ? file.content : files.readBytes(file.from))));
+    return [{ to: TAB_ICON_FILE, content: `${tabIconSource(bucket)}${siteAppLines(build)}` }, siteWorkerFile(build), siteBuildFile(build)];
 }
 
 interface Plan {
     readonly files: PlannedFile[];
     readonly cityId: string;
     readonly photos: number;
+    /** The public bucket a page reads its city from (its city's own tab icon is there too: `tabIconSource`), or none. */
+    readonly bucket: string | undefined;
 }
 
 /** A site with a manifest: bundled as `data/`, or read from the public bucket with the manifest shaping the CSP (§51e). */
@@ -262,11 +273,11 @@ function manifestPlan(options: SiteBuildOptions, inputs: SiteInputs, source: Sou
     const csp = contentSecurityPolicy(withConnect(manifestOrigins(manifest, served.config), served.connect));
     const bucket = bundled ? undefined : options.publicBucket;
     const planned = [
-        ...pageFiles(options, { spec, csp, configSource: served.source, bucket }, files),
+        ...pageFiles(options, { spec, csp, configSource: served.source }, files),
         ...dataFiles(bundled, prepared, source, files),
         ...engineFiles(files, options.engineDir ?? DEFAULT_ENGINE_DIR),
     ];
-    return { files: planned, cityId: manifest.city.id, photos: bundled ? manifest.photos.length : 0 };
+    return { files: planned, cityId: manifest.city.id, photos: bundled ? manifest.photos.length : 0, bucket };
 }
 
 /**
@@ -283,10 +294,10 @@ function bucketPlan(options: SiteBuildOptions, inputs: SiteInputs, files: SiteFi
     const remote = publicManifest(options.publicBucket, inputs.config, options.siteDir, files);
     const csp = contentSecurityPolicy(bucketOrigins(remote.config, remote.connect));
     const planned = [
-        ...pageFiles(options, { spec: inputs.spec, csp, configSource: remote.configSource, bucket: options.publicBucket }, files),
+        ...pageFiles(options, { spec: inputs.spec, csp, configSource: remote.configSource }, files),
         ...engineFiles(files, options.engineDir ?? DEFAULT_ENGINE_DIR),
     ];
-    return { files: planned, cityId: remote.config.cityId ?? '', photos: 0 };
+    return { files: planned, cityId: remote.config.cityId ?? '', photos: 0, bucket: options.publicBucket };
 }
 
 /** The manifest a site bundles, with the folder of each photo an addition brought (`additions.ts`). */
@@ -313,7 +324,8 @@ function sourceManifest(options: SiteBuildOptions, spec: SiteSpec, files: SiteFi
 function plan(options: SiteBuildOptions, files: SiteFileSystem): Plan {
     const inputs = readInputs(options.siteDir, files);
     const source = sourceManifest(options, inputs.spec, files);
-    return source === undefined ? bucketPlan(options, inputs, files) : manifestPlan(options, inputs, source, files);
+    const planned = source === undefined ? bucketPlan(options, inputs, files) : manifestPlan(options, inputs, source, files);
+    return { ...planned, files: [...planned.files, ...buildFiles(planned.files, planned.bucket, files)] };
 }
 
 function write(files: SiteFileSystem, outDir: string, file: PlannedFile): void {

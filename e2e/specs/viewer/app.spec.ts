@@ -145,3 +145,112 @@ test(
         expect(await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? null)).toBe(WORKER);
     },
 );
+
+/** The build the next deploy serves (`app-build.json`), as the page script compares it with its own. */
+const NEXT_BUILD = 'e2e-next-build';
+
+/** A deploy of a new build: `app-build.json` names it, and with `script` the page's script (its own build) is the new one too. */
+async function deploy(context: BrowserContext, script: boolean): Promise<void> {
+    await context.route(`${SCOPE}app-build.json`, (route) =>
+        route.fulfill({
+            contentType: 'application/json',
+            headers: { 'cache-control': 'no-cache' },
+            body: JSON.stringify({ build: NEXT_BUILD }),
+        }),
+    );
+    if (script) {
+        await context.route(`${SCOPE}tab-icon.js`, async (route) => {
+            const response = await route.fetch();
+            const body = (await response.text()).replace(/"build":"[^"]+"/, `"build":"${NEXT_BUILD}"`);
+            await route.fulfill({ response, body });
+        });
+    }
+}
+
+/** The page's window gets the focus back, as when the visitor returns to the installed app. */
+async function focusWindow(page: Page): Promise<void> {
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+}
+
+/** The visitor switches to another app or tab, or back (`document.visibilityState`, as the browser fires it). */
+async function setVisibility(page: Page, state: 'hidden' | 'visible'): Promise<void> {
+    await page.evaluate((value) => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => value });
+        document.dispatchEvent(new Event('visibilitychange'));
+    }, state);
+}
+
+const hideTab = (page: Page): Promise<void> => setVisibility(page, 'hidden');
+
+function updateSnackbar(page: Page) {
+    return viewer(page).locator('hcm-snackbar[data-layout-check="update"]');
+}
+
+async function markPage(page: Page): Promise<void> {
+    await page.evaluate(() => {
+        Object.assign(window, { hcmBeforeDeploy: true });
+    });
+}
+
+const marked = (page: Page): Promise<boolean> => page.evaluate(() => 'hcmBeforeDeploy' in window);
+
+test(
+    'A new deploy reaches the open map by itself: Reload is offered while the visitor uses it, and leaving it reloads it',
+    { tag: '@S-V72-HAPPY-SELF-UPDATE' },
+    async ({ page, context, lang }) => {
+        await openControlled(page, lang);
+        await markPage(page);
+
+        await deploy(context, true);
+        await focusWindow(page);
+        // The visitor is at the map: a reload would come out of nowhere, so the snackbar says a new version is ready.
+        await expect(updateSnackbar(page)).toContainText(t(lang, 'app.updateReady'));
+        await expect(updateSnackbar(page).getByRole('button', { name: t(lang, 'app.reload') })).toBeVisible();
+        expect(await marked(page)).toBe(true);
+
+        // Leaving the map is a safe moment: it reloads into the new build, without the snackbar.
+        const reloaded = page.waitForEvent('load');
+        await hideTab(page);
+        await reloaded;
+        await waitForEngineEvent(page, 'hcm-ready');
+        expect(await marked(page)).toBe(false);
+        await focusWindow(page);
+        await expect(updateSnackbar(page)).toHaveCount(0);
+    },
+);
+
+test(
+    'An open dialog holds the reload, Reload reloads now, and a page still older after it never reloads again by itself',
+    { tag: '@S-V72-BAD-UPDATE-HELD' },
+    async ({ page, context, lang }) => {
+        await openControlled(page, lang);
+        await chooseMenuItem(page, lang, t(lang, 'settings.title'));
+        const settings = page.getByRole('dialog', { name: t(lang, 'settings.title') });
+        await expect(settings).toBeVisible();
+        await markPage(page);
+
+        // Only app-build.json changes: the page that comes back after a reload is still the older build (a stale cache).
+        await deploy(context, false);
+        await focusWindow(page);
+        await hideTab(page);
+        expect(await marked(page), 'Settings open: no reload').toBe(true);
+        await setVisibility(page, 'visible');
+
+        await page.keyboard.press('Escape');
+        await expect(settings).toHaveCount(0);
+        const reloaded = page.waitForEvent('load');
+        await updateSnackbar(page)
+            .getByRole('button', { name: t(lang, 'app.reload') })
+            .click();
+        await reloaded;
+        await waitForEngineEvent(page, 'hcm-ready');
+        await markPage(page);
+
+        // Still older: no loop. Leaving the map reloads nothing; the snackbar keeps offering Reload.
+        await expect(updateSnackbar(page)).toContainText(t(lang, 'app.updateReady'));
+        await hideTab(page);
+        await focusWindow(page);
+        expect(await marked(page)).toBe(true);
+        expect(await page.evaluate(() => sessionStorage.getItem('hcm-app-reloaded-for'))).toBe(NEXT_BUILD);
+    },
+);

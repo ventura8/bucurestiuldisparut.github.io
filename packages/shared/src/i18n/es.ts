@@ -208,6 +208,8 @@ export const es: Messages = {
     'app.title': 'Aplicación',
     'app.install': 'Instalar la aplicación',
     'app.installHint': 'Abra el mapa en su propia ventana, desde la pantalla de inicio o su lista de aplicaciones.',
+    'app.updateReady': 'Hay una nueva versión del mapa lista. Recargue para usarla; el mapa se abre donde está.',
+    'app.reload': 'Recargar',
     'settings.title': 'Ajustes',
     'language.label': 'Idioma',
     'language.unavailable': 'No se pudo cargar el idioma.',

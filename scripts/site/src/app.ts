@@ -1,6 +1,13 @@
 import { createHash } from 'node:crypto';
 
-import { APP_WORKER_FILE, WEB_APP_MANIFEST_FILE, appPageSource, appWorkerSource, webAppManifestText } from '@hcm/shared/app';
+import {
+    APP_BUILD_FILE,
+    APP_WORKER_FILE,
+    WEB_APP_MANIFEST_FILE,
+    appPageSource,
+    appWorkerSource,
+    webAppManifestText,
+} from '@hcm/shared/app';
 
 import { appIconFiles } from './app-icons.js';
 
@@ -12,7 +19,9 @@ import { appIconFiles } from './app-icons.js';
  * - `app.webmanifest`: named after the page's title, in its theme colour, its folder the app's start, scope and id;
  * - `app-icon-192.png`, `app-icon-512.png`, `app-icon-maskable-512.png` (`app-icons.ts`);
  * - `sw.js` for a city site (`appWorkerSource`: network first, a copy of the page and its shell only for a visit with no
- *   network); the admin appends its lines to its push worker instead (`admin/build.ts`), since a scope has one worker.
+ *   network); the admin appends its lines to its push worker instead (`admin/build.ts`), since a scope has one worker;
+ * - `app-build.json` for a city site: the build Hosting serves, which the page script compares with its own to reload an
+ *   open or installed map into a new deploy (`app-update.ts` of `@hcm/shared/app`).
  */
 
 /** One file the app adds: generated text or bytes. */
@@ -36,8 +45,8 @@ export function appFiles(inputs: AppInputs): AppFile[] {
     return [{ to: WEB_APP_MANIFEST_FILE, content: manifest }, ...appIconFiles(inputs.themeColor)];
 }
 
-/** A release name for the worker's offline copy: a digest of what the page is made of. */
-export function appRelease(...parts: readonly string[]): string {
+/** A release name for the worker's offline copy and the page's build: a digest of what the page is made of. */
+export function appRelease(...parts: readonly (string | Uint8Array)[]): string {
     const hash = createHash('sha256');
     parts.forEach((part) => hash.update(part).update('\0'));
     return hash.digest('hex').slice(0, 16);
@@ -48,5 +57,15 @@ export function siteWorkerFile(release: string): AppFile {
     return { to: APP_WORKER_FILE, content: appWorkerSource({ release, offline: true }) };
 }
 
-/** The lines of a city site's page script that register `sw.js` for the page's folder and keep the install prompt. */
-export const SITE_APP_LINES = appPageSource({ worker: APP_WORKER_FILE, scope: './' });
+/** A city site's `app-build.json`: the build Hosting serves now. */
+export function siteBuildFile(build: string): AppFile {
+    return { to: APP_BUILD_FILE, content: `${JSON.stringify({ build })}\n` };
+}
+
+/**
+ * The lines of a city site's page script that register `sw.js` for the page's folder, keep the install prompt and reload
+ * the page into a newer build than `build` (read from `app-build.json`).
+ */
+export function siteAppLines(build: string): string {
+    return appPageSource({ worker: APP_WORKER_FILE, scope: './' }, { build, version: APP_BUILD_FILE });
+}

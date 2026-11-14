@@ -204,6 +204,8 @@ export const hi: Messages = {
     'app.title': 'ऐप',
     'app.install': 'ऐप इंस्टॉल करें',
     'app.installHint': 'मानचित्र को होम स्क्रीन या ऐप सूची से उसकी अपनी विंडो में खोलें।',
+    'app.updateReady': 'मानचित्र का नया संस्करण तैयार है। इसे इस्तेमाल करने के लिए फिर से लोड करें; मानचित्र वहीं खुलेगा जहाँ आप हैं।',
+    'app.reload': 'फिर से लोड करें',
     'settings.title': 'सेटिंग्स',
     'language.label': 'भाषा',
     'language.unavailable': 'यह भाषा अभी लोड नहीं हो सकी।',

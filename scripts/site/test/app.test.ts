@@ -7,7 +7,7 @@ import { inflateSync } from 'node:zlib';
 
 import { describe, expect, it } from 'vitest';
 
-import { SITE_APP_LINES, appFiles, appRelease, siteWorkerFile } from '../src/app.js';
+import { appFiles, appRelease, siteAppLines, siteBuildFile, siteWorkerFile } from '../src/app.js';
 import { appIconFiles, encodePng, glyphOutlines } from '../src/app-icons.js';
 import { ADMIN_APP_FILES } from '../src/admin/app.js';
 import { PUSH_SERVICE_WORKER_SOURCE } from '../src/admin/service-worker.js';
@@ -107,7 +107,15 @@ describe('appFiles', () => {
         expect(appRelease('<html>', 'config2')).not.toBe(release);
         expect(siteWorkerFile(release).to).toBe('sw.js');
         expect(String(siteWorkerFile(release).content)).toContain(`"release":"${release}","offline":true`);
-        expect(SITE_APP_LINES).toContain('{"worker":"sw.js","scope":"./"}');
+        expect(siteAppLines(release)).toContain('{"worker":"sw.js","scope":"./"}');
+    });
+
+    it('happyPath_thePageScriptComparesItsBuildWithTheOneServed', () => {
+        const release = appRelease('<html>', new Uint8Array([1, 2, 3]));
+
+        expect(release).not.toBe(appRelease('<html>', new Uint8Array([1, 2, 4])));
+        expect(siteBuildFile(release)).toEqual({ to: 'app-build.json', content: `{"build":"${release}"}\n` });
+        expect(siteAppLines(release)).toContain(`(window, {"build":"${release}","version":"app-build.json"}, { mark: `);
     });
 });
 
@@ -121,5 +129,7 @@ describe('ADMIN_APP_FILES', () => {
         expect(String(worker?.content)).toContain('"offline":false');
         expect(JSON.parse(String(manifest?.content))).toMatchObject({ name: 'Administrarea hărții', scope: './', id: './' });
         expect(String(script?.content)).toContain('{"worker":"firebase-messaging-sw.js","scope":"./"}');
+        // The admin follows runtime.json itself (release-reload.ts): its page script only asks the worker to update.
+        expect(String(script?.content)).toContain('(window, {}, { mark: ');
     });
 });

@@ -77,6 +77,8 @@ export interface AdminDeps<Setup, SetupIntents> {
     readonly content?: ContentDeps;
     /** Finding 29 of 2026-10-31: whether Hosting serves a newer admin (`release-watch.ts`); none: nothing is watched. */
     readonly releases?: ShellWatchSources['releases'];
+    /** Whether nobody uses the tab, for the self-reload into a newer admin (`activity.ts`); none: never idle. */
+    readonly idle?: ShellWatchSources['idle'];
     /** The page's window, where the wizards' funnel signals arrive (`funnels.ts`, §200); none: no funnels. */
     readonly funnelWindow?: FunnelWindow;
 }

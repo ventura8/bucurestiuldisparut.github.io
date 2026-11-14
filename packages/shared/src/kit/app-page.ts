@@ -7,13 +7,18 @@
  * - keeps the browser's install prompt (`beforeinstallprompt`, whose banner it prevents: nothing pops up on a visit), which
  *   the viewer's Settings and the admin's account menu offer as **Install app** (`packages/ui/src/app-install.ts`).
  *
+ * - keeps the installed app up to date (`app-update.ts`: a newer build reloads the page at a safe moment, else
+ *   `hcm-update-ready` and the viewer's Reload snackbar).
+ *
  * What it found is `window.HistoricCityMapApp`, and each change fires `hcm-install-available` on `window`. The prompt
  * only comes where the browser can install the page (Chrome and Edge, on a computer and on Android; never an installed
  * app's own window), so **Install app** shows only there. The page's `<link rel="manifest">` is in its HTML.
  */
 
-/** `window.HistoricCityMapApp`, which the viewer and the admin read. */
-export interface HistoricCityMapApp {
+import { appUpdateSource, type AppUpdateOptions, type AppUpdates } from './app-update.js';
+
+/** `window.HistoricCityMapApp`, which the viewer and the admin read; the update watch adds its part (`app-update.ts`). */
+export interface HistoricCityMapApp extends AppUpdates {
     /** True while the browser's install prompt waits. */
     installable: boolean;
     /** Shows the browser's install prompt; resolves with the visitor's answer (`dismissed` without a prompt). */
@@ -90,11 +95,12 @@ export function startAppPage(scope: AppPageScope, options: AppPageOptions): void
     workers?.register(options.worker, { scope: options.scope, updateViaCache: 'none' }).catch(() => undefined);
 }
 
-/** The lines of a page's script that start its app. */
-export function appPageSource(options: AppPageOptions): string {
+/** The lines of a page's script that start its app and keep it up to date (`update`: the build it was made by, if any). */
+export function appPageSource(options: AppPageOptions, update: AppUpdateOptions = {}): string {
     return [
-        '// The installable app (docs/ENGINE_API.md → Installable app), from packages/shared/src/kit/app-page.ts.',
+        '// The installable app (docs/ENGINE_API.md → Installable app), from packages/shared/src/kit/app-page.ts and app-update.ts.',
         `(${startAppPage.toString()})(window, ${JSON.stringify(options)});`,
+        appUpdateSource(update),
         '',
     ].join('\n');
 }

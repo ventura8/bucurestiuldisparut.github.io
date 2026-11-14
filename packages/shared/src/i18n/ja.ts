@@ -209,6 +209,8 @@ export const ja: Messages = {
     'app.title': 'アプリ',
     'app.install': 'アプリをインストール',
     'app.installHint': 'ホーム画面やアプリ一覧から、地図を専用のウィンドウで開けます。',
+    'app.updateReady': '地図の新しいバージョンの準備ができました。再読み込みすると使えます。地図は今の場所で開きます。',
+    'app.reload': '再読み込み',
     'settings.title': '設定',
     'language.label': '言語',
     'language.unavailable': 'この言語を読み込めませんでした。',

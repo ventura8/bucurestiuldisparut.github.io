@@ -209,6 +209,8 @@ export const ro = {
     'app.title': 'Aplicație',
     'app.install': 'Instalați aplicația',
     'app.installHint': 'Deschideți harta în fereastra ei, din ecranul principal sau din lista de aplicații.',
+    'app.updateReady': 'O versiune nouă a hărții este gata. Reîncărcați pagina ca să o folosiți; harta se deschide unde sunteți.',
+    'app.reload': 'Reîncărcați',
     'settings.title': 'Setări',
     'language.label': 'Limbă',
     'language.unavailable': 'Limba aleasă nu s-a putut încărca.',

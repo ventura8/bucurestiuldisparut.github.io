@@ -204,6 +204,8 @@ export const en: Messages = {
     'app.title': 'App',
     'app.install': 'Install app',
     'app.installHint': 'Open the map in its own window, from your home screen or your list of apps.',
+    'app.updateReady': 'A new version of the map is ready. Reload to use it; the map opens where you are.',
+    'app.reload': 'Reload',
     'settings.title': 'Settings',
     'language.label': 'Language',
     'language.unavailable': 'That language could not be loaded.',

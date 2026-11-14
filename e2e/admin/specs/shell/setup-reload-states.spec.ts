@@ -1,7 +1,7 @@
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
 import { setupText, shellText, templatePattern } from '../../support/i18n.js';
-import { newAdminBanner, redeployAdmin, serveInstallBundle } from '../../support/install.js';
+import { newAdminBanner, redeployAdmin, serveInstallBundle, workThroughTheLook } from '../../support/install.js';
 import { SetupPage } from '../../support/setup-page.js';
 import { seedClaimedCity, seedSetupStatus } from '../../support/steps.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
@@ -74,8 +74,8 @@ test('A newer admin was published: the banner above the page with Reload', async
     await setup.visit('mapbox');
     await redeployAdmin(page, '1.0.1+e2e0002');
 
-    // Five minutes on the page's clock: the visible tab's next look at runtime.json.
-    await page.clock.fastForward(5 * 60_000);
+    // Five minutes on the page's clock, the owner at work: the visible tab's next look at runtime.json.
+    await workThroughTheLook(page);
     const banner = newAdminBanner(page);
     await expect(banner.getByRole('button', { name: shellText(lang, 'adminShell.update.reload') })).toBeVisible();
     await expectStateSound(page, adminVisit('shell.new-release', lang));

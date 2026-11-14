@@ -11598,10 +11598,10 @@
             "area": "admin",
             "path": "happy",
             "title": "A redeploy seen while the owner works shows A new version of the admin is ready; Reload opens it, still signed in",
-            "asserts": "the owner signed in on Setup, Hosting then serves a newer admin release (runtime.json) -> the five-minute look while the tab is visible -> a polite status banner above the page says A new version of the admin is ready with Reload, the page under it still works -> Reload -> Setup opens again without a sign-in and without the banner",
+            "asserts": "the owner signed in on Setup, Hosting then serves a newer admin release (runtime.json) -> the five-minute look while the tab is visible and the owner keeps working (a key every 30 s) -> a polite status banner above the page says A new version of the admin is ready with Reload, the page under it still works -> Reload -> Setup opens again without a sign-in and without the banner",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Finding 29 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31). Tests: e2e/admin/steps/install/stale-admin.spec.ts, packages/admin/test/app/release-watch.test.ts (every five minutes while visible, at most once a minute on a return, nothing once found or without a release), mount.test.ts, packages/ui/test/admin/shell/shell.test.ts; tour state admin.shell.new-release. M18 item 1: a return to the tab reloads by itself instead (S-A61-HAPPY-SELF-RELOAD); an unsaved edit keeps the banner (packages/admin/test/app/release-reload.test.ts)."
+            "notes": "Finding 29 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31). Tests: e2e/admin/steps/install/stale-admin.spec.ts, packages/admin/test/app/release-watch.test.ts (every five minutes while visible, at most once a minute on a return, nothing once found or without a release), mount.test.ts, packages/ui/test/admin/shell/shell.test.ts; tour state admin.shell.new-release. M18 item 1: a return to the tab reloads by itself instead (S-A61-HAPPY-SELF-RELOAD); an unsaved edit keeps the banner (packages/admin/test/app/release-reload.test.ts). 2026-11-14: a visible tab nobody uses for a minute reloads by itself too (S-A61-HAPPY-IDLE-RELOAD); the banner is for a tab in use."
         },
         {
             "id": "S-A61-BAD-INSTALL-REFUSED",
@@ -16926,6 +16926,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M18 (docs/research/M18-improvements.md item 1, the owner 2026-11-08). Tests: e2e/admin/steps/install/stale-admin.spec.ts, packages/admin/test/app/release-reload.test.ts (a hidden tab, a return within 10 s, an unsaved edit keeps the banner)."
+        },
+        {
+            "id": "S-A61-HAPPY-IDLE-RELOAD",
+            "behaviour": "A61",
+            "area": "admin",
+            "path": "happy",
+            "title": "A visible tab nobody touched for a minute reloads into a redeploy by itself, still signed in and without the banner",
+            "asserts": "the owner signed in on Setup, Hosting then serves a newer admin release, nobody presses, types or scrolls -> the five-minute look -> the page reloads by itself, Setup opens again without a sign-in and without the banner",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14 (\"the installed PWA apps must update/refresh themselves\"); docs/ENGINE_API.md → Installable app → Updates; LESSONS 718. Tests: e2e/admin/steps/install/stale-admin.spec.ts, packages/admin/test/app/release-reload.test.ts (a visible tab idle, retries every 15 s, an unsaved edit, the loop guard, storage that forgets), packages/admin/test/app/activity.test.ts."
+        },
+        {
+            "id": "S-A61-BAD-NO-RELOAD-LOOP",
+            "behaviour": "A61",
+            "area": "admin",
+            "path": "bad",
+            "title": "A tab that already reloaded for a release never reloads for it again: the banner offers Reload instead",
+            "asserts": "the tab's sessionStorage says it already reloaded for the newer release (it came back still older: a cache) -> Hosting serves that release, the tab hidden and shown again -> no reload, the A new version of the admin is ready banner with Reload",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14 (\"the installed PWA apps must update/refresh themselves\"); docs/ENGINE_API.md → Installable app → Updates; LESSONS 718. Tests: e2e/admin/steps/install/stale-admin.spec.ts, packages/admin/test/app/release-reload.test.ts (a visible tab idle, retries every 15 s, an unsaved edit, the loop guard, storage that forgets), packages/admin/test/app/activity.test.ts."
         },
         {
             "id": "S-A27-HAPPY-BLOCKED-TRY-AGAIN",
@@ -22360,6 +22382,28 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "docs/ENGINE_API.md → Installable app; DECISIONS-for-review.md §226. Unit: packages/shared/test/kit/app-worker.test.ts, packages/shared/test/kit/app-page.test.ts, packages/shared/test/kit/web-app-manifest.test.ts, scripts/site/test/app.test.ts, packages/ui/test/app-install.test.ts, packages/ui/test/viewer/hcm-about-dialog.test.ts. Test: e2e/specs/viewer/app.spec.ts."
+        },
+        {
+            "id": "S-V72-HAPPY-SELF-UPDATE",
+            "behaviour": "V72",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A new deploy reaches the open map by itself: Reload is offered while the visitor uses it, and leaving the map reloads it",
+            "asserts": "the map open and controlled by its worker; Hosting then serves a new build (app-build.json and the page's script) -> the window gets the focus -> A new version of the map is ready with Reload shows and the page is not reloaded under the visitor -> the visitor leaves the tab -> the page reloads into the new build by itself, opens the map again and offers no Reload",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14 (\"the installed PWA apps must update/refresh themselves\"); docs/ENGINE_API.md → Installable app → Updates; LESSONS 718. Unit: packages/shared/test/kit/app-update.test.ts, scripts/site/test/app.test.ts, scripts/site/test/build.test.ts, packages/ui/test/app-update.test.ts, packages/ui/test/viewer/hcm-map-viewer-update.test.ts. Test: e2e/specs/viewer/app.spec.ts."
+        },
+        {
+            "id": "S-V72-BAD-UPDATE-HELD",
+            "behaviour": "V72",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An open dialog holds the reload, Reload reloads now, and a page still older after it never reloads again by itself",
+            "asserts": "Settings open, Hosting serves a newer app-build.json but the old page (a stale cache) -> focus, then the tab hidden: no reload -> Settings closed, Reload in the snackbar -> one reload -> the page is still the older build: the snackbar offers Reload again, leaving the tab reloads nothing (sessionStorage remembers the build it reloaded for: no loop)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-14 (\"the installed PWA apps must update/refresh themselves\"); docs/ENGINE_API.md → Installable app → Updates; LESSONS 718. Unit: packages/shared/test/kit/app-update.test.ts, scripts/site/test/app.test.ts, scripts/site/test/build.test.ts, packages/ui/test/app-update.test.ts, packages/ui/test/viewer/hcm-map-viewer-update.test.ts. Test: e2e/specs/viewer/app.spec.ts."
         },
         {
             "id": "S-A185-HAPPY-INSTALLABLE",

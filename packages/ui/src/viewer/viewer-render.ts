@@ -10,7 +10,6 @@
  */
 import { localized, translate, type Manifest, type Photo, type Poi, type PoiCategory, type ViewerLocale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
-import { keyed } from 'lit/directives/keyed.js';
 
 import { cssProperties, type CssPropertyValues } from '../components/css-properties.js';
 import type { CameraOffset } from '../map/mapbox-types.js';
@@ -33,6 +32,7 @@ import { statusOrCard } from './viewer-wordless.js';
 import type { CameraSource } from './hcm-compass.js';
 import { zoomButtons, type MapSize } from './viewer-zoom.js';
 import { modalOpen, renderConsentBanner } from './viewer-legal.js';
+import { toastDock, type UpdateOffer } from './viewer-update.js';
 
 /** What one render needs, derived from the store state by the element. */
 export interface ViewerView {
@@ -58,6 +58,8 @@ export interface ViewerView {
     readonly dock: TimelineDock;
     /** A games console's browser (`game-console.ts`): the no-WebGL message says what it lacks. */
     readonly gameConsole?: boolean;
+    /** A newer deploy waits for a safe moment (`viewer-update.ts`): the Reload snackbar; null or absent: none. */
+    readonly update?: UpdateOffer | null;
 }
 
 /** `hcm-photo-locate` of `<hcm-photo-sheet>`: the photo, and its place's offset from the map's centre (`locateOffset`). */
@@ -318,32 +320,14 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
             ></hcm-fab-menu>
         </div>
         ${state.webgl ? zoomButtons(view, state.view, manifest, handlers) : nothing}
-        ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}
-        ${mapMenu(view, state, handlers)}`;
+        ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing}
+        ${toastDock(view.locale, state.toast, handlers.onToastDismiss, view.update)} ${mapMenu(view, state, handlers)}`;
 }
 
 function timeline(view: ViewerView, ready: Ready, handlers: ViewerHandlers): TemplateResult {
     const { layers } = ready.manifest;
     const dock = { ...view, year: ready.state.year, orientation: view.layout.timeline, layers, collapsed: timelineCollapsed(view, ready) };
     return timelineDock(dock, view.dock, handlers.onYearChange);
-}
-
-function toast(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): TemplateResult {
-    const current = state.toast;
-    if (current === null) {
-        return EMPTY;
-    }
-    return html`<div class="dock toast">
-        ${keyed(
-            current,
-            html`<hcm-snackbar
-                data-layout-check="toast"
-                .message=${translate(view.locale, current.key, current.params)}
-                .closeLabel=${translate(view.locale, 'action.close')}
-                @hcm-dismiss=${handlers.onToastDismiss}
-            ></hcm-snackbar>`,
-        )}
-    </div>`;
 }
 
 function layerPanel(view: ViewerView, ready: Ready, placement: Placement, handlers: ViewerHandlers): TemplateResult {

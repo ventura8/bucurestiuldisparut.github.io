@@ -209,6 +209,8 @@ export const it: Messages = {
     'app.title': 'Applicazione',
     'app.install': "Installa l'app",
     'app.installHint': "Apri la mappa in una finestra tutta sua, dalla schermata Home o dall'elenco delle app.",
+    'app.updateReady': 'Una nuova versione della mappa è pronta. Ricarica per usarla; la mappa si apre dove sei.',
+    'app.reload': 'Ricarica',
     'settings.title': 'Impostazioni',
     'language.label': 'Lingua',
     'language.unavailable': 'Questa lingua non è disponibile al momento.',

@@ -1,3 +1,5 @@
+import type { Page } from '@playwright/test';
+
 import { apiText, setupText, shellText } from '../../support/i18n.js';
 import {
     newAdminBanner,
@@ -6,6 +8,7 @@ import {
     serveInstallBundle,
     setTabVisibility,
     submittedBuilds,
+    workThroughTheLook,
 } from '../../support/install.js';
 import { SetupPage } from '../../support/setup-page.js';
 import { seedClaimedCity, seedSetupStatus } from '../../support/steps.js';
@@ -44,7 +47,7 @@ test.describe('A newer admin served while the tab is open', () => {
 
             // M18 item 1: seen while the owner works on the visible tab (the five-minute look), it is the banner, not a reload.
             await redeployAdmin(page, NEWER);
-            await page.clock.fastForward(5 * 60_000);
+            await workThroughTheLook(page);
 
             const banner = newAdminBanner(page);
             await expect(banner).toContainText(shellText(lang, 'adminShell.update.ready'));
@@ -92,6 +95,64 @@ test.describe('A newer admin served while the tab is open', () => {
             expect(await page.evaluate(() => 'hcmBeforeDeploy' in window)).toBe(false);
             await expect(page.getByRole('button', { name: shellText(lang, 'adminShell.auth.signIn') })).toHaveCount(0);
             await expect(newAdminBanner(page)).toHaveCount(0);
+        },
+    );
+});
+
+test.describe('The installed admin updates itself (2026-11-14)', () => {
+    test.use({ persona: 'owner', mapOwner: 'owner' });
+
+    type Emulators = Parameters<typeof seedClaimedCity>[0];
+
+    async function openSetup(page: Page, lang: 'ro' | 'en', emulators: Emulators, uid: string): Promise<SetupPage> {
+        await seedClaimedCity(emulators, uid);
+        await seedSetupStatus(emulators, uid);
+        await serveInstallBundle(page);
+        await page.clock.install();
+        await page.clock.resume();
+        const setup = new SetupPage(page, lang);
+        await setup.visit('mapbox');
+        await page.evaluate(() => {
+            Object.assign(window, { hcmBeforeDeploy: true });
+        });
+        return setup;
+    }
+
+    test(
+        'A visible tab nobody touched for a minute reloads into a redeploy by itself, still signed in and without the banner',
+        { tag: ['@S-A61-HAPPY-IDLE-RELOAD'] },
+        async ({ page, lang, adminWorld }) => {
+            const setup = await openSetup(page, lang, adminWorld.emulators, adminWorld.accounts.owner.uid);
+
+            await redeployAdmin(page, NEWER);
+            const reloaded = page.waitForEvent('load');
+            await page.clock.fastForward(5 * 60_000);
+            await reloaded;
+
+            await expect(setup.open('mapbox')).toBeVisible({ timeout: 30_000 });
+            expect(await page.evaluate(() => 'hcmBeforeDeploy' in window)).toBe(false);
+            await expect(page.getByRole('button', { name: shellText(lang, 'adminShell.auth.signIn') })).toHaveCount(0);
+            await expect(newAdminBanner(page)).toHaveCount(0);
+        },
+    );
+
+    test(
+        'A tab that already reloaded for a release never reloads for it again: the banner offers Reload instead',
+        { tag: ['@S-A61-BAD-NO-RELOAD-LOOP'] },
+        async ({ page, lang, adminWorld }) => {
+            await openSetup(page, lang, adminWorld.emulators, adminWorld.accounts.owner.uid);
+            // As if this tab had reloaded for NEWER and come back still running the older admin (a cache, lesson 707).
+            await page.evaluate((release) => {
+                sessionStorage.setItem('hcm-admin-reloaded-for', release);
+            }, NEWER);
+
+            await redeployAdmin(page, NEWER);
+            await setTabVisibility(page, 'hidden');
+            await page.clock.fastForward(2 * 60_000);
+            await setTabVisibility(page, 'visible');
+
+            await expect(newAdminBanner(page)).toContainText(shellText(lang, 'adminShell.update.ready'));
+            expect(await page.evaluate(() => 'hcmBeforeDeploy' in window), 'no reload loop').toBe(true);
         },
     );
 });

@@ -15,9 +15,9 @@ import { ROOT, cleanup, htmlValidateMessages, repositoryWithTemporaryDist, tempo
 
 const TOKEN = 'pk.e2e-fake-token';
 const ENGINE_FILES = ['engine.css', 'engine.iife.js', 'engine.mjs', 'fonts/symbols.woff2'];
-
+/** The installable app's files beside every page: app.webmanifest, its three icons, sw.js and app-build.json (`src/app.ts`). */
 /** The installable app's files beside every page: app.webmanifest, its three icons and sw.js (`src/app.ts`). */
-const APP_FILES = 5;
+const APP_FILES = 6;
 
 function fakeEngine(files: SiteFileSystem, dir: string): void {
     for (const name of ENGINE_FILES) {
@@ -64,7 +64,7 @@ describe('buildSite (the committed sites)', () => {
             outDir: 'dist/site/bucharest',
             cityId: 'bucharest',
             photos: photoCount,
-            // The page's five and the installable app's five (its manifest, three icons and sw.js).
+            // The page's five and the installable app's six (its manifest, three icons, sw.js and app-build.json).
             files: 5 + APP_FILES + photoCount * 2 + ENGINE_FILES.length,
         });
         const out = dist.listFiles('dist/site/bucharest');
@@ -303,6 +303,11 @@ describe('buildSite (the manifest the admin publishes, DECISIONS-for-review.md Â
             expect.arrayContaining(['app-icon-192.png', 'app-icon-512.png', 'app-icon-maskable-512.png', 'sw.js']),
         );
         expect(dist.readText('dist/site/bucharest/sw.js')).toContain('"offline":true');
+        // The build the page compares with the one Hosting serves, to reload into a new deploy (app-update.ts).
+        const { build } = JSON.parse(dist.readText('dist/site/bucharest/app-build.json')) as { build: string };
+        expect(build).toMatch(/^[0-9a-f]{16}$/);
+        expect(script).toContain(`(window, {"build":"${build}","version":"app-build.json"}, { mark: `);
+        expect(dist.readText('dist/site/bucharest/sw.js')).toContain(`"release":"${build}"`);
     });
 
     it('badPath_withoutABucketOrWithoutTheSitesConsentTheSnapshotIsBundled', () => {

@@ -211,6 +211,8 @@ export const de: Messages = {
     'app.title': 'Anwendung',
     'app.install': 'App installieren',
     'app.installHint': 'Öffnen Sie die Karte in einem eigenen Fenster, vom Startbildschirm oder aus Ihrer App-Liste.',
+    'app.updateReady': 'Eine neue Version der Karte ist bereit. Laden Sie neu, um sie zu nutzen; die Karte öffnet sich dort, wo Sie sind.',
+    'app.reload': 'Neu laden',
     'settings.title': 'Einstellungen',
     'language.label': 'Sprache',
     'language.unavailable': 'Diese Sprache konnte nicht geladen werden.',
