@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 
 import { contentFlowBudget } from '../../../../packages/admin/src/content/budgets.js';
 import type { EmulatorWorld } from '../../support/emulators.js';
-import { setupText } from '../../support/i18n.js';
+import { setupText, shellText } from '../../support/i18n.js';
 import { installState, nextLook, recordsSettled, serveInstallBundle, submittedBuilds, trackRecords } from '../../support/install.js';
 import { SetupPage } from '../../support/setup-page.js';
 import { seedClaimedCity, seedSetupStatus, STEPS_AT, withConsent } from '../../support/steps.js';
@@ -123,5 +123,47 @@ test(
         const pipeline = await setup.show('pipeline');
         await expect(installState(pipeline)).toContainText(setupText(lang, 'adminSetup.install.state.updateAvailable'));
         await expect(pipeline.getByRole('button', { name: update })).toBeVisible();
+        // 2026-11-14: the pipeline's card says why its update did not start and where the fix is.
+        await expect(pipeline).toContainText(setupText(lang, 'adminSetup.install.serverStopped'));
+    },
+);
+
+test(
+    "A token that ran out while the server built pauses the cards with Continue, whose consent starts the pipeline's update",
+    { tag: ['@S-A56-BAD-UPDATE-TOKEN-RAN-OUT'] },
+    async ({ page, lang, consent, inputBudget, upstream, adminWorld, consoleErrors }) => {
+        // The live finding of 2026-11-14: the server went in after the page's Google token had run out; the watch stopped
+        // without a word, the pipeline's update was dropped, and the computers kept the old processing.
+        await seedBothBehind(page, adminWorld.emulators, adminWorld.accounts.owner.uid);
+        await page.goto(adminPath(lang, 'setup/deploy'));
+        const setup = new SetupPage(page, lang);
+        const update = setupText(lang, 'adminSetup.install.updateAction');
+        await expect(async () => {
+            await expect((await setup.show('deploy')).getByRole('button', { name: update })).toBeVisible({ timeout: 2_000 });
+        }).toPass({ timeout: 30_000 });
+        const deploy = setup.open('deploy');
+        await withConsent(
+            page,
+            consent,
+            deploy.getByRole('button', { name: update }),
+            inputBudget.flow('updateMap', contentFlowBudget('updateMap')),
+            inputBudget.flow('updateMapConsent', 1),
+        );
+        await expect.poll(async () => (await buildsOf(upstream, 'server')).length).toBe(1);
+        await upstream.scenario('cloud-build.start', 'browser');
+
+        // Less than five minutes of the token's hour left: the card says it stopped following, with Continue.
+        await page.clock.fastForward('56:00');
+        await expect(deploy).toContainText(setupText(lang, 'adminSetup.install.followPaused'), { timeout: 30_000 });
+        const proceed = deploy.getByRole('button', { name: shellText(lang, 'adminShell.session.continue') });
+        await expect(proceed).toBeVisible();
+        await upstream.scenario('cloud-build.finish', 'browser');
+        expect(await buildsOf(upstream, 'pipeline')).toHaveLength(0);
+
+        await withConsent(page, consent, proceed, inputBudget.flow('followContinue', 1), inputBudget.flow('followContinueConsent', 1));
+        // The renewed token's look finds the server in: the held pipeline update starts by itself.
+        await expect.poll(async () => (await buildsOf(upstream, 'pipeline')).length, { timeout: 30_000 }).toBe(1);
+        await expect(deploy).not.toContainText(setupText(lang, 'adminSetup.install.followPaused'));
+        consoleErrors.takeMatching(/setup-analyticsConfig/);
     },
 );

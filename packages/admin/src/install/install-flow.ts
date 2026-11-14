@@ -70,6 +70,11 @@ export interface InstallFlowDeps {
     readonly report: (view: InstallTargetView, progress: ServerProgress | null) => void;
     /** Google refused the token (401): the card offers Continue. */
     readonly expired: () => void;
+    /**
+     * A build is at work but the page holds no live token (its hour ran out, or the page was reloaded): the watch cannot
+     * look, so the card says so and offers Continue instead of freezing on its last look (the live finding of 2026-11-14).
+     */
+    readonly paused: () => void;
 }
 
 export interface InstallFlow {
@@ -302,7 +307,7 @@ class TargetFlow implements InstallFlow {
     async #tick(): Promise<PollOutcome> {
         const access = this.#deps.liveAccess();
         if (access === null) {
-            return this.#lookWithoutToken();
+            return this.#withoutToken();
         }
         const wait = isRunning(this.#view.state) ? RUNNING_LOOK_MS : IDLE_LOOK_MS;
         if (this.#deps.clock.now() - this.#lastLook < wait) {
@@ -312,9 +317,21 @@ class TargetFlow implements InstallFlow {
     }
 
     /**
-     * With no Google token the card cannot look at Google, but a blocker of its own data can still lift (the first city
+     * With no Google token the card cannot look at Google: a build at work says so (`paused`, the card offers Continue);
+     * a blocker of its own data can still lift (the first city
      * published while the token was gone, finding 13's journey): the watch goes on, once an idle interval, until it has.
      */
+    #withoutToken(): Promise<PollOutcome> {
+        return isRunning(this.#view.state) ? Promise.resolve(this.#pause()) : this.#lookWithoutToken();
+    }
+
+    /** A build at work the watch cannot look at without a token: the card says so and offers Continue. */
+    #pause(): PollOutcome {
+        this.#deps.log.warn('install watch paused: no live Google token', { target: this.#deps.target, state: this.#view.state });
+        this.#deps.paused();
+        return 'stop';
+    }
+
     async #lookWithoutToken(): Promise<PollOutcome> {
         if (this.#view.blocker?.key !== LOCAL_BLOCKER) {
             return 'stop';

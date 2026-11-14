@@ -353,6 +353,19 @@ local worker keeps the old image meanwhile: safe, but a second click). An update
 Actions) has no such guard; the server-side one is proposed in `DECISIONS-for-review.md` §187.
 S-A56-HAPPY-UPDATE-AFTER-SERVER, S-A56-BAD-UPDATE-SERVER-STOPPED.
 
+**Addendum 2026-11-14 (the live admin: the pipeline never updated).** The server went 62c7179 → bca1891 at 17:02 and the
+pipeline stayed on 62c7179, its card silent, so every computer kept the old processing. Three gaps of the addendum above:
+(1) a watch with no live token (the token's hour ran out, or the page was reloaded) stopped without a word, so the cards
+froze on their last look until Check again; it now says so on the card (`adminSetup.install.followPaused`) and offers
+Continue, whose consent restarts every card's watch (`InstallFlowDeps.paused`); (2) a server seen in while the page held
+no live token dropped the pipeline's and the site's update with an info log line; they now stay held
+(`#afterServerTargets`), their cards say why with Continue (`adminSetup.install.waitsForSignIn`), and the next token's
+look at the server submits them (Continue on the pipeline's card looks at the server first); a server that stopped says
+so on their cards (`adminSetup.install.serverStopped`, kept until the target builds again or is in place); (3) a refused
+submit (`apiError.install.adminOutdated` when the admin was redeployed while the server built) was shown inside a card
+whose chip said done, so the card stayed closed: a card with an error never wears the done chip (`chipOf`).
+S-A56-BAD-UPDATE-TOKEN-RAN-OUT.
+
 **Addendum 2026-11-01 (finding 39 of `manual-test-2026-10-25.md`, `DECISIONS-for-review.md` §78a): the release order.**
 Every release of a version shares its semver (`1.0.0+<commit>`; build metadata has no precedence), so a release also
 carries its **build time**: the build commit's time in whole seconds since 1970 (`SOURCE_DATE_EPOCH`, else

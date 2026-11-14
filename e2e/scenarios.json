@@ -11312,10 +11312,21 @@
             "area": "admin",
             "path": "bad",
             "title": "A server update that stopped never lets the pipeline go",
-            "asserts": "server and pipeline behind, the server's build stops at functions -> no pipeline build is submitted; the pipeline card still says an update is available and offers Update the map",
+            "asserts": "server and pipeline behind, the server's build stops at functions -> no pipeline build is submitted; the pipeline card still says an update is available, offers Update the map and says the pipeline's update did not start because the server's stopped, with step d as the fix",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "2026-11-12. Test: e2e/admin/steps/install/update-order.spec.ts; packages/admin/test/setup/install.test.ts."
+            "notes": "2026-11-12; the card's reason 2026-11-14. Test: e2e/admin/steps/install/update-order.spec.ts; packages/admin/test/setup/install.test.ts, packages/admin/test/setup/install-wait.test.ts."
+        },
+        {
+            "id": "S-A56-BAD-UPDATE-TOKEN-RAN-OUT",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "bad",
+            "title": "A token that ran out while the server built pauses the cards with Continue, and Continue starts the pipeline's update",
+            "asserts": "server and pipeline behind, Update the map clicked, the server's build at work, then less than five minutes of the page's Google token left -> step d says Setup stopped following the installation and offers Continue (no silent freeze); the server's build finishes, no pipeline build yet; Continue asks one consent, the look with its token finds the server in and submits the pipeline's build by itself, and the notice is gone. A server seen in by a look whose token ran out holds the pipeline's update with Continue on its card (never dropped); an update refused meanwhile (a newer admin) turns the pipeline's chip from done to attention so its reason shows",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live admin of 2026-11-14 (server 62c7179 -> bca1891 at 17:02, pipeline left on 62c7179, the computers on the old processing): the watch stopped without a token, the pipeline's update was dropped with an info log line, and a refused submit hid under the done chip. Tests: e2e/admin/steps/install/update-order.spec.ts, packages/admin/test/setup/install-wait.test.ts, packages/admin/test/install/install-flow.test.ts."
         },
         {
             "id": "S-A57-HAPPY",

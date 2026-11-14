@@ -27,6 +27,7 @@ interface FlowWorld {
     readonly clock: FakeClock;
     readonly views: InstallTargetView[];
     readonly expired: ReturnType<typeof vi.fn>;
+    readonly paused: ReturnType<typeof vi.fn>;
     readonly flow: ReturnType<typeof createInstallFlow>;
     live: InstallAccess | null;
     click: InstallAccess | null;
@@ -37,6 +38,7 @@ function flowOver(installer: InstallerPort, target: InstallTarget = 'server'): F
     const clock = new FakeClock();
     const views: InstallTargetView[] = [];
     const expired = vi.fn();
+    const paused = vi.fn();
     const state = { live: ACCESS as InstallAccess | null, click: ACCESS as InstallAccess | null };
     const deps: InstallFlowDeps = {
         target,
@@ -52,12 +54,14 @@ function flowOver(installer: InstallerPort, target: InstallTarget = 'server'): F
             views.push(view);
         },
         expired,
+        paused,
     };
     const flow = createInstallFlow(deps);
     return Object.assign(state, {
         clock,
         views,
         expired,
+        paused,
         flow,
         latest: () => {
             const view = views.at(-1);
@@ -103,6 +107,28 @@ describe('watching', () => {
 
         expect(w.install.fakes.callsTo('cloud-build.builds.list')).toHaveLength(0);
         expect(w.clock.pending()).toBe(0);
+        // Nothing at work: nothing to follow, so no Continue either.
+        expect(w.paused).not.toHaveBeenCalled();
+    });
+});
+
+describe('a build at work without a token (the live finding of 2026-11-14)', () => {
+    it('badPath_aBuildAtWorkWhoseTokenRanOutPausesTheWatchAndSaysSo_neverFreezesSilently', async () => {
+        // The live finding of 2026-11-14: the token's hour ran out while the server built; the watch stopped without a
+        // word and the card stayed on "Build the pipeline's image" until Check again.
+        const w = await world('pipeline');
+        await w.flow.install();
+        w.install.fakes.scenario('cloud-build.start');
+        await w.clock.advance(RUNNING_LOOK_MS);
+        expect(w.latest().state).toBe('working');
+        expect(w.paused).not.toHaveBeenCalled();
+
+        w.live = null;
+        await w.clock.advance(RUNNING_LOOK_MS);
+
+        expect(w.paused).toHaveBeenCalledTimes(1);
+        expect(w.clock.pending()).toBe(0);
+        w.flow.dispose();
     });
 });
 

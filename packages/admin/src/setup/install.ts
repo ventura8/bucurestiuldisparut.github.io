@@ -9,7 +9,7 @@
  * Provision items whose definition changed since the project was last prepared (`provisionDue` on the slice; the
  * pipeline's public pull and the 7-day raw delivery of M7, for one), beside the builds.
  */
-import { INSTALL_TARGETS, type InstallState, type InstallTarget } from '@hcm/shared';
+import { INSTALL_TARGETS, type InstallState, type InstallTarget, type ServiceState } from '@hcm/shared';
 
 import { createInstallFlow, type InstallFlow } from '../install/install-flow.js';
 import { isRunning, type InstallTargetView } from '../install/model.js';
@@ -64,6 +64,40 @@ function updates(view: InstallTargetView, pipelineOff: boolean): boolean {
 /** A pipeline a look found not installed with nothing in its way. */
 function missingPipeline(view: InstallTargetView): boolean {
     return view.target === 'pipeline' && view.state === 'notInstalled' && view.checkedAt !== null && view.blocker === null;
+}
+
+/** The notices the cards set themselves while an update cannot go on; a look that answers lifts them. */
+type WaitNotice = 'adminSetup.install.followPaused' | 'adminSetup.install.waitsForSignIn' | 'adminSetup.install.serverStopped';
+const WAIT_NOTICES: ReadonlySet<string> = new Set<WaitNotice>([
+    'adminSetup.install.followPaused',
+    'adminSetup.install.waitsForSignIn',
+    'adminSetup.install.serverStopped',
+]);
+
+/**
+ * Whether a look lifts `notice`: any answered look a paused watch's or a held update's (the update starts with that
+ * token); the server's stop only once the target builds again or is in place.
+ */
+function lifts(notice: string, view: InstallTargetView): boolean {
+    return answered(view) && (notice === 'adminSetup.install.serverStopped' ? buildingOrInPlace(view) : WAIT_NOTICES.has(notice));
+}
+
+/** A look that answered: done, without an error. */
+function answered(view: InstallTargetView): boolean {
+    return view.checkedAt !== null && !view.looking && view.error === null;
+}
+
+function buildingOrInPlace(view: InstallTargetView): boolean {
+    return isRunning(view.state) || view.state === 'installed';
+}
+
+/**
+ * The step's chip: a card that shows an error (an update refused, as `adminOutdated` when the admin was redeployed while
+ * the server built) never wears the "done" chip that kept it closed (the live finding of 2026-11-14).
+ */
+function chipOf(view: InstallTargetView): ServiceState {
+    const chip = INSTALL_CHIP[view.state];
+    return chip === 'ok' && view.error !== null ? 'invalid' : chip;
 }
 
 /** The pipeline's reason, kept when it is the bundle's `notAvailable` (any other local answer says nothing of the bundle). */
@@ -225,6 +259,10 @@ class Cards implements InstallCards {
         this.#ctx.count(INSTALL_STEP_OF[target], 'inputs');
         const access = accessOf(await googleAccess(this.#ctx, INSTALL_STEP_OF[target], 'cloudPlatform', true));
         if (access !== null) {
+            // An update held for a token (`waitsForSignIn`) goes on: the server's look with this token starts it.
+            if (target !== 'server' && this.#afterServerTargets.includes(target)) {
+                await this.#flows.server.refresh();
+            }
             await this.#flows[target].refresh();
             this.#flows[target].watch();
         }
@@ -283,6 +321,9 @@ class Cards implements InstallCards {
                 this.#ctx.deps.google.drop();
                 this.#ctx.patchStep(step, { needsContinue: true });
             },
+            paused: () => {
+                this.#ctx.patchStep(step, { needsContinue: true, error: { key: 'adminSetup.install.followPaused' } });
+            },
         });
     }
 
@@ -291,6 +332,7 @@ class Cards implements InstallCards {
         this.#ctx.update((state) => ({ ...state, install: { ...state.install, [view.target]: view } }));
         this.#record(view);
         const step = INSTALL_STEP_OF[view.target];
+        this.#clearWaitNotice(step, view);
         if (view.target === 'server') {
             this.#ctx.patchStep(step, { busy: view.busy });
             this.#permissionToProvision(view);
@@ -298,7 +340,15 @@ class Cards implements InstallCards {
             this.#settledServer(view);
             return;
         }
-        this.#ctx.patchStep(step, { state: INSTALL_CHIP[view.state], busy: view.busy, checkedAt: view.checkedAt });
+        this.#ctx.patchStep(step, { state: chipOf(view), busy: view.busy, checkedAt: view.checkedAt });
+    }
+
+    /** A look that answered lifts the card's own notice of a paused watch or a held update (the step's Continue too). */
+    #clearWaitNotice(step: SetupStepId, view: InstallTargetView): void {
+        const notice = this.#ctx.state().steps[step].error?.key;
+        if (notice !== undefined && lifts(notice, view) && !this.#afterServerTargets.includes(view.target)) {
+            this.#ctx.patchStep(step, { needsContinue: false, error: null });
+        }
     }
 
     /**
@@ -372,23 +422,44 @@ class Cards implements InstallCards {
     }
 
     /**
-     * Update the map's pipeline and site, once the server they waited for is installed (with the live token; else each
-     * card offers it again). A server that stopped submits neither: a pipeline image ahead of its server would make the
-     * local worker's claims refused.
+     * Update the map's pipeline and site, once the server they waited for is installed, with the live token; without one
+     * they stay held and their cards offer Continue, whose token starts them (2026-11-14). A server that stopped submits
+     * neither (a pipeline image ahead of its server would make the local worker's claims refused): their cards say so.
      */
     #afterServer(view: InstallTargetView): void {
         if (!this.#afterServerDue(view)) {
             return;
         }
         const targets = this.#afterServerTargets;
-        this.#afterServerTargets = [];
         const access = view.state === 'installed' ? this.#live() : null;
+        if (view.state === 'installed' && access === null) {
+            // The live finding of 2026-11-14: the update was dropped here with an info line only, so the pipeline never
+            // started and its card said nothing. It now stays due, and its card offers Continue, whose token starts it.
+            this.#ctx.deps.log.warn('update waits for a live token', { targets: targets.join(',') });
+            this.#tellWaiting(targets, 'adminSetup.install.waitsForSignIn', true);
+            return;
+        }
+        this.#releaseAfterServer(view, access);
+    }
+
+    /** The held targets go: with the token once the server is in, else (the server stopped) each card says why. */
+    #releaseAfterServer(view: InstallTargetView, access: InstallAccess | null): void {
+        const targets = this.#afterServerTargets;
+        this.#afterServerTargets = [];
         if (access === null) {
-            this.#ctx.deps.log.info('update waits for a click', { targets: targets.join(','), server: view.state });
+            this.#ctx.deps.log.warn('update not started: the server stopped', { targets: targets.join(','), server: view.state });
+            this.#tellWaiting(targets, 'adminSetup.install.serverStopped', false);
             return;
         }
         targets.forEach((target) => {
             void this.#flows[target].installWith(access);
+        });
+    }
+
+    /** Each target an update holds back says why on its card (with Continue when a new token is what it waits for). */
+    #tellWaiting(targets: readonly InstallTarget[], key: WaitNotice, needsContinue: boolean): void {
+        targets.forEach((target) => {
+            this.#ctx.patchStep(INSTALL_STEP_OF[target], { needsContinue, error: { key } });
         });
     }
 }
