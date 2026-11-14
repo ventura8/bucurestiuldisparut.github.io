@@ -160,10 +160,7 @@ describe('POI fields', () => {
 /** A place stored before every place needed a year (the owner's request of 2026-11-12). */
 async function seedUndated(): Promise<string> {
     const path = FIRESTORE_PATHS.poi(CITY_ID, nextId());
-    await world.seed(
-        path,
-        withChanges(poiDoc(world.uid('admin')), { yearStart: deleted(), yearEnd: deleted(), yearSeen: deleted() }),
-    );
+    await world.seed(path, withChanges(poiDoc(world.uid('admin')), { yearStart: deleted(), yearEnd: deleted(), yearSeen: deleted() }));
     return path;
 }
 
