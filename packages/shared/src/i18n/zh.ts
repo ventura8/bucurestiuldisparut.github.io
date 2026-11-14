@@ -139,6 +139,7 @@ export const zh: Messages = {
     'poi.years': '{yearStart}年至{yearEnd}年',
     'poi.yearStart': '自{yearStart}年起',
     'poi.yearEnd': '直到{yearEnd}年',
+    'poi.yearSeen': '见于{year}年地图',
     'poi.links': '链接',
     'poi.sources': '来源',
     'poi.sourceLayer': '显示在：{layer}',

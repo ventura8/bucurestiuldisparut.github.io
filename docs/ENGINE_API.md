@@ -474,6 +474,7 @@ At most 50 categories.
 | `geometry` | GeoJSON | `Point`, `LineString` (2 positions or more) or `Polygon` (closed rings of 4 positions or more, at most 20 rings); `[lng, lat]` positions only (no altitude, no `bbox`); at most 500 positions per geometry; every position within the city bounds plus 0.5° |
 | `title`, `description?` | `{ro, en?}` | at most 200 and 5,000 characters; `description` is Markdown subset |
 | `yearStart?`, `yearEnd?` | integer | 1800 to 2100; either may be absent (an open end), never `yearEnd` before `yearStart` |
+| `yearSeen?` | integer | 1800 to 2100; M27: the year of the plan the place was traced on when its lifespan is unknown; the sheet says "Văzută pe harta din {year}" / "Seen on the {year} map"; `placeYearIssues` accepts it instead of start/end |
 | `links` | `[{url, label}]` | at most 5, https only |
 | `photoIds?` | string[] | at most 20 ids of manifest photos, shown in the POI's details |
 | `sourceLayer?` | string | M27: the id of a manifest layer the POI was traced on (`validation.reference` otherwise); the sheet says "Seen on: <layer>" |

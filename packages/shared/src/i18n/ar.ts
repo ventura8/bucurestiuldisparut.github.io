@@ -136,6 +136,7 @@ export const ar: Messages = {
     'poi.years': 'من {yearStart} إلى {yearEnd}',
     'poi.yearStart': 'منذ {yearStart}',
     'poi.yearEnd': 'حتى {yearEnd}',
+    'poi.yearSeen': 'شوهدت على خريطة {year}',
     'poi.links': 'روابط',
     'poi.sources': 'المصادر',
     'poi.sourceLayer': 'يظهر في: {layer}',

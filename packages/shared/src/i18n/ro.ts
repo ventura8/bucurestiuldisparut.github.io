@@ -140,6 +140,7 @@ export const ro = {
     'poi.years': 'Între {yearStart} și {yearEnd}',
     'poi.yearStart': 'Din {yearStart}',
     'poi.yearEnd': 'Până în {yearEnd}',
+    'poi.yearSeen': 'Văzută pe harta din {year}',
     'poi.links': 'Legături',
     'poi.sources': 'Surse',
     'poi.sourceLayer': 'Se vede pe: {layer}',

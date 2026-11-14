@@ -58,6 +58,8 @@ describe('poiYearsText', () => {
         expect(poiYearsText({ yearStart: 1900, yearEnd: 1900 }, 'ro')).toBe('Anul 1900');
         expect(poiYearsText({ yearStart: 1890 }, 'en')).toBe('From 1890');
         expect(poiYearsText({ yearEnd: 1984 }, 'ro')).toBe('Până în 1984');
+        expect(poiYearsText({ yearSeen: 1939 }, 'ro')).toBe('Văzută pe harta din 1939');
+        expect(poiYearsText({ yearSeen: 1914 }, 'en')).toBe('Seen on the 1914 map');
     });
 
     it('badPath_noYearsGivesNoText', () => {

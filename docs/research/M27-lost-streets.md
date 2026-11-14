@@ -17,7 +17,7 @@ and the static manifest the public viewer reads (it never reads Firestore). Each
 | --- | --- |
 | a line | `geometry` (`LineString`, 2 to 500 positions) |
 | its historical name or names | `title` (the name), `description` ("Alte nume: …" / "Other names: …") |
-| the years it existed | `yearStart`, `yearEnd` (either may be absent) |
+| the years it existed | `yearStart`, `yearEnd` (either may be absent), or only `yearSeen` when the street is proved on a plan of one year with no known start/end |
 | its source | `links` (the dataset's record: an OpenHistoricalMap way, an OSM way, a Wikidata item), `sourceLayer` (the id of the city's layer it was traced on) and the category's `attribution` |
 
 ## 2. What M27 added
@@ -78,8 +78,9 @@ allowed: a list of 179 street **names** with a rough centre point each, in our o
 first batch. The other 134 were traced by eye on **our** georeferenced plans: each name found by its printed label on the
 1939 plan (`harta-bucuresti-1939`; one, Traian, on the 1914 SOCEC plan) and its centreline digitised from the scan's pixels,
 converted to positions with the tiles' own Web Mercator grid. 100 streets were traced
-(`scripts/seed/lost-streets-bucharest-traced.geojson`: `sourceLayer` names the plan, the description says "Trasată pe …";
-no years, since the plan shows only that the street existed then). 34 were not: no readable label on any of our plans
+(`scripts/seed/lost-streets-bucharest-traced.geojson`: `sourceLayer` names the plan, `yearSeen` is that plan's year
+(1939 / 1914 / 1921), the description says "Trasată pe …"; no `yearStart` / `yearEnd`, since the plan shows only that
+the street existed then — `placeYearIssues` accepts `yearSeen` alone so the admin's import does not refuse them). 34 were not: no readable label on any of our plans
 near the name (Vigilenței, Intr. Bateriilor, Intr. Uranus, Intrarea Vânători, Intr. Evoluției, Gheorghe Petrescu, Antim,
 Intrarea Antim, Bd. G. Coșbuc, V. Adamache, I. Barasch, Măcin, Haiducul Bujor, Gh. Cristescu, Strehaia, Operetei,
 C-tin Bosianu, A. Goldfaden, Asan, Cernișoara, M. Popper, Intrarea Cobzei, Intrarea Naiului, Th. Speranția, Săcărâmb,
@@ -115,3 +116,11 @@ V71 (viewer: pinned, hidden at start, sources), A154 (trace on a layer), A155 (t
 in `e2e/scenarios.json`. The position test: `packages/ui/test/viewer/hcm-layer-panel.test.ts` and
 `e2e/specs/viewer/lost-streets.spec.ts` (strip children `compare`, `labels`, `pinned-overlays`; the switch above the
 first historical layer). Tour states `layers-lost-streets` and `lost-street` (`e2e/tour/lost-streets-states.ts`).
+
+## 6. Addendum: `yearSeen` (2026-11-14)
+
+Traced streets have no inventable start or end year. An optional integer `yearSeen` on the place schema
+(`poiSchema`, `poiDocSchema`) holds the plan year (`harta-bucuresti-1939` → 1939, `bucuresti-harta-1914-socec` → 1914,
+`1921-mihai-pantea` → 1921). `hasPlaceYear` / `placeYearIssues`, the Firestore `dated` check, the GeoJSON import and
+`review.decide` treat it as a dated place; the viewer's place sheet shows `poi.yearSeen` ("Văzută pe harta din {year}" /
+"Seen on the {year} map"). Both traced seed files fill `yearSeen` from `sourceLayer`.

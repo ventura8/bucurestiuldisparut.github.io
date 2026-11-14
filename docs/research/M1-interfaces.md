@@ -480,7 +480,8 @@ the `i18n` gate); a missing key is a change request. Families:
   `.group.historical`, `.group.places`, `.opacityChanged` (`{name}`, `{percent}`; the live announcement), `.shown`,
   `.hidden` (`{name}`).
 - `poi.marker` (`{title}`), `.category` (`{category}`), `.year` (`{year}`), `.years` (`{yearStart}`, `{yearEnd}`),
-  `.yearStart` (`{yearStart}`), `.yearEnd` (`{yearEnd}`), `.links`, `.photos`, `.openPhoto` (`{title}`).
+  `.yearStart` (`{yearStart}`), `.yearEnd` (`{yearEnd}`), `.yearSeen` (`{year}`; M27: traced on that year's plan),
+  `.links`, `.photos`, `.openPhoto` (`{title}`).
 - `photos.title`, `.list`, `.count.one`, `.count.few`, `.count.other` (`{count}`; pick the form with
   `Intl.PluralRules(locale)`), `.nearYear` (`{year}`).
 - `photo.marker` (`{title}`), `.author` (`{author}`), `.year` (`{year}`), `.years` (`{year}`, `{yearEnd}`),

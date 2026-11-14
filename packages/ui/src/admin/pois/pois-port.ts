@@ -38,6 +38,8 @@ export interface PoiValuePort {
     readonly description?: PoiTextPort;
     readonly yearStart?: number;
     readonly yearEnd?: number;
+    /** M27: plan year when start/end are unknown. */
+    readonly yearSeen?: number;
     readonly links: readonly PoiLinkPort[];
     readonly photoIds: readonly string[];
     readonly published: boolean;
@@ -54,6 +56,7 @@ export interface PoiItemPort {
     readonly title: PoiTextPort;
     readonly yearStart: number | null;
     readonly yearEnd: number | null;
+    readonly yearSeen?: number | null;
     readonly shape: 'point' | 'line' | 'area';
     readonly published: boolean;
 }

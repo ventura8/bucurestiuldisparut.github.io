@@ -138,6 +138,7 @@ export const tr: Messages = {
     'poi.years': 'Yıllar: {yearStart}–{yearEnd}',
     'poi.yearStart': 'Başlangıç: {yearStart}',
     'poi.yearEnd': 'Bitiş: {yearEnd}',
+    'poi.yearSeen': '{year} haritasında görüldü',
     'poi.links': 'Bağlantılar',
     'poi.sources': 'Kaynaklar',
     'poi.sourceLayer': 'Şurada görülebilir: {layer}',

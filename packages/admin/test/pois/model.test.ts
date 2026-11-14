@@ -107,7 +107,8 @@ describe('places: values and documents', () => {
         });
         const city = { name: { ro: 'B' }, bounds: BOUNDS, published: true, ...STAMP };
 
-        expect(item).toMatchObject({ id: 'stavropoleos', version: 'v1', shape: 'point', yearStart: 1724, yearEnd: null, published: true });
+        expect(item).toMatchObject({ id: 'stavropoleos', version: 'v1', shape: 'point', yearStart: 1724, yearEnd: null });
+        expect(item).toMatchObject({ yearSeen: null, published: true });
         expect(category).toEqual({
             id: 'biserici',
             label: { ro: 'Biserici' },

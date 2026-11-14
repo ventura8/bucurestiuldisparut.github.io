@@ -140,6 +140,7 @@ export const ja: Messages = {
     'poi.years': '{yearStart}年から{yearEnd}年まで',
     'poi.yearStart': '{yearStart}年から',
     'poi.yearEnd': '{yearEnd}年まで',
+    'poi.yearSeen': '{year}年の地図で確認',
     'poi.links': 'リンク',
     'poi.sources': '情報源',
     'poi.sourceLayer': '次のレイヤーで表示されています： {layer}',

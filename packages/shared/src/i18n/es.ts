@@ -139,6 +139,7 @@ export const es: Messages = {
     'poi.years': 'De {yearStart} a {yearEnd}',
     'poi.yearStart': 'Desde {yearStart}',
     'poi.yearEnd': 'Hasta {yearEnd}',
+    'poi.yearSeen': 'Vista en el mapa de {year}',
     'poi.links': 'Enlaces',
     'poi.sources': 'Fuentes',
     'poi.sourceLayer': 'Se ve en: {layer}',

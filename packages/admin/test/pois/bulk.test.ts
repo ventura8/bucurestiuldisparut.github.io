@@ -14,6 +14,7 @@ function item(id: string, extra: Partial<PoiItem> = {}): PoiItem {
         title: { ro: id },
         yearStart: null,
         yearEnd: null,
+        yearSeen: null,
         shape: 'point',
         published: true,
         geometry: POINT,
