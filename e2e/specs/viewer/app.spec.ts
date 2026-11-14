@@ -59,7 +59,7 @@ async function manifestOf(context: BrowserContext, page: Page): Promise<{ url: s
 test(
     'The city map is an installable app: its manifest, its worker, Install app in Settings, and the last page offline',
     { tag: '@S-V72-HAPPY-INSTALLABLE' },
-    async ({ page, context, lang }) => {
+    async ({ page, context, lang, consoleErrors }) => {
         await openControlled(page, lang);
         // The first load came before the worker: a second one goes through it, which keeps the page and its shell.
         await page.reload();
@@ -94,6 +94,14 @@ test(
         await context.setOffline(true);
         await page.reload();
         await expect(page.locator('#historic-city-map')).toBeAttached();
+        // The data and the catalogues are never kept (S-V72-BAD-NEVER-STALE): offline, only they fail to load.
+        let offline: string[] = [];
+        await expect
+            .poll(() => {
+                offline = [...offline, ...consoleErrors.takeMatching(/ERR_INTERNET_DISCONNECTED/)];
+                return offline.join('\n');
+            })
+            .toMatch(/manifest\.json[\s\S]*i18n|i18n[\s\S]*manifest\.json/);
         await context.setOffline(false);
     },
 );

@@ -24,6 +24,8 @@ async function openAdmin(page: Page, content: ContentWorld): Promise<void> {
     await page.goto(content.address('en', 'photos', { map: false }));
     await expect(page.getByRole('heading', { level: 1, name: translateAdminShell('en', 'adminShell.nav.photos') })).toBeVisible();
     await page.evaluate(() => navigator.serviceWorker.ready);
+    // The photo list finishes loading first: its indicator would sit under the account menu the layout check reads.
+    await expect(page.locator('hcm-loading-indicator')).toHaveCount(0);
 }
 
 async function openAccountMenu(page: Page): Promise<void> {
