@@ -206,7 +206,7 @@ describe('<hcm-timeline> right to left', () => {
         await element.updateComplete;
         const thumb = shadowQuery(element, '.thumb');
         thumb.style.transition = 'none';
-        const tick = shadowQueryAll(element, '.stop .tick')[1]?.getBoundingClientRect();
+        const tick = shadowQueryAll(element, '.stop .label')[1]?.getBoundingClientRect();
         const box = thumb.getBoundingClientRect();
         expect(Math.abs((tick?.left ?? 0) + (tick?.width ?? 0) / 2 - (box.left + box.width / 2))).toBeLessThanOrEqual(1);
 
@@ -320,32 +320,22 @@ describe('<hcm-timeline> many years', () => {
         expect(crowdedLabels(element)).toEqual([]);
     });
 
-    it.each(['horizontal', 'vertical'] as const)('badPath_%s_twentyTwoYearsFitTheCardEveryOtherOneLabelled', async (orientation) => {
-        // The Pixel Tablet, 2026-11-12: at 30 px per gap the track overflowed the card and 1847 showed as "7".
+    it.each(['horizontal', 'vertical'] as const)('badPath_%s_twentyTwoYearsScrollEveryYearLabelled56PxApart', async (orientation) => {
+        // The owner, 2026-11-14: "too crowded"; no dots, every year a label, a comfortable gap, the card scrolls instead.
         const element = await timeline({ stops: MANY, value: 1964, orientation }, { inline: 420, block: 380 });
         stillThumb(element);
 
-        expect(element.getAttribute('density')).toBe('dense');
-        expect(scrolls(element)).toBe(false);
-        const card = element.getBoundingClientRect();
-        for (const key of ['Home', 'End', 'ArrowLeft', 'Home', 'ArrowRight']) {
-            press(element, key);
-            await element.updateComplete;
-            const labels = shownLabels(element);
-            expect(crowdedLabels(element), `crowded after ${key}`).toEqual([]);
-            expect(
-                labels.filter(
-                    ({ box }) => box.left < card.left || box.right > card.right || box.top < card.top || box.bottom > card.bottom,
-                ),
-                `clipped after ${key}`,
-            ).toEqual([]);
-            expect(labels.length, `labelled after ${key}`).toBeGreaterThanOrEqual(8);
-        }
-        // Standing, the pill names the selected year and hides a label next to it: the ends are named whenever it is away.
-        press(element, 'Home');
-        await element.updateComplete;
-        const texts = shadowQueryAll(element, '.stop:not(.minor) .label').map((label) => label.textContent);
-        expect(texts, 'the ends are always named').toEqual(expect.arrayContaining(['1964', 'Azi']));
+        expect(element.getAttribute('density')).toBe('scroll');
+        expect(scrolls(element)).toBe(true);
+        expect(shadowQueryAll(element, '.tick')).toEqual([]);
+        expect(shadowQueryAll(element, '.stop.minor')).toEqual([]);
+        const centres = shadowQueryAll(element, '.stop .label').map((label) => {
+            const box = label.getBoundingClientRect();
+            return orientation === 'vertical' ? box.top + box.height / 2 : box.left + box.width / 2;
+        });
+        const gaps = centres.slice(1).map((centre, at) => Math.abs(centre - (centres[at] ?? 0)));
+        expect(Math.min(...gaps)).toBeGreaterThanOrEqual(55.5);
+        expect(crowdedLabels(element)).toEqual([]);
     });
 
     it.each(['horizontal', 'vertical'] as const)(
@@ -452,7 +442,7 @@ describe('<hcm-timeline> many years under a finger', () => {
     });
 
     it('badPath_aResizedCardChangesItsDensity', async () => {
-        const element = await timeline({ stops: MANY, value: 1964 }, { inline: 1200, block: 300 });
+        const element = await timeline({ stops: MANY, value: 1964 }, { inline: 1300, block: 300 });
         expect(element.getAttribute('density')).toBe('roomy');
 
         element.style.inlineSize = '260px';
@@ -460,7 +450,7 @@ describe('<hcm-timeline> many years under a finger', () => {
         expect(element.getAttribute('density')).toBe('scroll');
 
         element.remove();
-        element.style.inlineSize = '1200px';
+        element.style.inlineSize = '1300px';
         await settled(element);
         expect(element.getAttribute('density'), 'a removed card is no longer measured').toBe('scroll');
     });

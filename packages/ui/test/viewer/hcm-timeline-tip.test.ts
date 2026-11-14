@@ -5,13 +5,14 @@ import { HCM_TIMELINE_TAG, defineHcmTimeline, type HcmTimeline } from '../../src
 import { mountElement, recordEvents, shadowQuery, shadowQueryAll } from './doubles.js';
 
 /**
- * The year chip on `<hcm-timeline>` (the owner, 2026-11-13): a mouse over a stop without its own label, a finger anywhere
+ * The year chip on `<hcm-timeline>` (the owner, 2026-11-13): a mouse over a stop without its own label (none since every
+ * year is labelled, the owner, 2026-11-14), a finger anywhere
  * on the track (scrubbing, selecting on lift, locked to the track's axis); never a year of several dates, whose date menu
  * names them; in title medium, 40 px tall.
  */
 
-/** Twenty-two stops, 1964 to 1984 and today: dense in a 420 px card, every other year unlabelled. */
-const MANY = [...Array.from({ length: 21 }, (_, at) => 1964 + at), null];
+/** Twelve stops, 1964 to 1974 and today: roomy in a 720 px card, every year labelled (56 px apart). */
+const MANY = [...Array.from({ length: 11 }, (_, at) => 1964 + at), null];
 /** 1964 has two dates (and 1967 two layers): their stops carry a badge and never a chip. */
 const COUNTS = new Map([
     [1964, 2],
@@ -29,8 +30,8 @@ function frame(): Promise<void> {
 async function timeline(properties: Partial<HcmTimeline> = {}): Promise<HcmTimeline> {
     defineHcmTimeline();
     const element = await mountElement<HcmTimeline>(HCM_TIMELINE_TAG, { stops: MANY, dateCounts: COUNTS, value: 1974, ...properties });
-    element.style.inlineSize = '420px';
-    element.style.blockSize = properties.orientation === 'vertical' ? '420px' : '';
+    element.style.inlineSize = '720px';
+    element.style.blockSize = properties.orientation === 'vertical' ? '720px' : '';
     element.style.marginBlockStart = '120px';
     element.style.marginInlineStart = '120px';
     await frame();
@@ -59,12 +60,12 @@ describe('<hcm-timeline> year chip', () => {
         document.body.replaceChildren();
     });
 
-    it('happyPath_aMouseOverAnUnlabelledYearShowsItAboveTheCard', async () => {
+    it('happyPath_aFingerShowsTheYearAboveTheCard', async () => {
         const element = await timeline();
-        expect(element.getAttribute('density')).toBe('dense');
+        expect(element.getAttribute('density')).toBe('roomy');
         const track = shadowQuery(element, '.track');
 
-        fire(track, 'pointermove', at(element, 1));
+        fire(track, 'pointerdown', at(element, 1), 'touch');
         await element.updateComplete;
 
         expect(tip(element)?.textContent).toBe('1965');
@@ -80,7 +81,7 @@ describe('<hcm-timeline> year chip', () => {
         const chip = tip(element)?.getBoundingClientRect() ?? new DOMRect();
         expect(chip.bottom).toBeLessThanOrEqual(card.top - 7);
         expect(Math.abs(chip.left + chip.width / 2 - at(element, 1).x)).toBeLessThan(1);
-        fire(track, 'pointerleave', at(element, 1));
+        fire(window, 'pointercancel', at(element, 1), 'touch');
         await element.updateComplete;
         expect(tip(element)).toBeNull();
     });
@@ -98,12 +99,13 @@ describe('<hcm-timeline> year chip', () => {
     it('happyPath_theChipNearTheFirstYearStaysOverTheCardsEnd', async () => {
         const element = await timeline({ locale: 'en' });
 
-        fire(shadowQuery(element, '.track'), 'pointermove', at(element, 1));
+        fire(shadowQuery(element, '.track'), 'pointerdown', at(element, 1), 'touch');
         await element.updateComplete;
 
         expect(tip(element)?.textContent).toBe('1965');
         const chip = tip(element)?.getBoundingClientRect() ?? new DOMRect();
         expect(chip.left).toBeGreaterThanOrEqual(element.getBoundingClientRect().left);
+        fire(window, 'pointercancel', at(element, 1), 'touch');
     });
 
     it('badPath_aMultiDateYearShowsNoChipUnderAMouseTheKeyboardOrAFinger', async () => {

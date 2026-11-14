@@ -6,8 +6,8 @@
  * motion under `prefers-reduced-motion: reduce`. Standing on the leading edge of a phone held upright, lying at the bottom
  * of the map everywhere else; Left and Right follow the thumb on screen (a later year is to the left, right to left).
  * The track fits the card (the Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two years overflowed it and clipped the
- * first): with less than 30 px between stops every other year is labelled (the ends always, the selected one on the
- * pill); below 14 px the track keeps 16 px per gap and scrolls, a finger can scroll it, the edge with more years beyond
+ * first; the owner, 2026-11-14: "too crowded"): every year is a label, no dot or tick, at least 56 px apart; below that
+ * the track keeps 56 px per gap and scrolls, a finger, a mouse's drag or wheel can scroll it, the edge with more years beyond
  * fades, and the selected stop is centred whenever it changes, except while a drag is on (`timeline-model.ts`,
  * `timeline-styles.ts`). There a finger drags the thumb and taps a year; elsewhere it drags anywhere on the track.
  * A new stop fires `hcm-year-change` (`{year}`, null for today). The year chip (`timeline-tip.ts`) names a stop without
@@ -23,7 +23,7 @@ import { classMap } from 'lit/directives/class-map.js';
 
 import { cssProperties } from '../components/css-properties.js';
 import { countOf, dateBadge, datesOpenEvent, datesValueText } from './timeline-dates.js';
-import { labelShown, SCROLL_GAP_PX, stopIndex, timelineDensity, type TimelineDensity, type TimelineStop } from './timeline-model.js';
+import { SCROLL_GAP_PX, stopIndex, timelineDensity, type TimelineDensity, type TimelineStop } from './timeline-model.js';
 import { wheelAlong } from './timeline-pan.js';
 import { TimelinePointer } from './timeline-pointer.js';
 import { DatesPeek, datesPeekEvent, peekDates, peekPlace } from './timeline-peek.js';
@@ -391,7 +391,7 @@ export class HcmTimeline extends LitElement {
     #stop(stop: TimelineStop, stopAt: number, selected: number): TemplateResult {
         const classes = { stop: true, selected: stopAt === selected, minor: !this.#labelled(stopAt, selected) };
         return html`<li class=${classMap(classes)} ${cssProperties({ '--hcm-stop': percentText(this.#percent(stopAt)) })}>
-            <span class="tick"></span><span class="label">${this.#shortLabel(stop)}</span>
+            <span class="label">${this.#shortLabel(stop)}</span>
             ${stopAt === selected ? '' : this.#badge(stop)}
         </li>`;
     }
@@ -425,11 +425,8 @@ export class HcmTimeline extends LitElement {
         }
     };
 
-    /** Whether a stop shows its year: `labelShown`, and standing, not under the pill (the pill names the selected year). */
+    /** Whether a stop shows its year: every one lying; standing, not under the pill (the pill names the selected year). */
     #labelled(stopAt: number, selected: number): boolean {
-        if (!labelShown(stopAt, this.stops.length, this.density)) {
-            return false;
-        }
         const gap = this.density === 'scroll' ? SCROLL_GAP_PX : this.gapPx;
         return this.orientation !== 'vertical' || stopAt === selected || Math.abs(stopAt - selected) * gap >= PILL_REACH_PX;
     }

@@ -11,8 +11,8 @@ import { mountElement, shadowQuery, shadowQueryAll } from './doubles.js';
  * with M3's inverse surface, `primary` or `error`, whose dark-theme tones are light.
  */
 
-/** Twenty-two stops, 1964 to 1984 and today, dense in a 420 px card (1965 unlabelled); 1964 has two dates (a badge). */
-const STOPS = [...Array.from({ length: 21 }, (_, at) => 1964 + at), null];
+/** Six stops, 1964 to 1968 and today, roomy in a 420 px card; 1964 has two dates (a badge). */
+const STOPS = [...Array.from({ length: 5 }, (_, at) => 1964 + at), null];
 const COUNTS = new Map([[1964, 2]]);
 
 function frame(): Promise<void> {
@@ -60,12 +60,12 @@ async function showTip(element: HcmTimeline): Promise<void> {
     const point = {
         clientX: box.left + box.width / 2,
         clientY: box.top + 4,
-        pointerType: 'mouse',
-        pointerId: 1,
+        pointerType: 'touch',
+        pointerId: 2,
         bubbles: true,
         composed: true,
     };
-    shadowQuery(element, '.track').dispatchEvent(new PointerEvent('pointermove', point));
+    shadowQuery(element, '.track').dispatchEvent(new PointerEvent('pointerdown', point));
     await element.updateComplete;
 }
 

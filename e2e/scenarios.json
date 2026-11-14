@@ -1786,7 +1786,7 @@
             "asserts": "with sixty-two stops (1924 … 1984, today) at 320x568, 568x320 and 768x1024 the card scrolls and takes a finger along the timeline (touch-action pan-y standing, pan-x lying); after Home, End and Home the thumb is inside the card, the edge with more years beyond fades (24 px) and no label meets the pill or another label",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The review of track/yearchip, 2026-11-08 (stops 17 px apart) and the Pixel Tablet, 2026-11-12 (no finger scroll). Below 14 px per gap the stops keep 16 px apart, every other one labelled, and the selected one is centred when no drag is on. packages/ui/src/viewer/timeline-model.ts, timeline-styles.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts, timeline-model.test.ts."
+            "notes": "The review of track/yearchip, 2026-11-08 (stops 17 px apart) and the Pixel Tablet, 2026-11-12 (no finger scroll). Below 56 px per gap the stops keep 56 px apart, every one labelled (the owner, 2026-11-14), and the selected one is centred when no drag is on. packages/ui/src/viewer/timeline-model.ts, timeline-styles.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts, timeline-model.test.ts."
         },
         {
             "id": "S-V04-HAPPY-MOUSE-PAN",
@@ -1815,11 +1815,11 @@
             "behaviour": "V04",
             "area": "viewer",
             "path": "bad",
-            "title": "Twenty-two years fit the card, every other one labelled and none clipped, on a phone, a tablet and a desktop",
-            "asserts": "with twenty-two stops (1964 … 1984, today) at 360x800, 568x320, 800x1280, 1280x800 and 1440x900, after Home and after End: the card does not scroll, its density is not scroll, the thumb is inside the card, no label shown sticks out of the card or meets the pill or another label, and at least eight years are named",
+            "title": "Twenty-two years each have a label 56 px apart, none clipped or crowded, scrolling where they do not fit, on a phone, a tablet and a desktop",
+            "asserts": "with twenty-two stops (1964 … 1984, today) at 360x800, 568x320, 800x1280, 1280x800 and 1440x900, after Home and after End: the card scrolls exactly when its density is scroll (years under 56 px apart), the thumb is inside the card, no label in view sticks out of the card or meets the pill or another label, and every year but the selected one (named by the pill) has its label; no dots or ticks",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two stops overflowed the card and 1847 showed as \"7\". packages/ui/src/viewer/timeline-model.ts (timelineDensity, labelShown), hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts."
+            "notes": "The Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two stops overflowed the card and 1847 showed as \"7\"; the owner, 2026-11-14: \"too crowded\", only the year labels, no dots. packages/ui/src/viewer/timeline-model.ts (timelineDensity), hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts."
         },
         {
             "id": "S-V04-HAPPY-NO-LAYERS-NOTE",

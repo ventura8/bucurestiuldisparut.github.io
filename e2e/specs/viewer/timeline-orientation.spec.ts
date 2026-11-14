@@ -278,10 +278,11 @@ const CARD_SIZES = [
 ] as const;
 
 test(
-    'Twenty-two years fit the card, every other one labelled and none clipped, on a phone, a tablet and a desktop',
+    'Twenty-two years each have a label 56 px apart, none clipped or crowded, scrolling where they do not fit, on a phone, a tablet and a desktop',
     { tag: '@S-V04-BAD-MANY-YEARS-FIT' },
     async ({ page, lang }) => {
-        // The Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two stops overflowed the card and 1847 showed as "7".
+        // The Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two stops overflowed the card and 1847 showed as "7"; the owner,
+        // 2026-11-14: "too crowded", only the years, no dots: every year labelled, and the card scrolls where they do not fit.
         await page.emulateMedia({ reducedMotion: 'reduce' });
         await serveManifest(page, manifestOf(Array.from({ length: 21 }, (_, at) => 1964 + at)));
         for (const size of CARD_SIZES) {
@@ -300,12 +301,11 @@ test(
                 await expect(thumb).toHaveAttribute('aria-valuenow', index);
                 const where = `${String(size.width)}x${String(size.height)} after ${key}`;
                 const view = await cardView(page);
-                expect(view.scrolls, `${where}: the track fits the card`).toBe(false);
-                expect(view.density, where).not.toBe('scroll');
+                expect(view.scrolls, `${where}: the track scrolls only when it does not fit`).toBe(view.density === 'scroll');
                 expect(view.inView, `${where}: the thumb in view`).toBe(true);
                 expect(view.clipped, `${where}: clipped labels`).toEqual([]);
                 expect(view.crowded, `${where}: crowded labels`).toEqual([]);
-                expect(view.labelled, `${where}: the years named`).toBeGreaterThanOrEqual(8);
+                expect(view.labelled, `${where}: every year named`).toBe(21);
             }
         }
     },

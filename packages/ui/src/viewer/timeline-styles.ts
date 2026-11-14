@@ -8,8 +8,9 @@
  * the pill's lane, whose stops the phone's height spaces wider than the pill. The list of stops has no margin of its own: the
  * browser's 1em of an `ol` collapsed through the track, made the timeline 100 px tall with a 16 px page font and more
  * with a larger one, and left no room for the open FAB menu above it on a 568 px phone. The card holds a scroller with
- * the padding: the track fits it unless the years are closer than 14 px (`density`, `timeline-model.ts`), and only then
+ * the padding: the track fits it unless the years are closer than 56 px (`density`, `timeline-model.ts`), and only then
  * scrolls, under a finger too, behind a mask that fades the edge with more years beyond (`--hcm-fade-start`, `-end`).
+ * The years are labels only, no dot or tick (the owner, 2026-11-14); the selected one is the pill.
  * A year with several dates has a badge on its point (V13); on a phone, idle, the card collapses to its pill (V12).
  * The year chip (`.tip`) is a chip outside the scroller, so the card's mask never clips it. Every chip (the year chip, the
  * pill, the badge) takes theme roles that are light in the light theme and dark in the dark one: a container role on its
@@ -87,8 +88,8 @@ export const timelineStyles = [
         }
 
         /*
-         * Years closer than 14 px (the review, 2026-11-08: twenty-two stops 17 px apart, the pill over its neighbours):
-         * the stops keep 16 px apart, every other one labelled, and the card scrolls; a finger may scroll it along the
+         * Years closer than 56 px (the owner, 2026-11-14: "too crowded"): the stops keep 56 px apart, every one labelled,
+         * and the card scrolls; a finger may scroll it along the
          * timeline (it drags the thumb itself), and the edge with more years beyond fades.
          */
         :host([density='scroll']) {
@@ -125,7 +126,7 @@ export const timelineStyles = [
         }
 
         :host([density='scroll']) .track {
-            min-inline-size: calc(var(--hcm-gaps) * 16px);
+            min-inline-size: calc(var(--hcm-gaps) * 56px);
         }
 
         /* No margin, padding or marker: the stops are placed on the track, the list only holds them. */
@@ -140,7 +141,7 @@ export const timelineStyles = [
         }
 
         :host([density='scroll'][orientation='vertical']) .track {
-            min-block-size: calc(var(--hcm-gaps) * 16px);
+            min-block-size: calc(var(--hcm-gaps) * 56px);
         }
 
         .rail,
@@ -184,7 +185,7 @@ export const timelineStyles = [
             align-items: center;
 
             /* The label's row begins below the pill (4 to 44 px), not beside it. */
-            gap: 20px;
+            gap: 28px;
             font-size: var(--md-sys-typescale-label-small-size, 0.6875rem);
             color: var(--md-sys-color-on-surface-variant, GrayText);
             white-space: nowrap;
@@ -197,35 +198,15 @@ export const timelineStyles = [
             transform: translateY(50%);
         }
 
-        .tick {
-            inline-size: 8px;
-            block-size: 8px;
-            border-radius: 50%;
-            background: var(--md-sys-color-on-secondary-container, GrayText);
-        }
-
-        /* The pill names the selected year; a dense track names every other year (a minor stop keeps its tick, unlabelled). */
+        /* The pill names the selected year; standing, a year under the pill has no label (no dot or tick either). */
         .stop.selected .label,
         .stop.minor .label {
             visibility: hidden;
         }
 
-        :host([orientation='vertical']) .tick {
-            display: none;
-        }
-
         :host([orientation='vertical']) .label {
             padding-block: 2px;
             background: var(--md-sys-color-surface-container, Canvas);
-        }
-
-        /* Standing, an unlabelled year is a tick on the rail, centred on its place. */
-        :host([orientation='vertical']) .stop.minor:not(.selected) .label {
-            display: none;
-        }
-
-        :host([orientation='vertical']) .stop.minor:not(.selected) .tick {
-            display: block;
         }
 
         .thumb {
@@ -272,7 +253,7 @@ export const timelineStyles = [
 
         /*
          * V13: a year with several dates has a badge on its point, the count in a 16 px M3 badge (error colours, as M3's)
-         * over its tick (standing, at the lane's end beside its label); the selected year's is on the pill's corner.
+         * above its year (standing, at the lane's end beside its label); the selected year's is on the pill's corner.
          */
         .badge {
             position: absolute;
