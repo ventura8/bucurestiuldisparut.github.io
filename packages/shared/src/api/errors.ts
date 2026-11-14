@@ -172,6 +172,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.layoutWaits': spec('failed-precondition'),
     'apiError.imagery.mapboxFinishing': spec('failed-precondition'),
     'apiError.imagery.workerLost': spec('unavailable'),
+    // P0-1 (2026-11-14): a lost local run whose attempt was given back (the computer stopped: a power cut or a crash).
+    'apiError.imagery.workerLostRefunded': spec('unavailable'),
     // M8 (docs/research/M8-join-interfaces.md §4): joining frames of one date into one layer.
     'apiError.imagery.joinMixedFrames': spec('invalid-argument'),
     // Batch 4: a frame a newer join of its date stamped (a failed join's retry cannot take it back).

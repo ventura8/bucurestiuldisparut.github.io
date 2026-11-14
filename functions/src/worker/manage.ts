@@ -21,22 +21,27 @@ export type ManageDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 type Request = CallableRequest<'worker.manage'>;
 type Stamp = Pick<WorkerDoc, 'updatedBy' | 'updatedAt'>;
 
-/** The worker's document as the action leaves it. */
-function changed(worker: WorkerDoc, request: Request, stamp: Pick<WorkerDoc, 'updatedBy' | 'updatedAt'>): WorkerDoc {
-    if (request.action === 'rename') {
-        return { ...worker, name: request.name, ...stamp };
-    }
-    if (request.action === 'remove') {
+/** The worker's document as each action leaves it. */
+const CHANGES: {
+    readonly [A in Request['action']]: (worker: WorkerDoc, request: Extract<Request, { action: A }>, stamp: Stamp) => WorkerDoc;
+} = {
+    rename: (worker, request, stamp) => ({ ...worker, name: request.name, ...stamp }),
+    remove: (worker, request, stamp) => {
         const removal = { step: 'asked' as const, askedAt: stamp.updatedAt, docker: request.docker, keep: request.keep };
         return { ...worker, removal, ...stamp };
-    }
+    },
     // Pause (2026-11-13): one pause for the list and imagery.pause (`pause-state.ts`): who, when; Resume drops it.
-    if (request.action === 'pause') {
-        return worker.paused === undefined
-            ? { ...pausedWorker(worker, stamp.updatedBy, timestampToDate(stamp.updatedAt)), ...stamp }
-            : worker;
-    }
-    return { ...resumedWorker(worker), ...stamp };
+    pause: (worker, _request, stamp) =>
+        worker.paused === undefined ? { ...pausedWorker(worker, stamp.updatedBy, timestampToDate(stamp.updatedAt)), ...stamp } : worker,
+    resume: (worker, _request, stamp) => ({ ...resumedWorker(worker), ...stamp }),
+    // Cleanup item 6 (2026-11-14): Free space now; the worker's next claim is answered `freeSpace` until it says what it freed.
+    freeSpace: (worker, _request, stamp) => ({ ...worker, freeSpaceAskedAt: stamp.updatedAt, ...stamp }),
+};
+
+/** The worker's document as the action leaves it. */
+function changed(worker: WorkerDoc, request: Request, stamp: Stamp): WorkerDoc {
+    const change = CHANGES[request.action] as (worker: WorkerDoc, request: Request, stamp: Stamp) => WorkerDoc;
+    return change(worker, request, stamp);
 }
 
 /** Pause: the job the computer runs is asked back (it hands it back at its next checkpoint), or, on Resume, no longer. */
@@ -51,7 +56,8 @@ async function askBackOnPause(deps: ManageDeps, request: Request, stamp: Stamp, 
 /**
  * `worker.manage` (W5, household computers: `docs/research/M7-local-worker.md` *Household computers*; S-A143-HAPPY-MANAGE,
  * S-A143-BAD-MANAGE-REMOVED): the admin's list of the city's computers renames one (its name in the list only), pauses it (its
- * claims are given no job: `worker.claim` answers `paused`) or resumes it, or asks it to remove itself (`removal.ts`: its
+ * claims are given no job: `worker.claim` answers `paused`) or resumes it, asks it to free space now (`freeSpace`, cleanup item 6:
+ * its next claim is answered `freeSpace`; S-A62-HAPPY-FREE-SPACE), or asks it to remove itself (`removal.ts`: its
  * worker cleans the computer up at its next claim, then is disconnected; S-A143-HAPPY-REMOVE). A computer that is unknown or
  * already disconnected is left alone: false.
  */

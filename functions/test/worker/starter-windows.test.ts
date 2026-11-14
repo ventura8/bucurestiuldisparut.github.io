@@ -132,7 +132,10 @@ describe('the Windows starter under Windows PowerShell 5.1', () => {
         expect(text).toContain('$memory = [string]([int64][math]::Floor($total / 100) * 60)');
         expect(text).toContain("if ($memory -and $memory -ne 'none') { $limits += @('--memory', $memory, '--memory-swap', $memory) }");
         expect(text).toContain('if ($env:HCM_WORKER_THREADS) { $limits += @(\'-e\', "GDAL_NUM_THREADS=$($env:HCM_WORKER_THREADS)") }');
-        expect(text).toContain("$arguments = @('run', '--rm', '--name', $Name) + (Get-WorkerLimits) + @('-p',");
+        expect(text).toContain("$arguments = @('run', '--restart', 'unless-stopped', '--name', $Name) + (Get-WorkerLimits) + @('-p',");
+        // The cleanup brief of 2026-11-14: older pipeline images go before each run, the current and the previous one kept.
+        expect(text).toContain('Remove-OldPipelineImages $image');
+        expect(text).toContain('& docker rm -f $Name *> $null');
     });
 
     it('happyPath_aComputerWithNoNvidiaCardGetsTheWorkersOwnImageAsUnderThePosixStarter @S-P07-HAPPY-CPU-IMAGE', async () => {

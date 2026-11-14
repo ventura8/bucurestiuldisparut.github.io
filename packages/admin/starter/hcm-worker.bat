@@ -240,6 +240,17 @@ function Get-CurrentImage {
     return $null
 }
 
+# The cleanup brief of 2026-11-14: the pipeline images but the one about to run and the one before it go (each about 10 GB); no other
+# image is touched.
+function Remove-OldPipelineImages($Current) {
+    $kept = $null
+    foreach ($each in @(& docker images --format '{{.Repository}}@{{.Digest}}' 2> $null | Where-Object { $_ -like "us-central1-docker.pkg.dev/$Project/hcm/pipeline@*" })) {
+        if ($each -eq $Current) { continue }
+        if (-not $kept) { $kept = $each; continue }
+        & docker image rm $each *> $null
+    }
+}
+
 # Says in the box why the sidecar cannot come (the panel shows it, the worker stops waiting); a word of this file only, never data.
 function Set-AiRefused($WorkerImage, $Why) {
     Write-Host "local AI: unavailable ($Why)"
@@ -581,9 +592,10 @@ function Start-Supervisor {
             & docker pull $image *> $null
             if ($LASTEXITCODE -eq 0) {
                 & docker rm -f $Name *> $null
+                Remove-OldPipelineImages $image
                 $started = Get-Date
                 $digest = 'sha256:' + $image.Split('@')[1].Substring(7)
-                $arguments = @('run', '--rm', '--name', $Name) + (Get-WorkerLimits) + @('-p', "127.0.0.1:${Port}:${Port}", '-v', "${Name}:/work")
+                $arguments = @('run', '--restart', 'unless-stopped', '--name', $Name) + (Get-WorkerLimits) + @('-p', "127.0.0.1:${Port}:${Port}", '-v', "${Name}:/work")
                 $arch = & docker version --format '{{.Server.Arch}}' 2> $null
                 $arguments += @('-v', "${AiFiles}:/ai/files", '-v', "${AiBox}:/ai/box", '-e', "HCM_STARTER=$StarterVersion")
                 $arguments += @('-e', "HCM_STARTER_UPDATE=$($script:UpdateSaid)", '-e', "HCM_DOCKER_ARCH=$arch")
@@ -594,6 +606,8 @@ function Start-Supervisor {
                 $arguments += @('worker', '--city', $City, '--project', $Project, '--supervised', '--image', $digest)
                 & docker @arguments
                 $code = $LASTEXITCODE
+                # The supervisor decides what follows, not Docker's restart policy (that one is for a reboot before this runs).
+                & docker rm -f $Name *> $null
                 if ($code -ge $RemoveExit -and $code -le $RemoveExit + 3) { Remove-ByOrder $code $image $digest }
                 if ($code -eq $Outdated -or ((Get-Date) - $started).TotalSeconds -gt 600) { $wait = 0 }
                 if ($code -eq $Usage) { $refused += 1 } else { $refused = 0 }

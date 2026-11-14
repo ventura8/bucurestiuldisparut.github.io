@@ -21,6 +21,7 @@ import { omit } from '../api/objects.js';
 import { IMAGERY_WRITER } from '../imagery/records.js';
 import type { Ports } from '../ports/index.js';
 import { copyFor } from './archive-host.js';
+import { diskWordOf, freeSpaceOf, jobStatesOf, releaseOrphan, withDisk, type DiskWord } from './cleanup.js';
 import { activePause, afterCommand, pauseAnswer } from './pause-state.js';
 import { filmHere } from './film-host.js';
 import { at, leaseOwnerOf, requireGreen, requireWorker, type WorkerCall } from './holder.js';
@@ -55,14 +56,17 @@ type Runs = readonly string[] | undefined;
 /** The jobs whose stitched film the worker holds (a job waiting for its film goes only to such a worker). */
 type Films = readonly string[] | undefined;
 
-/** The worker's call with the types it runs and the films it holds. */
-/** The worker's call: the types it runs, its films, (W5) its governor's share, and its own page's pause command (recorded with the claim). */
-type Claim = WorkerCall & {
-    readonly runs: Runs;
-    readonly films: Films;
-    readonly share?: WorkerShare;
-    readonly pause?: CallableRequest<'worker.claim'>['pause'];
-};
+/**
+ * The worker's call: the types it runs, its films, (W5) its governor's share, its own page's pause command (recorded with the
+ * claim), and (cleanup item 6) its disk and what its last "Free space now" freed.
+ */
+type Claim = WorkerCall &
+    DiskWord & {
+        readonly runs: Runs;
+        readonly films: Films;
+        readonly share?: WorkerShare;
+        readonly pause?: CallableRequest<'worker.claim'>['pause'];
+    };
 
 function claimable(job: JobDoc | undefined, now: Date, call: Pick<Claim, 'runs' | 'films'>, jobId: string): job is JobDoc {
     return (
@@ -87,11 +91,12 @@ function claimed(job: JobDoc, call: WorkerCall, now: Date): JobDoc {
     };
 }
 
-/** The worker's document as last seen now: busy with `jobId`, or idle. */
-function seen(worker: WorkerDoc, call: WorkerCall & { readonly share?: WorkerShare }, now: Date, jobId?: string): WorkerDoc {
+/** The worker's document as last seen now: busy with `jobId`, or idle; its share and its disk as the claim said them. */
+function seen(worker: WorkerDoc, call: WorkerCall & DiskWord & { readonly share?: WorkerShare }, now: Date, jobId?: string): WorkerDoc {
     const state = jobId === undefined ? { state: 'idle' as const } : { state: 'busy' as const, jobId };
     const share = call.share === undefined ? {} : { share: call.share };
-    return { ...omit(worker, ['jobId']), ...share, ...state, lastSeenAt: at(now), updatedBy: call.uid, updatedAt: at(now) };
+    const base = { ...omit(worker, ['jobId']), ...share, ...state, lastSeenAt: at(now), updatedBy: call.uid, updatedAt: at(now) };
+    return withDisk(base, call, now);
 }
 
 /** The first of the city's claimable jobs this worker takes, or null. */
@@ -147,6 +152,10 @@ async function candidates(deps: ClaimDeps, call: Claim, now: Date): Promise<stri
  * computer is answered `remove` instead of a job, and the worker's word on it is a claim with `removal` (`removal.ts`).
  * Pause (2026-11-13): the computer's own page's `pause` command is recorded first (an expired pause dropped); a paused worker is
  * answered `paused` with who, when and until when (`pause`); a job the owner paused is taken by nobody.
+ * Resilience (2026-11-14, `cleanup.ts`): the job this worker's document says it runs, still in its run, was orphaned by a power cut
+ * or a crash of this computer (it claims only when it runs nothing) and is queued again with its attempt given back; a disk below
+ * the worker's floor takes no job (`lowDisk`); the held jobs' states (`jobStates`) and the admin's "Free space now" (`freeSpace`)
+ * come with the answer.
  */
 async function workerClaim(
     deps: ClaimDeps,
@@ -165,21 +174,37 @@ async function workerClaim(
         films: request.films,
         ...(request.share === undefined ? {} : { share: request.share }),
         ...(request.pause === undefined ? {} : { pause: request.pause }),
+        ...diskWordOf(request),
     };
     logCommand(deps, call, request.pause);
-    return claimFor(deps, caller, claim, request.archives);
+    return claimFor(deps, caller, claim, request);
 }
 
-/** The claim of a worker in good standing: the removal's order, else a job, else why none. */
+/**
+ * The claim of a worker in good standing: its own orphan released first (P1-3), then the removal's order, else a job, else why
+ * none; with (cleanup items 1 and 6) the held jobs' states and the admin's "Free space now".
+ */
 async function claimFor(
     deps: ClaimDeps,
     caller: VerifiedCaller,
     claim: Claim,
-    archives: readonly string[] | undefined,
+    said: Pick<CallableRequest<'worker.claim'>, 'archives' | 'held'>,
 ): Promise<CallableResponse<'worker.claim'>> {
     const now = deps.clock.now();
     // Pause: the computer's own page's command first, an expired pause dropped (`pause-state.ts`).
     const worker = afterCommand(await requireWorker(deps.documents, claim), claim.pause, now);
+    await releaseOrphan(deps, claim, worker, now);
+    const answer = await answerFor(deps, caller, { claim, worker, now }, said.archives);
+    return { ...answer, ...freeSpaceOf(seen(worker, claim, now)), ...(await jobStatesOf(deps, claim.cityId, said.held)) };
+}
+
+/** The removal's order, else a job, else why none; the worker is seen now either way. */
+async function answerFor(
+    deps: ClaimDeps,
+    caller: VerifiedCaller,
+    { claim, worker, now }: { readonly claim: Claim; readonly worker: WorkerDoc; readonly now: Date },
+    archives: readonly string[] | undefined,
+): Promise<CallableResponse<'worker.claim'>> {
     const path = FIRESTORE_PATHS.worker(claim.cityId, claim.workerId);
     const order = removalOrder(worker);
     if (order !== undefined) {
@@ -248,7 +273,7 @@ async function whyNot(
 /** The answer of a claim that took no job: held back (paused, yielded), outdated, or nothing to do. */
 function noJob(deps: ClaimDeps, claim: Claim, outdated: boolean, held: HoldBack | null): CallableResponse<'worker.claim'> {
     if (held !== null) {
-        deps.log.info('worker holds back', { cityId: claim.cityId, workerId: claim.workerId, why: held });
+        deps.log.info('worker holds back', { cityId: claim.cityId, workerId: claim.workerId, why: held, ...claim.disk });
         return { job: null, [held]: true };
     }
     return outdated ? { job: null, outdated } : { job: null };

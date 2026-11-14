@@ -20,6 +20,9 @@ export function computer(changes: Partial<ComputerViewPort> = {}): ComputerViewP
         seenAt: '2026-11-13T09:00:00.000Z',
         removal: null,
         revoked: false,
+        disk: { workBytes: 13_207_024_435, freeBytes: 44_023_414_784, floorBytes: 10_737_418_240 },
+        freeing: false,
+        freed: null,
         ...changes,
     };
 }
@@ -55,6 +58,7 @@ export class FakeHousehold implements HouseholdPort {
         rename: (id: string, name: string): Promise<boolean> => this.#record(`rename ${id} ${name}`),
         pause: (id: string): Promise<boolean> => this.#record(`pause ${id}`),
         resume: (id: string): Promise<boolean> => this.#record(`resume ${id}`),
+        freeSpace: (id: string): Promise<boolean> => this.#record(`freeSpace ${id}`),
         remove: (id: string, options: { readonly docker: boolean; readonly keep: boolean }): Promise<boolean> =>
             this.#record(`remove ${id} docker=${String(options.docker)} keep=${String(options.keep)}`),
         disconnect: (id: string): Promise<boolean> => this.#record(`disconnect ${id}`),

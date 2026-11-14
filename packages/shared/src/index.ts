@@ -153,6 +153,7 @@ export {
     inviteDocSchema,
     jobDocSchema,
     jobLogDocSchema,
+    jobStatusOnlySchema,
     manifestStateDocSchema,
     opsDispatchDocSchema,
     opsGuardDocSchema,

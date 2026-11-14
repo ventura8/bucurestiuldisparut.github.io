@@ -102,6 +102,22 @@ def test_the_owners_choice_is_kept_in_the_volume(tmp_path: Path) -> None:
     assert machine["profile"] == {"chosen": "full", "active": "full", "why": "owner"}
 
 
+def test_a_crash_mid_choice_write_leaves_the_old_governor_json_intact(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    governor, *_ = _governor(tmp_path, SMALL_NO_GPU)
+    assert governor.choose("quiet", battery_allowed=True)
+
+    def crash(_fd: int) -> None:
+        raise OSError("power cut")
+
+    monkeypatch.setattr("hcm_pipeline.durable.os.fsync", crash)
+    with pytest.raises(OSError, match="power cut"):
+        governor.choose("full", battery_allowed=False)
+
+    assert json.loads((tmp_path / CHOICE_FILE).read_text(encoding="utf-8")) == {"chosen": "quiet", "batteryAllowed": True}
+    assert load_choice(tmp_path) == Choice("quiet", battery_allowed=True)
+    assert [item.name for item in tmp_path.iterdir()] == [CHOICE_FILE]
+
+
 @pytest.mark.parametrize("text", ["{", "[]", '{"chosen": "x"}'])
 def test_an_unreadable_choice_is_auto(tmp_path: Path, text: str) -> None:
     (tmp_path / CHOICE_FILE).write_text(text, encoding="utf-8")
