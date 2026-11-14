@@ -13012,7 +13012,7 @@
             "area": "pipeline",
             "path": "happy",
             "title": "An interrupted write's leftovers go after an hour",
-            "asserts": "*.tmp and *.part files not written for an hour go on start and on each pass; a live write and a resumable session's partial file stay",
+            "asserts": "files ending .tmp or .part not written for an hour go on start and on each pass; a live write and a resumable session's partial file stay",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Resilience audit and cleanup brief of 2026-11-14 (docs/research/M7-local-worker.md, crashes and the worker's disk). Test: pipeline/tests/unit/test_worker_cleanup.py."
