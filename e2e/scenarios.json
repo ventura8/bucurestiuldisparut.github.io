@@ -12206,6 +12206,28 @@
             "notes": "Lesson 704 (2026-11-14, live: every computer card said processing 0.0.0). Test: pipeline/tests/unit/test_release.py (pipeline-pytest)."
         },
         {
+            "id": "S-A62-HAPPY-OUTDATED-CLEARED",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A computer the image check lets through is no longer said to be outdated",
+            "asserts": "the worker's document says outdated (a hello against a function instance's older installed image) while it runs the installed image -> worker.claim takes the job and the document says outdated false, so the admin's alert matches the claim",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 708 (2026-11-14, live: the admin said no jobs until it updates itself while the computers took jobs). Test: functions/test/worker/pairing.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-OUTDATED-KEPT",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A computer on another image stays outdated and takes nothing",
+            "asserts": "the worker's image differs from the installed one -> worker.claim answers outdated, the job stays queued and the document says outdated true",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 708. Test: functions/test/worker/pairing.test.ts."
+        },
+        {
             "id": "S-A62-HAPPY-DISPATCH-LOCAL",
             "behaviour": "A62",
             "area": "admin",

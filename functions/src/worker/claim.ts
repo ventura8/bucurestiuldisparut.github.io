@@ -109,7 +109,12 @@ async function takeFirst(deps: ClaimDeps, call: Claim, now: Date): Promise<strin
     return null;
 }
 
-/** Takes `jobId` for the worker in one transaction, if it is still claimable; false when another worker or event came first. */
+/**
+ * Takes `jobId` for the worker in one transaction, if it is still claimable; false when another worker or event came first.
+ * Only a worker the image check let through gets here: its document says `outdated: false` (live 2026-11-14, lesson 708: a
+ * hello against a function instance's minute-old installed image left `outdated: true`, and the admin said "no jobs until it
+ * updates itself" while the computer took job after job).
+ */
 function take(deps: ClaimDeps, call: Claim, jobId: string, now: Date): Promise<boolean> {
     const path = FIRESTORE_PATHS.job(call.cityId, jobId);
     return deps.documents.transaction(async (transaction) => {
@@ -121,6 +126,7 @@ function take(deps: ClaimDeps, call: Claim, jobId: string, now: Date): Promise<b
         await transaction.set(path, jobDocSchema, claimed(job, call, now));
         await transaction.set(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema, {
             ...seen(worker, call, now, jobId),
+            outdated: false,
             ...filmsOf(call.films),
         });
         return true;

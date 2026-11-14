@@ -232,6 +232,30 @@ describe('a paired worker', () => {
         await expect(asPaired(world, claimFunction, { workerId: WORKER })).resolves.toEqual({ job: { jobId: JOB } });
     });
 
+    it('happyPath_aWorkerTheImageCheckLetsThroughIsNoLongerSaidOutdated @S-A62-HAPPY-OUTDATED-CLEARED', async () => {
+        // Lesson 708: a hello against a minute-old installed image left `outdated: true` on a worker that runs the installed one.
+        const world = await workerWorld();
+        await installed(world);
+        await seedPairing(world, { pairedAt: minutes(-1) });
+        await seedWorker(world, WORKER, { pair: PAIR, image: IMAGE, outdated: true });
+        await seedJob(world, JOB, localJob());
+
+        await expect(asPaired(world, claimFunction, { workerId: WORKER })).resolves.toEqual({ job: { jobId: JOB } });
+        await expect(readWorker(world)).resolves.toMatchObject({ state: 'busy', jobId: JOB, outdated: false });
+    });
+
+    it('badPath_aWorkerOnAnotherImageStaysOutdatedAndTakesNothing @S-A62-BAD-OUTDATED-KEPT', async () => {
+        const world = await workerWorld();
+        await installed(world, NEWER);
+        await seedPairing(world, { pairedAt: minutes(-1) });
+        await seedWorker(world, WORKER, { pair: PAIR, image: IMAGE, outdated: false });
+        await seedJob(world, JOB, localJob());
+
+        await expect(asPaired(world, claimFunction, { workerId: WORKER })).resolves.toEqual({ job: null, outdated: true });
+        await expect(readWorker(world)).resolves.toMatchObject({ state: 'idle', outdated: true });
+        await expect(readJob(world, JOB)).resolves.toMatchObject({ status: 'queued' });
+    });
+
     it('badPath_anOutdatedWorkerTakesNoJobUntilItRunsTheNewCommand', async () => {
         const world = await workerWorld();
         await installed(world, NEWER);

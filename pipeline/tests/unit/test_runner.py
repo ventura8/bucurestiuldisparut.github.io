@@ -395,7 +395,7 @@ def test_happy_path_a_landsat_job_without_its_bands_here_extracts_them_again_fro
 
 def test_bad_path_a_landsat_job_without_its_bands_nor_its_delivery_downloads_the_scene_again(world: PipelineWorld) -> None:
     """Scenarios: S-P30-BAD-BANDS-AND-DELIVERY-GONE"""
-    steps = {
+    steps: dict[str, object] = {
         "fetch": {"status": "done", "gcsPath": "usgs-raw/landsat_ot_c2_l1/x/a.tar"},
         "extract": {"status": "done", "gcsPath": "work/c/j/bands/B4.tif"},
     }
