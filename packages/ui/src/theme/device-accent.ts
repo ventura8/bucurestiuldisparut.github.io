@@ -3,14 +3,15 @@
  * browser gives the real one, turned into the city's Material 3 schemes, in the viewer and the admin alike.
  *
  * - **Reading it.** CSS's `AccentColor` system colour, resolved on a probe element (`readDeviceAccent`). Firefox gives the
- *   system's accent; Chrome (150 on desktop) gives it only to an installed web app and a constant blue to every tab (its
- *   fingerprinting guard), and Safari a constant: a constant would paint every city the same blue, so the accent counts
- *   only in Firefox and in an installed Chromium app (`exposesAccent`). A page can name the accent itself with the custom
- *   property `--hcm-device-accent` on its root (an embedding site, the e2e tests); a neutral grey accent, or none, keeps
- *   the map's colours. Android's dynamic colour does not reach the web (Chrome does not expose it there).
+ *   system's accent; Chrome (150 on desktop: Windows, macOS, ChromeOS, and Linux through the desktop portal) gives it only
+ *   to an installed web app of the primary profile and a constant blue to every tab (its fingerprinting guard), and Safari
+ *   a constant: a constant would paint every city the same blue, so the accent counts only in Firefox and in an installed
+ *   Chromium app (`exposesAccent`). A page can name the accent itself with the custom property `--hcm-device-accent` on
+ *   its root (an embedding site, the e2e tests); a neutral grey accent, or none, keeps the map's colours. Android's
+ *   dynamic colour does not reach the web (Chrome does not expose it there).
  * - **The tokens.** No colour library (the viewer never ships one): every colour of the city's four schemes keeps its
- *   chroma and its WCAG luminance, and its OKLCH hue turns by the angle from the city's primary to the accent
- *   (`withAccent`). The tones, and so every contrast ratio of the schemes, stay the city's, so the high-contrast schemes
+ *   WCAG luminance, its OKLCH hue turns by the angle from the city's primary to the accent, and its chroma grows by the
+ *   accent's over the primary's (1 to 3 times, `withAccent`), so a vivid accent reads as itself on a muted city. The tones, and so every contrast ratio of the schemes, stay the city's, so the high-contrast schemes
  *   stay high-contrast; the error roles keep their red, shadow and scrim their black.
  */
 import type { ThemeTokens } from '@hcm/shared';
@@ -34,6 +35,9 @@ const INSTALLED =
 
 /** Below this OKLCH chroma an accent is a grey (macOS Graphite, a high-contrast theme): it has no hue to give. */
 const NEUTRAL_CHROMA = 0.03;
+
+/** The most the accent multiplies the schemes' chroma. */
+const MAX_CHROMA_SCALE = 3;
 
 type Rgb = readonly [number, number, number];
 
@@ -104,11 +108,15 @@ function fitted(lightness: number, chroma: number, hue: number): Rgb {
     );
 }
 
-/** `hex` turned by `angle` (radians) in OKLCH, with its WCAG luminance kept (the lightness found again by bisection). */
-export function turnHue(hex: string, angle: number): string {
+/**
+ * `hex` turned by `angle` (radians) in OKLCH, its chroma times `scale` (a near-grey surface's by its square root, so it
+ * stays a tinted neutral; as much as sRGB can show), with its WCAG luminance kept (the lightness found again by bisection).
+ */
+export function turnHue(hex: string, angle: number, scale = 1): string {
     const rgb = linearOf(hex);
     const [, a, b] = oklabOf(rgb);
-    const chroma = Math.hypot(a, b);
+    const own = Math.hypot(a, b);
+    const chroma = own * (own < NEUTRAL_CHROMA ? Math.sqrt(scale) : scale);
     const hue = Math.atan2(b, a) + angle;
     const target = luminance(rgb);
     return hexOf(
@@ -130,10 +138,28 @@ const HEX = /^#[0-9a-f]{6}$/i;
 /** The roles whose colour means something of its own: errors stay red, shadow and scrim black. */
 const FIXED_ROLE = /^--md-sys-color-(on-)?(error|shadow|scrim)/;
 
-function turned(scheme: Readonly<Record<string, string>>, angle: number): Readonly<Record<string, string>> {
+function turned(scheme: Readonly<Record<string, string>>, angle: number, scale: number): Readonly<Record<string, string>> {
     return Object.fromEntries(
-        Object.entries(scheme).map(([name, value]) => [name, FIXED_ROLE.test(name) || !HEX.test(value) ? value : turnHue(value, angle)]),
+        Object.entries(scheme).map(([name, value]) => [
+            name,
+            FIXED_ROLE.test(name) || !HEX.test(value) ? value : turnHue(value, angle, scale),
+        ]),
     );
+}
+
+/** The OKLCH chroma of `hex`. */
+export function chromaOf(hex: string): number {
+    const [, a, b] = oklabOf(linearOf(hex));
+    return Math.hypot(a, b);
+}
+
+/**
+ * How much more colourful the schemes become: the accent's chroma over the city primary's, within 1 to 3. A city in a
+ * muted colour (a lavender, a sepia) turned to a vivid accent kept its own greyness, so a GNOME orange showed as a dull
+ * brown nobody took for the device's colour (`docs/LESSONS.md` 714); a muted accent never greys a vivid city.
+ */
+function chromaScale(accent: string, primary: string): number {
+    return Math.min(MAX_CHROMA_SCALE, Math.max(1, chromaOf(accent) / chromaOf(primary)));
 }
 
 /** The OKLCH hue of a `#rrggbb` value, or null for anything else and for a grey. */
@@ -152,11 +178,12 @@ export function withAccent(tokens: ThemeTokens, accent: string | null): ThemeTok
         return tokens;
     }
     const angle = accentHue - primaryHue;
+    const scale = chromaScale(accent ?? '', tokens.light['--md-sys-color-primary'] ?? '');
     return {
-        light: turned(tokens.light, angle),
-        dark: turned(tokens.dark, angle),
-        highContrastLight: turned(tokens.highContrastLight, angle),
-        highContrastDark: turned(tokens.highContrastDark, angle),
+        light: turned(tokens.light, angle, scale),
+        dark: turned(tokens.dark, angle, scale),
+        highContrastLight: turned(tokens.highContrastLight, angle, scale),
+        highContrastDark: turned(tokens.highContrastDark, angle, scale),
     };
 }
 

@@ -5,6 +5,7 @@ import {
     ACCENT_PROPERTY,
     accentOf,
     accentTokens,
+    chromaOf,
     deviceAccentState,
     exposesAccent,
     hexFromComputed,
@@ -74,6 +75,31 @@ describe('device accent: the tokens', () => {
                 expect(Math.abs(after - before), `${scheme} ${foreground} on ${background}`).toBeLessThan(0.15);
             }
         }
+    });
+
+    it('happyPath_aMutedCityTakesTheVividAccentsColourfulness', () => {
+        // The live Bucharest city: a muted lavender primary; GNOME's orange accent as Chrome 157 gives it on Linux.
+        const muted = { ...BASELINE_THEME, light: { ...BASELINE_THEME.light, [PRIMARY]: '#505d8c' } };
+        const gnomeOrange = '#ed5b00';
+        const themed = withAccent(muted, gnomeOrange);
+
+        expect(chromaOf(themed.light[PRIMARY] ?? '')).toBeGreaterThan(1.8 * chromaOf('#505d8c'));
+        expect(Math.abs(relativeLuminance(themed.light[PRIMARY] ?? '') - relativeLuminance('#505d8c'))).toBeLessThan(0.004);
+    });
+
+    it('badPath_aMutedAccentNeverGreysAVividCity', () => {
+        const vivid = { ...BASELINE_THEME, light: { ...BASELINE_THEME.light, [PRIMARY]: '#0b57d0' } };
+        const sage = '#6d7f6a';
+        const themed = withAccent(vivid, sage);
+
+        expect(themed.light[PRIMARY]).toBe(turnHue('#0b57d0', (hueOf(sage) ?? 0) - (hueOf('#0b57d0') ?? 0)));
+    });
+
+    it('happyPath_aNearGreySurfaceStaysATintedNeutral', () => {
+        const surface = turnHue('#eeedf6', 0, 4);
+
+        expect(chromaOf(surface)).toBeLessThan(0.03);
+        expect(chromaOf(surface)).toBeGreaterThan(chromaOf('#eeedf6'));
     });
 
     it('happyPath_errorShadowAndScrimKeepTheirOwnColours', () => {
